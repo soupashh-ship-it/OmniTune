@@ -12,10 +12,10 @@ data class ThemePalette(
 object ThemePalettes {
     fun generateRandomPalette(): ThemePalette {
         return ThemePalette(
-            primary = Random.nextLong() and 0xFFFFFF,
-            secondary = Random.nextLong() and 0xFFFFFF,
-            tertiary = Random.nextLong() and 0xFFFFFF,
-            neutral = Random.nextLong() and 0xFFFFFF
+            primary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
+            secondary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
+            tertiary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
+            neutral = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL)
         )
     }
 }

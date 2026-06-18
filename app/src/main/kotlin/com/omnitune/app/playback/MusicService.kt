@@ -12,6 +12,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -28,6 +29,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.MainActivity
+import com.omnitune.app.R
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLike
 import com.omnitune.app.db.entities.LyricsEntity
@@ -46,12 +48,20 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.Queue
 import com.omnitune.app.utils.NetworkConnectivityObserver
 import com.omnitune.app.utils.reportException
+import com.omnitune.app.utils.dataStore
+import com.omnitune.app.constants.SkipSilenceKey
+import com.omnitune.app.constants.AudioOffload
+import com.omnitune.app.constants.PlayerVolumeKey
+import com.omnitune.app.constants.RepeatModeKey
+import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -107,6 +117,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
         startForegroundNotification()
 
         initializePlayer()
+        observePreferences()
+
+        // Mark queue restore as done (no persistent queue implementation yet)
+        queueRestoreCompleted.value = true
 
         connectivityObserver = NetworkConnectivityObserver(this)
 
@@ -136,7 +150,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_media_play)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("OmniTune")
             .setContentText("Music Player")
             .setContentIntent(contentIntent)
@@ -147,8 +161,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             .build()
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }
@@ -202,9 +216,49 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(this).apply {
-                setSmallIcon(android.R.drawable.ic_media_play)
+                setSmallIcon(R.drawable.ic_launcher_foreground)
             }
         )
+    }
+
+    /**
+     * Observes user preferences from DataStore and applies them to the player in real-time.
+     * This ensures Settings toggles actually affect playback behavior.
+     */
+    private fun observePreferences() {
+        val ds = applicationContext.dataStore
+
+        // Skip Silence
+        scope.launch {
+            ds.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
+                player.skipSilenceEnabled = skipSilence
+                Timber.tag("MusicService").d("Skip silence: $skipSilence")
+            }
+        }
+
+        // Audio Offload
+        scope.launch {
+            ds.data.map { it[AudioOffload] ?: true }.distinctUntilChanged().collect { offload ->
+                player.setOffloadEnabled(offload)
+                Timber.tag("MusicService").d("Audio offload: $offload")
+            }
+        }
+
+        // Player Volume
+        scope.launch {
+            ds.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
+                player.volume = volume.coerceIn(0f, 1f)
+                Timber.tag("MusicService").d("Player volume: $volume")
+            }
+        }
+
+        // Repeat Mode
+        scope.launch {
+            ds.data.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
+                player.repeatMode = mode
+                Timber.tag("MusicService").d("Repeat mode: $mode")
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -283,11 +337,20 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
 
             if (radioItems.isNotEmpty()) {
-                val itemCount = player.mediaItemCount
-                if (itemCount > currentIndex + 1) {
-                    player.removeMediaItems(currentIndex + 1, itemCount)
+                // Resolve YouTube video IDs to playable stream URLs before adding to player
+                val resolvedRadioItems = withContext(Dispatchers.IO) {
+                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor)
                 }
-                player.addMediaItems(currentIndex + 1, radioItems)
+                if (resolvedRadioItems.isNotEmpty()) {
+                    val itemCount = player.mediaItemCount
+                    if (itemCount > currentIndex + 1) {
+                        player.removeMediaItems(currentIndex + 1, itemCount)
+                    }
+                    player.addMediaItems(currentIndex + 1, resolvedRadioItems)
+                    Timber.tag("MusicService").i("Radio: added ${resolvedRadioItems.size} resolved tracks")
+                } else {
+                    Timber.tag("MusicService").w("Radio: all stream resolutions failed")
+                }
             }
 
             currentQueue = radioQueue
@@ -408,6 +471,20 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onPlayerError(error: PlaybackException) {
         Timber.tag("MusicService").e(error, "Player error")
         reportException(error)
+
+        // Auto-skip to next track on error if preference is enabled
+        scope.launch {
+            val autoSkip = try {
+                applicationContext.dataStore.data.first()[AutoSkipNextOnErrorKey] ?: true
+            } catch (e: Exception) {
+                true // Default to auto-skip if we can't read the preference
+            }
+            if (autoSkip && player.hasNextMediaItem()) {
+                Timber.tag("MusicService").i("Auto-skipping to next track after error")
+                player.seekToNextMediaItem()
+                player.prepare()
+            }
+        }
     }
 
     @Suppress("DEPRECATION")
