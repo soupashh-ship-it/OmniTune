@@ -1,0 +1,248 @@
+/*
+ * OmniTune - based on Velune
+ * Nikhil / Kòi Natsuko (github.com/koiverse)
+ * Licensed Under GPL-3.0
+ */
+
+package com.omnitune.app.playback
+
+import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM
+import androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM
+import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
+import androidx.media3.common.Player.REPEAT_MODE_OFF
+import androidx.media3.common.Player.STATE_ENDED
+import androidx.media3.common.Timeline
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.extensions.currentMetadata
+import com.omnitune.app.extensions.getCurrentQueueIndex
+import com.omnitune.app.extensions.getQueueWindows
+import com.omnitune.app.extensions.metadata
+import com.omnitune.app.playback.MusicService.MusicBinder
+import com.omnitune.app.playback.queues.Queue
+import com.omnitune.app.utils.reportException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class PlayerConnection(
+    context: Context,
+    binder: MusicBinder,
+    val database: MusicDatabase,
+    scope: CoroutineScope,
+) : Player.Listener {
+    val service = binder.service
+    val player = service.player
+
+    val playbackState = MutableStateFlow(player.playbackState)
+    private val playWhenReady = MutableStateFlow(player.playWhenReady)
+    val playbackParameters = MutableStateFlow(player.playbackParameters)
+    val isPlaying =
+        combine(playbackState, playWhenReady) { playbackState, playWhenReady ->
+            playWhenReady && playbackState != STATE_ENDED
+        }.stateIn(
+            scope,
+            SharingStarted.Lazily,
+            player.playWhenReady && player.playbackState != STATE_ENDED
+        )
+    val mediaMetadata = MutableStateFlow(player.currentMetadata)
+    val currentSong =
+        mediaMetadata.flatMapLatest {
+            database.song(it?.id)
+        }
+    val currentLyrics = mediaMetadata.flatMapLatest { mediaMetadata ->
+        database.lyrics(mediaMetadata?.id)
+    }
+    val currentFormat =
+        mediaMetadata.flatMapLatest { mediaMetadata ->
+            database.format(mediaMetadata?.id)
+        }
+
+    val queueTitle = MutableStateFlow<String?>(null)
+    val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
+    val currentMediaItemIndex = MutableStateFlow(-1)
+    val currentWindowIndex = MutableStateFlow(-1)
+
+    val shuffleModeEnabled = MutableStateFlow(false)
+    val repeatMode = MutableStateFlow(REPEAT_MODE_OFF)
+
+    val canSkipPrevious = MutableStateFlow(true)
+    val canSkipNext = MutableStateFlow(true)
+
+    val error = MutableStateFlow<PlaybackException?>(null)
+    val waitingForNetworkConnection = service.waitingForNetworkConnection
+    val queueRestoreCompleted = service.queueRestoreCompleted
+
+    init {
+        player.addListener(this)
+
+        playbackState.value = player.playbackState
+        playWhenReady.value = player.playWhenReady
+        playbackParameters.value = player.playbackParameters
+        val currentMeta = player.currentMetadata ?: service.currentMediaMetadata.value
+        mediaMetadata.value = currentMeta
+        queueTitle.value = service.queueTitle
+        queueWindows.value = player.getQueueWindows()
+        currentWindowIndex.value = player.getCurrentQueueIndex()
+        currentMediaItemIndex.value = player.currentMediaItemIndex
+        shuffleModeEnabled.value = player.shuffleModeEnabled
+        repeatMode.value = player.repeatMode
+
+        if (currentMeta == null && player.mediaItemCount > 0) {
+            val mediaItem = player.currentMediaItem
+            if (mediaItem != null) {
+                mediaMetadata.value = mediaItem.metadata
+            }
+        }
+    }
+
+    fun playQueue(queue: Queue) {
+        service.playQueue(queue)
+    }
+
+    fun startRadioSeamlessly() {
+        service.startRadioSeamlessly()
+    }
+
+    fun playNext(item: MediaItem) = playNext(listOf(item))
+
+    fun playNext(items: List<MediaItem>) {
+        service.playNext(items)
+    }
+
+    fun addToQueue(item: MediaItem) = addToQueue(listOf(item))
+
+    fun addToQueue(items: List<MediaItem>) {
+        service.addToQueue(items)
+    }
+
+    fun toggleLibrary() {
+        val meta = mediaMetadata.value ?: return
+        service.scope.launch(Dispatchers.IO) {
+            val song = database.getSongById(meta.id)
+            val inLibrary = song?.song?.inLibrary
+            val updated = if (song != null) {
+                song.song.copy(inLibrary = if (inLibrary == null) java.time.LocalDateTime.now() else null)
+            } else {
+                meta.toSongEntity().copy(inLibrary = java.time.LocalDateTime.now())
+            }
+            database.upsert(updated)
+        }
+        val newInLibrary = if (meta.inLibrary == null) java.time.LocalDateTime.now() else null
+        mediaMetadata.value = meta.copy(inLibrary = newInLibrary, liked = if (newInLibrary != null) meta.liked else false)
+    }
+
+    fun toggleLike() {
+        val meta = mediaMetadata.value ?: return
+        service.scope.launch(Dispatchers.IO) {
+            val song = database.getSongById(meta.id)
+            if (song != null) {
+                database.upsert(song.song.localToggleLike())
+            } else {
+                database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
+            }
+            com.omnitune.app.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+        }
+        mediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
+    }
+
+    fun seekToNext() {
+        player.seekToNext()
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    fun seekToPrevious() {
+        player.seekToPrevious()
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    override fun onPlaybackStateChanged(state: Int) {
+        playbackState.value = state
+        error.value = player.playerError
+    }
+
+    override fun onPlayWhenReadyChanged(
+        newPlayWhenReady: Boolean,
+        reason: Int,
+    ) {
+        playWhenReady.value = newPlayWhenReady
+    }
+
+    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+        this.playbackParameters.value = playbackParameters
+    }
+
+    override fun onMediaItemTransition(
+        mediaItem: MediaItem?,
+        reason: Int,
+    ) {
+        val meta = mediaItem?.metadata ?: service.currentMediaMetadata.value
+        mediaMetadata.value = meta
+        currentMediaItemIndex.value = player.currentMediaItemIndex
+        currentWindowIndex.value = player.getCurrentQueueIndex()
+        updateCanSkipPreviousAndNext()
+    }
+
+    override fun onTimelineChanged(
+        timeline: Timeline,
+        reason: Int,
+    ) {
+        queueWindows.value = player.getQueueWindows()
+        queueTitle.value = service.queueTitle
+        currentMediaItemIndex.value = player.currentMediaItemIndex
+        currentWindowIndex.value = player.getCurrentQueueIndex()
+        updateCanSkipPreviousAndNext()
+    }
+
+    override fun onShuffleModeEnabledChanged(enabled: Boolean) {
+        shuffleModeEnabled.value = enabled
+        queueWindows.value = player.getQueueWindows()
+        currentWindowIndex.value = player.getCurrentQueueIndex()
+        updateCanSkipPreviousAndNext()
+    }
+
+    override fun onRepeatModeChanged(mode: Int) {
+        repeatMode.value = mode
+        updateCanSkipPreviousAndNext()
+    }
+
+    override fun onPlayerErrorChanged(playbackError: PlaybackException?) {
+        if (playbackError != null) {
+            reportException(playbackError)
+        }
+        error.value = playbackError
+    }
+
+    private fun updateCanSkipPreviousAndNext() {
+        if (!player.currentTimeline.isEmpty) {
+            val window =
+                player.currentTimeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+            canSkipPrevious.value = player.isCommandAvailable(COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) ||
+                    !window.isLive ||
+                    player.isCommandAvailable(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+            canSkipNext.value = window.isLive &&
+                    window.isDynamic ||
+                    player.isCommandAvailable(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+        } else {
+            canSkipPrevious.value = false
+            canSkipNext.value = false
+        }
+    }
+
+    fun dispose() {
+        player.removeListener(this)
+    }
+}

@@ -1,0 +1,43 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android
+*.apk
+*.ap_
+*.aab
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# App build outputs
+app/build/
+canvas/build/
+kizzy/build/
+lastfm/build/
+simpmusic/build/
+lrclib/build/
+betterlyrics/build/
+kugou/build/
+
+# Generated
+app/build/generated/
+
+# Debug files
+*.hprof
+*.trace
+
+# Session notes
+SESSION_NOTES.md
+nul
+page@6c78803ef718b2d15f66e9efe9ef01be.webm

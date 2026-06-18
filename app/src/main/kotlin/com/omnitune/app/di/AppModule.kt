@@ -1,0 +1,46 @@
+/*
+ * OmniTune - based on Velune
+ * Nikhil / Kòi Natsuko (github.com/koiverse)
+ * Licensed Under GPL-3.0
+ */
+
+package com.omnitune.app.di
+
+import coil3.ImageLoader
+import coil3.request.crossfade
+import com.omnitune.app.db.InternalDatabase
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.utils.dataStore
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+
+    @Provides
+    @Singleton
+    fun provideMusicDatabase(
+        @ApplicationContext context: android.content.Context,
+    ): MusicDatabase = InternalDatabase.newInstance(context)
+
+    @Provides
+    @Singleton
+    fun provideDataStore(
+        @ApplicationContext context: android.content.Context,
+    ): DataStore<Preferences> = context.dataStore
+
+    @Provides
+    @Singleton
+    fun provideImageLoader(
+        @ApplicationContext context: android.content.Context,
+    ): ImageLoader = ImageLoader.Builder(context)
+        .crossfade(300)
+        .build()
+}

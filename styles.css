@@ -1,0 +1,162 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.9rem;
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
+
+.discord-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #5865F2;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
+}
+
+.discord-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(88, 101, 242, 0.6);
+    background: #4752c4;
+}
+
+.calculator {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.display {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: right;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: 'Courier New', monospace;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.btn {
+    padding: 18px;
+    font-size: 1.3rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    backdrop-filter: blur(5px);
+}
+
+.btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.operator {
+    background: rgba(255, 165, 0, 0.3);
+    color: #ffa500;
+}
+
+.operator:hover {
+    background: rgba(255, 165, 0, 0.5);
+}
+
+.clear {
+    background: rgba(255, 69, 69, 0.3);
+    color: #ff4545;
+    grid-column: span 1;
+}
+
+.clear:hover {
+    background: rgba(255, 69, 69, 0.5);
+}
+
+.equals {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    grid-column: span 1;
+}
+
+.equals:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+}
+
+.zero {
+    grid-column: span 1;
+}
+
+footer {
+    text-align: center;
+    margin-top: 20px;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.8rem;
+}
+
+footer p {
+    color: rgba(255,255,255,0.6);
+}

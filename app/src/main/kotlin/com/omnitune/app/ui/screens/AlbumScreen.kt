@@ -1,0 +1,266 @@
+package com.omnitune.app.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.omnitune.app.innertube.YouTube
+import com.omnitune.app.innertube.models.SongItem
+import com.omnitune.app.innertube.pages.AlbumPage
+import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniTuneLoader
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AlbumScreen(
+    albumId: String,
+    onBack: () -> Unit = {},
+    onPlaySong: (SongItem) -> Unit = {},
+) {
+    var albumPage by remember { mutableStateOf<AlbumPage?>(null) }
+    var songs by remember { mutableStateOf<List<SongItem>?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(albumId) {
+        isLoading = true
+        val pageResult = YouTube.album(albumId)
+        pageResult.fold(
+            onSuccess = { page ->
+                albumPage = page
+                val songResult = YouTube.albumSongs(page.album.playlistId, page.album)
+                songResult.fold(
+                    onSuccess = { songList -> songs = songList },
+                    onFailure = { e -> error = e.message }
+                )
+            },
+            onFailure = { e -> error = e.message }
+        )
+        isLoading = false
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TopAppBar(
+            title = { Text(albumPage?.album?.title ?: "Album") },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        painter = painterResource(com.omnitune.app.R.drawable.ic_arrow_back),
+                        contentDescription = "Back",
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        )
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    OmniTuneLoader(size = 48.dp)
+                }
+            }
+            error != null -> {
+                EmptyPlaceholder(
+                    icon = android.R.drawable.ic_menu_gallery,
+                    text = error ?: "Failed to load album",
+                )
+            }
+            albumPage != null -> {
+                val album = albumPage!!.album
+                val songList = songs ?: emptyList()
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            AsyncImage(
+                                model = album.thumbnail,
+                                contentDescription = album.title,
+                                modifier = Modifier
+                                    .size(160.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .aspectRatio(1f),
+                                contentScale = ContentScale.Crop,
+                            )
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = album.title,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                album.artists?.forEach { artist ->
+                                    Text(
+                                        text = artist.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                album.year?.let { year ->
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = year.toString(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "${songList.size} tracks",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Tracks",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    if (songList.isEmpty()) {
+                        item {
+                            EmptyPlaceholder(
+                                icon = android.R.drawable.ic_menu_gallery,
+                                text = "No tracks available",
+                            )
+                        }
+                    } else {
+                        itemsIndexed(songList) { index, song ->
+                            SongRow(
+                                index = index + 1,
+                                song = song,
+                                onClick = { onPlaySong(song) },
+                            )
+                            if (index < songList.lastIndex) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                )
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SongRow(
+    index: Int,
+    song: SongItem,
+    onClick: () -> Unit = {},
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = index.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(32.dp),
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = song.artists.joinToString(", ") { it.name },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        song.duration?.let { duration ->
+            Text(
+                text = formatDuration(duration.toLong()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatDuration(seconds: Long): String {
+    val minutes = seconds / 60
+    val secs = seconds % 60
+    return "$minutes:${secs.toString().padStart(2, '0')}"
+}

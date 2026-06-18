@@ -1,0 +1,20 @@
+/*
+ * OmniTune - based on Velune
+ * Nikhil / Kòi Natsuko (github.com/koiverse)
+ * Licensed Under GPL-3.0
+ */
+
+package com.omnitune.app.ui.utils
+
+import androidx.navigation.NavController
+import com.omnitune.app.ui.screens.Screens
+
+fun NavController.backToMain() {
+    val mainRoutes = Screens.MainScreens.map { it.route }
+
+    while (previousBackStackEntry != null &&
+        currentBackStackEntry?.destination?.route !in mainRoutes
+    ) {
+        popBackStack()
+    }
+}
