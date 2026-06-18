@@ -436,6 +436,7 @@ private fun LyricsSection(
 ) {
     val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { androidx.compose.runtime.mutableStateOf(null) }
     val player = playerConnection?.player
+    val currentMediaId = player?.currentMediaItem?.mediaId
 
     // Poll position every 200ms so lyrics scroll with playback
     var position by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
@@ -446,7 +447,8 @@ private fun LyricsSection(
         }
     }
 
-    val parsedLines = remember(lyricsEntity?.id) {
+    // Key on both lyricsEntity.id AND currentMediaId to force re-parse on song change
+    val parsedLines = remember(lyricsEntity?.id, currentMediaId) {
         lyricsEntity?.lyrics?.let { LyricsUtils.parseLyrics(it) } ?: emptyList()
     }
 
