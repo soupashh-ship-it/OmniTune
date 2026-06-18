@@ -93,12 +93,23 @@ fun MiniPlayer(
     // Read position/duration from player, updating every 200ms
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(playerConnection?.player) {
+    val currentMediaId = mediaMetadata?.id
+    LaunchedEffect(playerConnection?.player, currentMediaId) {
         while (true) {
             val player = playerConnection?.player
             if (player != null) {
-                duration = if (player.duration > 0) player.duration.toFloat() else 0f
-                position = player.currentPosition.toFloat()
+                val dur = player.duration
+                val pos = player.currentPosition
+                // Handle STATE_ENDED: show full bar, then reset on next song
+                if (playbackState == Player.STATE_ENDED) {
+                    if (dur > 0) {
+                        position = dur.toFloat()
+                        duration = dur.toFloat()
+                    }
+                } else {
+                    duration = if (dur > 0) dur.toFloat() else 0f
+                    position = if (pos in 0..dur) pos.toFloat() else 0f
+                }
             } else {
                 duration = 0f
                 position = 0f
