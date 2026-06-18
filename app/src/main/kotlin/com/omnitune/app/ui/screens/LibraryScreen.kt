@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ fun LibraryScreen(
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(OmniColors.Background).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
+            Spacer(modifier = Modifier.statusBarsPadding())
             Spacer(modifier = Modifier.height(12.dp))
             Text("Library", style = androidx.compose.material3.MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
             Spacer(modifier = Modifier.height(2.dp))
