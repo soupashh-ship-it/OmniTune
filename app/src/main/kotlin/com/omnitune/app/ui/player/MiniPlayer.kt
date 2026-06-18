@@ -76,7 +76,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private const val MINI_PLAYER_HEIGHT = 68
+private const val MINI_PLAYER_HEIGHT = 76
 
 @Composable
 fun MiniPlayer(
@@ -168,8 +168,9 @@ fun MiniPlayer(
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }.padding(horizontal = 12.dp),
+            modifier = Modifier.fillMaxSize().offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }.padding(horizontal = 14.dp),
         ) {
+            // Album art with progress ring
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(52.dp)) {
                 CircularProgressIndicator(
                     progress = { progress }, modifier = Modifier.size(52.dp),
@@ -182,9 +183,11 @@ fun MiniPlayer(
                     } ?: Icon(painterResource(R.drawable.ic_play_arrow), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
                 }
             }
-            Box(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            // Title + Artist with better spacing
+            Box(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 4.dp)) {
                 mediaMetadata?.let { MiniMediaInfo(mediaMetadata = it) }
             }
+            // Playback controls
             if (hasPlayer) {
                 val pc = playerConnection
                 IconButton(
@@ -193,18 +196,18 @@ fun MiniPlayer(
                         if (playbackState == Player.STATE_ENDED) { player.seekTo(0, 0); player.playWhenReady = true }
                         else player.togglePlayPause()
                     },
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = OmniColors.Primary, strokeWidth = 2.dp, strokeCap = StrokeCap.Round)
                     else Icon(
                         painter = painterResource(if (playbackState == Player.STATE_ENDED || !isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause),
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = OmniColors.TextPrimary, modifier = Modifier.size(26.dp),
+                        tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp),
                     )
                 }
-                IconButton(enabled = canSkipNext, onClick = { pc.seekToNext() }, modifier = Modifier.size(44.dp)) {
+                IconButton(enabled = canSkipNext, onClick = { pc.seekToNext() }, modifier = Modifier.size(40.dp)) {
                     Icon(painterResource(R.drawable.ic_skip_next), contentDescription = "Next",
-                        tint = if (canSkipNext) OmniColors.TextPrimary else OmniColors.TextMuted, modifier = Modifier.size(22.dp))
+                        tint = if (canSkipNext) OmniColors.TextPrimary else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
                 }
             }
         }
@@ -213,12 +216,12 @@ fun MiniPlayer(
 
 @Composable
 private fun MiniMediaInfo(mediaMetadata: MediaMetadata, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.Center) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.Start) {
         AnimatedContent(targetState = mediaMetadata.title, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "title") { title ->
             Text(text = title, color = OmniColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
         }
         AnimatedContent(targetState = mediaMetadata.artists.joinToString { it.name }, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "artist") { artists ->
-            Text(text = artists, color = OmniColors.TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = artists, color = OmniColors.TextSecondary.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
         }
     }
 }
