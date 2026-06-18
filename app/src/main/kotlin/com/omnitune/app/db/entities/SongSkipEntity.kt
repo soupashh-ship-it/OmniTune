@@ -1,5 +1,5 @@
 /*
- * Velune - by Nikhil
+ * OmniTune - An open-source music player for Android
  * Licensed Under GPL-3.0
  */
 

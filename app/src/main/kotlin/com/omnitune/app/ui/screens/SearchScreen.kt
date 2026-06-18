@@ -1,6 +1,6 @@
 /*
- * OmniTune - based on Velune
- * Nikhil / Koi Natsuko (github.com/koiverse)
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
  * Licensed Under GPL-3.0
  */
 

@@ -1,6 +1,6 @@
 /*
- * OmniTune - based on Velune
- * Nikhil / Licensed Under GPL-3.0
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0 / Licensed Under GPL-3.0
  */
 
 package com.omnitune.lrclib.models

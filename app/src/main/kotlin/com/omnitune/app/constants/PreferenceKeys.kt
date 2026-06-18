@@ -1,6 +1,6 @@
 /*
- * Velune - by Nikhil
- * Nikhil
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
  * Licensed Under GPL-3.0
  */
 
@@ -31,7 +31,7 @@ val PlayerDesignStyleKey = stringPreferencesKey("playerDesignStyle")
 val UseNewLibraryDesignKey = booleanPreferencesKey("useNewLibraryDesign")
 val UseNewMiniPlayerDesignKey = booleanPreferencesKey("useNewMiniPlayerDesign")
 val HidePlayerThumbnailKey = booleanPreferencesKey("hidePlayerThumbnail")
-val VeluneCanvasKey = booleanPreferencesKey("veluneCanvas")
+val OmniTuneCanvasKey = booleanPreferencesKey("omnituneCanvas")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")

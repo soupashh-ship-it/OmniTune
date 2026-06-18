@@ -29,7 +29,7 @@ data class CanvasArtwork(
         get() = animated ?: video
 }
 
-object VeluneCanvas {
+object OmniTuneCanvas {
 
     private const val BASE_URL = "https://artwork-archivetune.koiiverse.cloud"
 
