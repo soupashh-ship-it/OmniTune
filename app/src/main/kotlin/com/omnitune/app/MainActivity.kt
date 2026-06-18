@@ -127,7 +127,15 @@ fun OmniTuneMainScreen() {
     val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
 
     Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) {
-        NavHost(navController = navController, startDestination = Screens.Home.route, modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = Screens.Home.route,
+            modifier = Modifier.fillMaxSize(),
+            enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
+            exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
+            popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
+            popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) }
+        ) {
             composable(Screens.Home.route) {
                 HomeScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onResumePlayback = { navController.navigate("player") }, onPlaySong = { song -> MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
@@ -169,7 +177,7 @@ fun OmniTuneMainScreen() {
         // MiniPlayer + Glass Bottom Dock
         Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))) {
             if (currentRoute != "player" && currentRoute != "queue") {
-                Box(modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = null) { if (localPlayerConnection != null) navController.navigate("player") }) {
+                Box(modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { if (localPlayerConnection != null) navController.navigate("player") }) {
                     MiniPlayer(pureBlack = false, playerConnection = localPlayerConnection)
                 }
             }
@@ -197,7 +205,7 @@ private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit)
         navItems.forEach { item ->
             val selected = currentRoute == item.route
             Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-                .clickable(remember { MutableInteractionSource() }, indication = null) { onNavigate(item.route) }
+                .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = OmniColors.Secondary.copy(alpha = 0.15f))) { onNavigate(item.route) }
                 .then(if (selected) Modifier.background(Brush.horizontalGradient(listOf(OmniColors.Primary.copy(alpha = 0.2f), OmniColors.Secondary.copy(alpha = 0.15f)))) else Modifier)
                 .padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {

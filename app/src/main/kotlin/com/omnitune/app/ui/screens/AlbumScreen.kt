@@ -45,6 +45,7 @@ import com.omnitune.app.innertube.models.SongItem
 import com.omnitune.app.innertube.pages.AlbumPage
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.utils.formatDurationSeconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -251,7 +252,7 @@ private fun SongRow(
 
         song.duration?.let { duration ->
             Text(
-                text = formatDuration(duration.toLong()),
+                text = formatDurationSeconds(duration.toLong()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -259,8 +260,4 @@ private fun SongRow(
     }
 }
 
-private fun formatDuration(seconds: Long): String {
-    val minutes = seconds / 60
-    val secs = seconds % 60
-    return "$minutes:${secs.toString().padStart(2, '0')}"
-}
+

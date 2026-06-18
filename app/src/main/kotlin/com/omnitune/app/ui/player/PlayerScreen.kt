@@ -71,6 +71,7 @@ import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.delay
 
 @Composable
@@ -169,9 +170,9 @@ private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androi
             colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong),
             modifier = Modifier.fillMaxWidth())
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(if (isSeeking.floatValue >= 0f) (isSeeking.floatValue * duration).toLong() else currentPosition),
+            Text(formatDurationMs(if (isSeeking.floatValue >= 0f) (isSeeking.floatValue * duration).toLong() else currentPosition),
                 style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
-            Text(formatDuration(duration), style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
+            Text(formatDurationMs(duration), style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
         }
     }
 }
@@ -247,15 +248,12 @@ private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modi
                 val alpha by animateFloatAsState(targetValue = when { isCurrent -> 1f; kotlin.math.abs(index - currentLineIndex) <= 2 -> 0.5f; else -> 0.2f }, label = "lyrics_alpha")
                 Text(line.text, style = if (isCurrent) androidx.compose.material3.MaterialTheme.typography.titleMedium else androidx.compose.material3.MaterialTheme.typography.bodyMedium,
                     color = if (isCurrent) OmniColors.Secondary else OmniColors.TextSecondary, fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
                     fontSize = if (isCurrent) 16.sp else 14.sp)
             }
         }
     }
 }
 
-private fun formatDuration(durationMs: Long): String {
-    if (durationMs <= 0L) return "0:00"
-    val totalSeconds = durationMs / 1000
-    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
-}
+

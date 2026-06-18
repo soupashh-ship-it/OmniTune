@@ -142,7 +142,7 @@ private fun SettingsSectionCard(
                 .fillMaxWidth()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
+                    indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
                     onClick = onToggle,
                 )
                 .padding(16.dp),
@@ -471,8 +471,8 @@ private fun TogglePreferenceRow(
             .clip(OmniShapes.SM)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = { /* Toggle is handled by the Switch */ },
+                indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
+                onClick = { value = !value },
             )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -521,7 +521,7 @@ private fun <T : Enum<T>> EnumPreferenceRow(
             .clip(OmniShapes.SM)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
+                indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
                 onClick = { showDialog = true },
             )
             .padding(horizontal = 16.dp, vertical = 10.dp),

@@ -79,7 +79,7 @@ fun LikedSongsScreen(
 
 @Composable
 private fun SongRow(song: Song, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)), onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(48.dp).clip(OmniShapes.SM).background(OmniColors.GlassSurface)) {
             if (song.song.thumbnailUrl != null) {
                 AsyncImage(model = song.song.thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)

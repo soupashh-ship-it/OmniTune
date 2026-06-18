@@ -14,10 +14,16 @@ class StreamRepositoryImpl @Inject constructor(
 ) : StreamRepository {
 
     override suspend fun extractStream(songId: String): AppResult<StreamInfo> {
+        val cached = streamCache.get(songId)
+        if (cached != null) {
+            return AppResult.Success(cached)
+        }
         return try {
             val result = streamExtractor.extract(songId, StreamQuality.HIGH)
             if (result != null) {
-                AppResult.Success(mapResult(result))
+                val mapped = mapResult(result)
+                streamCache.put(songId, mapped)
+                AppResult.Success(mapped)
             } else {
                 AppResult.Error("No stream found")
             }
@@ -27,10 +33,16 @@ class StreamRepositoryImpl @Inject constructor(
     }
 
     override suspend fun extractWithFallbacks(songId: String): AppResult<StreamInfo> {
+        val cached = streamCache.get(songId)
+        if (cached != null) {
+            return AppResult.Success(cached)
+        }
         return try {
             val result = streamExtractor.extract(songId, StreamQuality.HIGH)
             if (result != null) {
-                AppResult.Success(mapResult(result))
+                val mapped = mapResult(result)
+                streamCache.put(songId, mapped)
+                AppResult.Success(mapped)
             } else {
                 AppResult.Error("All extraction tiers exhausted")
             }
@@ -41,7 +53,7 @@ class StreamRepositoryImpl @Inject constructor(
 
     override suspend fun probeStream(url: String): Boolean = true
 
-    override fun getCachedStream(songId: String): StreamInfo? = null
+    override fun getCachedStream(songId: String): StreamInfo? = streamCache.get(songId)
 
     override fun clearCache() = streamCache.clear()
 

@@ -50,3 +50,14 @@ fun joinByBullet(vararg str: String?) =
         .filterNot {
             it.isNullOrEmpty()
         }.joinToString(separator = " • ")
+
+fun formatDurationMs(durationMs: Long): String {
+    if (durationMs <= 0L) return "0:00"
+    val totalSeconds = durationMs / 1000
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+}
+
+fun formatDurationSeconds(seconds: Long): String {
+    if (seconds <= 0L) return "0:00"
+    return "%d:%02d".format(seconds / 60, seconds % 60)
+}

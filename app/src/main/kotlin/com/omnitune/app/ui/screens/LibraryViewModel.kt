@@ -49,16 +49,16 @@ class LibraryViewModel @Inject constructor(
 
         viewModelScope.launch {
             combine(
-                database.likedSongsCount(),
+                likedSongs,
                 database.events(),
                 database.songsByRowIdAsc(),
-            ) { likedCount, events, librarySongs ->
+            ) { likedList, events, librarySongs ->
                 LibraryUiState(
-                    likedCount = likedCount,
-                    likedSongs = emptyList(),
+                    likedCount = likedList.size,
+                    likedSongs = likedList,
                     recentlyPlayed = events,
                     librarySongCount = librarySongs.size,
-                    playlistCount = 0,
+                    playlistCount = _uiState.value.playlistCount,
                     isLoading = false,
                 )
             }.collect { state ->

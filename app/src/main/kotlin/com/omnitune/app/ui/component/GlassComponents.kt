@@ -100,7 +100,7 @@ fun GlassCard(
         modifier = if (onClick != null) {
             baseModifier.clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null,
+                indication = androidx.compose.material3.ripple(bounded = true, color = Color.White.copy(alpha = 0.15f)),
                 onClick = onClick,
             )
         } else {
@@ -235,7 +235,7 @@ fun OmniSectionHeader(
                 color = OmniColors.Secondary,
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
+                    indication = androidx.compose.material3.ripple(bounded = false, color = OmniColors.Secondary.copy(alpha = 0.2f)),
                     onClick = onAction,
                 ),
             )

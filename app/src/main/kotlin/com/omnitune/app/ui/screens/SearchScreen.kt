@@ -62,7 +62,13 @@ import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 
-private val moodChips = listOf("Late Night", "Gym", "Rain", "Focus", "Lofi")
+private val moodChips = listOf(
+    "Late Night" to "late night lofi vibes",
+    "Gym" to "workout energetic phonk",
+    "Rain" to "relaxing rain music",
+    "Focus" to "deep focus space ambient",
+    "Lofi" to "lofi hip hop beats"
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -99,10 +105,10 @@ fun SearchScreen(
                     item {
                         OmniSectionHeader(title = "Mood"); Spacer(modifier = Modifier.height(10.dp))
                         FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            moodChips.forEach { chip ->
+                            moodChips.forEach { (label, query) ->
                                 Box(modifier = Modifier.clip(OmniShapes.Pill).border(1.dp, OmniColors.GlassBorder, OmniShapes.Pill).background(OmniColors.GlassSurface)
-                                    .clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.onQueryChanged(chip) }.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                    Text(chip, color = OmniColors.TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { viewModel.onQueryChanged(query) }.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Text(label, color = OmniColors.TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -113,12 +119,12 @@ fun SearchScreen(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text("Recent Searches", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, modifier = Modifier.weight(1f))
                                 Text("Clear all", color = OmniColors.Secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.clearSearchHistory() })
+                                    modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = false, color = OmniColors.Secondary.copy(alpha = 0.2f))) { viewModel.clearSearchHistory() })
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         items(uiState.searchHistory) { item ->
-                            Row(modifier = Modifier.fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.onQueryChanged(item.query) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(modifier = Modifier.fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { viewModel.onQueryChanged(item.query) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(painterResource(R.drawable.ic_list), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(item.query, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, color = OmniColors.TextSecondary)
@@ -159,7 +165,7 @@ private fun SearchResultsContent(songs: List<SongItem>, artists: List<ArtistItem
 
 @Composable
 private fun GlassSearchRow(title: String, subtitle: String, thumbnailUrl: String?, onClick: () -> Unit, circular: Boolean = false, fallbackRes: Int = android.R.drawable.ic_media_play) {
-    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true), onClick = onClick)
         .background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(44.dp).clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM).background(OmniColors.GlassSurfaceStrong), contentAlignment = Alignment.Center) {
             if (thumbnailUrl != null) AsyncImage(model = thumbnailUrl, contentDescription = null,

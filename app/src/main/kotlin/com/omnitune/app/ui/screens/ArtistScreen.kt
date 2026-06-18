@@ -38,15 +38,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.omnitune.app.innertube.YouTube
 import com.omnitune.app.innertube.models.AlbumItem
 import com.omnitune.app.innertube.models.SongItem
-import com.omnitune.app.innertube.models.YTItem
 import com.omnitune.app.innertube.pages.ArtistPage
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.utils.formatDurationSeconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,7 +236,7 @@ private fun ArtistSongRow(
 
         song.duration?.let { duration ->
             Text(
-                text = formatDuration(duration.toLong()),
+                text = formatDurationSeconds(duration.toLong()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -287,8 +286,4 @@ private fun ArtistAlbumRow(
     }
 }
 
-private fun formatDuration(seconds: Long): String {
-    val minutes = seconds / 60
-    val secs = seconds % 60
-    return "$minutes:${secs.toString().padStart(2, '0')}"
-}
+
