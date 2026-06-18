@@ -72,6 +72,8 @@ import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.player.PlayerScreen
 import com.omnitune.app.ui.screens.QueueScreen
+import com.omnitune.app.ui.screens.LikedSongsScreen
+import com.omnitune.app.ui.screens.RecentlyPlayedScreen
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -132,8 +134,17 @@ fun OmniTuneMainScreen() {
             composable(Screens.Stats.route) { StatsScreen() }
             composable(Screens.History.route) { HistoryScreen() }
             composable(Screens.Library.route) {
-                LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToArtists = { navController.navigate(Screens.Search.route) },
+                LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
+                    onNavigateToRecentlyPlayed = { navController.navigate("recently_played") }, onNavigateToArtists = { navController.navigate(Screens.Search.route) },
                     onNavigateToAlbums = { navController.navigate(Screens.Search.route) }, onNavigateToPlaylists = { navController.navigate(Screens.Search.route) })
+            }
+            composable("liked_songs") {
+                LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable("recently_played") {
+                RecentlyPlayedScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable(Screens.Search.route) {
                 SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },

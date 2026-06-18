@@ -6,7 +6,6 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,30 +22,37 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun LibraryScreen(
     onNavigateToSearch: () -> Unit = {},
+    onNavigateToLiked: () -> Unit = {},
+    onNavigateToRecentlyPlayed: () -> Unit = {},
     onNavigateToArtists: () -> Unit = {},
     onNavigateToAlbums: () -> Unit = {},
     onNavigateToPlaylists: () -> Unit = {},
+    viewModel: LibraryViewModel = hiltViewModel(),
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     LazyColumn(modifier = Modifier.fillMaxSize().background(OmniColors.Background).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Spacer(modifier = Modifier.height(12.dp))
@@ -56,14 +62,19 @@ fun LibraryScreen(
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LibrarySmartCard(painterResource(R.drawable.ic_favorite), "Liked", listOf(OmniColors.Hot, OmniColors.Primary), {}, Modifier.weight(1f))
-                LibrarySmartCard(painterResource(android.R.drawable.ic_menu_send), "Downloads", listOf(OmniColors.Secondary, OmniColors.Primary), {}, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(R.drawable.ic_favorite), "Liked", "${uiState.likedCount} songs", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLiked, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(android.R.drawable.ic_menu_send), "Downloads", "0 songs", listOf(OmniColors.Secondary, OmniColors.Primary), {}, Modifier.weight(1f))
             }
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LibrarySmartCard(painterResource(R.drawable.ic_list), "Recently Played", listOf(OmniColors.Primary, OmniColors.Secondary), {}, Modifier.weight(1f))
-                LibrarySmartCard(painterResource(R.drawable.ic_repeat), "Your Mixes", listOf(OmniColors.Primary, OmniColors.Hot), {}, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(R.drawable.ic_list), "Recently Played", "${uiState.recentlyPlayed.size} songs", listOf(OmniColors.Primary, OmniColors.Secondary), onNavigateToRecentlyPlayed, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(R.drawable.ic_repeat), "Your Mixes", "${uiState.playlistCount} playlists", listOf(OmniColors.Primary, OmniColors.Hot), onNavigateToPlaylists, Modifier.weight(1f))
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LibrarySmartCard(painterResource(R.drawable.ic_play_arrow), "All Songs", "${uiState.librarySongCount} songs", listOf(OmniColors.Secondary, OmniColors.Hot), onNavigateToSearch, Modifier.weight(1f))
             }
         }
         item { Spacer(modifier = Modifier.height(4.dp)); OmniSectionHeader(title = "Browse") }
@@ -105,7 +116,7 @@ fun LibraryScreen(
 }
 
 @Composable
-private fun LibrarySmartCard(painter: androidx.compose.ui.graphics.painter.Painter, label: String, gradient: List<Color>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun LibrarySmartCard(painter: Painter, label: String, count: String, gradient: List<Color>, onClick: () -> Unit, modifier: Modifier = Modifier) {
     GlassCard(modifier = modifier, onClick = onClick) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Brush.linearGradient(gradient)), contentAlignment = Alignment.Center) {
@@ -113,6 +124,9 @@ private fun LibrarySmartCard(painter: androidx.compose.ui.graphics.painter.Paint
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(label, style = androidx.compose.material3.MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, textAlign = TextAlign.Center)
+            if (count.isNotEmpty()) {
+                Text(count, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextMuted, textAlign = TextAlign.Center)
+            }
         }
     }
 }
