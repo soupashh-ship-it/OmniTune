@@ -74,6 +74,7 @@ import com.omnitune.app.ui.player.PlayerScreen
 import com.omnitune.app.ui.screens.QueueScreen
 import com.omnitune.app.ui.screens.LikedSongsScreen
 import com.omnitune.app.ui.screens.RecentlyPlayedScreen
+import com.omnitune.app.ui.screens.SettingsScreen
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -123,7 +124,7 @@ fun OmniTuneMainScreen() {
     val topLevelScreens = Screens.MainScreens.map { it.route }
     val context = LocalContext.current
     val localPlayerConnection = LocalPlayerConnection.current
-    val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue"
+    val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
 
     Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) {
         NavHost(navController = navController, startDestination = Screens.Home.route, modifier = Modifier.fillMaxSize()) {
@@ -161,6 +162,7 @@ fun OmniTuneMainScreen() {
             }
             composable("player") { PlayerScreen(playerConnection = LocalPlayerConnection.current, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
             composable("queue") { QueueScreen(playerConnection = LocalPlayerConnection.current, onBack = { navController.popBackStack() }) }
+            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }) }
         }
         // MiniPlayer + Glass Bottom Dock
         Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))) {
@@ -177,7 +179,7 @@ fun OmniTuneMainScreen() {
 @Composable
 private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
     data class NavItem(val resId: Int, val label: String, val route: String)
-    val navItems = listOf(NavItem(R.drawable.ic_play_arrow, "Home", "home"), NavItem(android.R.drawable.ic_menu_search, "Search", "search"), NavItem(R.drawable.ic_list, "Library", "library"))
+    val navItems = listOf(NavItem(R.drawable.ic_play_arrow, "Home", "home"), NavItem(android.R.drawable.ic_menu_search, "Search", "search"), NavItem(R.drawable.ic_list, "Library", "library"), NavItem(R.drawable.ic_repeat, "Settings", "settings"))
 
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
         .shadow(16.dp, OmniShapes.Dock, ambientColor = OmniColors.Primary.copy(alpha = 0.1f), spotColor = OmniColors.Primary.copy(alpha = 0.08f))
