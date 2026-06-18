@@ -42,6 +42,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,7 +67,6 @@ import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.playback.PlayerConnection
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableLongStateOf
 import kotlinx.coroutines.delay
 
 @Composable
@@ -234,8 +235,33 @@ private fun PlayerProgressBar(
     isSeeking: androidx.compose.runtime.MutableFloatState,
 ) {
     val player = playerConnection?.player
-    val duration = player?.duration ?: 0L
-    val currentPosition = player?.currentPosition ?: 0L
+    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
+
+    // Poll position and duration every 200ms for live updates
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playerConnection?.player) {
+        while (true) {
+            val p = playerConnection?.player
+            if (p != null) {
+                val dur = p.duration
+                val pos = p.currentPosition
+                if (playbackState == Player.STATE_ENDED) {
+                    if (dur > 0) {
+                        currentPosition = dur
+                        duration = dur
+                    }
+                } else {
+                    duration = if (dur > 0) dur else 0L
+                    currentPosition = if (pos in 0..dur) pos else 0L
+                }
+            } else {
+                currentPosition = 0L
+                duration = 0L
+            }
+            delay(200)
+        }
+    }
 
     val progress by animateFloatAsState(
         targetValue = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
