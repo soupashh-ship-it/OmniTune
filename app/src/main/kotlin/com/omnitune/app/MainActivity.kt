@@ -136,8 +136,10 @@ fun OmniTuneMainScreen() {
             composable(Screens.History.route) { HistoryScreen() }
             composable(Screens.Library.route) {
                 LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
-                    onNavigateToRecentlyPlayed = { navController.navigate("recently_played") }, onNavigateToArtists = { navController.navigate(Screens.Search.route) },
-                    onNavigateToAlbums = { navController.navigate(Screens.Search.route) }, onNavigateToPlaylists = { navController.navigate(Screens.Search.route) })
+                    onNavigateToRecentlyPlayed = { navController.navigate("recently_played") },
+                    onNavigateToArtists = { Toast.makeText(context, "Artists — coming soon", Toast.LENGTH_SHORT).show() },
+                    onNavigateToAlbums = { Toast.makeText(context, "Albums — coming soon", Toast.LENGTH_SHORT).show() },
+                    onNavigateToPlaylists = { Toast.makeText(context, "Playlists — coming soon", Toast.LENGTH_SHORT).show() })
             }
             composable("liked_songs") {
                 LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
@@ -179,7 +181,12 @@ fun OmniTuneMainScreen() {
 @Composable
 private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
     data class NavItem(val resId: Int, val label: String, val route: String)
-    val navItems = listOf(NavItem(R.drawable.ic_play_arrow, "Home", "home"), NavItem(android.R.drawable.ic_menu_search, "Search", "search"), NavItem(R.drawable.ic_list, "Library", "library"), NavItem(R.drawable.ic_repeat, "Settings", "settings"))
+    val navItems = listOf(
+        NavItem(R.drawable.ic_home, "Home", "home"),
+        NavItem(R.drawable.ic_search, "Search", "search"),
+        NavItem(R.drawable.ic_list, "Library", "library"),
+        NavItem(R.drawable.ic_settings, "Settings", "settings")
+    )
 
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
         .shadow(16.dp, OmniShapes.Dock, ambientColor = OmniColors.Primary.copy(alpha = 0.1f), spotColor = OmniColors.Primary.copy(alpha = 0.08f))

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.omnitune.app.R
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 
@@ -54,7 +55,7 @@ fun QueueScreen(
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_recent_history),
+                        painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = "Back",
                     )
                 }

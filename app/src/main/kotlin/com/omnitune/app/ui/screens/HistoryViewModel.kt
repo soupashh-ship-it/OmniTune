@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class HistoryUiState(
     val events: List<EventWithSong> = emptyList(),
     val isLoading: Boolean = true,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -26,10 +27,17 @@ class HistoryViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            database.events().collect { events ->
+            try {
+                database.events().collect { events ->
+                    _uiState.value = HistoryUiState(
+                        events = events,
+                        isLoading = false,
+                    )
+                }
+            } catch (e: Exception) {
                 _uiState.value = HistoryUiState(
-                    events = events,
                     isLoading = false,
+                    error = e.localizedMessage,
                 )
             }
         }

@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class HomeUiState(
     val recentSongs: List<EventWithSong> = emptyList(),
     val isLoading: Boolean = true,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -26,10 +27,17 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            database.events().collect { events ->
+            try {
+                database.events().collect { events ->
+                    _uiState.value = HomeUiState(
+                        recentSongs = events.take(20),
+                        isLoading = false,
+                    )
+                }
+            } catch (e: Exception) {
                 _uiState.value = HomeUiState(
-                    recentSongs = events.take(20),
                     isLoading = false,
+                    error = e.localizedMessage,
                 )
             }
         }
