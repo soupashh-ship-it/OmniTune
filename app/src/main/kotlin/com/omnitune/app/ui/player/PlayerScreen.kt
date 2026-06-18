@@ -1,18 +1,19 @@
+/*
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
+ */
+
 package com.omnitune.app.ui.player
 
-import androidx.compose.ui.res.painterResource
-import com.omnitune.app.R
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,35 +27,38 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
@@ -62,11 +66,11 @@ import androidx.media3.common.Player.REPEAT_MODE_ALL
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import coil3.compose.AsyncImage
-import com.omnitune.app.lyrics.LyricsEntry
+import com.omnitune.app.R
 import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.playback.PlayerConnection
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.LaunchedEffect
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
 import kotlinx.coroutines.delay
 
 @Composable
@@ -76,451 +80,175 @@ fun PlayerScreen(
     onOpenQueue: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(null) }
-    val isPlaying by playerConnection?.isPlaying?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
-    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(Player.STATE_IDLE) }
-    val shuffleEnabled by playerConnection?.shuffleModeEnabled?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(false) }
-    val repeatMode by playerConnection?.repeatMode?.collectAsState() ?: remember { androidx.compose.runtime.mutableStateOf(REPEAT_MODE_OFF) }
-
+    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
+    val isPlaying by playerConnection?.isPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
+    val shuffleEnabled by playerConnection?.shuffleModeEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
+    val repeatMode by playerConnection?.repeatMode?.collectAsState() ?: remember { mutableStateOf(REPEAT_MODE_OFF) }
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
     val isSeeking = remember { mutableFloatStateOf(-1f) }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
-    ) {
+    Box(modifier = modifier.fillMaxSize().background(OmniColors.Background)) {
         thumbnailUrl?.let { url ->
-            AsyncImage(
-                model = url,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(40.dp),
-                alpha = 0.3f,
-            )
+            AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.25f)
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                            MaterialTheme.colorScheme.surface,
-                        ),
-                    )
-                ),
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Box(modifier = Modifier.fillMaxSize().background(
+            Brush.verticalGradient(listOf(OmniColors.Background.copy(alpha = 0.7f), OmniColors.Background.copy(alpha = 0.5f), OmniColors.Background.copy(alpha = 0.85f)))
+        ))
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            // Top bar
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp).clip(OmniShapes.SM).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).background(OmniColors.GlassSurface)) {
+                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Text("Now Playing", style = androidx.compose.material3.MaterialTheme.typography.labelLarge, color = OmniColors.TextMuted)
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.size(36.dp))
+            }
             Spacer(modifier = Modifier.height(8.dp))
-
-            AnimatedContent(
-                targetState = mediaMetadata?.id ?: "",
-                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-                label = "album_art",
-                modifier = Modifier.weight(0.5f),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                    ) {
+            // Album Art
+            AnimatedContent(targetState = mediaMetadata?.id ?: "", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                label = "album_art", modifier = Modifier.weight(0.45f)) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth(0.72f).aspectRatio(1f).shadow(24.dp, OmniShapes.XL, ambientColor = OmniColors.Primary.copy(alpha = 0.15f))
+                        .clip(OmniShapes.XL).border(2.dp, OmniColors.GlassBorder, OmniShapes.XL).background(OmniColors.GlassSurfaceStrong)) {
                         if (!thumbnailUrl.isNullOrBlank()) {
-                            AsyncImage(
-                                model = thumbnailUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                            AsyncImage(model = thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
             }
-
-            LyricsSection(
-                playerConnection = playerConnection,
-                modifier = Modifier.weight(0.3f),
-            )
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                AnimatedContent(
-                    targetState = mediaMetadata?.title ?: "No track",
-                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-                    label = "title",
-                ) { title ->
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            // Lyrics
+            LyricsGlassPanel(playerConnection = playerConnection, modifier = Modifier.weight(0.25f))
+            // Song Info
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                AnimatedContent(targetState = mediaMetadata?.title ?: "No track", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "title") { title ->
+                    Text(title, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
                 }
-
                 Spacer(modifier = Modifier.height(4.dp))
-
-                AnimatedContent(
-                    targetState = mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown artist",
-                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-                    label = "artist",
-                ) { artists ->
-                    Text(
-                        text = artists,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                AnimatedContent(targetState = mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown artist", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "artist") { artists ->
+                    Text(artists, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                PlayerProgressBar(
-                    playerConnection = playerConnection,
-                    isSeeking = isSeeking,
-                )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
-                PlayerControls(
-                    isPlaying = isPlaying,
-                    playbackState = playbackState,
-                    shuffleEnabled = shuffleEnabled,
-                    repeatMode = repeatMode,
-                    playerConnection = playerConnection,
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PlayerExtrasRow(
-                    playerConnection = playerConnection,
-                    onOpenQueue = onOpenQueue,
-                )
+                PlayerSeekBar(playerConnection = playerConnection, isSeeking = isSeeking)
+                Spacer(modifier = Modifier.height(12.dp))
+                PlayerControlRow(isPlaying, playbackState, shuffleEnabled, repeatMode, playerConnection)
+                Spacer(modifier = Modifier.height(8.dp))
+                PlayerExtrasRow(playerConnection, onOpenQueue)
             }
-
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun PlayerProgressBar(
-    playerConnection: PlayerConnection?,
-    isSeeking: androidx.compose.runtime.MutableFloatState,
-) {
+private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androidx.compose.runtime.MutableFloatState) {
     val player = playerConnection?.player
     val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
-
-    // Poll position and duration every 200ms for live updates
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     LaunchedEffect(playerConnection?.player) {
         while (true) {
             val p = playerConnection?.player
             if (p != null) {
-                val dur = p.duration
-                val pos = p.currentPosition
-                if (playbackState == Player.STATE_ENDED) {
-                    if (dur > 0) {
-                        currentPosition = dur
-                        duration = dur
-                    }
-                } else {
-                    duration = if (dur > 0) dur else 0L
-                    currentPosition = if (pos in 0..dur) pos else 0L
-                }
-            } else {
-                currentPosition = 0L
-                duration = 0L
-            }
+                val dur = p.duration; val pos = p.currentPosition
+                if (playbackState == Player.STATE_ENDED) { if (dur > 0) { currentPosition = dur; duration = dur } }
+                else { duration = if (dur > 0) dur else 0L; currentPosition = if (pos in 0..dur) pos else 0L }
+            } else { currentPosition = 0L; duration = 0L }
             delay(200)
         }
     }
-
-    val progress by animateFloatAsState(
-        targetValue = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
-        label = "progress",
-    )
-
+    val progress by animateFloatAsState(targetValue = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f, label = "progress")
     Column(modifier = Modifier.fillMaxWidth()) {
-        Slider(
-            value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
+        Slider(value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
             onValueChange = { isSeeking.floatValue = it },
-            onValueChangeFinished = {
-                if (player != null && duration > 0) {
-                    player.seekTo((isSeeking.floatValue * duration).toLong())
-                }
-                isSeeking.floatValue = -1f
-            },
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = formatDuration(if (isSeeking.floatValue >= 0f) (isSeeking.floatValue * duration).toLong() else currentPosition),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = formatDuration(duration),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            onValueChangeFinished = { if (player != null && duration > 0) player.seekTo((isSeeking.floatValue * duration).toLong()); isSeeking.floatValue = -1f },
+            colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong),
+            modifier = Modifier.fillMaxWidth())
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(formatDuration(if (isSeeking.floatValue >= 0f) (isSeeking.floatValue * duration).toLong() else currentPosition),
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
+            Text(formatDuration(duration), style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
         }
     }
 }
 
 @Composable
-private fun PlayerControls(
-    isPlaying: Boolean,
-    playbackState: Int,
-    shuffleEnabled: Boolean,
-    repeatMode: Int,
-    playerConnection: PlayerConnection?,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = { playerConnection?.player?.shuffleModeEnabled = !shuffleEnabled },
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_shuffle),
-                contentDescription = "Shuffle",
-                tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnabled: Boolean, repeatMode: Int, playerConnection: PlayerConnection?) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        GlassCircleButton(painterResource(R.drawable.ic_shuffle), "Shuffle",
+            tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
+            onClick = { playerConnection?.player?.shuffleModeEnabled = !shuffleEnabled })
+        GlassCircleButton(painterResource(R.drawable.ic_skip_previous), "Previous",
+            tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
+            onClick = { playerConnection?.seekToPrevious() })
+        // Play/Pause gradient circle
+        Box(modifier = Modifier.size(64.dp).shadow(16.dp, CircleShape, ambientColor = OmniColors.Primary.copy(alpha = 0.3f))
+            .clip(CircleShape).background(Brush.linearGradient(listOf(OmniColors.Primary, OmniColors.Secondary))), contentAlignment = Alignment.Center) {
+            IconButton(onClick = {
+                val p = playerConnection?.player ?: return@IconButton
+                if (playbackState == Player.STATE_ENDED) { p.seekTo(0, 0); p.playWhenReady = true }
+                else { if (isPlaying) p.pause() else p.play() }
+            }, modifier = Modifier.size(64.dp)) {
+                Icon(painter = painterResource(if (playbackState == Player.STATE_ENDED || !isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause),
+                    contentDescription = if (isPlaying) "Pause" else "Play", tint = Color.White, modifier = Modifier.size(32.dp))
+            }
         }
-
-        IconButton(
-            onClick = { playerConnection?.seekToPrevious() },
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_skip_previous),
-                contentDescription = "Previous",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(32.dp),
-            )
-        }
-
-        FilledIconButton(
-            onClick = {
-                val p = playerConnection?.player ?: return@FilledIconButton
-                if (playbackState == Player.STATE_ENDED) {
-                    p.seekTo(0, 0)
-                    p.playWhenReady = true
-                } else {
-                    if (isPlaying) p.pause() else p.play()
-                }
-            },
-            modifier = Modifier.size(64.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Icon(
-                painter = if (playbackState == Player.STATE_ENDED) painterResource(R.drawable.ic_play_arrow)
-                else if (isPlaying) painterResource(R.drawable.ic_pause) else painterResource(R.drawable.ic_play_arrow),
-                contentDescription = if (isPlaying) "Pause" else "Play",
-                modifier = Modifier.size(36.dp),
-            )
-        }
-
-        IconButton(
-            onClick = { playerConnection?.seekToNext() },
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_skip_next),
-                contentDescription = "Next",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(32.dp),
-            )
-        }
-
-        IconButton(
-            onClick = {
-                playerConnection?.player?.let { p ->
-                    p.repeatMode = when (p.repeatMode) {
-                        REPEAT_MODE_OFF -> REPEAT_MODE_ALL
-                        REPEAT_MODE_ALL -> REPEAT_MODE_ONE
-                        REPEAT_MODE_ONE -> REPEAT_MODE_OFF
-                        else -> REPEAT_MODE_OFF
-                    }
-                }
-            },
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_repeat),
-                contentDescription = "Repeat",
-                tint = if (repeatMode != REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        GlassCircleButton(painterResource(R.drawable.ic_skip_next), "Next",
+            tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
+            onClick = { playerConnection?.seekToNext() })
+        GlassCircleButton(painterResource(R.drawable.ic_repeat), "Repeat",
+            tint = if (repeatMode != REPEAT_MODE_OFF) OmniColors.Primary else OmniColors.TextMuted,
+            onClick = { playerConnection?.player?.let { p -> p.repeatMode = when (p.repeatMode) { REPEAT_MODE_OFF -> REPEAT_MODE_ALL; REPEAT_MODE_ALL -> REPEAT_MODE_ONE; else -> REPEAT_MODE_OFF } } })
     }
 }
 
 @Composable
-private fun PlayerExtrasRow(
-    playerConnection: PlayerConnection?,
-    onOpenQueue: () -> Unit,
-) {
+private fun GlassCircleButton(painter: androidx.compose.ui.graphics.painter.Painter, contentDescription: String, tint: Color, onClick: () -> Unit, size: Dp = 44.dp, iconSize: Dp = 22.dp) {
+    IconButton(onClick = onClick, modifier = Modifier.size(size).clip(CircleShape).border(1.dp, OmniColors.GlassBorderLight, CircleShape).background(OmniColors.GlassSurface)) {
+        Icon(painter, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+    }
+}
+
+@Composable
+private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: () -> Unit) {
     val currentSongState = playerConnection?.currentSong?.collectAsState(initial = null)
-    val songValue = currentSongState?.value
-    val liked = songValue?.song?.liked == true
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = { playerConnection?.toggleLike() }) {
-            Icon(
-                painter = if (liked) painterResource(R.drawable.ic_favorite) else painterResource(R.drawable.ic_favorite_border),
-                contentDescription = if (liked) "Unlike" else "Like",
-                tint = if (liked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    val liked = currentSongState?.value?.song?.liked == true
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { playerConnection?.toggleLike() }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
+            Icon(painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
+                contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) OmniColors.Hot else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
-
-        IconButton(onClick = onOpenQueue) {
-            Icon(
-                painter = painterResource(R.drawable.ic_list),
-                contentDescription = "Queue",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        val player = playerConnection?.player
-        var volume by remember { mutableFloatStateOf(player?.volume ?: 1f) }
-        var showVolume by remember { androidx.compose.runtime.mutableStateOf(false) }
-
-        IconButton(onClick = { showVolume = !showVolume }) {
-            Text(
-                text = if (showVolume) "Done" else "Vol",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        AnimatedVisibility(visible = showVolume) {
-            Slider(
-                value = volume,
-                onValueChange = { vol ->
-                    volume = vol
-                    player?.volume = vol
-                },
-                modifier = Modifier.width(120.dp),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                ),
-            )
+        IconButton(onClick = onOpenQueue, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
+            Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun LyricsSection(
-    playerConnection: PlayerConnection?,
-    modifier: Modifier = Modifier,
-) {
-    val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { androidx.compose.runtime.mutableStateOf(null) }
+private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modifier = Modifier) {
+    val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { mutableStateOf(null) }
     val player = playerConnection?.player
     val currentMediaId = player?.currentMediaItem?.mediaId
-
-    // Poll position every 200ms so lyrics scroll with playback
-    var position by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection?.player) {
-        while (true) {
-            position = player?.currentPosition ?: 0L
-            delay(200)
-        }
-    }
-
-    // Key on both lyricsEntity.id AND currentMediaId to force re-parse on song change
-    val parsedLines = remember(lyricsEntity?.id, currentMediaId) {
-        lyricsEntity?.lyrics?.let { LyricsUtils.parseLyrics(it) } ?: emptyList()
-    }
-
+    var position by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playerConnection?.player) { while (true) { position = player?.currentPosition ?: 0L; delay(200) } }
+    val parsedLines = remember(lyricsEntity?.id, currentMediaId) { lyricsEntity?.lyrics?.let { LyricsUtils.parseLyrics(it) } ?: emptyList() }
     if (parsedLines.isEmpty()) return
-
-    val currentLineIndex = remember(position, parsedLines.size) {
-        if (parsedLines.isEmpty()) -1 else LyricsUtils.findCurrentLineIndex(parsedLines, position)
-    }
-
+    val currentLineIndex = remember(position, parsedLines.size) { if (parsedLines.isEmpty()) -1 else LyricsUtils.findCurrentLineIndex(parsedLines, position) }
     val listState = rememberLazyListState()
-
-    // Auto-scroll to current line
-    LaunchedEffect(currentLineIndex) {
-        if (currentLineIndex >= 0) {
-            listState.animateScrollToItem(
-                index = currentLineIndex,
-                scrollOffset = -200
-            )
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-    ) {
-        androidx.compose.foundation.lazy.LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-            userScrollEnabled = true,
-        ) {
+    LaunchedEffect(currentLineIndex) { if (currentLineIndex >= 0) listState.animateScrollToItem(index = currentLineIndex, scrollOffset = -200) }
+    Box(modifier = modifier.fillMaxWidth().clip(OmniShapes.LG).background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.LG).padding(vertical = 8.dp)) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally, userScrollEnabled = true) {
             itemsIndexed(parsedLines) { index, line ->
-                Text(
-                    text = line.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (index == currentLineIndex) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    fontWeight = if (index == currentLineIndex) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
-                )
+                val isCurrent = index == currentLineIndex
+                val alpha by animateFloatAsState(targetValue = when { isCurrent -> 1f; kotlin.math.abs(index - currentLineIndex) <= 2 -> 0.5f; else -> 0.2f }, label = "lyrics_alpha")
+                Text(line.text, style = if (isCurrent) androidx.compose.material3.MaterialTheme.typography.titleMedium else androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                    color = if (isCurrent) OmniColors.Secondary else OmniColors.TextSecondary, fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
+                    fontSize = if (isCurrent) 16.sp else 14.sp)
             }
         }
     }
@@ -529,7 +257,5 @@ private fun LyricsSection(
 private fun formatDuration(durationMs: Long): String {
     if (durationMs <= 0L) return "0:00"
     val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "%d:%02d".format(minutes, seconds)
+    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
 }

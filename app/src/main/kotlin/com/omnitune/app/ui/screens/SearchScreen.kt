@@ -1,15 +1,19 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,11 +26,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,25 +41,30 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.innertube.models.AlbumItem
 import com.omnitune.app.innertube.models.ArtistItem
 import com.omnitune.app.innertube.models.PlaylistItem
 import com.omnitune.app.innertube.models.SongItem
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.component.TopSearch
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
 
+private val moodChips = listOf("Late Night", "Gym", "Rain", "Focus", "Lofi")
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     onBack: () -> Unit = {},
@@ -66,487 +75,101 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val textFieldValue = remember { mutableStateOf(TextFieldValue(uiState.query)) }
+    LaunchedEffect(Unit) { snapshotFlow { uiState.query }.collect { q -> if (q != textFieldValue.value.text) textFieldValue.value = TextFieldValue(q) } }
 
-    LaunchedEffect(Unit) {
-        snapshotFlow { uiState.query }
-            .collect { query ->
-                if (query != textFieldValue.value.text) {
-                    textFieldValue.value = TextFieldValue(query)
+    Column(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.size(40.dp).clip(OmniShapes.SM).border(1.dp, OmniColors.GlassBorder, OmniShapes.SM).background(OmniColors.GlassSurface)) {
+                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            TextField(value = textFieldValue.value, onValueChange = { textFieldValue.value = it; viewModel.onQueryChanged(it.text) },
+                modifier = Modifier.weight(1f).height(48.dp).clip(OmniShapes.MD).background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorder, OmniShapes.MD),
+                placeholder = { Text("Search songs, artists, albums...", color = OmniColors.TextMuted, fontSize = 14.sp) },
+                leadingIcon = { Icon(painterResource(android.R.drawable.ic_menu_search), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp)) },
+                trailingIcon = { if (uiState.query.isNotEmpty()) IconButton(onClick = { viewModel.clearQuery() }, modifier = Modifier.size(32.dp)) { Icon(painterResource(android.R.drawable.ic_menu_close_clear_cancel), contentDescription = "Clear", tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp)) } },
+                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = OmniColors.Primary, focusedTextColor = OmniColors.TextPrimary, unfocusedTextColor = OmniColors.TextPrimary),
+                singleLine = true)
+        }
+        when {
+            uiState.isSearching -> Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) { OmniTuneLoader(size = 48.dp) }
+            uiState.error != null -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = uiState.error ?: "Search failed")
+            uiState.query.isEmpty() -> {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+                    item {
+                        OmniSectionHeader(title = "Mood"); Spacer(modifier = Modifier.height(10.dp))
+                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            moodChips.forEach { chip ->
+                                Box(modifier = Modifier.clip(OmniShapes.Pill).border(1.dp, OmniColors.GlassBorder, OmniShapes.Pill).background(OmniColors.GlassSurface)
+                                    .clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.onQueryChanged(chip) }.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Text(chip, color = OmniColors.TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+                    if (uiState.searchHistory.isNotEmpty()) {
+                        item {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Recent Searches", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, modifier = Modifier.weight(1f))
+                                Text("Clear all", color = OmniColors.Secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.clearSearchHistory() })
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        items(uiState.searchHistory) { item ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = null) { viewModel.onQueryChanged(item.query) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(painterResource(R.drawable.ic_list), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(item.query, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, color = OmniColors.TextSecondary)
+                            }
+                        }
+                    }
+                    if (uiState.searchHistory.isEmpty()) item { EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = "Search for your favorite songs, artists, and albums") }
                 }
             }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopSearch(
-            query = textFieldValue.value,
-            onQueryChange = { newValue ->
-                textFieldValue.value = newValue
-                viewModel.onQueryChanged(newValue.text)
-            },
-            onSearch = { searchQuery ->
-                viewModel.onQueryChanged(searchQuery)
-            },
-            active = true,
-            onActiveChange = { /* always active */ },
-            placeholder = {
-                Text("Search songs, artists, albums...")
-            },
-            leadingIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        painter = painterResource(com.omnitune.app.R.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                    )
-                }
-            },
-            trailingIcon = {
-                if (uiState.query.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.clearQuery() }) {
-                        Icon(
-                            painter = painterResource(android.R.drawable.ic_menu_close_clear_cancel),
-                            contentDescription = "Clear",
-                        )
-                    }
-                }
-            },
-        ) {
-            when {
-                uiState.isSearching -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        OmniTuneLoader(size = 48.dp)
-                    }
-                }
-                uiState.error != null -> {
-                    EmptyPlaceholder(
-                        icon = android.R.drawable.ic_menu_search,
-                        text = uiState.error ?: "Search failed",
-                    )
-                }
-                uiState.query.isEmpty() -> {
-                    SearchHistoryContent(
-                        history = uiState.searchHistory,
-                        onHistoryItemClick = { query -> viewModel.onQueryChanged(query) },
-                        onClearHistory = { viewModel.clearSearchHistory() },
-                    )
-                }
-                uiState.songs.isEmpty() &&
-                    uiState.artists.isEmpty() &&
-                    uiState.albums.isEmpty() &&
-                    uiState.playlists.isEmpty() -> {
-                    EmptyPlaceholder(
-                        icon = android.R.drawable.ic_menu_search,
-                        text = "No results for \"${uiState.query}\"",
-                    )
-                }
-                else -> {
-                    SearchResultsContent(
-                        songs = uiState.songs,
-                        artists = uiState.artists,
-                        albums = uiState.albums,
-                        playlists = uiState.playlists,
-                        onNavigateToAlbum = onNavigateToAlbum,
-                        onNavigateToArtist = onNavigateToArtist,
-                        onPlaySong = onPlaySong,
-                    )
-                }
-            }
+            uiState.songs.isEmpty() && uiState.artists.isEmpty() && uiState.albums.isEmpty() && uiState.playlists.isEmpty() -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = "No results for \"${uiState.query}\"")
+            else -> SearchResultsContent(uiState.songs, uiState.artists, uiState.albums, uiState.playlists, onNavigateToAlbum, onNavigateToArtist, onPlaySong)
         }
     }
 }
 
 @Composable
-private fun SearchHistoryContent(
-    history: List<SearchHistory>,
-    onHistoryItemClick: (String) -> Unit,
-    onClearHistory: () -> Unit,
-) {
-    if (history.isEmpty()) {
-        EmptyPlaceholder(
-            icon = android.R.drawable.ic_menu_search,
-            text = "Search for your favorite songs, artists, and albums",
-        )
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-        ) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "Recent Searches",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Clear all",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onClearHistory() },
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            items(history) { item ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onHistoryItemClick(item.query) }
-                        .padding(vertical = 12.dp, horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_recent_history),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = item.query,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                HorizontalDivider()
-            }
-        }
-    }
-}
-
-@Composable
-private fun SearchResultsContent(
-    songs: List<SongItem>,
-    artists: List<ArtistItem>,
-    albums: List<AlbumItem>,
-    playlists: List<PlaylistItem>,
-    onNavigateToAlbum: (String) -> Unit,
-    onNavigateToArtist: (String) -> Unit,
-    onPlaySong: (SongItem) -> Unit = {},
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+private fun SearchResultsContent(songs: List<SongItem>, artists: List<ArtistItem>, albums: List<AlbumItem>, playlists: List<PlaylistItem>, onNavigateToAlbum: (String) -> Unit, onNavigateToArtist: (String) -> Unit, onPlaySong: (SongItem) -> Unit = {}) {
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (songs.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-                SectionHeader("Songs", songs.size)
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-            items(songs) { song ->
-                SongSearchItem(
-                    song = song,
-                    onClick = { onPlaySong(song) },
-                )
-            }
+            item { Spacer(modifier = Modifier.height(8.dp)); OmniSectionHeader(title = "Songs", action = "${songs.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
+            items(songs) { song -> GlassSearchRow(song.title, song.artists.joinToString(", ") { it.name }, song.thumbnail, { onPlaySong(song) }) }
         }
-
         if (artists.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("Artists", artists.size)
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-            items(artists) { artist ->
-                ArtistSearchItem(
-                    artist = artist,
-                    onClick = { onNavigateToArtist(artist.id) },
-                )
-            }
+            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Artists", action = "${artists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
+            items(artists) { artist -> GlassSearchRow(artist.title, "Artist", artist.thumbnail, { onNavigateToArtist(artist.id) }, circular = true) }
         }
-
         if (albums.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("Albums", albums.size)
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-            items(albums) { album ->
-                AlbumSearchItem(
-                    album = album,
-                    onClick = { onNavigateToAlbum(album.browseId) },
-                )
-            }
+            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Albums", action = "${albums.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
+            items(albums) { album -> GlassSearchRow(album.title, album.artists?.joinToString(", ") { it.name } ?: "", album.thumbnail, { onNavigateToAlbum(album.browseId) }) }
         }
-
         if (playlists.isNotEmpty()) {
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("Playlists", playlists.size)
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-            items(playlists) { playlist ->
-                PlaylistSearchItem(playlist = playlist)
-            }
+            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Playlists", action = "${playlists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
+            items(playlists) { playlist -> GlassSearchRow(playlist.title, playlist.author?.name ?: "", playlist.thumbnail, {}, fallbackRes = R.drawable.ic_list) }
         }
-
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
     }
 }
 
 @Composable
-private fun SectionHeader(title: String, count: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = "$count result${if (count != 1) "s" else ""}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun SongSearchItem(
-    song: SongItem,
-    onClick: () -> Unit = {},
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp)),
-        ) {
-            AsyncImage(
-                model = song.thumbnail,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+private fun GlassSearchRow(title: String, subtitle: String, thumbnailUrl: String?, onClick: () -> Unit, circular: Boolean = false, fallbackRes: Int = android.R.drawable.ic_media_play) {
+    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+        .background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(44.dp).clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM).background(OmniColors.GlassSurfaceStrong), contentAlignment = Alignment.Center) {
+            if (thumbnailUrl != null) AsyncImage(model = thumbnailUrl, contentDescription = null,
+                modifier = Modifier.fillMaxSize().clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+            else Icon(painterResource(fallbackRes), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val artists = song.artists
-            if (artists.isNotEmpty()) {
-                Text(
-                    text = artists.joinToString(", ") { it.name },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        val songDuration = song.duration
-        if (songDuration != null && songDuration > 0) {
-            Text(
-                text = formatDuration(songDuration.toLong()),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ArtistSearchItem(
-    artist: ArtistItem,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(24.dp)),
-        ) {
-            if (artist.thumbnail != null) {
-                AsyncImage(
-                    model = artist.thumbnail,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_myplaces),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = artist.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AlbumSearchItem(
-    album: AlbumItem,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp)),
-        ) {
-            AsyncImage(
-                model = album.thumbnail,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = album.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val albumArtists = album.artists
-            if (albumArtists != null && albumArtists.isNotEmpty()) {
-                Text(
-                    text = albumArtists.joinToString(", ") { it.name },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun formatDuration(seconds: Long): String {
-    val minutes = seconds / 60
-    val secs = seconds % 60
-    return "$minutes:${secs.toString().padStart(2, '0')}"
-}
-
-@Composable
-private fun PlaylistSearchItem(playlist: PlaylistItem) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp)),
-        ) {
-            if (playlist.thumbnail != null) {
-                AsyncImage(
-                    model = playlist.thumbnail,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(android.R.drawable.ic_menu_sort_by_size),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = playlist.title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val playlistAuthor = playlist.author
-            if (playlistAuthor != null) {
-                Text(
-                    text = playlistAuthor.name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(title, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotEmpty()) Text(subtitle, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
