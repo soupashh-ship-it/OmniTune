@@ -579,3 +579,16 @@ enum class UpdateChannel {
     STABLE,
     NIGHTLY,
 }
+
+// Sleep Timer
+val SleepTimerEnabledKey = booleanPreferencesKey("sleepTimerEnabled")
+val SleepTimerMinutesKey = intPreferencesKey("sleepTimerMinutes")  // duration in minutes
+val SleepTimerEndOfSongKey = booleanPreferencesKey("sleepTimerEndOfSong") // finish current song before stopping
+
+// Equalizer
+val EqualizerBandsKey = stringPreferencesKey("equalizerBands") // JSON string of band gains
+val EqualizerPresetKey = stringPreferencesKey("equalizerPreset") // preset name
+
+// Downloads
+val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // default 3
+val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
