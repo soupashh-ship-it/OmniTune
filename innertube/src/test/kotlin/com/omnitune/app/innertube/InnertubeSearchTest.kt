@@ -1,10 +1,10 @@
-package com.omnitune.app.innertube
+package com.omnitune.innertube
 
-import com.omnitune.app.innertube.models.AlbumItem
-import com.omnitune.app.innertube.models.ArtistItem
-import com.omnitune.app.innertube.models.PlaylistItem
-import com.omnitune.app.innertube.models.SongItem
-import com.omnitune.app.innertube.models.YTItem
+import com.omnitune.innertube.models.AlbumItem
+import com.omnitune.innertube.models.ArtistItem
+import com.omnitune.innertube.models.PlaylistItem
+import com.omnitune.innertube.models.SongItem
+import com.omnitune.innertube.models.YTItem
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
@@ -12,9 +12,9 @@ class InnertubeSearchTest {
 
     @Test
     fun searchReturnsResults() = runBlocking {
-        val result: Result<com.omnitune.app.innertube.pages.SearchResult> =
+        val result: Result<com.omnitune.innertube.pages.SearchResult> =
             YouTube.search("shape of you", YouTube.SearchFilter.FILTER_SONG)
-        val searchResult: com.omnitune.app.innertube.pages.SearchResult =
+        val searchResult: com.omnitune.innertube.pages.SearchResult =
             result.getOrThrow()
         val items: List<YTItem> = searchResult.items
         println("Search returned ${items.size} items")

@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 
@@ -12,27 +11,27 @@ import android.net.ConnectivityManager
 import androidx.media3.common.PlaybackException
 import com.omnitune.app.constants.AudioQuality
 import com.omnitune.app.constants.PlayerStreamClient
-import com.omnitune.app.innertube.pages.NewPipeUtils
-import com.omnitune.app.innertube.YouTube
-import com.omnitune.app.innertube.models.YouTubeClient
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.IOS
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.TVHTML5_SIMPLY_EMBEDDED_PLAYER
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.WEB_REMIX
-import com.omnitune.app.innertube.models.response.PlayerResponse
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_CREATOR
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_MUSIC
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_TESTSUITE
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_UNPLUGGED
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_43_32
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_61_48
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.ANDROID_VR_NO_AUTH
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.IPADOS
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.IOS_MUSIC
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.MOBILE
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.TVHTML5
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.VISIONOS
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.WEB
-import com.omnitune.app.innertube.models.YouTubeClient.Companion.WEB_CREATOR
+import com.omnitune.innertube.pages.NewPipeUtils
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.YouTubeClient
+import com.omnitune.innertube.models.YouTubeClient.Companion.IOS
+import com.omnitune.innertube.models.YouTubeClient.Companion.TVHTML5_SIMPLY_EMBEDDED_PLAYER
+import com.omnitune.innertube.models.YouTubeClient.Companion.WEB_REMIX
+import com.omnitune.innertube.models.response.PlayerResponse
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_CREATOR
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_MUSIC
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_TESTSUITE
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_UNPLUGGED
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_43_32
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_61_48
+import com.omnitune.innertube.models.YouTubeClient.Companion.ANDROID_VR_NO_AUTH
+import com.omnitune.innertube.models.YouTubeClient.Companion.IPADOS
+import com.omnitune.innertube.models.YouTubeClient.Companion.IOS_MUSIC
+import com.omnitune.innertube.models.YouTubeClient.Companion.MOBILE
+import com.omnitune.innertube.models.YouTubeClient.Companion.TVHTML5
+import com.omnitune.innertube.models.YouTubeClient.Companion.VISIONOS
+import com.omnitune.innertube.models.YouTubeClient.Companion.WEB
+import com.omnitune.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import timber.log.Timber
@@ -61,7 +60,7 @@ object YTPlayerUtils {
      * Do not use other clients for this because it can result in inconsistent metadata.
      * For example other clients can have different normalization targets (loudnessDb).
      *
-     * [com.omnitune.app.innertube.models.YouTubeClient.WEB_REMIX] should be preferred here because currently it is the only client which provides:
+     * [com.omnitune.innertube.models.YouTubeClient.WEB_REMIX] should be preferred here because currently it is the only client which provides:
      * - the correct metadata (like loudnessDb)
      * - premium formats
      */

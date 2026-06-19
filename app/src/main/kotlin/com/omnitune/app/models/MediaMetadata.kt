@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 
@@ -9,7 +8,7 @@
 package com.omnitune.app.models
 
 import androidx.compose.runtime.Immutable
-import com.omnitune.app.innertube.models.SongItem
+import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.db.entities.SongEntity
 import com.omnitune.app.ui.utils.resize

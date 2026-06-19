@@ -1,12 +1,11 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.di
 
-import com.omnitune.app.innertube.InnerTube
+import com.omnitune.innertube.InnerTube
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

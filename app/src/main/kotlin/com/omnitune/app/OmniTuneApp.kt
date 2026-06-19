@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app
@@ -42,7 +41,7 @@ import com.omnitune.app.constants.VisitorDataKey
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
 import com.omnitune.kugou.KuGou
-import com.omnitune.app.lastfm.LastFM
+import com.omnitune.lastfm.LastFM
 import com.omnitune.app.ui.player.CanvasArtworkPlaybackCache
 import com.omnitune.app.ui.screens.settings.ThemePalettes
 import com.omnitune.app.ui.theme.ThemeSeedPalette
@@ -52,8 +51,8 @@ import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.GlobalLogTree
 import com.omnitune.app.utils.forgetAccount
-import com.omnitune.app.innertube.YouTube
-import com.omnitune.app.innertube.models.YouTubeLocale
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.YouTubeLocale
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

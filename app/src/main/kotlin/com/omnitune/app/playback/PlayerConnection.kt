@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.playback
@@ -152,7 +151,7 @@ class PlayerConnection(
             } else {
                 database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
             }
-            com.omnitune.app.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+            com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
         }
         mediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
     }

@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.ui.screens
@@ -10,12 +9,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
-import com.omnitune.app.innertube.YouTube
-import com.omnitune.app.innertube.models.AlbumItem
-import com.omnitune.app.innertube.pages.SearchResult
-import com.omnitune.app.innertube.models.ArtistItem
-import com.omnitune.app.innertube.models.PlaylistItem
-import com.omnitune.app.innertube.models.SongItem
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.AlbumItem
+import com.omnitune.innertube.pages.SearchResult
+import com.omnitune.innertube.models.ArtistItem
+import com.omnitune.innertube.models.PlaylistItem
+import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers

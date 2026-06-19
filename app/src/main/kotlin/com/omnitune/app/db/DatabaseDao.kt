@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 
@@ -20,10 +19,10 @@ import androidx.room.Update
 import androidx.room.Upsert
 import androidx.room.RoomWarnings
 import androidx.sqlite.db.SupportSQLiteQuery
-import com.omnitune.app.innertube.models.PlaylistItem
-import com.omnitune.app.innertube.models.SongItem
-import com.omnitune.app.innertube.pages.AlbumPage
-import com.omnitune.app.innertube.pages.ArtistPage
+import com.omnitune.innertube.models.PlaylistItem
+import com.omnitune.innertube.models.SongItem
+import com.omnitune.innertube.pages.AlbumPage
+import com.omnitune.innertube.pages.ArtistPage
 import com.omnitune.app.constants.AlbumSortType
 import com.omnitune.app.constants.ArtistSongSortType
 import com.omnitune.app.constants.ArtistSortType

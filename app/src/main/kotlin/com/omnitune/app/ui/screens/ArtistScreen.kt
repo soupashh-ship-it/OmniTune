@@ -39,10 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.omnitune.app.innertube.YouTube
-import com.omnitune.app.innertube.models.AlbumItem
-import com.omnitune.app.innertube.models.SongItem
-import com.omnitune.app.innertube.pages.ArtistPage
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.AlbumItem
+import com.omnitune.innertube.models.SongItem
+import com.omnitune.innertube.pages.ArtistPage
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.utils.formatDurationSeconds

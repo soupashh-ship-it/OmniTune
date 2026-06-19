@@ -1,15 +1,14 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.playback.queues
 
 import androidx.media3.common.MediaItem
 import com.omnitune.app.db.entities.AlbumWithSongs
-import com.omnitune.app.innertube.YouTube
-import com.omnitune.app.innertube.models.WatchEndpoint
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.WatchEndpoint
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
 import kotlinx.coroutines.Dispatchers.IO

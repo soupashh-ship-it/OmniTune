@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.playback
@@ -294,7 +293,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         scope.launch {
             val radioQueue = com.omnitune.app.playback.queues.YouTubeQueue(
-                endpoint = com.omnitune.app.innertube.models.WatchEndpoint(videoId = currentMediaId)
+                endpoint = com.omnitune.innertube.models.WatchEndpoint(videoId = currentMediaId)
             )
             val initialStatus = radioQueue.getInitialStatus()
 
@@ -350,7 +349,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             } else {
                 database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
             }
-            com.omnitune.app.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+            com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
         }
         currentMediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
     }

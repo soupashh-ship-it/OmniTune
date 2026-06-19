@@ -1,12 +1,11 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.utils
 
-import com.omnitune.app.innertube.models.YouTubeClient
+import com.omnitune.innertube.models.YouTubeClient
 
 /**
  * Shared utility for resolving the correct User-Agent and Origin/Referer headers

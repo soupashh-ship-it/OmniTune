@@ -68,7 +68,7 @@ import androidx.compose.runtime.compositionLocalOf
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.extensions.toMediaItem
-import com.omnitune.app.innertube.models.SongItem
+import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.player.PlayerScreen

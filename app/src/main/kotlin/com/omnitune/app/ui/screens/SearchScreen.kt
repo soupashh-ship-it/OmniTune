@@ -53,10 +53,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
-import com.omnitune.app.innertube.models.AlbumItem
-import com.omnitune.app.innertube.models.ArtistItem
-import com.omnitune.app.innertube.models.PlaylistItem
-import com.omnitune.app.innertube.models.SongItem
+import com.omnitune.innertube.models.AlbumItem
+import com.omnitune.innertube.models.ArtistItem
+import com.omnitune.innertube.models.PlaylistItem
+import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader

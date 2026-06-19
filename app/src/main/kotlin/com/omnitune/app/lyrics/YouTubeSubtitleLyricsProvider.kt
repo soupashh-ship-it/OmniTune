@@ -1,13 +1,12 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 package com.omnitune.app.lyrics
 
 import android.content.Context
-import com.omnitune.app.innertube.YouTube
+import com.omnitune.innertube.YouTube
 
 object YouTubeSubtitleLyricsProvider : LyricsProvider {
     override val name = "YouTube Subtitle"

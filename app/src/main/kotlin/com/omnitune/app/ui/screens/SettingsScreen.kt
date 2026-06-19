@@ -213,8 +213,6 @@ private fun SettingsSectionCard(
 private fun PlaybackSettings() {
     val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
     val skipSilence by rememberPreference(SkipSilenceKey, false)
-    val audioNormalization by rememberPreference(AudioNormalizationKey, true)
-    val persistentQueue by rememberPreference(PersistentQueueKey, true)
     val autoSkipOnError by rememberPreference(AutoSkipNextOnErrorKey, true)
     val permanentShuffle by rememberPreference(PermanentShuffleKey, false)
     val pauseOnMute by rememberPreference(PauseOnDeviceMuteKey, false)
@@ -235,18 +233,6 @@ private fun PlaybackSettings() {
         description = "Automatically skip silent parts",
         key = SkipSilenceKey,
         defaultValue = false,
-    )
-    TogglePreferenceRow(
-        label = "Audio Normalization",
-        description = "Normalize volume across tracks",
-        key = AudioNormalizationKey,
-        defaultValue = true,
-    )
-    TogglePreferenceRow(
-        label = "Persistent Queue",
-        description = "Save queue between sessions",
-        key = PersistentQueueKey,
-        defaultValue = true,
     )
     TogglePreferenceRow(
         label = "Auto-Skip on Error",

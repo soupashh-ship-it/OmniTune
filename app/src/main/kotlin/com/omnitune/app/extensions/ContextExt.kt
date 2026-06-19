@@ -1,7 +1,6 @@
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
- * Licensed Under GPL-3.0
  */
 
 
@@ -15,7 +14,7 @@ import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.get
-import com.omnitune.app.innertube.utils.parseCookieString
+import com.omnitune.innertube.utils.parseCookieString
 
 fun Context.isSyncEnabled(): Boolean {
     return dataStore.get(YtmSyncKey, true) && isUserLoggedIn()
