@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.graphicsLayer
 import com.omnitune.app.R
 import com.omnitune.app.constants.*
 import com.omnitune.app.ui.component.GlassCard
@@ -69,6 +70,7 @@ private enum class SettingsSection(val label: String, val iconRes: Int) {
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit = {},
+    onNavigateToEqualizer: () -> Unit = {},
 ) {
     var expandedSection by remember { mutableStateOf<SettingsSection?>(null) }
 
@@ -118,6 +120,7 @@ fun SettingsScreen(
                     onToggle = {
                         expandedSection = if (expandedSection == section) null else section
                     },
+                    onNavigateToEqualizer = onNavigateToEqualizer
                 )
             }
         }
@@ -133,6 +136,7 @@ private fun SettingsSectionCard(
     section: SettingsSection,
     isExpanded: Boolean,
     onToggle: () -> Unit,
+    onNavigateToEqualizer: () -> Unit = {},
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -194,7 +198,7 @@ private fun SettingsSectionCard(
         if (isExpanded) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                 when (section) {
-                    SettingsSection.PLAYBACK -> PlaybackSettings()
+                    SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
                     SettingsSection.APPEARANCE -> AppearanceSettings()
                     SettingsSection.LYRICS -> LyricsSettings()
                     SettingsSection.CONTENT -> ContentSettings()
@@ -210,7 +214,7 @@ private fun SettingsSectionCard(
 // ── Playback Settings ──
 
 @Composable
-private fun PlaybackSettings() {
+private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
     val skipSilence by rememberPreference(SkipSilenceKey, false)
     val autoSkipOnError by rememberPreference(AutoSkipNextOnErrorKey, true)
@@ -228,6 +232,22 @@ private fun PlaybackSettings() {
     Divider()
 
     SettingsCategoryLabel("Playback Behavior")
+    
+    // OMNITUNE: Equalizer row
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToEqualizer() }
+            .padding(vertical = 14.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(painterResource(R.drawable.ic_settings), "Equalizer", tint = OmniColors.Primary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text("Equalizer", color = OmniColors.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Icon(painterResource(R.drawable.ic_arrow_back), "Open", tint = OmniColors.TextPrimary.copy(alpha = 0.4f),
+             modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = 180f })
+    }
+    
     TogglePreferenceRow(
         label = "Skip Silence",
         description = "Automatically skip silent parts",

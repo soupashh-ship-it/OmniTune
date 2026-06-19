@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
+import com.omnitune.app.playback.EqualizerBand
 
 @AndroidEntryPoint
 class MusicService : MediaLibraryService(), Player.Listener {
@@ -96,6 +97,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
     lateinit var player: ExoPlayer
         private set
 
+    // OMNITUNE: Sleep timer
+    lateinit var sleepTimer: SleepTimer
+        private set
+
     fun binder(): MusicBinder = binder
 
     lateinit var connectivityObserver: NetworkConnectivityObserver
@@ -115,6 +120,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         createNotificationChannel()
 
         initializePlayer()
+        sleepTimer = SleepTimer(player)
         observePreferences()
 
         // Mark queue restore as done (no persistent queue implementation yet)
@@ -188,6 +194,36 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 setSmallIcon(R.drawable.ic_launcher_foreground)
             }
         )
+        
+        setupEqualizer()
+    }
+
+    // OMNITUNE: System equalizer integration
+    private var systemEqualizer: android.media.audiofx.Equalizer? = null
+
+    private fun setupEqualizer() {
+        try {
+            systemEqualizer?.release()
+            systemEqualizer = android.media.audiofx.Equalizer(0, player.audioSessionId).apply {
+                enabled = true
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to initialize equalizer")
+        }
+    }
+
+    fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
+        val eq = systemEqualizer ?: return
+        try {
+            bands.forEachIndexed { index, band ->
+                if (index < eq.numberOfBands) {
+                    val gainMillibels = (band.gainDb * 100).toInt().toShort()
+                    eq.setBandLevel(index.toShort(), gainMillibels)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to apply EQ bands")
+        }
     }
 
     /**
@@ -389,6 +425,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onDestroy() {
         Timber.tag("MusicService").i("MusicService destroyed")
+        systemEqualizer?.release()
+        systemEqualizer = null
         instance = null
         mediaSession?.run {
             sessionCallback.onDestroy()

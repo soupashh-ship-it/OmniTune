@@ -55,8 +55,10 @@ import com.omnitune.app.ui.screens.HistoryScreen
 import com.omnitune.app.ui.screens.HomeScreen
 import com.omnitune.app.ui.screens.LibraryScreen
 import com.omnitune.app.ui.screens.Screens
+import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
 import com.omnitune.app.ui.screens.SearchScreen
 import com.omnitune.app.ui.screens.StatsScreen
+import com.omnitune.app.ui.screens.EqualizerScreen
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
 import kotlinx.coroutines.delay
@@ -189,7 +191,15 @@ fun OmniTuneMainScreen() {
             }
             composable("player") { PlayerScreen(playerConnection = LocalPlayerConnection.current, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
             composable("queue") { QueueScreen(playerConnection = LocalPlayerConnection.current, onBack = { navController.popBackStack() }) }
-            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }) }
+            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) }
+            composable(ROUTE_EQUALIZER) {
+                EqualizerScreen(
+                    onBack = { navController.popBackStack() },
+                    onApplyBands = { bands ->
+                        MusicService.instance?.applyEqualizerBands(bands)
+                    }
+                )
+            }
         }
         // MiniPlayer + Glass Bottom Dock
         Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))) {

@@ -19,5 +19,6 @@ sealed class Screens(
         val MainScreens = listOf(Home, Search, Library)
         const val ACTION_SEARCH = "com.omnitune.app.action.SEARCH"
         const val ACTION_LIBRARY = "com.omnitune.app.action.LIBRARY"
+        const val ROUTE_EQUALIZER = "equalizer"
     }
 }

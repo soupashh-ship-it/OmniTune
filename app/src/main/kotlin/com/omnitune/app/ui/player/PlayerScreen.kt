@@ -37,6 +37,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -179,6 +184,9 @@ private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androi
 
 @Composable
 private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnabled: Boolean, repeatMode: Int, playerConnection: PlayerConnection?) {
+    val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsState() ?: remember { mutableStateOf(false) }
+    var showSleepTimerDialog by remember { mutableStateOf(false) }
+
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         GlassCircleButton(painterResource(R.drawable.ic_shuffle), "Shuffle",
             tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
@@ -204,6 +212,34 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         GlassCircleButton(painterResource(R.drawable.ic_repeat), "Repeat",
             tint = if (repeatMode != REPEAT_MODE_OFF) OmniColors.Primary else OmniColors.TextMuted,
             onClick = { playerConnection?.player?.let { p -> p.repeatMode = when (p.repeatMode) { REPEAT_MODE_OFF -> REPEAT_MODE_ALL; REPEAT_MODE_ALL -> REPEAT_MODE_ONE; else -> REPEAT_MODE_OFF } } })
+            
+        // OMNITUNE: Sleep timer button
+        IconButton(onClick = { showSleepTimerDialog = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_bedtime),
+                contentDescription = if (sleepTimerRunning) "Cancel sleep timer" else "Set sleep timer",
+                tint = if (sleepTimerRunning) OmniColors.Primary else OmniColors.TextMuted,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+
+    if (showSleepTimerDialog) {
+        SleepTimerDialog(
+            onDismiss = { showSleepTimerDialog = false },
+            onSet = { minutes, endOfSong ->
+                playerConnection?.service?.sleepTimer?.start(
+                    durationMs = minutes * 60_000L,
+                    stopAtEndOfSong = endOfSong
+                )
+                showSleepTimerDialog = false
+            },
+            onCancel = {
+                playerConnection?.service?.sleepTimer?.cancel()
+                showSleepTimerDialog = false
+            },
+            isRunning = sleepTimerRunning
+        )
     }
 }
 
@@ -257,3 +293,60 @@ private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modi
 }
 
 
+@Composable
+private fun SleepTimerDialog(
+    onDismiss: () -> Unit,
+    onSet: (minutes: Int, endOfSong: Boolean) -> Unit,
+    onCancel: () -> Unit,
+    isRunning: Boolean,
+) {
+    var selectedMinutes by remember { mutableStateOf(30) }
+    var endOfSong by remember { mutableStateOf(false) }
+    val options = listOf(15, 30, 45, 60, 90, 120)
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(OmniColors.GlassSurface)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Sleep Timer", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OmniColors.TextPrimary)
+
+            options.forEach { mins ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedMinutes == mins) OmniColors.Primary.copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable { selectedMinutes = mins }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("$mins minutes", color = OmniColors.TextPrimary, fontSize = 15.sp)
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Stop at end of song", color = OmniColors.TextPrimary, modifier = Modifier.weight(1f))
+                Switch(checked = endOfSong, onCheckedChange = { endOfSong = it })
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (isRunning) {
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = OmniColors.Hot)
+                    ) { Text("Cancel Timer") }
+                }
+                Button(
+                    onClick = { onSet(selectedMinutes, endOfSong) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
+                ) { Text(if (isRunning) "Restart" else "Set Timer") }
+            }
+        }
+    }
+}

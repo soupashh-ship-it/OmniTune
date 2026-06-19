@@ -30,8 +30,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -82,6 +84,21 @@ class PlayerConnection(
     val error = MutableStateFlow<PlaybackException?>(null)
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
+
+    // OMNITUNE: Sleep timer state
+    val sleepTimerRunning: StateFlow<Boolean> = flow {
+        while (true) {
+            emit(service.sleepTimer.isRunning)
+            kotlinx.coroutines.delay(500)
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, false)
+
+    val sleepTimerRemaining: StateFlow<Long> = flow {
+        while (true) {
+            emit(service.sleepTimer.remainingMs)
+            kotlinx.coroutines.delay(1000)
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, 0L)
 
     init {
         player.addListener(this)

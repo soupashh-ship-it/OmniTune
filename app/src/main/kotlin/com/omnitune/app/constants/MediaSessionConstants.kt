@@ -21,4 +21,5 @@ object MediaSessionConstants {
     val CommandToggleStartRadio = SessionCommand(ACTION_TOGGLE_START_RADIO, Bundle.EMPTY)
     val CommandToggleShuffle = SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY)
     val CommandToggleRepeatMode = SessionCommand(ACTION_TOGGLE_REPEAT_MODE, Bundle.EMPTY)
+    val CommandToggleSleepTimer = SessionCommand("TOGGLE_SLEEP_TIMER", Bundle.EMPTY)
 }
