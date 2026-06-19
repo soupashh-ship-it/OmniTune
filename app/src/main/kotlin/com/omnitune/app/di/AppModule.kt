@@ -42,4 +42,11 @@ object AppModule {
     ): ImageLoader = ImageLoader.Builder(context)
         .crossfade(300)
         .build()
+
+    @Provides
+    @Singleton
+    @androidx.media3.common.util.UnstableApi
+    fun provideDownloadUtil(@ApplicationContext context: android.content.Context): com.omnitune.app.playback.DownloadUtil {
+        return com.omnitune.app.playback.DownloadUtil(context)
+    }
 }
