@@ -114,7 +114,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         Timber.tag("MusicService").i("MusicService created")
 
         createNotificationChannel()
-        startForegroundNotification()
 
         initializePlayer()
         observePreferences()
@@ -141,35 +140,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
-    private fun startForegroundNotification() {
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle("OmniTune")
-            .setContentText("Music Player")
-            .setContentIntent(contentIntent)
-            .setCategory(Notification.CATEGORY_SERVICE)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .build()
-
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-        } catch (e: Exception) {
-            reportException(e)
-        }
-    }
 
     private fun initializePlayer() {
         val trackSelector = DefaultTrackSelector(this).apply {

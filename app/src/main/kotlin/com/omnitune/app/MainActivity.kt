@@ -94,9 +94,24 @@ class MainActivity : ComponentActivity() {
         if (playerConnection == null) playerConnection = PlayerConnection(this@MainActivity, service.binder(), database, lifecycleScope)
     }
 
+    private val requestPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            android.widget.Toast.makeText(this, "Notifications disabled. Media controls won't show in status bar.", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
         setContent {
             OmniTuneTheme {
                 CompositionLocalProvider(LocalPlayerConnection provides playerConnection) {
