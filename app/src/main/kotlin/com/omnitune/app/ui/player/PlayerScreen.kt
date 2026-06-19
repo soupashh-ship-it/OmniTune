@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.player
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -70,14 +71,18 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_ALL
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
+import coil3.BitmapImage
 import coil3.compose.AsyncImage
+import coil3.request.SuccessResult
 import com.omnitune.app.R
 import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.utils.formatDurationMs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 fun PlayerScreen(
@@ -94,7 +99,46 @@ fun PlayerScreen(
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
     val isSeeking = remember { mutableFloatStateOf(-1f) }
 
-    Box(modifier = modifier.fillMaxSize().background(OmniColors.Background)) {
+    // OMNITUNE: Dynamic palette color from album art
+    var dominantColor by remember { mutableStateOf(Color(0xFF1A1035)) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(mediaMetadata?.thumbnailUrl) {
+        val url = mediaMetadata?.thumbnailUrl ?: return@LaunchedEffect
+        withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val request = coil3.request.ImageRequest.Builder(context)
+                    .data(url)
+                    .build()
+                val result = coil3.SingletonImageLoader.get(context).execute(request)
+                val bitmap = (result as? coil3.request.SuccessResult)?.image
+                    ?.let { (it as? coil3.BitmapImage)?.bitmap }
+                bitmap?.let {
+                    val palette = androidx.palette.graphics.Palette.from(it).generate()
+                    val swatch = palette.darkMutedSwatch ?: palette.dominantSwatch
+                    swatch?.let { s ->
+                        dominantColor = Color(s.rgb).copy(alpha = 1f)
+                    }
+                }
+            } catch (e: Exception) {
+                // Keep default color on failure
+            }
+        }
+    }
+
+    val animatedColor by animateColorAsState(
+        targetValue = dominantColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "animatedColor"
+    )
+
+    Box(modifier = modifier.fillMaxSize().background(
+        Brush.verticalGradient(
+            colors = listOf(animatedColor.copy(alpha = 0.8f), OmniColors.Background),
+            startY = 0f,
+            endY = Float.POSITIVE_INFINITY
+        )
+    )) {
         thumbnailUrl?.let { url ->
             AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.25f)

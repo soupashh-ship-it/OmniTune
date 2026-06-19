@@ -120,6 +120,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
+    implementation("androidx.palette:palette-ktx:1.0.0")
     coreLibraryDesugaring(libs.desugaring)
 
     implementation(libs.hilt)

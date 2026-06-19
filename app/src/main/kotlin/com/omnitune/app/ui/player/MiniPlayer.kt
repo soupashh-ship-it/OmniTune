@@ -5,6 +5,7 @@
 
 package com.omnitune.app.ui.player
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -49,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -121,6 +123,12 @@ fun MiniPlayer(
     val swipeSensitivity = 0.73f
     val autoSwipeThreshold = (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
 
+    val artworkScale by animateFloatAsState(
+        targetValue = if (isPlaying) 1.0f else 0.92f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "artworkScale"
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -164,7 +172,9 @@ fun MiniPlayer(
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier.fillMaxWidth().height(2.dp).align(Alignment.BottomCenter),
-            color = OmniColors.Primary, trackColor = Color.Transparent, strokeCap = StrokeCap.Round,
+            color = OmniColors.Primary, 
+            trackColor = OmniColors.Primary.copy(alpha = 0.15f), 
+            strokeCap = StrokeCap.Square,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -179,8 +189,8 @@ fun MiniPlayer(
                 )
                 Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(OmniColors.GlassSurface), contentAlignment = Alignment.Center) {
                     mediaMetadata?.thumbnailUrl?.let { url ->
-                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                    } ?: Icon(painterResource(R.drawable.ic_play_arrow), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(artworkScale))
+                    } ?: Icon(painterResource(R.drawable.ic_play_arrow), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp).scale(artworkScale))
                 }
             }
             // Title + Artist with better spacing
