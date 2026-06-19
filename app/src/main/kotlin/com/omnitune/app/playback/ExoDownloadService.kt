@@ -44,10 +44,13 @@ class ExoDownloadService : DownloadService(
     override fun getDownloadManager(): DownloadManager {
         // Use a simple DownloadManager with the download cache
         val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
         return DownloadManager(
             this,
+            downloadUtil.databaseProvider,
             downloadUtil.downloadCache,
-            dataSourceFactory
+            dataSourceFactory,
+            executor
         ).apply {
             maxParallelDownloads = 3
         }

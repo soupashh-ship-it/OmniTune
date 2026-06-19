@@ -26,7 +26,7 @@ import javax.inject.Singleton
 class DownloadUtil @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val databaseProvider by lazy {
+    val databaseProvider by lazy {
         StandaloneDatabaseProvider(context)
     }
 
