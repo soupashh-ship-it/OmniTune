@@ -1,6 +1,7 @@
 package com.omnitune.app.ui.screens
-
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -114,20 +115,57 @@ fun QueueScreen(
                     }
                 } else {
                     itemsIndexed(
-                        (0 until itemCount).filter { it != player.currentMediaItemIndex }
+                        items = (0 until itemCount).filter { it != player.currentMediaItemIndex },
+                        key = { _, index -> index }
                     ) { _, index ->
                         val mediaItem = player.getMediaItemAt(index)
                         val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
-                        QueueItemRow(
-                            title = meta?.title ?: mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
-                            artists = meta?.artists?.joinToString(", ") { it.name } ?: "",
-                            thumbnail = meta?.thumbnailUrl,
-                            isCurrent = false,
-                            onClick = {
-                                player.seekTo(index, 0)
-                                player.prepare()
-                                player.playWhenReady = true
+                        
+                        val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+                            confirmValueChange = { dismissValue ->
+                                if (dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart || dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd) {
+                                    player.removeMediaItem(index)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+
+                        androidx.compose.material3.SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = {
+                                val color by androidx.compose.animation.animateColorAsState(
+                                    when (dismissState.targetValue) {
+                                        androidx.compose.material3.SwipeToDismissBoxValue.Settled -> androidx.compose.ui.graphics.Color.Transparent
+                                        else -> MaterialTheme.colorScheme.errorContainer
+                                    },
+                                    label = "dismissColor"
+                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(color).padding(horizontal = 16.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        painterResource(android.R.drawable.ic_menu_delete),
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
                             },
+                            content = {
+                                QueueItemRow(
+                                    title = meta?.title ?: mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
+                                    artists = meta?.artists?.joinToString(", ") { it.name } ?: "",
+                                    thumbnail = meta?.thumbnailUrl,
+                                    isCurrent = false,
+                                    onClick = {
+                                        player.seekTo(index, 0)
+                                        player.prepare()
+                                        player.playWhenReady = true
+                                    },
+                                )
+                            }
                         )
                         HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),

@@ -59,6 +59,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val quickPicks by viewModel.quickPicks.collectAsState()
     LazyColumn(modifier = Modifier.fillMaxSize().background(OmniColors.Background).padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
             Spacer(modifier = Modifier.statusBarsPadding())
@@ -72,6 +73,37 @@ fun HomeScreen(
                 QuickGlassAction(painterResource(R.drawable.ic_play_arrow), "Play", listOf(OmniColors.Primary, OmniColors.Secondary), onResumePlayback, Modifier.weight(1f))
                 QuickGlassAction(painterResource(android.R.drawable.ic_menu_search), "Search", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToSearch, Modifier.weight(1f))
                 QuickGlassAction(painterResource(R.drawable.ic_list), "Library", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLibrary, Modifier.weight(1f))
+            }
+        }
+        item { OmniSectionHeader(title = "Quick Picks", action = null) }
+        item {
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (quickPicks.isEmpty()) {
+                    items(5) {
+                        GlassCard(modifier = Modifier.size(140.dp)) {
+                            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                                ShimmerBar(modifier = Modifier.fillMaxWidth().height(80.dp).clip(OmniShapes.SM))
+                                Spacer(modifier = Modifier.height(10.dp))
+                                ShimmerBar(modifier = Modifier.fillMaxWidth(0.8f).height(12.dp).clip(OmniShapes.XS))
+                                Spacer(modifier = Modifier.height(6.dp))
+                                ShimmerBar(modifier = Modifier.fillMaxWidth(0.5f).height(10.dp).clip(OmniShapes.XS))
+                            }
+                        }
+                    }
+                } else {
+                    items(quickPicks) { song ->
+                        GlassCard(modifier = Modifier.size(140.dp), onClick = { onPlaySong(song) }) {
+                            Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+                                Box(modifier = Modifier.fillMaxWidth().height(76.dp).clip(OmniShapes.SM).background(OmniColors.GlassSurface)) {
+                                    if (song.song.thumbnailUrl != null) AsyncImage(model = song.song.thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(song.song.title, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(song.artists.joinToString(", ") { it.name }, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+                }
             }
         }
         item { OmniSectionHeader(title = "Recently Played", action = if (uiState.recentSongs.isNotEmpty()) "See all" else null, onAction = onNavigateToLibrary) }

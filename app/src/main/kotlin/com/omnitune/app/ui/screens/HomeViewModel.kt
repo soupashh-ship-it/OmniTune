@@ -25,7 +25,11 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    // OMNITUNE: Quick picks from YouTube home feed
+    val quickPicks = MutableStateFlow<List<com.omnitune.app.db.entities.Song>>(emptyList())
+
     init {
+        loadQuickPicks()
         viewModelScope.launch {
             try {
                 database.events().collect { events ->
@@ -39,6 +43,51 @@ class HomeViewModel @Inject constructor(
                     isLoading = false,
                     error = e.localizedMessage,
                 )
+            }
+        }
+    }
+
+    private fun loadQuickPicks() {
+        viewModelScope.launch {
+            try {
+                // Use the YouTube InnerTube client to get home feed suggestions
+                val result = com.omnitune.innertube.YouTube.home().getOrNull()
+                val songs = result?.sections
+                    ?.flatMap { section -> section.items }
+                    ?.filterIsInstance<com.omnitune.innertube.models.SongItem>()
+                    ?.take(20)
+                    ?.map { item ->
+                        com.omnitune.app.db.entities.Song(
+                            song = com.omnitune.app.db.entities.SongEntity(
+                                id = item.id,
+                                title = item.title,
+                                duration = item.duration ?: -1,
+                                thumbnailUrl = item.thumbnail,
+                                albumId = item.album?.id,
+                                albumName = item.album?.name,
+                                explicit = item.explicit,
+                                year = null,
+                                liked = false,
+                                likedDate = null,
+                                totalPlayTime = 0,
+                                inLibrary = null,
+                                isLocal = false,
+                            ),
+                            artists = item.artists.map { artist ->
+                                com.omnitune.app.db.entities.ArtistEntity(
+                                    id = artist.id ?: "",
+                                    name = artist.name,
+                                    thumbnailUrl = null,
+                                    channelId = null,
+                                    bookmarkedAt = null,
+                                    isLocal = false
+                                )
+                            }
+                        )
+                    } ?: emptyList()
+                quickPicks.value = songs
+            } catch (e: Exception) {
+                // Silently fail — home feed is best-effort
             }
         }
     }

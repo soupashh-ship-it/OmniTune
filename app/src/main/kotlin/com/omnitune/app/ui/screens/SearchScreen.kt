@@ -105,11 +105,26 @@ fun SearchScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
                     item {
                         OmniSectionHeader(title = "Mood"); Spacer(modifier = Modifier.height(10.dp))
-                        FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            moodChips.forEach { (label, query) ->
-                                Box(modifier = Modifier.clip(OmniShapes.Pill).border(1.dp, OmniColors.GlassBorder, OmniShapes.Pill).background(OmniColors.GlassSurface)
-                                    .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { viewModel.onQueryChanged(query) }.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                    Text(label, color = OmniColors.TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(moodChips) { (label, query) ->
+                                val isActive = uiState.query == query
+                                val bgColor by androidx.compose.animation.animateColorAsState(
+                                    targetValue = if (isActive) OmniColors.Primary.copy(alpha = 0.2f) else OmniColors.GlassSurface,
+                                    label = "bgColor"
+                                )
+                                val borderColor by androidx.compose.animation.animateColorAsState(
+                                    targetValue = if (isActive) OmniColors.Primary.copy(alpha = 0.5f) else OmniColors.GlassBorder,
+                                    label = "borderColor"
+                                )
+                                val textColor by androidx.compose.animation.animateColorAsState(
+                                    targetValue = if (isActive) OmniColors.Primary else OmniColors.TextSecondary,
+                                    label = "textColor"
+                                )
+                                Box(modifier = Modifier.clip(OmniShapes.Pill).border(1.dp, borderColor, OmniShapes.Pill).background(bgColor)
+                                    .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { 
+                                        if (isActive) viewModel.clearQuery() else viewModel.onQueryChanged(query) 
+                                    }.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Text(label, color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
