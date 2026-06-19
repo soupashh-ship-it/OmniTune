@@ -44,7 +44,7 @@ class PlayerConnection(
     scope: CoroutineScope,
 ) : Player.Listener {
     val service = binder.service
-    val player = service.player
+    val player = service.exoPlayer
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)

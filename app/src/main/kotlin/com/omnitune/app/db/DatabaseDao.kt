@@ -73,6 +73,15 @@ import java.util.Locale
 
 @Dao
 interface DatabaseDao {
+    @Query("SELECT * FROM queue ORDER BY id DESC LIMIT 1")
+    suspend fun getQueue(): com.omnitune.app.db.entities.QueueEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveQueue(queue: com.omnitune.app.db.entities.QueueEntity)
+
+    @Query("DELETE FROM queue")
+    suspend fun clearQueue()
+
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
     fun songsByRowIdAsc(): Flow<List<Song>>
@@ -634,13 +643,12 @@ interface DatabaseDao {
     suspend fun getSongById(songId: String): Song?
 
     @Transaction
-    @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
-    fun getSongByIdBlocking(songId: String): Song?
-
-    @Transaction
     @Query("SELECT * FROM song WHERE id IN (:songIds)")
     suspend fun getSongsByIds(songIds: List<String>): List<Song>
 
+    @Transaction
+    @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
+    fun getSongByIdBlocking(songId: String): Song?
     
     @Transaction
     @Query("SELECT * FROM song_artist_map WHERE songId = :songId")

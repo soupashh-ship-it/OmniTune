@@ -58,6 +58,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -102,11 +103,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val binder = MusicBinder()
 
 
-    lateinit var player: ExoPlayer
-        private set
-
-    // OMNITUNE: Crossfade state
-    var playerVolume = MutableStateFlow(1f)
+    val exoPlayer: ExoPlayer get() = player
+    private lateinit var player: ExoPlayer
+    private val _playerVolume = MutableStateFlow(1f)
+    val playerVolume = _playerVolume.asStateFlow()
     private val audioFocusVolumeFactor = MutableStateFlow(1f)
     private val playbackFadeFactor = MutableStateFlow(1f)
     private val crossfadeDurationMs = MutableStateFlow(0)
@@ -115,20 +115,24 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
-        private set
 
     fun binder(): MusicBinder = binder
 
     lateinit var connectivityObserver: NetworkConnectivityObserver
-    val waitingForNetworkConnection = MutableStateFlow(false)
+    private val _waitingForNetworkConnection = MutableStateFlow(false)
+    val waitingForNetworkConnection = _waitingForNetworkConnection.asStateFlow()
 
     // OMNITUNE: Playback tracking
     private var lastRecordedMediaId: String? = null
     private var playbackTrackerJob: Job? = null
 
-    val currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
+    private val _currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
+    val currentMediaMetadata = _currentMediaMetadata.asStateFlow()
     var queueTitle: String? = null
-    val queueRestoreCompleted = MutableStateFlow(false)
+        private set
+    private val _queueRestoreCompleted = MutableStateFlow(false)
+    val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
+    private var saveQueueJob: Job? = null
 
     private var currentQueue: Queue = EmptyQueue
 
@@ -143,8 +147,34 @@ class MusicService : MediaLibraryService(), Player.Listener {
         sleepTimer = SleepTimer(player, scope)
         observePreferences()
 
-        // Mark queue restore as done (no persistent queue implementation yet)
-        queueRestoreCompleted.value = true
+        // Restore persistent queue
+        scope.launch(Dispatchers.IO) {
+            try {
+                val savedQueue = database.getQueue()
+                if (savedQueue != null && savedQueue.mediaIdList.isNotBlank()) {
+                    val mediaIds = savedQueue.mediaIdList.split(",")
+                    val songs = database.getSongsByIds(mediaIds)
+                    // Ensure the order is preserved
+                    val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
+                    
+                    if (mediaItems.isNotEmpty()) {
+                        val queue = ListQueue(
+                            title = savedQueue.title,
+                            items = mediaItems,
+                            startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
+                            position = savedQueue.position
+                        )
+                        withContext(Dispatchers.Main) {
+                            playQueue(queue, playWhenReady = false)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("MusicService").e(e, "Failed to restore persistent queue")
+            } finally {
+                _queueRestoreCompleted.value = true
+            }
+        }
 
         connectivityObserver = NetworkConnectivityObserver(this)
 
@@ -202,7 +232,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             database = database,
             crossfadeDurationMs = crossfadeDurationMs,
             playbackFadeFactor = playbackFadeFactor,
-            playerVolume = playerVolume,
+            playerVolume = _playerVolume,
             audioFocusVolumeFactor = audioFocusVolumeFactor,
             audioNormalizationEnabled = audioNormalizationEnabled,
             maxSafeGainFactor = 3.16f,
@@ -297,13 +327,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
         // Player Volume
         scope.launch {
             ds.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
-                playerVolume.value = volume.coerceIn(0f, 1f)
+                setPlayerVolume(volume.coerceIn(0f, 1f))
             }
         }
 
         // Combine volumes for crossfade
         scope.launch {
-            combine(playerVolume, playbackFadeFactor) { vol, fade ->
+            combine(_playerVolume, playbackFadeFactor) { vol, fade ->
                 (vol * fade).coerceIn(0f, 1f)
             }.collectLatest { finalVolume ->
                 player.volume = finalVolume
@@ -338,6 +368,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 autoSkipNextOnError = autoSkip
             }
         }
+    }
+
+    private fun setPlayerVolume(volume: Float) {
+        _playerVolume.value = volume
+        player.volume = volume
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -451,7 +486,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     fun toggleLike() {
         Timber.tag("MusicService").i("Toggle like")
-        val meta = currentMediaMetadata.value ?: return
+        val meta = _currentMediaMetadata.value ?: return
         scope.launch(Dispatchers.IO) {
             val song = database.getSongById(meta.id)
             if (song != null) {
@@ -465,14 +500,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.e(e, "Failed to sync like with YouTube")
             }
             withContext(Dispatchers.Main) {
-                currentMediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
+                _currentMediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
             }
         }
     }
 
     fun toggleLibrary() {
         Timber.tag("MusicService").i("Toggle library")
-        val meta = currentMediaMetadata.value ?: return
+        val meta = _currentMediaMetadata.value ?: return
         scope.launch(Dispatchers.IO) {
             val song = database.getSongById(meta.id)
             val inLibrary = song?.song?.inLibrary
@@ -484,7 +519,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             database.upsert(updated)
             withContext(Dispatchers.Main) {
                 val newInLibrary = if (meta.inLibrary == null) java.time.LocalDateTime.now() else null
-                currentMediaMetadata.value = meta.copy(inLibrary = newInLibrary, liked = if (newInLibrary != null) meta.liked else false)
+                _currentMediaMetadata.value = meta.copy(inLibrary = newInLibrary, liked = if (newInLibrary != null) meta.liked else false)
             }
         }
     }
@@ -498,8 +533,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun stopAndClearPlayback() {
         currentQueue = EmptyQueue
         queueTitle = null
-        waitingForNetworkConnection.value = false
-        currentMediaMetadata.value = null
+        _waitingForNetworkConnection.value = false
+        _currentMediaMetadata.value = null
         player.playWhenReady = false
         player.stop()
         player.clearMediaItems()
@@ -532,14 +567,18 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (state == Player.STATE_READY && systemEqualizer == null) {
             setupEqualizer()
         }
+        if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
+            saveQueueState()
+        }
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         crossfadeAudio?.onMediaItemTransition(mediaItem, reason)
-        val meta = mediaItem?.metadata ?: currentMediaMetadata.value
-        currentMediaMetadata.value = meta
+        val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
+        _currentMediaMetadata.value = meta
         updateNotification()
         startPlaybackTracker(mediaItem)
+        saveQueueState()
 
         // Fetch lyrics for the current song in the background
         meta?.let { metadata ->
@@ -651,5 +690,41 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
+    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+        super.onTimelineChanged(timeline, reason)
+        saveQueueState()
+    }
+
+    private fun saveQueueState() {
+        saveQueueJob?.cancel()
+        saveQueueJob = scope.launch(Dispatchers.IO) {
+            delay(1000) // Debounce
+            
+            val (count, currentIndex, currentPos) = withContext(Dispatchers.Main) { 
+                Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
+            }
+            
+            if (count == 0) {
+                database.clearQueue()
+                return@launch
+            }
+            
+            val mediaIds = mutableListOf<String>()
+            withContext(Dispatchers.Main) {
+                for (i in 0 until count) {
+                    mediaIds.add(player.getMediaItemAt(i).mediaId)
+                }
+            }
+            
+            val entity = com.omnitune.app.db.entities.QueueEntity(
+                id = 1,
+                title = queueTitle,
+                mediaIdList = mediaIds.joinToString(","),
+                startIndex = currentIndex,
+                position = currentPos.coerceAtLeast(0L)
+            )
+            database.saveQueue(entity)
+        }
+    }
 
 }

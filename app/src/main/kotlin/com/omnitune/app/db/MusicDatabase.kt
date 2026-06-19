@@ -123,14 +123,15 @@ class MusicDatabase(
         PlayCountEntity::class,
         TagEntity::class,
         PlaylistTagMap::class,
-        com.omnitune.app.db.entities.SongSkipEntity::class
+        com.omnitune.app.db.entities.SongSkipEntity::class,
+        com.omnitune.app.db.entities.QueueEntity::class
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = CURRENT_VERSION,
+    version = CURRENT_VERSION + 1,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -156,9 +157,17 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `queue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT, `mediaIdList` TEXT NOT NULL, `startIndex` INTEGER NOT NULL, `position` INTEGER NOT NULL)"
+                )
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
             val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(DatabaseCallback())
                 .fallbackToDestructiveMigration()
                 .fallbackToDestructiveMigrationOnDowngrade()

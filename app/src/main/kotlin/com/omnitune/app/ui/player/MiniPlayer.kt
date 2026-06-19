@@ -78,6 +78,8 @@ import com.omnitune.app.ui.theme.OmniShapes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.omnitune.app.lyrics.LyricsUtils
+import androidx.compose.runtime.mutableLongStateOf
 
 private const val MINI_PLAYER_HEIGHT = 76
 
@@ -112,9 +114,21 @@ fun MiniPlayer(
                     position = if (pos in 0..dur) pos.toFloat() else 0f
                 }
             } else { duration = 0f; position = 0f }
-            delay(200)
+            delay(50) // Reduced delay for smoother lyrics
         }
     }
+    
+    // Lyrics fetching for miniplayer
+    val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { mutableStateOf(null) }
+    val parsedLines = remember(lyricsEntity?.id, currentMediaId) {
+        lyricsEntity?.lyrics?.let {
+            if (LyricsUtils.isTtml(it)) LyricsUtils.parseTtml(it) else LyricsUtils.parseLyrics(it)
+        } ?: emptyList()
+    }
+    val currentLineIndex = remember(position, parsedLines.size) {
+        if (parsedLines.isEmpty()) -1 else LyricsUtils.findCurrentLineIndex(parsedLines, position.toLong())
+    }
+    val currentLyricsText = if (currentLineIndex >= 0) parsedLines[currentLineIndex].text else null
 
     val progress = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
     val offsetXAnimatable = remember { Animatable(0f) }
@@ -183,20 +197,15 @@ fun MiniPlayer(
         ) {
             // Album art with progress ring
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(52.dp)) {
-                CircularProgressIndicator(
-                    progress = { progress }, modifier = Modifier.size(52.dp),
-                    color = if (isPlaying) OmniColors.Primary else OmniColors.GlassBorder,
-                    trackColor = Color.Transparent, strokeWidth = 2.5.dp, strokeCap = StrokeCap.Round,
-                )
                 Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(OmniColors.GlassSurface), contentAlignment = Alignment.Center) {
                     mediaMetadata?.thumbnailUrl?.let { url ->
                         AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().scale(artworkScale))
                     } ?: Icon(painterResource(R.drawable.ic_play_arrow), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp).scale(artworkScale))
                 }
             }
-            // Title + Artist with better spacing
+            // Title + Artist/Lyrics with better spacing
             Box(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 4.dp)) {
-                mediaMetadata?.let { MiniMediaInfo(mediaMetadata = it) }
+                mediaMetadata?.let { MiniMediaInfo(mediaMetadata = it, lyricsText = currentLyricsText) }
             }
 
             // OMNITUNE: Scrobbling badge
@@ -250,13 +259,15 @@ fun MiniPlayer(
 }
 
 @Composable
-private fun MiniMediaInfo(mediaMetadata: MediaMetadata, modifier: Modifier = Modifier) {
+private fun MiniMediaInfo(mediaMetadata: MediaMetadata, lyricsText: String?, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.Start) {
         AnimatedContent(targetState = mediaMetadata.title, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "title") { title ->
             Text(text = title, color = OmniColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
         }
-        AnimatedContent(targetState = mediaMetadata.artists.joinToString { it.name }, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "artist") { artists ->
-            Text(text = artists, color = OmniColors.TextSecondary.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
+        val secondaryText = lyricsText ?: mediaMetadata.artists.joinToString { it.name }
+        val secondaryColor = if (lyricsText != null) OmniColors.Secondary else OmniColors.TextSecondary.copy(alpha = 0.8f)
+        AnimatedContent(targetState = secondaryText, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "artist_or_lyrics") { text ->
+            Text(text = text, color = secondaryColor, fontSize = 11.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.basicMarquee())
         }
     }
 }
