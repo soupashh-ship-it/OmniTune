@@ -18,10 +18,9 @@ import kotlinx.coroutines.launch
  * When timer expires, [player].pause() is called.
  * If [stopAtEndOfSong] is true, waits for current song to finish before pausing.
  */
-class SleepTimer(private val player: Player) {
+class SleepTimer(private val player: Player, private val scope: CoroutineScope) {
 
     private var timerJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
 
     var isRunning: Boolean = false
         private set
@@ -35,10 +34,10 @@ class SleepTimer(private val player: Player) {
         remainingMs = durationMs
 
         timerJob = scope.launch {
-            val startTime = System.currentTimeMillis()
+            val startTime = android.os.SystemClock.elapsedRealtime()
             while (remainingMs > 0) {
                 delay(1000L)
-                remainingMs = durationMs - (System.currentTimeMillis() - startTime)
+                remainingMs = durationMs - (android.os.SystemClock.elapsedRealtime() - startTime)
                 if (remainingMs < 0) remainingMs = 0
             }
             isRunning = false

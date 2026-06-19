@@ -8,6 +8,8 @@ import com.omnitune.app.models.StreamResult
 import com.omnitune.app.models.StreamQuality
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 
 /**
@@ -19,8 +21,10 @@ import timber.log.Timber
  */
 object StreamUrlResolver {
 
-    /** In-memory cache for resolved stream results (videoId -> StreamResult). */
-    private val streamCache = LruCache<String, StreamResult>(50)
+    data class CachedStream(val streamResult: StreamResult, val fetchedAtMs: Long)
+
+    /** In-memory cache for resolved stream results (videoId -> CachedStream). */
+    private val streamCache = LruCache<String, CachedStream>(50)
 
     /**
      * Returns true if the given URI is a bare YouTube video ID (not a standard URL).
@@ -45,11 +49,16 @@ object StreamUrlResolver {
 
         val cached = streamCache.get(videoId)
         if (cached != null) {
-            Timber.d("StreamUrlResolver: cache hit for $videoId")
-            return mediaItem.buildUpon()
-                .setUri(Uri.parse(cached.url))
-                .setMimeType(cached.contentType)
-                .build()
+            val isExpired = (System.currentTimeMillis() - cached.fetchedAtMs) > 4 * 60 * 60 * 1000L
+            if (!isExpired) {
+                Timber.d("StreamUrlResolver: cache hit for $videoId")
+                return mediaItem.buildUpon()
+                    .setUri(Uri.parse(cached.streamResult.url))
+                    .setMimeType(cached.streamResult.contentType)
+                    .build()
+            } else {
+                streamCache.remove(videoId)
+            }
         }
 
         Timber.d("StreamUrlResolver: resolving $videoId")
@@ -59,7 +68,7 @@ object StreamUrlResolver {
             return null
         }
 
-        streamCache.put(videoId, streamResult)
+        streamCache.put(videoId, CachedStream(streamResult, System.currentTimeMillis()))
         Timber.d("StreamUrlResolver: resolved $videoId (${streamResult.contentType})")
 
         return mediaItem.buildUpon()
@@ -76,12 +85,15 @@ object StreamUrlResolver {
         items: List<MediaItem>,
         streamExtractor: StreamExtractor,
     ): List<MediaItem> = coroutineScope {
+        val semaphore = Semaphore(3)
         items.map { item ->
             async {
-                if (isYouTubeVideoId(item.localConfiguration?.uri)) {
-                    resolveMediaItem(item, streamExtractor)
-                } else {
-                    item
+                semaphore.withPermit {
+                    if (isYouTubeVideoId(item.localConfiguration?.uri)) {
+                        resolveMediaItem(item, streamExtractor)
+                    } else {
+                        item
+                    }
                 }
             }
         }.mapNotNull { it.await() }

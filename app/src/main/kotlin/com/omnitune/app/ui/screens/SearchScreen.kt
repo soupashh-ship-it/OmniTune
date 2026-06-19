@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,8 +107,8 @@ fun SearchScreen(
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
                     item {
                         OmniSectionHeader(title = "Mood"); Spacer(modifier = Modifier.height(10.dp))
-                        androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(moodChips) { (label, query) ->
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            moodChips.forEach { (label, query) ->
                                 val isActive = uiState.query == query
                                 val bgColor by androidx.compose.animation.animateColorAsState(
                                     targetValue = if (isActive) OmniColors.Primary.copy(alpha = 0.2f) else OmniColors.GlassSurface,

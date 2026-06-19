@@ -45,6 +45,7 @@ constructor(
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
+    private val helperScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun getLyrics(mediaMetadata: MediaMetadata, preferredProviderOnly: Boolean = false): String {
         currentLyricsJob?.cancel()
@@ -70,8 +71,7 @@ constructor(
 
         val ordered = orderedProviders()
         val providers = if (preferredProviderOnly) listOf(ordered.first()) else ordered
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val deferred = scope.async {
+        val deferred = helperScope.async {
             for (provider in providers) {
                 val enabled = provider.isEnabled(context)
 
@@ -98,9 +98,8 @@ constructor(
             }
             return@async LYRICS_NOT_FOUND
         }
-
+        currentLyricsJob = deferred
         val lyrics = deferred.await()
-        scope.cancel()
         return lyrics
     }
 
@@ -134,7 +133,7 @@ constructor(
 
         val allResult = mutableListOf<LyricsResult>()
         val providers = orderedProviders()
-        currentLyricsJob = CoroutineScope(SupervisorJob() + Dispatchers.IO).async {
+        val job = helperScope.async {
             providers.forEach { provider ->
                 if (provider.isEnabled(context)) {
                     try {
@@ -151,8 +150,8 @@ constructor(
             }
             cache.put(cacheKey, allResult)
         }
-
-        currentLyricsJob?.join()
+        currentLyricsJob = job
+        job.join()
     }
 
     private suspend fun orderedProviders(): List<LyricsProvider> {

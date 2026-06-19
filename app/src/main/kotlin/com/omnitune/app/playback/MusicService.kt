@@ -66,6 +66,10 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
 import com.omnitune.app.constants.AudioNormalizationKey
+import com.omnitune.app.constants.ScrobbleDelayPercentKey
+import com.omnitune.app.constants.ScrobbleDelaySecondsKey
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
@@ -118,6 +122,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
     lateinit var connectivityObserver: NetworkConnectivityObserver
     val waitingForNetworkConnection = MutableStateFlow(false)
 
+    // OMNITUNE: Playback tracking
+    private var lastRecordedMediaId: String? = null
+    private var playbackTrackerJob: Job? = null
+
     val currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
     var queueTitle: String? = null
     val queueRestoreCompleted = MutableStateFlow(false)
@@ -132,7 +140,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         createNotificationChannel()
 
         initializePlayer()
-        sleepTimer = SleepTimer(player)
+        sleepTimer = SleepTimer(player, scope)
         observePreferences()
 
         // Mark queue restore as done (no persistent queue implementation yet)
@@ -231,8 +239,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 setSmallIcon(R.drawable.ic_launcher_foreground)
             }
         )
-        
-        setupEqualizer()
     }
 
     // OMNITUNE: System equalizer integration
@@ -262,6 +268,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             Timber.w(e, "Failed to apply EQ bands")
         }
     }
+
+    private var autoSkipNextOnError = true
 
     /**
      * Observes user preferences from DataStore and applies them to the player in real-time.
@@ -321,6 +329,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
         scope.launch {
             ds.data.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
                 audioNormalizationEnabled.value = enabled
+            }
+        }
+
+        // Auto skip on error
+        scope.launch {
+            ds.data.map { it[AutoSkipNextOnErrorKey] ?: true }.distinctUntilChanged().collect { autoSkip ->
+                autoSkipNextOnError = autoSkip
             }
         }
     }
@@ -444,9 +459,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             } else {
                 database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
             }
-            com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+            try {
+                com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to sync like with YouTube")
+            }
+            withContext(Dispatchers.Main) {
+                currentMediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
+            }
         }
-        currentMediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
     }
 
     fun toggleLibrary() {
@@ -461,9 +482,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 meta.toSongEntity().copy(inLibrary = java.time.LocalDateTime.now())
             }
             database.upsert(updated)
+            withContext(Dispatchers.Main) {
+                val newInLibrary = if (meta.inLibrary == null) java.time.LocalDateTime.now() else null
+                currentMediaMetadata.value = meta.copy(inLibrary = newInLibrary, liked = if (newInLibrary != null) meta.liked else false)
+            }
         }
-        val newInLibrary = if (meta.inLibrary == null) java.time.LocalDateTime.now() else null
-        currentMediaMetadata.value = meta.copy(inLibrary = newInLibrary, liked = if (newInLibrary != null) meta.liked else false)
     }
 
     fun toggleStartRadio() {
@@ -506,6 +529,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
         crossfadeAudio?.onPlaybackStateChanged(state)
+        if (state == Player.STATE_READY && systemEqualizer == null) {
+            setupEqualizer()
+        }
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -513,6 +539,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         val meta = mediaItem?.metadata ?: currentMediaMetadata.value
         currentMediaMetadata.value = meta
         updateNotification()
+        startPlaybackTracker(mediaItem)
 
         // Fetch lyrics for the current song in the background
         meta?.let { metadata ->
@@ -544,18 +571,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
         Timber.tag("MusicService").e(error, "Player error")
         reportException(error)
 
-        // Auto-skip to next track on error if preference is enabled
-        scope.launch {
-            val autoSkip = try {
-                applicationContext.dataStore.data.first()[AutoSkipNextOnErrorKey] ?: true
-            } catch (e: Exception) {
-                true // Default to auto-skip if we can't read the preference
-            }
-            if (autoSkip && player.hasNextMediaItem()) {
-                Timber.tag("MusicService").i("Auto-skipping to next track after error")
-                player.seekToNextMediaItem()
-                player.prepare()
-            }
+        if (autoSkipNextOnError && player.hasNextMediaItem()) {
+            Timber.tag("MusicService").i("Auto-skipping to next track after error")
+            player.seekToNextMediaItem()
+            player.prepare()
         }
     }
 
@@ -563,30 +582,72 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private fun updateNotification() {
         try {
             val customLayout = listOf(
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_PLAY)
+                    .setSessionCommand(CommandToggleLike)
                     .setDisplayName("Like")
                     .setIconResId(android.R.drawable.ic_input_add)
-                    .setSessionCommand(CommandToggleLike)
                     .build(),
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_PLAY)
+                    .setSessionCommand(CommandToggleRepeatMode)
                     .setDisplayName("Repeat")
                     .setIconResId(android.R.drawable.ic_menu_recent_history)
-                    .setSessionCommand(CommandToggleRepeatMode)
                     .build(),
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_PLAY)
+                    .setSessionCommand(CommandToggleShuffle)
                     .setDisplayName("Shuffle")
                     .setIconResId(android.R.drawable.ic_menu_sort_by_size)
-                    .setSessionCommand(CommandToggleShuffle)
                     .build(),
-                CommandButton.Builder()
+                CommandButton.Builder(CommandButton.ICON_PLAY)
+                    .setSessionCommand(CommandToggleStartRadio)
                     .setDisplayName("Radio")
                     .setIconResId(android.R.drawable.ic_menu_share)
-                    .setSessionCommand(CommandToggleStartRadio)
                     .build(),
             )
             mediaSession?.setCustomLayout(customLayout)
         } catch (e: Exception) {
             reportException(e)
+        }
+    }
+    private fun startPlaybackTracker(mediaItem: MediaItem?) {
+        playbackTrackerJob?.cancel()
+        val mediaId = mediaItem?.mediaId ?: return
+        if (mediaId == lastRecordedMediaId) return
+
+        playbackTrackerJob = scope.launch(Dispatchers.IO) {
+            var durationMs = player.duration
+            while (durationMs == C.TIME_UNSET || durationMs <= 0L) {
+                delay(1000)
+                if (!isActive) return@launch
+                // Safe way to get duration on main thread
+                durationMs = withContext(Dispatchers.Main) { player.duration }
+            }
+
+            if (durationMs < 30_000L) return@launch // Skip very short tracks
+
+            val ds = applicationContext.dataStore
+            val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
+            val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
+            
+            // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
+            val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
+
+            while (isActive) {
+                val (currentPos, currentId) = withContext(Dispatchers.Main) { 
+                    Pair(player.currentPosition, player.currentMediaItem?.mediaId) 
+                }
+                
+                if (currentId == mediaId) {
+                    if (currentPos >= thresholdMs) {
+                        Timber.tag("MusicService").d("Recording play count for $mediaId")
+                        database.incrementPlayCount(mediaId)
+                        lastRecordedMediaId = mediaId
+                        break
+                    }
+                } else {
+                    break
+                }
+                delay(1000)
+            }
         }
     }
 

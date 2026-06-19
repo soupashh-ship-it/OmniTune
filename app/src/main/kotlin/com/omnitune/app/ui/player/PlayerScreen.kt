@@ -14,6 +14,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +44,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -323,8 +327,12 @@ private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modi
     val player = playerConnection?.player
     val currentMediaId = player?.currentMediaItem?.mediaId
     var position by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection?.player) { while (true) { position = player?.currentPosition ?: 0L; delay(200) } }
-    val parsedLines = remember(lyricsEntity?.id, currentMediaId) { lyricsEntity?.lyrics?.let { LyricsUtils.parseLyrics(it) } ?: emptyList() }
+    LaunchedEffect(playerConnection?.player) { while (true) { position = player?.currentPosition ?: 0L; delay(50) } }
+    val parsedLines = remember(lyricsEntity?.id, currentMediaId) { 
+        lyricsEntity?.lyrics?.let { 
+            if (LyricsUtils.isTtml(it)) LyricsUtils.parseTtml(it) else LyricsUtils.parseLyrics(it) 
+        } ?: emptyList() 
+    }
     if (parsedLines.isEmpty()) return
     val currentLineIndex = remember(position, parsedLines.size) { if (parsedLines.isEmpty()) -1 else LyricsUtils.findCurrentLineIndex(parsedLines, position) }
     val listState = rememberLazyListState()
@@ -334,11 +342,42 @@ private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modi
             itemsIndexed(parsedLines) { index, line ->
                 val isCurrent = index == currentLineIndex
                 val alpha by animateFloatAsState(targetValue = when { isCurrent -> 1f; kotlin.math.abs(index - currentLineIndex) <= 2 -> 0.5f; else -> 0.2f }, label = "lyrics_alpha")
-                Text(line.text, style = if (isCurrent) androidx.compose.material3.MaterialTheme.typography.titleMedium else androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                    color = if (isCurrent) OmniColors.Secondary else OmniColors.TextSecondary, fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp),
-                    fontSize = if (isCurrent) 16.sp else 14.sp)
+                
+                val textStyle = if (isCurrent) androidx.compose.material3.MaterialTheme.typography.titleMedium else androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                val fontSize = if (isCurrent) 16.sp else 14.sp
+                val fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
+
+                if (line.words != null && line.words.isNotEmpty()) {
+                    val annotatedString = androidx.compose.ui.text.buildAnnotatedString {
+                        line.words.forEach { word ->
+                            val wordStartMs = (word.startTime * 1000).toLong()
+                            val wordColor = if (isCurrent) {
+                                if (position >= wordStartMs) OmniColors.Secondary else OmniColors.TextPrimary.copy(alpha = 0.5f)
+                            } else {
+                                if (index < currentLineIndex) OmniColors.Secondary.copy(alpha = 0.5f) else OmniColors.TextSecondary
+                            }
+                            
+                            withStyle(androidx.compose.ui.text.SpanStyle(color = wordColor)) {
+                                append(word.text)
+                                append(" ")
+                            }
+                        }
+                    }
+                    Text(
+                        text = annotatedString,
+                        style = textStyle,
+                        fontWeight = fontWeight,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp).alpha(alpha),
+                        fontSize = fontSize
+                    )
+                } else {
+                    Text(line.text, style = textStyle,
+                        color = if (isCurrent) OmniColors.Secondary else OmniColors.TextSecondary, fontWeight = fontWeight,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 3.dp).alpha(alpha),
+                        fontSize = fontSize)
+                }
             }
         }
     }

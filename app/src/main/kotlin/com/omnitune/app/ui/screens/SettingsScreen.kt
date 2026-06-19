@@ -53,6 +53,7 @@ import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.PreferenceStore
+import androidx.hilt.navigation.compose.hiltViewModel
 
 // ── Settings Sections ──
 
@@ -529,6 +530,7 @@ private fun <T : Enum<T>> EnumPreferenceRow(
     options: List<T>,
     current: T,
     key: androidx.datastore.preferences.core.Preferences.Key<String>,
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -573,9 +575,7 @@ private fun <T : Enum<T>> EnumPreferenceRow(
             onDismiss = { showDialog = false },
             onSelected = { selected ->
                 showDialog = false
-                PreferenceStore.launchEdit(context.dataStore) {
-                    this[key] = selected.name
-                }
+                viewModel.updatePreference(context, key, selected.name)
             },
         )
     }

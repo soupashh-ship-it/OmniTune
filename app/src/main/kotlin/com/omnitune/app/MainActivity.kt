@@ -70,6 +70,10 @@ import androidx.compose.runtime.compositionLocalOf
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.constants.DynamicThemeKey
+import com.omnitune.app.utils.dataStore
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.map
 import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.queues.ListQueue
@@ -115,7 +119,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            OmniTuneTheme {
+            val context = LocalContext.current
+            val dynamicTheme by context.dataStore.data
+                .map { it[DynamicThemeKey] ?: false }
+                .collectAsState(initial = false)
+                
+            OmniTuneTheme(dynamicColor = dynamicTheme) {
                 CompositionLocalProvider(LocalPlayerConnection provides playerConnection) {
                     Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) { OmniTuneMainScreen() }
                 }

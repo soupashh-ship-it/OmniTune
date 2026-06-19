@@ -77,7 +77,7 @@ fun HomeScreen(
         }
         item { OmniSectionHeader(title = "Quick Picks", action = null) }
         item {
-            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            androidx.compose.foundation.lazy.LazyRow(modifier = Modifier.height(140.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (quickPicks.isEmpty()) {
                     items(5) {
                         GlassCard(modifier = Modifier.size(140.dp)) {
