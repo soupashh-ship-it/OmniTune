@@ -1669,4 +1669,10 @@ interface DatabaseDao {
 
     @Query("DELETE FROM song_skip WHERE songId = :songId")
     suspend fun deleteSkip(songId: String)
+
+    @Query("SELECT song AS songId, sum(count) AS playCount FROM playCount WHERE song IN (:songIds) GROUP BY song")
+    suspend fun getPlayCounts(songIds: List<String>): List<com.omnitune.app.db.models.SongPlayCount>
+
+    @Query("SELECT songId, skipCount FROM song_skip WHERE songId IN (:songIds)")
+    suspend fun getSkipCounts(songIds: List<String>): List<com.omnitune.app.db.models.SongSkipCount>
 }

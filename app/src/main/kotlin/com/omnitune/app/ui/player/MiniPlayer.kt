@@ -7,6 +7,7 @@ package com.omnitune.app.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -196,6 +197,30 @@ fun MiniPlayer(
             // Title + Artist with better spacing
             Box(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 4.dp)) {
                 mediaMetadata?.let { MiniMediaInfo(mediaMetadata = it) }
+            }
+
+            // OMNITUNE: Scrobbling badge
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val lastFmEnabled by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.EnableLastFMScrobblingKey, false)
+
+            if (lastFmEnabled && isPlaying) {
+                val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "scrobble_pulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.4f,
+                    targetValue = 1.0f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable<Float>(
+                        animation = androidx.compose.animation.core.tween<Float>(800),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "scrobble_alpha"
+                )
+                Box(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(OmniColors.Hot.copy(alpha = pulseAlpha))
+                )
             }
             // Playback controls
             if (hasPlayer) {

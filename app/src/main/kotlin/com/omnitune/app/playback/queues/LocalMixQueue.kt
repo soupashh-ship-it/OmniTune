@@ -28,7 +28,7 @@ class LocalMixQueue(
             database.relatedSongs(songId)
         }
         val uniqueRelated = relatedSongs.filter { song -> song.id !in playlistSongIds }.distinctBy { it.id }
-        val finalMix = uniqueRelated.take(maxMixSize)
+        val finalMix = uniqueRelated.smartShuffle(database).take(maxMixSize)
 
         Queue.Status(
             title = "Mix from Playlist",
@@ -39,4 +39,23 @@ class LocalMixQueue(
 
     override fun hasNextPage(): Boolean = false
     override suspend fun nextPage(): List<MediaItem> = emptyList()
+}
+
+suspend fun List<com.omnitune.app.db.entities.Song>.smartShuffle(database: MusicDatabase): List<com.omnitune.app.db.entities.Song> {
+    val songIds = this.map { it.song.id }
+    val playCounts = database.getPlayCounts(songIds).associateBy { it.songId }
+    val skipCounts = database.getSkipCounts(songIds).associateBy { it.songId }
+
+    val maxPlay = playCounts.values.maxOfOrNull { it.playCount }?.toFloat() ?: 1f
+    val maxSkip = skipCounts.values.maxOfOrNull { it.skipCount }?.toFloat() ?: 1f
+
+    return this
+        .map { song ->
+            val playScore = (playCounts[song.song.id]?.playCount?.toFloat() ?: 0f) / maxPlay
+            val skipScore = (skipCounts[song.song.id]?.skipCount?.toFloat() ?: 0f) / maxSkip
+            val weight = (0.7f * playScore) - (0.3f * skipScore) + 0.1f  // base weight floor
+            song to weight
+        }
+        .sortedByDescending { (_, weight) -> weight + (Math.random().toFloat() * 0.4f) } // weighted random
+        .map { (song, _) -> song }
 }

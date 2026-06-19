@@ -171,6 +171,14 @@ fun PlayerScreen(
                     }
                 }
             }
+            com.omnitune.app.ui.component.AudioVisualizer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp),
+                isPlaying = isPlaying,
+                color = OmniColors.Primary.copy(alpha = 0.4f),
+                activeColor = OmniColors.Primary,
+            )
             // Lyrics
             LyricsGlassPanel(playerConnection = playerConnection, modifier = Modifier.weight(0.25f))
             // Song Info
