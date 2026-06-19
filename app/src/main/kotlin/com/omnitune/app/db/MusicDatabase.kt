@@ -57,7 +57,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 2
+private const val CURRENT_VERSION = 3
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -148,9 +148,17 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE Song ADD COLUMN download_state INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
             val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(DatabaseCallback())
                 .fallbackToDestructiveMigration()
                 .fallbackToDestructiveMigrationOnDowngrade()
