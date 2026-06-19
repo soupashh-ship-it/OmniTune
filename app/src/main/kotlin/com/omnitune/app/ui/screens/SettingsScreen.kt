@@ -233,7 +233,6 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
 
     SettingsCategoryLabel("Playback Behavior")
     
-    // OMNITUNE: Equalizer row
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -247,6 +246,16 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         Icon(painterResource(R.drawable.ic_arrow_back), "Open", tint = OmniColors.TextPrimary.copy(alpha = 0.4f),
              modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = 180f })
     }
+
+    IntPreferenceSliderRow(
+        label = "Crossfade Duration",
+        description = "Fade between songs (seconds)",
+        key = AudioCrossfadeDurationKey,
+        defaultValue = 0,
+        valueRange = 0f..15f,
+        steps = 14,
+        valueFormat = { if (it == 0) "Off" else "${it}s" }
+    )
     
     TogglePreferenceRow(
         label = "Skip Silence",
@@ -643,4 +652,56 @@ private fun Divider() {
             .padding(horizontal = 16.dp)
             .background(OmniColors.GlassBorderLight),
     )
+}
+
+@Composable
+private fun IntPreferenceSliderRow(
+    label: String,
+    description: String,
+    key: androidx.datastore.preferences.core.Preferences.Key<Int>,
+    defaultValue: Int,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+    valueFormat: (Int) -> String = { it.toString() }
+) {
+    var value by rememberPreference(key, defaultValue)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    label,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    description,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextMuted,
+                )
+            }
+            Text(
+                valueFormat(value),
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.Primary,
+            )
+        }
+        androidx.compose.material3.Slider(
+            value = value.toFloat(),
+            onValueChange = { value = it.toInt() },
+            valueRange = valueRange,
+            steps = steps,
+            colors = androidx.compose.material3.SliderDefaults.colors(
+                thumbColor = OmniColors.Primary,
+                activeTrackColor = OmniColors.Primary,
+                inactiveTrackColor = OmniColors.GlassSurface
+            ),
+            modifier = Modifier.padding(top = 8.dp)
+        )
+    }
 }

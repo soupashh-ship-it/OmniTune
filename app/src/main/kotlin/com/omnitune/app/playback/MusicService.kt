@@ -58,10 +58,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.omnitune.app.constants.AudioCrossfadeDurationKey
+import com.omnitune.app.constants.AudioNormalizationKey
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
@@ -96,6 +100,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     lateinit var player: ExoPlayer
         private set
+
+    // OMNITUNE: Crossfade state
+    var playerVolume = MutableStateFlow(1f)
+    private val audioFocusVolumeFactor = MutableStateFlow(1f)
+    private val playbackFadeFactor = MutableStateFlow(1f)
+    private val crossfadeDurationMs = MutableStateFlow(0)
+    private val audioNormalizationEnabled = MutableStateFlow(true)
+    private var crossfadeAudio: CrossfadeAudio? = null
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -177,6 +189,31 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         sessionCallback.onPlayerReady(player)
 
+        crossfadeAudio = CrossfadeAudio(
+            player = player,
+            database = database,
+            crossfadeDurationMs = crossfadeDurationMs,
+            playbackFadeFactor = playbackFadeFactor,
+            playerVolume = playerVolume,
+            audioFocusVolumeFactor = audioFocusVolumeFactor,
+            audioNormalizationEnabled = audioNormalizationEnabled,
+            maxSafeGainFactor = 3.16f,
+            overlapPlayerFactory = {
+                ExoPlayer.Builder(this)
+                    .setMediaSourceFactory(DefaultMediaSourceFactory(this))
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                            .setUsage(C.USAGE_MEDIA)
+                            .build(),
+                        true
+                    )
+                    .setHandleAudioBecomingNoisy(false)
+                    .build()
+            }
+        )
+        crossfadeAudio?.start(scope)
+
         mediaSession = MediaLibrarySession.Builder(this, player, sessionCallback)
             .setSessionActivity(
                 PendingIntent.getActivity(
@@ -252,8 +289,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
         // Player Volume
         scope.launch {
             ds.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
-                player.volume = volume.coerceIn(0f, 1f)
-                Timber.tag("MusicService").d("Player volume: $volume")
+                playerVolume.value = volume.coerceIn(0f, 1f)
+            }
+        }
+
+        // Combine volumes for crossfade
+        scope.launch {
+            combine(playerVolume, playbackFadeFactor) { vol, fade ->
+                (vol * fade).coerceIn(0f, 1f)
+            }.collectLatest { finalVolume ->
+                player.volume = finalVolume
             }
         }
 
@@ -262,6 +307,20 @@ class MusicService : MediaLibraryService(), Player.Listener {
             ds.data.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
                 player.repeatMode = mode
                 Timber.tag("MusicService").d("Repeat mode: $mode")
+            }
+        }
+
+        // Crossfade
+        scope.launch {
+            ds.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged().collectLatest { durationMs ->
+                crossfadeDurationMs.value = durationMs
+            }
+        }
+
+        // Audio Normalization
+        scope.launch {
+            ds.data.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
+                audioNormalizationEnabled.value = enabled
             }
         }
     }
@@ -425,6 +484,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onDestroy() {
         Timber.tag("MusicService").i("MusicService destroyed")
+        try {
+            crossfadeAudio?.release()
+            crossfadeAudio = null
+        } catch (_: Exception) {}
         systemEqualizer?.release()
         systemEqualizer = null
         instance = null
@@ -442,9 +505,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
+        crossfadeAudio?.onPlaybackStateChanged(state)
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        crossfadeAudio?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: currentMediaMetadata.value
         currentMediaMetadata.value = meta
         updateNotification()
