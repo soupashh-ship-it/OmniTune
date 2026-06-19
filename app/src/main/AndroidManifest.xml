@@ -31,13 +31,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".DebugActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:launchMode="singleTask"
-            android:process=":crash"
-            android:theme="@style/Theme.OmniTune" />
 
         <service
             android:name=".playback.MusicService"

@@ -213,12 +213,14 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     val pw = PrintWriter(sw)
                     throwable.printStackTrace(pw)
                     val stack = sw.toString()
-                    val intent = Intent(this@OmniTuneApp, DebugActivity::class.java).apply {
-                        putExtra(DebugActivity.EXTRA_STACK_TRACE, stack)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    if (BuildConfig.DEBUG) {
+                        val intent = Intent().setClassName(this@OmniTuneApp, "com.omnitune.app.DebugActivity").apply {
+                            putExtra("extra_stack_trace", stack)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        }
+                        startActivity(intent)
+                        try { Thread.sleep(100) } catch (_: InterruptedException) {}
                     }
-                    startActivity(intent)
-                    try { Thread.sleep(100) } catch (_: InterruptedException) {}
                 } catch (e: Exception) {
                     reportException(e)
                 } finally {
