@@ -57,7 +57,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 1
+private const val CURRENT_VERSION = 2
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -131,7 +131,7 @@ class MusicDatabase(
         PlaylistSongMapPreview::class,
     ],
     version = CURRENT_VERSION,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class InternalDatabase : RoomDatabase() {
@@ -140,57 +140,24 @@ abstract class InternalDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "song.db"
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Empty migration: The schema for version 1 in OmniTune was already the 
+                // modern schema. We just bump the version to 2 to enable proper 
+                // exportSchema tracking moving forward.
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
-            val universalMigrations =
-                (2 until CURRENT_VERSION)
-                    .map { from -> UniversalMigration(context, from, CURRENT_VERSION) }
-                    .toTypedArray()
-
-            fun build(): InternalDatabase =
-                Room
-                    .databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        *universalMigrations,
-                    )
-                    .addCallback(DatabaseCallback())
-                    .fallbackToDestructiveMigration()
-                    .fallbackToDestructiveMigrationOnDowngrade()
-                    .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                    .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
-                    .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
-                    .build()
-
-            fun shouldResetDb(t: Throwable): Boolean {
-                val msg = (t.message ?: "").lowercase()
-                return msg.contains("room cannot verify the data integrity") ||
-                    msg.contains("forgot to update the version number") ||
-                    msg.contains("migration didn't properly handle") ||
-                    msg.contains("room openhelper verification failed")
-            }
-
-            var db = build()
-            try {
-                db.openHelper.writableDatabase
-            } catch (t: Throwable) {
-                if (!shouldResetDb(t)) throw t
-                Log.e(TAG, "Database open failed, attempting schema repair", t)
-                runCatching { db.close() }
-
-                val repaired =
-                    runCatching { SchemaTools.repairDatabaseFile(context = context, name = DB_NAME) }
-                        .onFailure { Log.e(TAG, "Schema repair failed, recreating database", it) }
-                        .isSuccess
-
-                db = build()
-                runCatching { db.openHelper.writableDatabase }.getOrElse { openError ->
-                    Log.e(TAG, "Database still failed to open after schema repair=$repaired, recreating database", openError)
-                    runCatching { db.close() }
-                    runCatching { context.deleteDatabase(DB_NAME) }
-                    db = build()
-                    db.openHelper.writableDatabase
-                }
-            }
+            val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
+                .addMigrations(MIGRATION_1_2)
+                .addCallback(DatabaseCallback())
+                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigrationOnDowngrade()
+                .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
+                .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
+                .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
+                .build()
 
             return MusicDatabase(delegate = db)
         }
@@ -552,223 +519,3 @@ private object SchemaTools {
     )
 }
 
-// =============================================================================
-// LEGACY MIGRATION v1 -> v2 (Major schema rewrite, must be kept)
-// =============================================================================
-
-private val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        data class OldSong(val id: String, val title: String, val duration: Int, val liked: Boolean,
-            val totalPlayTime: Long, val downloadState: Int, val createDate: LocalDateTime, val modifyDate: LocalDateTime)
-
-        val converters = Converters()
-        val artistMap = mutableMapOf<Int, String>()
-        val artists = mutableListOf<ArtistEntity>()
-        
-        db.query("SELECT * FROM artist".toSQLiteQuery()).use { cursor ->
-            while (cursor.moveToNext()) {
-                val oldId = cursor.getInt(0)
-                val newId = ArtistEntity.generateArtistId()
-                artistMap[oldId] = newId
-                artists.add(ArtistEntity(id = newId, name = cursor.getString(1)))
-            }
-        }
-
-        val playlistMap = mutableMapOf<Int, String>()
-        val playlists = mutableListOf<PlaylistEntity>()
-        db.query("SELECT * FROM playlist".toSQLiteQuery()).use { cursor ->
-            while (cursor.moveToNext()) {
-                val oldId = cursor.getInt(0)
-                val newId = PlaylistEntity.generatePlaylistId()
-                playlistMap[oldId] = newId
-                playlists.add(PlaylistEntity(id = newId, name = cursor.getString(1)))
-            }
-        }
-        
-        val playlistSongMaps = mutableListOf<PlaylistSongMap>()
-        db.query("SELECT * FROM playlist_song".toSQLiteQuery()).use { cursor ->
-            while (cursor.moveToNext()) {
-                playlistSongMaps.add(PlaylistSongMap(
-                    playlistId = playlistMap[cursor.getInt(1)]!!,
-                    songId = cursor.getString(2),
-                    position = cursor.getInt(3),
-                ))
-            }
-        }
-        playlistSongMaps.sortBy { it.position }
-        
-        val songs = mutableListOf<OldSong>()
-        val songArtistMaps = mutableListOf<SongArtistMap>()
-        db.query("SELECT * FROM song".toSQLiteQuery()).use { cursor ->
-            while (cursor.moveToNext()) {
-                val songId = cursor.getString(0)
-                songs.add(OldSong(
-                    id = songId,
-                    title = cursor.getString(1),
-                    duration = cursor.getInt(3),
-                    liked = cursor.getInt(4) == 1,
-                    totalPlayTime = 0,
-                    downloadState = 0,
-                    createDate = Instant.ofEpochMilli(Date(cursor.getLong(8)).time).atZone(ZoneOffset.UTC).toLocalDateTime(),
-                    modifyDate = Instant.ofEpochMilli(Date(cursor.getLong(9)).time).atZone(ZoneOffset.UTC).toLocalDateTime(),
-                ))
-                songArtistMaps.add(SongArtistMap(songId = songId, artistId = artistMap[cursor.getInt(2)]!!, position = 0))
-            }
-        }
-        
-        // Drop old tables and create new schema
-        db.execSQL("DROP TABLE IF EXISTS song")
-        db.execSQL("DROP TABLE IF EXISTS artist")
-        db.execSQL("DROP TABLE IF EXISTS playlist")
-        db.execSQL("DROP TABLE IF EXISTS playlist_song")
-        
-        db.execSQL("CREATE TABLE IF NOT EXISTS `song` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `duration` INTEGER NOT NULL, `thumbnailUrl` TEXT, `albumId` TEXT, `albumName` TEXT, `liked` INTEGER NOT NULL, `totalPlayTime` INTEGER NOT NULL, `isTrash` INTEGER NOT NULL, `download_state` INTEGER NOT NULL, `create_date` INTEGER NOT NULL, `modify_date` INTEGER NOT NULL, PRIMARY KEY(`id`))")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `artist` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `thumbnailUrl` TEXT, `bannerUrl` TEXT, `description` TEXT, `createDate` INTEGER NOT NULL, `lastUpdateTime` INTEGER NOT NULL, PRIMARY KEY(`id`))")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `album` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `year` INTEGER, `thumbnailUrl` TEXT, `songCount` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `createDate` INTEGER NOT NULL, `lastUpdateTime` INTEGER NOT NULL, PRIMARY KEY(`id`))")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `playlist` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `author` TEXT, `authorId` TEXT, `year` INTEGER, `thumbnailUrl` TEXT, `createDate` INTEGER NOT NULL, `lastUpdateTime` INTEGER NOT NULL, PRIMARY KEY(`id`))")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `song_artist_map` (`songId` TEXT NOT NULL, `artistId` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`songId`, `artistId`), FOREIGN KEY(`songId`) REFERENCES `song`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`artistId`) REFERENCES `artist`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_artist_map_songId` ON `song_artist_map` (`songId`)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_artist_map_artistId` ON `song_artist_map` (`artistId`)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `song_album_map` (`songId` TEXT NOT NULL, `albumId` TEXT NOT NULL, `index` INTEGER, PRIMARY KEY(`songId`, `albumId`), FOREIGN KEY(`songId`) REFERENCES `song`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`albumId`) REFERENCES `album`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_album_map_songId` ON `song_album_map` (`songId`)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_album_map_albumId` ON `song_album_map` (`albumId`)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `album_artist_map` (`albumId` TEXT NOT NULL, `artistId` TEXT NOT NULL, `order` INTEGER NOT NULL, PRIMARY KEY(`albumId`, `artistId`), FOREIGN KEY(`albumId`) REFERENCES `album`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`artistId`) REFERENCES `artist`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_album_artist_map_albumId` ON `album_artist_map` (`albumId`)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_album_artist_map_artistId` ON `album_artist_map` (`artistId`)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `playlist_song_map` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playlistId` TEXT NOT NULL, `songId` TEXT NOT NULL, `position` INTEGER NOT NULL, FOREIGN KEY(`playlistId`) REFERENCES `playlist`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(`songId`) REFERENCES `song`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_map_playlistId` ON `playlist_song_map` (`playlistId`)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_map_songId` ON `playlist_song_map` (`songId`)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `download` (`id` INTEGER NOT NULL, `songId` TEXT NOT NULL, PRIMARY KEY(`id`))")
-        db.execSQL("CREATE TABLE IF NOT EXISTS `search_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `query` TEXT NOT NULL)")
-        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_search_history_query` ON `search_history` (`query`)")
-        db.execSQL("CREATE VIEW `sorted_song_artist_map` AS SELECT * FROM song_artist_map ORDER BY position")
-        db.execSQL("CREATE VIEW `playlist_song_map_preview` AS SELECT * FROM playlist_song_map WHERE position <= 3 ORDER BY position")
-        
-        // Insert data
-        artists.forEach { db.insert("artist", SQLiteDatabase.CONFLICT_ABORT, contentValuesOf(
-            "id" to it.id, "name" to it.name,
-            "createDate" to converters.dateToTimestamp(it.lastUpdateTime),
-            "lastUpdateTime" to converters.dateToTimestamp(it.lastUpdateTime))) }
-        
-        songs.forEach { db.insert("song", SQLiteDatabase.CONFLICT_ABORT, contentValuesOf(
-            "id" to it.id, "title" to it.title, "duration" to it.duration, "liked" to it.liked,
-            "totalPlayTime" to it.totalPlayTime, "isTrash" to false, "download_state" to it.downloadState,
-            "create_date" to converters.dateToTimestamp(it.createDate),
-            "modify_date" to converters.dateToTimestamp(it.modifyDate))) }
-        
-        songArtistMaps.forEach { db.insert("song_artist_map", SQLiteDatabase.CONFLICT_ABORT, contentValuesOf(
-            "songId" to it.songId, "artistId" to it.artistId, "position" to it.position)) }
-        
-        playlists.forEach { db.insert("playlist", SQLiteDatabase.CONFLICT_ABORT, contentValuesOf(
-            "id" to it.id, "name" to it.name,
-            "createDate" to converters.dateToTimestamp(LocalDateTime.now()),
-            "lastUpdateTime" to converters.dateToTimestamp(LocalDateTime.now()))) }
-        
-        playlistSongMaps.forEach { db.insert("playlist_song_map", SQLiteDatabase.CONFLICT_ABORT, contentValuesOf(
-            "playlistId" to it.playlistId, "songId" to it.songId, "position" to it.position)) }
-    }
-}
-
-// =============================================================================
-// AUTO MIGRATION SPECS (Required by Room's AutoMigration annotations)
-// =============================================================================
-
-@DeleteColumn.Entries(
-    DeleteColumn(tableName = "song", columnName = "isTrash"),
-    DeleteColumn(tableName = "playlist", columnName = "author"),
-    DeleteColumn(tableName = "playlist", columnName = "authorId"),
-    DeleteColumn(tableName = "playlist", columnName = "year"),
-    DeleteColumn(tableName = "playlist", columnName = "thumbnailUrl"),
-    DeleteColumn(tableName = "playlist", columnName = "createDate"),
-    DeleteColumn(tableName = "playlist", columnName = "lastUpdateTime"),
-)
-@RenameColumn.Entries(
-    RenameColumn(tableName = "song", fromColumnName = "download_state", toColumnName = "downloadState"),
-    RenameColumn(tableName = "song", fromColumnName = "create_date", toColumnName = "createDate"),
-    RenameColumn(tableName = "song", fromColumnName = "modify_date", toColumnName = "modifyDate"),
-)
-class Migration5To6 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.query("SELECT id FROM playlist WHERE id NOT LIKE 'LP%'").use { cursor ->
-            while (cursor.moveToNext()) {
-                db.execSQL("UPDATE playlist SET browseId = '${cursor.getString(0)}' WHERE id = '${cursor.getString(0)}'")
-            }
-        }
-    }
-}
-
-class Migration6To7 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.query("SELECT id, createDate FROM song").use { cursor ->
-            while (cursor.moveToNext()) {
-                db.execSQL("UPDATE song SET inLibrary = ${cursor.getLong(1)} WHERE id = '${cursor.getString(0)}'")
-            }
-        }
-    }
-}
-
-@DeleteColumn.Entries(
-    DeleteColumn(tableName = "song", columnName = "createDate"),
-    DeleteColumn(tableName = "song", columnName = "modifyDate"),
-)
-class Migration7To8 : AutoMigrationSpec
-
-@DeleteTable.Entries(DeleteTable(tableName = "download"))
-class Migration9To10 : AutoMigrationSpec
-
-@DeleteColumn.Entries(
-    DeleteColumn(tableName = "song", columnName = "downloadState"),
-    DeleteColumn(tableName = "artist", columnName = "bannerUrl"),
-    DeleteColumn(tableName = "artist", columnName = "description"),
-    DeleteColumn(tableName = "artist", columnName = "createDate"),
-)
-class Migration10To11 : AutoMigrationSpec
-
-@DeleteColumn.Entries(DeleteColumn(tableName = "album", columnName = "createDate"))
-class Migration11To12 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE album SET bookmarkedAt = lastUpdateTime")
-        db.query("SELECT DISTINCT albumId, albumName FROM song").use { cursor ->
-            while (cursor.moveToNext()) {
-                val albumId = cursor.getString(0)
-                val albumName = cursor.getString(1)
-                db.insert("album", SQLiteDatabase.CONFLICT_IGNORE, contentValuesOf(
-                    "id" to albumId, "title" to albumName, "songCount" to 0, "duration" to 0, "lastUpdateTime" to 0))
-            }
-        }
-        db.query("CREATE INDEX IF NOT EXISTS `index_song_albumId` ON `song` (`albumId`)")
-    }
-}
-
-class Migration12To13 : AutoMigrationSpec
-
-class Migration13To14 : AutoMigrationSpec {
-    @SuppressLint("Range")
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        val now = Converters().dateToTimestamp(LocalDateTime.now())
-        db.execSQL("UPDATE playlist SET createdAt = '$now'")
-        db.execSQL("UPDATE playlist SET lastUpdateTime = '$now'")
-    }
-}
-
-class Migration16To17 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE playlist SET bookmarkedAt = lastUpdateTime")
-        db.execSQL("UPDATE playlist SET isEditable = 1 WHERE browseId IS NOT NULL")
-    }
-}
-
-class Migration18To19 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE song SET explicit = 0 WHERE explicit IS NULL")
-    }
-}
-
-class Migration19To20 : AutoMigrationSpec {
-    override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        db.execSQL("UPDATE song SET explicit = 0 WHERE explicit IS NULL")
-    }
-}
-
-@DeleteColumn.Entries(DeleteColumn(tableName = "song", columnName = "artistName"))
-class Migration20To21 : AutoMigrationSpec
