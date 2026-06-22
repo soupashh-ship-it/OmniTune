@@ -22,6 +22,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -83,6 +86,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var database: MusicDatabase
     @Inject lateinit var lyricsHelper: LyricsHelper
     @Inject lateinit var streamExtractor: com.omnitune.app.data.StreamExtractor
+    @Inject lateinit var downloadUtil: DownloadUtil
 
     inner class MusicBinder : Binder() {
         val service: MusicService get() = this@MusicService
@@ -91,10 +95,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     companion object {
         const val CHANNEL_ID = "music_player"
         const val NOTIFICATION_ID = 1
-
-        @Volatile
-        var instance: MusicService? = null
-            private set
     }
 
     private var mediaSession: MediaLibrarySession? = null
@@ -104,6 +104,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
     var scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + scopeJob + exceptionHandler)
     private val binder = MusicBinder()
+    private val playbackRecoveryPolicy = com.omnitune.app.playback.recovery.PlaybackRecoveryPolicy()
 
 
     val exoPlayer: ExoPlayer get() = player
@@ -141,7 +142,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
         Timber.tag("MusicService").i("MusicService created")
 
         createNotificationChannel()
@@ -207,10 +207,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
             })
         }
 
+        val dataSourceFactory = DefaultDataSource.Factory(this, DefaultHttpDataSource.Factory())
+        val cacheDataSourceFactory = CacheDataSource.Factory()
+            .setCache(downloadUtil.downloadCache)
+            .setUpstreamDataSourceFactory(dataSourceFactory)
+            .setCacheWriteDataSinkFactory(null)
+
         player = ExoPlayer.Builder(this)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this))
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(cacheDataSourceFactory))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -241,8 +247,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
             audioNormalizationEnabled = audioNormalizationEnabled,
             maxSafeGainFactor = 3.16f,
             overlapPlayerFactory = {
+                val overlapDataSourceFactory = DefaultDataSource.Factory(this, DefaultHttpDataSource.Factory())
+                val overlapCacheDataSourceFactory = CacheDataSource.Factory()
+                    .setCache(downloadUtil.downloadCache)
+                    .setUpstreamDataSourceFactory(overlapDataSourceFactory)
+                    .setCacheWriteDataSinkFactory(null)
+                    
                 ExoPlayer.Builder(this)
-                    .setMediaSourceFactory(DefaultMediaSourceFactory(this))
+                    .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(overlapCacheDataSourceFactory))
                     .setAudioAttributes(
                         AudioAttributes.Builder()
                             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -414,7 +426,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val resolvedItems = withContext(Dispatchers.IO) {
                 StreamUrlResolver.resolveMediaItems(
                     initialStatus.items,
-                    streamExtractor
+                    streamExtractor,
+                    downloadUtil
                 )
             }
             if (resolvedItems.isEmpty()) {
@@ -457,7 +470,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             if (radioItems.isNotEmpty()) {
                 // Resolve YouTube video IDs to playable stream URLs before adding to player
                 val resolvedRadioItems = withContext(Dispatchers.IO) {
-                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor)
+                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor, downloadUtil)
                 }
                 if (resolvedRadioItems.isNotEmpty()) {
                     val itemCount = player.mediaItemCount
@@ -552,7 +565,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         systemEqualizer?.release()
         systemEqualizer = null
-        instance = null
         mediaSession?.run {
             sessionCallback.onDestroy()
             release()
@@ -577,6 +589,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        playbackRecoveryPolicy.resetRetry(mediaItem?.mediaId ?: "")
         crossfadeAudio?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
         _currentMediaMetadata.value = meta
@@ -614,10 +627,51 @@ class MusicService : MediaLibraryService(), Player.Listener {
         Timber.tag("MusicService").e(error, "Player error")
         reportException(error)
 
+        val errorType = com.omnitune.app.playback.recovery.PlaybackErrorClassifier.classify(error)
+        val currentMediaItem = player.currentMediaItem
+        val mediaId = currentMediaItem?.mediaId
+        
+        if (mediaId != null && playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
+            Timber.tag("MusicService").w("Recovering from $errorType for mediaId: $mediaId")
+            playbackRecoveryPolicy.incrementRetry(mediaId)
+            
+            // Invalidate caches
+            StreamUrlResolver.invalidate(mediaId)
+            streamExtractor.invalidate(mediaId)
+
+            scope.launch(Dispatchers.Main) {
+                try {
+                    // Start from the original item, not the resolved one, so the resolver sees the yt ID
+                    val originalItem = currentMediaItem.buildUpon().setUri(mediaId).build()
+                    val resolved = withContext(Dispatchers.IO) {
+                        StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil)
+                    }
+                    if (resolved != null) {
+                        val pos = player.currentPosition
+                        val index = player.currentMediaItemIndex
+                        player.replaceMediaItem(index, resolved)
+                        player.seekTo(index, pos)
+                        player.prepare()
+                        player.play()
+                        return@launch
+                    }
+                } catch (e: Exception) {
+                    Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
+                }
+                fallbackSkip()
+            }
+        } else {
+            Timber.tag("MusicService").w("Recovery policy denied retry for $mediaId, error: $errorType")
+            fallbackSkip()
+        }
+    }
+
+    private fun fallbackSkip() {
         if (autoSkipNextOnError && player.hasNextMediaItem()) {
             Timber.tag("MusicService").i("Auto-skipping to next track after error")
             player.seekToNextMediaItem()
             player.prepare()
+            player.play()
         }
     }
 

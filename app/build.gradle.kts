@@ -19,8 +19,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.5.2"
+        versionCode = 11
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -80,6 +80,14 @@ android {
             "/META-INF/*.md"
         )
     }
+
+    lint {
+        disable.add("UnsafeOptInUsageError")
+        disable.add("IconLauncherShape")
+        disable.add("IconLocation")
+        disable.add("UseKtx")
+        disable.add("UseTomlInstead")
+    }
 }
 
 kotlin {
@@ -95,7 +103,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         jvmTarget.set(JvmTarget.JVM_21)
         freeCompilerArgs.addAll(
             "-Xannotation-default-target=param-property",
-            "-opt-in=kotlin.RequiresOptIn"
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=androidx.media3.common.util.UnstableApi"
         )
     }
 }
@@ -137,6 +146,8 @@ dependencies {
     implementation(libs.media3)
     implementation(libs.media3.okhttp)
     implementation(libs.media3.session)
+    implementation(libs.media3.exoplayer.workmanager)
+    implementation(libs.work.runtime)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)

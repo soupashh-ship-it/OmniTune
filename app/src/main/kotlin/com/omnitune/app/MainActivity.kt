@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -56,11 +57,17 @@ import com.omnitune.app.ui.screens.HomeScreen
 import com.omnitune.app.ui.screens.LibraryScreen
 import com.omnitune.app.ui.screens.Screens
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
+import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_DOWNLOADS
 import com.omnitune.app.ui.screens.SearchScreen
 import com.omnitune.app.ui.screens.StatsScreen
 import com.omnitune.app.ui.screens.EqualizerScreen
+import com.omnitune.app.ui.screens.DownloadsScreen
+import com.omnitune.app.ui.screens.LibraryArtistsScreen
+import com.omnitune.app.ui.screens.LibraryAlbumsScreen
+import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
+import android.content.Context
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
@@ -94,10 +101,20 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var database: MusicDatabase
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
 
+    private val serviceConnection = object : android.content.ServiceConnection {
+        override fun onServiceConnected(name: android.content.ComponentName?, service: android.os.IBinder?) {
+            val binder = service as? MusicService.MusicBinder ?: return
+            if (playerConnection == null) {
+                playerConnection = PlayerConnection(this@MainActivity, binder, database, lifecycleScope)
+            }
+        }
+        override fun onServiceDisconnected(name: android.content.ComponentName?) {
+        }
+    }
+
     private fun startMusicServiceSafely() { try { startService(Intent(this, MusicService::class.java)) } catch (e: Exception) { reportException(e) } }
     private fun bindToMusicService() {
-        val service = MusicService.instance ?: return
-        if (playerConnection == null) playerConnection = PlayerConnection(this@MainActivity, service.binder(), database, lifecycleScope)
+        bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -120,9 +137,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
-            val dynamicTheme by context.dataStore.data
-                .map { it[DynamicThemeKey] ?: false }
-                .collectAsState(initial = false)
+            val dynamicThemeFlow = remember(context) { context.dataStore.data.map { it[DynamicThemeKey] ?: false } }
+            val dynamicTheme by dynamicThemeFlow.collectAsState(initial = false)
                 
             OmniTuneTheme(dynamicColor = dynamicTheme) {
                 CompositionLocalProvider(LocalPlayerConnection provides playerConnection) {
@@ -135,13 +151,18 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         startMusicServiceSafely()
-        lifecycleScope.launch { while (MusicService.instance == null) delay(100); bindToMusicService() }
+        bindToMusicService()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unbindService(serviceConnection)
     }
 }
 
-private fun playSongFromSearch(context: android.content.Context, songItem: SongItem) {
-    val service = MusicService.instance ?: run { Toast.makeText(context, "MusicService not ready", Toast.LENGTH_SHORT).show(); return }
-    service.playQueue(ListQueue(items = listOf(songItem.toMediaItem())))
+private fun playSongFromSearch(context: android.content.Context, songItem: SongItem, playerConnection: com.omnitune.app.playback.PlayerConnection?) {
+    val connection = playerConnection ?: run { Toast.makeText(context, "Player not ready", Toast.LENGTH_SHORT).show(); return }
+    connection.playQueue(ListQueue(items = listOf(songItem.toMediaItem())))
 }
 
 @Composable
@@ -166,46 +187,59 @@ fun OmniTuneMainScreen() {
         ) {
             composable(Screens.Home.route) {
                 HomeScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
-                    onResumePlayback = { navController.navigate("player") }, onPlaySong = { song -> MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                    onResumePlayback = { navController.navigate("player") }, onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable(Screens.Stats.route) { StatsScreen() }
             composable(Screens.History.route) { HistoryScreen() }
             composable(Screens.Library.route) {
                 LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
+                    onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToRecentlyPlayed = { navController.navigate("recently_played") },
-                    onNavigateToArtists = { Toast.makeText(context, "Artists — coming soon", Toast.LENGTH_SHORT).show() },
-                    onNavigateToAlbums = { Toast.makeText(context, "Albums — coming soon", Toast.LENGTH_SHORT).show() },
-                    onNavigateToPlaylists = { Toast.makeText(context, "Playlists — coming soon", Toast.LENGTH_SHORT).show() })
+                    onNavigateToArtists = { navController.navigate("library_artists") },
+                    onNavigateToAlbums = { navController.navigate("library_albums") },
+                    onNavigateToPlaylists = { navController.navigate("library_playlists") })
+            }
+            composable("library_artists") {
+                LibraryArtistsScreen(onBack = { navController.popBackStack() }, onNavigateToArtist = { navController.navigate("artist/$it") })
+            }
+            composable("library_albums") {
+                LibraryAlbumsScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") })
+            }
+            composable("library_playlists") {
+                LibraryPlaylistsScreen(onBack = { navController.popBackStack() }, onNavigateToPlaylist = { Toast.makeText(context, "Playlist details coming soon", Toast.LENGTH_SHORT).show() })
             }
             composable("liked_songs") {
                 LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
-                    MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable("recently_played") {
                 RecentlyPlayedScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
-                    MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable(Screens.Search.route) {
                 SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
-                    onNavigateToArtist = { navController.navigate("artist/$it") }, onPlaySong = { playSongFromSearch(context, it) })
+                    onNavigateToArtist = { navController.navigate("artist/$it") }, onPlaySong = { playSongFromSearch(context, it, localPlayerConnection) })
             }
             composable("album/{albumId}") {
                 AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
-                    onPlaySong = { song -> MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable("artist/{artistId}") {
                 ArtistScreen(artistId = it.arguments?.getString("artistId") ?: "", onBack = { navController.popBackStack() },
-                    onPlaySong = { song -> MusicService.instance?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
+                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
                     onNavigateToAlbum = { navController.navigate("album/$it") })
             }
             composable("player") { PlayerScreen(playerConnection = LocalPlayerConnection.current, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
             composable("queue") { QueueScreen(playerConnection = LocalPlayerConnection.current, onBack = { navController.popBackStack() }) }
             composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) }
+            composable(ROUTE_DOWNLOADS) {
+                DownloadsScreen(onBack = { navController.popBackStack() })
+            }
             composable(ROUTE_EQUALIZER) {
                 EqualizerScreen(
                     onBack = { navController.popBackStack() },
                     onApplyBands = { bands ->
-                        MusicService.instance?.applyEqualizerBands(bands)
+                        localPlayerConnection?.applyEqualizerBands(bands)
                     }
                 )
             }
@@ -233,20 +267,43 @@ private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit)
     )
 
     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
-        .shadow(16.dp, OmniShapes.Dock, ambientColor = OmniColors.Primary.copy(alpha = 0.1f), spotColor = OmniColors.Primary.copy(alpha = 0.08f))
+        .shadow(16.dp, OmniShapes.Dock, ambientColor = OmniColors.Primary.copy(alpha = 0.15f), spotColor = OmniColors.Primary.copy(alpha = 0.1f))
         .clip(OmniShapes.Dock).border(1.dp, OmniColors.GlassBorder, OmniShapes.Dock)
-        .background(Brush.verticalGradient(listOf(OmniColors.GlassSurfaceStrong, OmniColors.GlassSurface)))
-        .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+        .background(Brush.verticalGradient(listOf(Color(0xE60C0E16), Color(0xF2080A12))))
+        .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         navItems.forEach { item ->
             val selected = currentRoute == item.route
-            Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
+            
+            val tint by androidx.compose.animation.animateColorAsState(
+                targetValue = if (selected) OmniColors.Secondary else OmniColors.TextMuted,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 250),
+                label = "color"
+            )
+            val iconSize by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (selected) 24.dp else 22.dp,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 250),
+                label = "size"
+            )
+            val backgroundAlpha by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (selected) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 250),
+                label = "bg_alpha"
+            )
+            
+            Box(modifier = Modifier.weight(if (selected) 1.2f else 1f).clip(RoundedCornerShape(16.dp))
                 .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = OmniColors.Secondary.copy(alpha = 0.15f))) { onNavigate(item.route) }
-                .then(if (selected) Modifier.background(Brush.horizontalGradient(listOf(OmniColors.Primary.copy(alpha = 0.2f), OmniColors.Secondary.copy(alpha = 0.15f)))) else Modifier)
-                .padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                .then(if (backgroundAlpha > 0f) Modifier.background(Brush.horizontalGradient(listOf(OmniColors.Primary.copy(alpha = 0.2f * backgroundAlpha), OmniColors.Secondary.copy(alpha = 0.15f * backgroundAlpha)))) else Modifier)
+                .padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Icon(painterResource(item.resId), contentDescription = item.label, tint = if (selected) OmniColors.Secondary else OmniColors.TextMuted, modifier = Modifier.size(22.dp))
-                    if (selected) Text(item.label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = OmniColors.Secondary)
+                    Icon(painterResource(item.resId), contentDescription = item.label, tint = tint, modifier = Modifier.size(iconSize))
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = selected,
+                        enter = androidx.compose.animation.expandVertically(animationSpec = androidx.compose.animation.core.tween(250)) + androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(250)),
+                        exit = androidx.compose.animation.shrinkVertically(animationSpec = androidx.compose.animation.core.tween(250)) + androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(250))
+                    ) {
+                        Text(item.label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = tint, modifier = Modifier.padding(top = 2.dp))
+                    }
                 }
             }
         }

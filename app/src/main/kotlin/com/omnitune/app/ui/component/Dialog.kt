@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -101,7 +102,7 @@ fun DefaultDialog(
                     ) {
                         if (icon != null) {
                             CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.iconContentColor) {
-                                BoxWithConstraints(Modifier.align(Alignment.CenterHorizontally)) {
+                                Box(Modifier.align(Alignment.CenterHorizontally)) {
                                     icon()
                                 }
                             }
@@ -111,7 +112,7 @@ fun DefaultDialog(
                         if (title != null) {
                             CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.titleContentColor) {
                                 ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
-                                    BoxWithConstraints(
+                                    Box(
                                         Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally)
                                     ) {
                                         title()

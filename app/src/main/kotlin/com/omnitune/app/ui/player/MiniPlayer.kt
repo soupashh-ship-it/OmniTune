@@ -161,7 +161,7 @@ fun MiniPlayer(
             .shadow(12.dp, OmniShapes.LG, ambientColor = OmniColors.Primary.copy(alpha = 0.15f), spotColor = OmniColors.Primary.copy(alpha = 0.1f))
             .clip(OmniShapes.LG)
             .border(1.dp, OmniColors.GlassBorder, OmniShapes.LG)
-            .background(Brush.horizontalGradient(listOf(OmniColors.GlassSurfaceStrong, OmniColors.GlassSurface)))
+            .background(Brush.verticalGradient(listOf(Color(0xFF232736).copy(alpha = 0.5f), Color(0xFF0C0E16).copy(alpha = 0.9f))))
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragStart = { dragStartTime = System.currentTimeMillis(); totalDragDistance = 0f },

@@ -33,6 +33,7 @@ fun EmptyPlaceholder(
     icon: Int,
     text: String,
     modifier: Modifier = Modifier,
+    action: @Composable (() -> Unit)? = null
 ) {
     Box(
         contentAlignment = Alignment.Center,
@@ -68,6 +69,11 @@ fun EmptyPlaceholder(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
             )
+
+            if (action != null) {
+                Spacer(Modifier.height(24.dp))
+                action()
+            }
         }
     }
 }

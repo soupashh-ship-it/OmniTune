@@ -26,6 +26,11 @@ object StreamUrlResolver {
     /** In-memory cache for resolved stream results (videoId -> CachedStream). */
     private val streamCache = LruCache<String, CachedStream>(50)
 
+    fun invalidate(videoId: String) {
+        streamCache.remove(videoId)
+        Timber.d("StreamUrlResolver: invalidated cache for $videoId")
+    }
+
     /**
      * Returns true if the given URI is a bare YouTube video ID (not a standard URL).
      */
@@ -43,9 +48,26 @@ object StreamUrlResolver {
     suspend fun resolveMediaItem(
         mediaItem: MediaItem,
         streamExtractor: StreamExtractor,
+        downloadUtil: DownloadUtil? = null
     ): MediaItem? {
         val videoId = mediaItem.localConfiguration?.uri?.toString()?.trim() ?: return null
         if (!isYouTubeVideoId(mediaItem.localConfiguration?.uri)) return null
+
+        // Check if the item is fully downloaded
+        if (downloadUtil != null) {
+            try {
+                val download = downloadUtil.downloadManager.downloadIndex.getDownload(videoId)
+                if (download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
+                    Timber.d("StreamUrlResolver: offline cache hit for $videoId")
+                    return mediaItem.buildUpon()
+                        .setUri(Uri.parse("file:///offline/$videoId"))
+                        .setCustomCacheKey(videoId)
+                        .build()
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Error checking download index for $videoId")
+            }
+        }
 
         val cached = streamCache.get(videoId)
         if (cached != null) {
@@ -55,6 +77,7 @@ object StreamUrlResolver {
                 return mediaItem.buildUpon()
                     .setUri(Uri.parse(cached.streamResult.url))
                     .setMimeType(cached.streamResult.contentType)
+                    .setCustomCacheKey(videoId)
                     .build()
             } else {
                 streamCache.remove(videoId)
@@ -74,6 +97,7 @@ object StreamUrlResolver {
         return mediaItem.buildUpon()
             .setUri(Uri.parse(streamResult.url))
             .setMimeType(streamResult.contentType)
+            .setCustomCacheKey(videoId)
             .build()
     }
 
@@ -84,13 +108,14 @@ object StreamUrlResolver {
     suspend fun resolveMediaItems(
         items: List<MediaItem>,
         streamExtractor: StreamExtractor,
+        downloadUtil: DownloadUtil? = null
     ): List<MediaItem> = coroutineScope {
         val semaphore = Semaphore(3)
         items.map { item ->
             async {
                 semaphore.withPermit {
                     if (isYouTubeVideoId(item.localConfiguration?.uri)) {
-                        resolveMediaItem(item, streamExtractor)
+                        resolveMediaItem(item, streamExtractor, downloadUtil)
                     } else {
                         item
                     }

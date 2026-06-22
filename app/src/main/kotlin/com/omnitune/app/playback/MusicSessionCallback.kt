@@ -123,7 +123,7 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
         val p = player
 
         val result = if (p == null) {
-            SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
+            SessionResult(androidx.media3.session.SessionError.ERROR_BAD_VALUE)
         } else {
             when (customCommand.customAction) {
                 MediaSessionConstants.ACTION_TOGGLE_LIKE -> {
@@ -159,7 +159,7 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
                 else -> {
                     Timber.tag("MediaSession")
                         .w("Unknown custom command: %s", customCommand.customAction)
-                    SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
+                    SessionResult(androidx.media3.session.SessionError.ERROR_BAD_VALUE)
                 }
             }
         }

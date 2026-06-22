@@ -97,7 +97,7 @@ class ExoDownloadService : DownloadService(
     }
 
     override fun getScheduler(): Scheduler =
-        PlatformScheduler(this, JOB_ID)
+        androidx.media3.exoplayer.workmanager.WorkManagerScheduler(this, "OmniTuneDownloadWorker")
 
     override fun getForegroundNotification(
         downloads: MutableList<Download>,

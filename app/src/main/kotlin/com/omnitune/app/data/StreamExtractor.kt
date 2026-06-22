@@ -60,4 +60,8 @@ class StreamExtractor @Inject constructor(
     suspend fun extract(songId: String, quality: StreamQuality): StreamResult? {
         return extractWithFallback(songId, quality)
     }
+
+    fun invalidate(songId: String) {
+        YTPlayerUtils.invalidateCachedStreamUrls(songId)
+    }
 }

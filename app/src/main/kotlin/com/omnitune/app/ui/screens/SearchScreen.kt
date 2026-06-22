@@ -102,7 +102,14 @@ fun SearchScreen(
         }
         when {
             uiState.isSearching -> Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) { OmniTuneLoader(size = 48.dp) }
-            uiState.error != null -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = uiState.error ?: "Search failed")
+            uiState.error != null -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = uiState.error ?: "Search failed", action = {
+                androidx.compose.material3.Button(
+                    onClick = { viewModel.retrySearch() },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
+                ) {
+                    Text("Retry", color = OmniColors.Background, fontWeight = FontWeight.SemiBold)
+                }
+            })
             uiState.query.isEmpty() -> {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
                     item {

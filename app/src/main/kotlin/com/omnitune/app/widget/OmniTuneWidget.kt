@@ -16,6 +16,7 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import kotlinx.coroutines.guava.await
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -115,11 +116,22 @@ class OmniTuneWidget : GlanceAppWidget() {
     }
 }
 
+private suspend fun withMediaController(context: Context, action: suspend (androidx.media3.session.MediaController) -> Unit) {
+    val sessionToken = androidx.media3.session.SessionToken(context, android.content.ComponentName(context, com.omnitune.app.playback.MusicService::class.java))
+    val controllerFuture = androidx.media3.session.MediaController.Builder(context, sessionToken).buildAsync()
+    try {
+        val controller = controllerFuture.await()
+        action(controller)
+        controller.release()
+    } catch (e: Exception) {
+        // Ignored
+    }
+}
+
 class PlayPauseAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val player = MusicService.instance?.exoPlayer
-        if (player != null) {
-            if (player.playbackState == Player.STATE_ENDED) {
+        withMediaController(context) { player ->
+            if (player.playbackState == androidx.media3.common.Player.STATE_ENDED) {
                 player.seekTo(0, 0)
                 player.playWhenReady = true
             } else if (player.playWhenReady) {
@@ -133,12 +145,16 @@ class PlayPauseAction : ActionCallback {
 
 class NextAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        MusicService.instance?.exoPlayer?.seekToNextMediaItem()
+        withMediaController(context) { player ->
+            player.seekToNextMediaItem()
+        }
     }
 }
 
 class PrevAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        MusicService.instance?.exoPlayer?.seekToPreviousMediaItem()
+        withMediaController(context) { player ->
+            player.seekToPreviousMediaItem()
+        }
     }
 }

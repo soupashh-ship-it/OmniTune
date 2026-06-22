@@ -127,6 +127,10 @@ class PlayerConnection(
         service.playQueue(queue)
     }
 
+    fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
+        service.applyEqualizerBands(bands)
+    }
+
     fun startRadioSeamlessly() {
         service.startRadioSeamlessly()
     }

@@ -145,19 +145,25 @@ fun PlayerScreen(
         label = "animatedColor"
     )
 
-    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = modifier.fillMaxSize().background(
+        Brush.verticalGradient(
+            colors = listOf(animatedColor.copy(alpha = 0.45f), Color(0xFF0C0E16)),
+            startY = 0f,
+            endY = Float.POSITIVE_INFINITY
+        )
+    )) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
             // Metro Edge-to-Edge Album Art
             Box(modifier = Modifier.fillMaxWidth().weight(0.55f)) {
                 AnimatedContent(
-                    targetState = mediaMetadata?.id ?: "",
+                    targetState = thumbnailUrl,
                     transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
                     label = "album_art",
                     modifier = Modifier.fillMaxSize()
-                ) {
-                    if (!thumbnailUrl.isNullOrBlank()) {
+                ) { url ->
+                    if (!url.isNullOrBlank()) {
                         AsyncImage(
-                            model = thumbnailUrl,
+                            model = url,
                             contentDescription = "Album Art",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -165,7 +171,7 @@ fun PlayerScreen(
                         // Dark gradient overlay at the bottom of the album art so text is readable if it overlaps
                         Box(modifier = Modifier.fillMaxSize().background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f), Color.Black),
+                                colors = listOf(Color.Transparent, Color(0xFF0C0E16).copy(alpha = 0.6f), Color(0xFF0C0E16)),
                                 startY = 0f,
                                 endY = Float.POSITIVE_INFINITY
                             )
@@ -336,17 +342,28 @@ private fun MetroIconButton(painter: androidx.compose.ui.graphics.painter.Painte
     }
 }
 
+@androidx.media3.common.util.UnstableApi
 @Composable
 private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: () -> Unit) {
     val currentSongFlow = playerConnection?.currentSong ?: kotlinx.coroutines.flow.flowOf(null)
     val currentSongState = currentSongFlow.collectAsState(initial = null)
     val liked = currentSongState?.value?.song?.liked == true
     var showEffectsDialog by remember { mutableStateOf(false) }
+    val downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { playerConnection?.toggleLike() }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
                 contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) OmniColors.Hot else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+        }
+        IconButton(onClick = {
+            currentSongState?.value?.song?.let { song ->
+                downloadsViewModel.startDownload(song.id, song.title)
+                android.widget.Toast.makeText(context, "Download started", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
+            Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Download", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
         IconButton(onClick = { showEffectsDialog = true }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Audio Effects", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))

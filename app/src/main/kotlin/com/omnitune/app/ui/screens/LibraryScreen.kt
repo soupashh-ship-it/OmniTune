@@ -46,6 +46,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 fun LibraryScreen(
     onNavigateToSearch: () -> Unit = {},
     onNavigateToLiked: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     onNavigateToRecentlyPlayed: () -> Unit = {},
     onNavigateToArtists: () -> Unit = {},
     onNavigateToAlbums: () -> Unit = {},
@@ -65,7 +66,7 @@ fun LibraryScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LibrarySmartCard(painterResource(R.drawable.ic_favorite), "Liked", "${uiState.likedCount} songs", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLiked, Modifier.weight(1f))
-                LibrarySmartCard(painterResource(android.R.drawable.ic_menu_send), "Downloads", "0 songs", listOf(OmniColors.Secondary, OmniColors.Primary), {}, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(android.R.drawable.ic_menu_send), "Downloads", "", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToDownloads, Modifier.weight(1f))
             }
         }
         item {

@@ -20,5 +20,6 @@ sealed class Screens(
         const val ACTION_SEARCH = "com.omnitune.app.action.SEARCH"
         const val ACTION_LIBRARY = "com.omnitune.app.action.LIBRARY"
         const val ROUTE_EQUALIZER = "equalizer"
+        const val ROUTE_DOWNLOADS = "downloads"
     }
 }

@@ -47,6 +47,20 @@ class DownloadUtil @Inject constructor(
         )
     }
 
+    val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
+        val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
+        androidx.media3.exoplayer.offline.DownloadManager(
+            context,
+            databaseProvider,
+            downloadCache,
+            dataSourceFactory,
+            executor
+        ).apply {
+            maxParallelDownloads = 3
+        }
+    }
+
     fun release() {
         try {
             downloadCache.release()

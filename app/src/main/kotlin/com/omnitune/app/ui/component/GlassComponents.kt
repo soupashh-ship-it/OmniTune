@@ -94,7 +94,14 @@ fun GlassCard(
             color = OmniColors.GlassBorder,
             shape = cornerRadius,
         )
-        .background(OmniColors.GlassSurface)
+        .background(
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF232736).copy(alpha = 0.4f),
+                    Color(0xFF0C0E16).copy(alpha = 0.7f)
+                )
+            )
+        )
 
     Column(
         modifier = if (onClick != null) {

@@ -215,7 +215,7 @@ fun ItemThumbnail(
     isSelected: Boolean = false,
     shouldLoadImage: Boolean = true,
 ) {
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()

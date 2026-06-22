@@ -41,10 +41,22 @@ class LibraryViewModel @Inject constructor(
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
     val likedSongs: StateFlow<List<Song>>
+    val libraryArtists: StateFlow<List<com.omnitune.app.db.entities.Artist>>
+    val libraryAlbums: StateFlow<List<com.omnitune.app.db.entities.Album>>
+    val playlists: StateFlow<List<com.omnitune.app.db.entities.Playlist>>
 
     init {
-        // Initialize liked songs flow once
+        // Initialize flows
         likedSongs = database.likedSongs(LIKED_SONGS_SORT, true)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            
+        libraryArtists = database.artistsByNameAsc()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            
+        libraryAlbums = database.albumsByNameAsc()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            
+        playlists = database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
         viewModelScope.launch {
@@ -65,10 +77,9 @@ class LibraryViewModel @Inject constructor(
                 _uiState.value = state
             }
         }
-        // Fetch playlist count separately
         viewModelScope.launch {
-            database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false).collect { playlists ->
-                _uiState.value = _uiState.value.copy(playlistCount = playlists.size)
+            playlists.collect { list ->
+                _uiState.value = _uiState.value.copy(playlistCount = list.size)
             }
         }
     }
