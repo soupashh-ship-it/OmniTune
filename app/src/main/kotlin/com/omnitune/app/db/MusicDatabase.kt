@@ -179,8 +179,6 @@ abstract class InternalDatabase : RoomDatabase() {
             val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(DatabaseCallback())
-                .fallbackToDestructiveMigration()
-                .fallbackToDestructiveMigrationOnDowngrade()
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
                 .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))

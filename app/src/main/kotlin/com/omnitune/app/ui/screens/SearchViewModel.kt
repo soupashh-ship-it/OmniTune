@@ -11,7 +11,6 @@ import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.AlbumItem
-import com.omnitune.innertube.pages.SearchResult
 import com.omnitune.innertube.models.ArtistItem
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.models.SongItem
@@ -20,7 +19,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +26,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class SearchStatus {
+    Idle,
+    Loading,
+    Success,
+    PartialResults,
+    Empty,
+    NetworkError,
+    ParserChanged,
+    CachedResultsShown,
+}
 
 data class SearchUiState(
     val query: String = "",
@@ -38,6 +47,7 @@ data class SearchUiState(
     val searchHistory: List<SearchHistory> = emptyList(),
     val isSearching: Boolean = false,
     val error: String? = null,
+    val status: SearchStatus = SearchStatus.Idle,
 )
 
 private const val SEARCH_DEBOUNCE_MS = 400L
@@ -73,6 +83,7 @@ class SearchViewModel @Inject constructor(
                             albums = emptyList(),
                             playlists = emptyList(),
                             error = null,
+                            status = SearchStatus.Idle,
                         )
                         // Observe search history
                         searchJob = viewModelScope.launch {
@@ -107,65 +118,94 @@ class SearchViewModel @Inject constructor(
     }
 
     private suspend fun performSearch(query: String) {
-        _uiState.value = _uiState.value.copy(isSearching = true, error = null)
+        _uiState.value = _uiState.value.copy(
+            isSearching = true,
+            error = null,
+            status = SearchStatus.Loading
+        )
 
         var songsList = emptyList<SongItem>()
         var artistsList = emptyList<ArtistItem>()
         var albumsList = emptyList<AlbumItem>()
         var playlistsList = emptyList<PlaylistItem>()
         var searchError: String? = null
+        var status = SearchStatus.Success
+        var bucketFailures = 0
+        var usedCachedResults = false
 
         try {
-            // Fallback 1: SupervisorScope ensures one failure doesn't cancel siblings
+            // Fallback 1: supervisorScope ensures one failed bucket does not cancel siblings.
             kotlinx.coroutines.supervisorScope {
-                val songDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull() }
-                val albumDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM).getOrNull() }
-                val artistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST).getOrNull() }
-                val playlistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST).getOrNull() }
+                val songDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG) }
+                val albumDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM) }
+                val artistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST) }
+                val playlistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST) }
 
-                try { songDeferred.await()?.let { songsList = it.items.filterIsInstance<SongItem>() } } catch (e: Exception) { reportException(e) }
-                try { albumDeferred.await()?.let { albumsList = it.items.filterIsInstance<AlbumItem>() } } catch (e: Exception) { reportException(e) }
-                try { artistDeferred.await()?.let { artistsList = it.items.filterIsInstance<ArtistItem>() } } catch (e: Exception) { reportException(e) }
-                try { playlistDeferred.await()?.let { playlistsList = it.items.filterIsInstance<PlaylistItem>() } } catch (e: Exception) { reportException(e) }
+                songDeferred.await()
+                    .onSuccess { songsList = it.items.filterIsInstance<SongItem>() }
+                    .onFailure { bucketFailures++; reportException(it) }
+                albumDeferred.await()
+                    .onSuccess { albumsList = it.items.filterIsInstance<AlbumItem>() }
+                    .onFailure { bucketFailures++; reportException(it) }
+                artistDeferred.await()
+                    .onSuccess { artistsList = it.items.filterIsInstance<ArtistItem>() }
+                    .onFailure { bucketFailures++; reportException(it) }
+                playlistDeferred.await()
+                    .onSuccess { playlistsList = it.items.filterIsInstance<PlaylistItem>() }
+                    .onFailure { bucketFailures++; reportException(it) }
             }
 
             // Fallback 2: Mixed-result parser if primary failed
             if (songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
-                val summaryResult = YouTube.searchSummary(query).getOrNull()
-                if (summaryResult != null) {
-                    summaryResult.summaries.forEach { summary ->
-                        when {
-                            summary.title.contains("Song", ignoreCase = true) -> songsList = summary.items.filterIsInstance<SongItem>()
-                            summary.title.contains("Artist", ignoreCase = true) -> artistsList = summary.items.filterIsInstance<ArtistItem>()
-                            summary.title.contains("Album", ignoreCase = true) -> albumsList = summary.items.filterIsInstance<AlbumItem>()
-                            summary.title.contains("Playlist", ignoreCase = true) -> playlistsList = summary.items.filterIsInstance<PlaylistItem>()
+                YouTube.searchSummary(query)
+                    .onSuccess { summaryResult ->
+                        summaryResult.summaries.forEach { summary ->
+                            when {
+                                summary.title.contains("Song", ignoreCase = true) -> songsList = summary.items.filterIsInstance<SongItem>()
+                                summary.title.contains("Artist", ignoreCase = true) -> artistsList = summary.items.filterIsInstance<ArtistItem>()
+                                summary.title.contains("Album", ignoreCase = true) -> albumsList = summary.items.filterIsInstance<AlbumItem>()
+                                summary.title.contains("Playlist", ignoreCase = true) -> playlistsList = summary.items.filterIsInstance<PlaylistItem>()
+                            }
                         }
                     }
-                }
+                    .onFailure { reportException(it) }
             }
 
             // Fallback 3: Last-good cached result
             if (songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
                 val cached = lastGoodResults[query]
                 if (cached != null) {
+                    usedCachedResults = true
                     songsList = cached.songs
                     artistsList = cached.artists
                     albumsList = cached.albums
                     playlistsList = cached.playlists
                 } else {
                     searchError = "No results found for '$query'"
+                    status = if (bucketFailures >= 4) SearchStatus.NetworkError else SearchStatus.Empty
                 }
             }
         } catch (e: Exception) {
             val cached = lastGoodResults[query]
             if (cached != null) {
+                usedCachedResults = true
                 songsList = cached.songs
                 artistsList = cached.artists
                 albumsList = cached.albums
                 playlistsList = cached.playlists
             } else {
                 searchError = "Search failed: ${e.localizedMessage ?: "Unknown error"}"
+                status = classifySearchFailure(e)
                 reportException(e)
+            }
+        }
+
+        if (searchError == null) {
+            status = when {
+                usedCachedResults -> SearchStatus.CachedResultsShown
+                bucketFailures > 0 -> SearchStatus.PartialResults
+                songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty() -> SearchStatus.Empty
+                else -> SearchStatus.Success
             }
         }
 
@@ -176,6 +216,7 @@ class SearchViewModel @Inject constructor(
             playlists = playlistsList,
             isSearching = false,
             error = searchError,
+            status = status,
         )
 
         _uiState.value = newState
@@ -204,6 +245,15 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             database.clearSearchHistory()
             _uiState.value = _uiState.value.copy(searchHistory = emptyList())
+        }
+    }
+
+    private fun classifySearchFailure(throwable: Throwable): SearchStatus {
+        val text = "${throwable::class.java.simpleName} ${throwable.message.orEmpty()}".lowercase()
+        return when {
+            "json" in text || "parse" in text || "serializer" in text || "unexpected" in text -> SearchStatus.ParserChanged
+            "timeout" in text || "network" in text || "connect" in text || "unknownhost" in text -> SearchStatus.NetworkError
+            else -> SearchStatus.NetworkError
         }
     }
 }

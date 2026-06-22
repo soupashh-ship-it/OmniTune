@@ -22,6 +22,12 @@ class ClientRotator @Inject constructor() {
         return clients[index]
     }
 
+    fun getClientSequence(videoId: String): List<PlayerStreamClient> {
+        val failures = failureCounts[videoId] ?: 0
+        val startIndex = failures % clients.size
+        return clients.drop(startIndex) + clients.take(startIndex)
+    }
+
     fun reportFailure(videoId: String) {
         val count = failureCounts.getOrDefault(videoId, 0)
         failureCounts[videoId] = count + 1

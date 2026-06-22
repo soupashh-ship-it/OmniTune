@@ -17,6 +17,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,6 +90,7 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
     playerConnection: PlayerConnection? = null,
+    onClick: () -> Unit = {},
 ) {
     val isPlayingFlow = playerConnection?.isPlaying ?: kotlinx.coroutines.flow.flowOf(false)
     val isPlaying by isPlayingFlow.collectAsState(initial = false)
@@ -201,7 +204,15 @@ fun MiniPlayer(
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxSize().offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }.padding(horizontal = 14.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = androidx.compose.material3.ripple(bounded = true),
+                    onClick = onClick
+                )
+                .padding(horizontal = 14.dp),
         ) {
             // Album art with progress ring
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(52.dp)) {

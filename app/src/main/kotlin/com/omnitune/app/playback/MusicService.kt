@@ -14,6 +14,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
+import android.os.IBinder
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -139,6 +141,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var saveQueueJob: Job? = null
 
     private var currentQueue: Queue = EmptyQueue
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return if (intent?.action == null) {
+            Timber.tag("OmniTunePlaybackTrace").i("Returning local MusicBinder")
+            binder
+        } else {
+            super.onBind(intent)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -405,6 +416,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
         currentQueue = queue
         queueTitle = null
+        Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
         if (queue.preloadItem != null) {
             player.setMediaItem(queue.preloadItem!!.toMediaItem())
@@ -421,21 +433,35 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.w("Queue items empty")
                 return@launch
             }
+            Timber.tag("OmniTunePlaybackTrace").i(
+                "playQueue initial status: items=${initialStatus.items.size}, index=${initialStatus.mediaItemIndex}, first=${initialStatus.items.firstOrNull()?.mediaId}"
+            )
 
-            // Resolve YouTube video IDs to playable stream URLs
+            val requestedIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
+            val currentItem = initialStatus.items[requestedIndex]
+            val resolvedCurrent = withContext(Dispatchers.IO) {
+                if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
+                    StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil)
+                } else {
+                    currentItem
+                }
+            }
+            if (resolvedCurrent == null) {
+                Timber.e("Current stream resolution failed for ${currentItem.mediaId}")
+                Toast.makeText(this@MusicService, "Could not resolve stream for ${currentItem.mediaMetadata.title ?: "track"}", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
+
             val resolvedItems = withContext(Dispatchers.IO) {
                 StreamUrlResolver.resolveMediaItems(
                     initialStatus.items,
                     streamExtractor,
-                    downloadUtil
+                    downloadUtil,
+                    priorityIndex = requestedIndex
                 )
             }
-            if (resolvedItems.isEmpty()) {
-                Timber.e("All stream resolutions failed")
-                return@launch
-            }
-
-            val resolvedIndex = initialStatus.mediaItemIndex.coerceIn(0, resolvedItems.size - 1)
+            val resolvedIndex = requestedIndex
 
             if (queue.preloadItem != null) {
                 player.addMediaItems(0, resolvedItems.subList(0, resolvedIndex))
@@ -444,6 +470,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 player.setMediaItems(resolvedItems, resolvedIndex, initialStatus.position)
                 player.prepare()
                 player.playWhenReady = playWhenReady
+                Timber.tag("OmniTunePlaybackTrace").i(
+                    "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
+                )
             }
         }
     }
@@ -489,16 +518,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun playNext(items: List<MediaItem>) {
-        player.addMediaItems(
-            if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1,
-            items
-        )
-        player.prepare()
+        scope.launch {
+            val resolvedItems = withContext(Dispatchers.IO) {
+                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
+            }
+            player.addMediaItems(
+                if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1,
+                resolvedItems
+            )
+            player.prepare()
+        }
     }
 
     fun addToQueue(items: List<MediaItem>) {
-        player.addMediaItems(items)
-        player.prepare()
+        scope.launch {
+            val resolvedItems = withContext(Dispatchers.IO) {
+                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
+            }
+            player.addMediaItems(resolvedItems)
+            player.prepare()
+        }
     }
 
     fun toggleLike() {

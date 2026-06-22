@@ -60,7 +60,7 @@ object StreamUrlResolver {
                 if (download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
                     Timber.d("StreamUrlResolver: offline cache hit for $videoId")
                     return mediaItem.buildUpon()
-                        .setUri(Uri.parse("file:///offline/$videoId"))
+                        .setUri(download.request.uri)
                         .setCustomCacheKey(videoId)
                         .build()
                 }
@@ -108,19 +108,38 @@ object StreamUrlResolver {
     suspend fun resolveMediaItems(
         items: List<MediaItem>,
         streamExtractor: StreamExtractor,
-        downloadUtil: DownloadUtil? = null
+        downloadUtil: DownloadUtil? = null,
+        priorityIndex: Int? = null
     ): List<MediaItem> = coroutineScope {
+        val resolved = MutableList<MediaItem?>(items.size) { null }
         val semaphore = Semaphore(3)
-        items.map { item ->
+
+        suspend fun resolveOrKeep(index: Int, item: MediaItem): MediaItem {
+            if (!isYouTubeVideoId(item.localConfiguration?.uri)) return item
+            return resolveMediaItem(item, streamExtractor, downloadUtil)
+                ?: item.also {
+                    Timber.w("StreamUrlResolver: preserving unresolved queue item ${item.mediaId}")
+                }
+        }
+
+        if (priorityIndex != null && priorityIndex in items.indices) {
+            resolved[priorityIndex] = semaphore.withPermit {
+                resolveOrKeep(priorityIndex, items[priorityIndex])
+            }
+        }
+
+        items.mapIndexedNotNull { index, item ->
+            if (resolved[index] != null) return@mapIndexedNotNull null
             async {
                 semaphore.withPermit {
-                    if (isYouTubeVideoId(item.localConfiguration?.uri)) {
-                        resolveMediaItem(item, streamExtractor, downloadUtil)
-                    } else {
-                        item
-                    }
+                    index to resolveOrKeep(index, item)
                 }
             }
-        }.mapNotNull { it.await() }
+        }.forEach { deferred ->
+            val (index, item) = deferred.await()
+            resolved[index] = item
+        }
+
+        resolved.mapIndexed { index, item -> item ?: items[index] }
     }
 }

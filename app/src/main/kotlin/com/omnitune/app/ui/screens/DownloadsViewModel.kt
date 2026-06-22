@@ -72,9 +72,14 @@ class DownloadsViewModel @Inject constructor(
         _uiState.value = DownloadsUiState(downloads = list)
     }
 
-    fun startDownload(videoId: String, title: String) {
+    fun startDownload(
+        videoId: String,
+        title: String,
+        onResult: (success: Boolean, message: String) -> Unit = { _, _ -> }
+    ) {
         viewModelScope.launch {
             try {
+                Timber.d("Starting download resolve for %s", videoId)
                 val result = streamExtractor.extractWithFallback(videoId, StreamQuality.HIGH)
                 if (result != null) {
                     val request = DownloadRequest.Builder(videoId, android.net.Uri.parse(result.url))
@@ -88,9 +93,16 @@ class DownloadsViewModel @Inject constructor(
                         request,
                         false
                     )
+                    Timber.i("Download request queued for %s", videoId)
+                    refreshDownloads()
+                    onResult(true, "Download queued")
+                } else {
+                    Timber.w("Download failed to resolve stream for %s", videoId)
+                    onResult(false, "Download failed: stream unavailable")
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to start download for $videoId")
+                onResult(false, "Download failed")
             }
         }
     }

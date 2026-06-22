@@ -7,9 +7,43 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
 }
+
+val enableFirebase = providers.gradleProperty("enableFirebase")
+    .map { it.equals("true", ignoreCase = true) }
+    .orElse(false)
+    .get()
+
+if (enableFirebase) {
+    val googleServicesFile = project.file("google-services.json")
+    if (!googleServicesFile.exists()) {
+        throw GradleException("Firebase is enabled with -PenableFirebase=true, but app/google-services.json is missing.")
+    }
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
+val signingProperties = Properties().apply {
+    val signingFile = rootProject.file("signing.properties")
+    if (signingFile.exists()) {
+        signingFile.inputStream().use(::load)
+    }
+}
+
+fun signingValue(envName: String, propertyName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: signingProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseKeystoreFile = signingValue("OMNITUNE_KEYSTORE_FILE", "storeFile")
+val releaseKeystorePassword = signingValue("OMNITUNE_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = signingValue("OMNITUNE_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = signingValue("OMNITUNE_KEY_PASSWORD", "keyPassword")
+val hasReleaseSigning = listOf(
+    releaseKeystoreFile,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() } && releaseKeystoreFile?.let { file(it).exists() } == true
 
 android {
     namespace = "com.omnitune.app"
@@ -19,8 +53,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.6.0"
+        versionCode = 12
+        versionName = "0.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -46,12 +80,25 @@ android {
 
 
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(releaseKeystoreFile!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -90,6 +137,19 @@ android {
     }
 }
 
+gradle.taskGraph.whenReady {
+    val requestedReleaseBuild = allTasks.any {
+        it.project == project && it.name.contains("Release") &&
+            (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package"))
+    }
+    if (requestedReleaseBuild && !hasReleaseSigning) {
+        throw GradleException(
+            "Release signing is required. Set OMNITUNE_KEYSTORE_FILE, OMNITUNE_KEYSTORE_PASSWORD, " +
+                "OMNITUNE_KEY_ALIAS, and OMNITUNE_KEY_PASSWORD, or define storeFile/storePassword/keyAlias/keyPassword in signing.properties."
+        )
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 }
@@ -110,9 +170,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
-    implementation("com.google.firebase:firebase-crashlytics-ktx")
-    implementation("com.google.firebase:firebase-analytics-ktx")
+    if (enableFirebase) {
+        implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
+        implementation("com.google.firebase:firebase-crashlytics-ktx")
+        implementation("com.google.firebase:firebase-analytics-ktx")
+    }
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.palette:palette-ktx:1.0.0")

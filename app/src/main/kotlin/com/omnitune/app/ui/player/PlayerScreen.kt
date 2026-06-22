@@ -91,6 +91,7 @@ import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 @Composable
 fun PlayerScreen(
@@ -347,7 +348,7 @@ private fun MetroIconButton(painter: androidx.compose.ui.graphics.painter.Painte
 private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: () -> Unit) {
     val currentSongFlow = playerConnection?.currentSong ?: kotlinx.coroutines.flow.flowOf(null)
     val currentSongState = currentSongFlow.collectAsState(initial = null)
-    val liked = currentSongState?.value?.song?.liked == true
+    val liked = currentSongState.value?.song?.liked == true
     var showEffectsDialog by remember { mutableStateOf(false) }
     val downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -358,9 +359,15 @@ private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: ()
                 contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) OmniColors.Hot else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
         IconButton(onClick = {
-            currentSongState?.value?.song?.let { song ->
-                downloadsViewModel.startDownload(song.id, song.title)
-                android.widget.Toast.makeText(context, "Download started", android.widget.Toast.LENGTH_SHORT).show()
+            val song = currentSongState.value?.song
+            if (song != null) {
+                Timber.d("Download button clicked for %s", song.id)
+                downloadsViewModel.startDownload(song.id, song.title) { _, message ->
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Timber.w("Download button clicked without active song")
+                android.widget.Toast.makeText(context, "No active song to download", android.widget.Toast.LENGTH_SHORT).show()
             }
         }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Download", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))

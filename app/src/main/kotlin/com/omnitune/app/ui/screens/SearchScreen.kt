@@ -44,6 +44,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +65,7 @@ import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import timber.log.Timber
 
 private val moodChips = listOf(
     "Late Night" to "late night lofi vibes",
@@ -190,7 +192,15 @@ private fun SearchResultsContent(songs: List<SongItem>, artists: List<ArtistItem
 
 @Composable
 private fun GlassSearchRow(title: String, subtitle: String, thumbnailUrl: String?, onClick: () -> Unit, circular: Boolean = false, fallbackRes: Int = android.R.drawable.ic_media_play) {
-    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true), onClick = onClick)
+    val focusManager = LocalFocusManager.current
+    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(
+        remember { MutableInteractionSource() },
+        indication = androidx.compose.material3.ripple(bounded = true),
+    ) {
+        focusManager.clearFocus(force = true)
+        Timber.tag("OmniTunePlaybackTrace").i("Search row clicked: $title")
+        onClick()
+    }
         .background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(44.dp).clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM).background(OmniColors.GlassSurfaceStrong), contentAlignment = Alignment.Center) {
             if (thumbnailUrl != null) AsyncImage(model = thumbnailUrl, contentDescription = null,

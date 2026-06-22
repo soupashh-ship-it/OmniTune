@@ -42,6 +42,7 @@ class ExoDownloadService : DownloadService(
 
     private lateinit var notificationHelper: DownloadNotificationHelper
     private val serviceScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private var retryListenerAttached = false
 
     override fun onCreate() {
         super.onCreate()
@@ -55,32 +56,36 @@ class ExoDownloadService : DownloadService(
 
     override fun getDownloadManager(): DownloadManager {
         val downloadManager = downloadUtil.downloadManager
-        downloadManager.addListener(object : DownloadManager.Listener {
-            override fun onDownloadChanged(
-                downloadManager: DownloadManager,
-                download: Download,
-                finalException: java.lang.Exception?
-            ) {
-                if (download.state == Download.STATE_FAILED && finalException is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && finalException.responseCode == 403) {
-                    val videoId = download.request.id
-                    serviceScope.launch {
-                        val result = streamExtractor.extractWithFallback(videoId, com.omnitune.app.models.StreamQuality.HIGH)
-                        if (result != null) {
-                            val newRequest = androidx.media3.exoplayer.offline.DownloadRequest.Builder(download.request.id, android.net.Uri.parse(result.url))
-                                .setCustomCacheKey(download.request.customCacheKey)
-                                .setData(download.request.data)
-                                .build()
-                            DownloadService.sendAddDownload(
-                                this@ExoDownloadService,
-                                ExoDownloadService::class.java,
-                                newRequest,
-                                false
-                            )
+        if (!retryListenerAttached) {
+            retryListenerAttached = true
+            downloadManager.addListener(object : DownloadManager.Listener {
+                override fun onDownloadChanged(
+                    downloadManager: DownloadManager,
+                    download: Download,
+                    finalException: java.lang.Exception?
+                ) {
+                    if (download.state == Download.STATE_FAILED && finalException is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && finalException.responseCode == 403) {
+                        val videoId = download.request.id
+                        serviceScope.launch {
+                            streamExtractor.invalidate(videoId)
+                            val result = streamExtractor.extractWithFallback(videoId, com.omnitune.app.models.StreamQuality.HIGH)
+                            if (result != null) {
+                                val newRequest = androidx.media3.exoplayer.offline.DownloadRequest.Builder(download.request.id, android.net.Uri.parse(result.url))
+                                    .setCustomCacheKey(download.request.customCacheKey ?: videoId)
+                                    .setData(download.request.data)
+                                    .build()
+                                DownloadService.sendAddDownload(
+                                    this@ExoDownloadService,
+                                    ExoDownloadService::class.java,
+                                    newRequest,
+                                    false
+                                )
+                            }
                         }
                     }
                 }
-            }
-        })
+            })
+        }
         return downloadManager
     }
 

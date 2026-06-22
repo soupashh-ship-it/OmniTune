@@ -97,15 +97,19 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
         instance = this
 
         if (currentProcessName()?.endsWith(":crash") == true) {
-            Timber.plant(Timber.DebugTree())
+            if (BuildConfig.DEBUG) {
+                Timber.plant(Timber.DebugTree())
+            }
             return
         }
 
         PreferenceStore.start(this)
-        Timber.plant(Timber.DebugTree())
-        try {
-            Timber.plant(GlobalLogTree())
-        } catch (_: Exception) {}
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+            try {
+                Timber.plant(GlobalLogTree())
+            } catch (_: Exception) {}
+        }
 
         initializeCriticalSync()
         initializeDeferredAsync()
@@ -226,9 +230,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 } catch (e: Exception) {
                     // Ignore
                 } finally {
-                    defaultHandler?.uncaughtException(thread, throwable)
-                    Process.killProcess(Process.myPid())
-                    exitProcess(2)
+                    if (defaultHandler != null) {
+                        defaultHandler.uncaughtException(thread, throwable)
+                    } else {
+                        Process.killProcess(Process.myPid())
+                        exitProcess(2)
+                    }
                 }
             }
         } catch (e: Exception) {

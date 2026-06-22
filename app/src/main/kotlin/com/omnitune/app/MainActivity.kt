@@ -71,6 +71,7 @@ import android.content.Context
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.compositionLocalOf
@@ -94,6 +95,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniTuneTheme
 import dagger.hilt.android.AndroidEntryPoint
+import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -177,8 +179,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private fun playSongFromSearch(context: android.content.Context, songItem: SongItem, playerConnection: com.omnitune.app.playback.PlayerConnection?) {
-    val connection = playerConnection ?: run { Toast.makeText(context, "Player not ready", Toast.LENGTH_SHORT).show(); return }
+private fun playSongFromSearch(
+    context: android.content.Context,
+    songItem: SongItem,
+    playerConnection: com.omnitune.app.playback.PlayerConnection?,
+    onPlayerNotReady: (SongItem) -> Unit,
+) {
+    Timber.tag("OmniTunePlaybackTrace").i("Search play requested: ${songItem.title} (${songItem.id})")
+    val connection = playerConnection ?: run {
+        Timber.tag("OmniTunePlaybackTrace").w("Search play queued: player connection not ready")
+        onPlayerNotReady(songItem)
+        Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+        return
+    }
     connection.playQueue(ListQueue(items = listOf(songItem.toMediaItem())))
 }
 
@@ -190,7 +203,20 @@ fun OmniTuneMainScreen() {
     val topLevelScreens = Screens.MainScreens.map { it.route }
     val context = LocalContext.current
     val localPlayerConnection = LocalPlayerConnection.current
+    val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
+        .collectAsState(initial = null)
+    var pendingSearchSong by remember { mutableStateOf<SongItem?>(null) }
     val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
+
+    LaunchedEffect(localPlayerConnection, pendingSearchSong) {
+        val song = pendingSearchSong
+        val connection = localPlayerConnection
+        if (song != null && connection != null) {
+            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search song: ${song.title} (${song.id})")
+            pendingSearchSong = null
+            connection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) {
         NavHost(
@@ -235,7 +261,15 @@ fun OmniTuneMainScreen() {
             }
             composable(Screens.Search.route) {
                 SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
-                    onNavigateToArtist = { navController.navigate("artist/$it") }, onPlaySong = { playSongFromSearch(context, it, localPlayerConnection) })
+                    onNavigateToArtist = { navController.navigate("artist/$it") },
+                    onPlaySong = {
+                        playSongFromSearch(
+                            context = context,
+                            songItem = it,
+                            playerConnection = localPlayerConnection,
+                            onPlayerNotReady = { song -> pendingSearchSong = song }
+                        )
+                    })
             }
             composable("album/{albumId}") {
                 AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
@@ -263,10 +297,12 @@ fun OmniTuneMainScreen() {
         }
         // MiniPlayer + Glass Bottom Dock
         Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))) {
-            if (currentRoute != "player" && currentRoute != "queue") {
-                Box(modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { if (localPlayerConnection != null) navController.navigate("player") }) {
-                    MiniPlayer(pureBlack = false, playerConnection = localPlayerConnection)
-                }
+            if (currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null) {
+                MiniPlayer(
+                    pureBlack = false,
+                    playerConnection = localPlayerConnection,
+                    onClick = { if (localPlayerConnection != null) navController.navigate("player") }
+                )
             }
             if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } })
         }
