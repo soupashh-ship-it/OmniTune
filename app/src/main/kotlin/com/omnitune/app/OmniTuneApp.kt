@@ -213,6 +213,11 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     val pw = PrintWriter(sw)
                     throwable.printStackTrace(pw)
                     val stack = sw.toString()
+                    
+                    // Write to external files dir so user can retrieve it
+                    val crashFile = java.io.File(getExternalFilesDir(null), "crash.txt")
+                    crashFile.writeText("CRASH LOG:\n$stack")
+
                     if (BuildConfig.DEBUG) {
                         val intent = Intent().setClassName(this@OmniTuneApp, "com.omnitune.app.DebugActivity").apply {
                             putExtra("extra_stack_trace", stack)
@@ -222,7 +227,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                         try { Thread.sleep(100) } catch (_: InterruptedException) {}
                     }
                 } catch (e: Exception) {
-                    reportException(e)
+                    // Ignore
                 } finally {
                     Process.killProcess(Process.myPid())
                     exitProcess(2)
