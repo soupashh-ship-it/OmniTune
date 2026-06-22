@@ -33,11 +33,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".SimpleCrashActivity"
-            android:exported="true"
-            android:theme="@android:style/Theme.DeviceDefault.Light" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.updatefileprovider"
