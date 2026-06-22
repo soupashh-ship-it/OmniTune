@@ -72,7 +72,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_BUFFERING
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
-import com.omnitune.app.extensions.togglePlayPause
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.theme.OmniColors
@@ -256,9 +255,8 @@ fun MiniPlayer(
                 val pc = playerConnection
                 IconButton(
                     onClick = {
-                        val player = pc.player
-                        if (playbackState == Player.STATE_ENDED) { player.seekTo(0, 0); player.playWhenReady = true }
-                        else player.togglePlayPause()
+                        if (playbackState == Player.STATE_ENDED || !isPlaying) pc.playOrResolveCurrent()
+                        else pc.pause()
                     },
                     modifier = Modifier.size(40.dp),
                 ) {

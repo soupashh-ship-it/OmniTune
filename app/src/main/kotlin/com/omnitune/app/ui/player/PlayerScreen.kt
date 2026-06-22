@@ -291,9 +291,8 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         Box(modifier = Modifier.size(64.dp).shadow(16.dp, CircleShape, ambientColor = OmniColors.Primary.copy(alpha = 0.3f))
             .clip(CircleShape).background(Brush.linearGradient(listOf(OmniColors.Primary, OmniColors.Secondary))), contentAlignment = Alignment.Center) {
             IconButton(onClick = {
-                val p = playerConnection?.player ?: return@IconButton
-                if (playbackState == Player.STATE_ENDED) { p.seekTo(0, 0); p.playWhenReady = true }
-                else { if (isPlaying) p.pause() else p.play() }
+                val pc = playerConnection ?: return@IconButton
+                if (isPlaying) pc.pause() else pc.playOrResolveCurrent()
             }, modifier = Modifier.size(64.dp)) {
                 Icon(painter = painterResource(if (playbackState == Player.STATE_ENDED || !isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause),
                     contentDescription = if (isPlaying) "Pause" else "Play", tint = Color.White, modifier = Modifier.size(32.dp))
@@ -348,7 +347,9 @@ private fun MetroIconButton(painter: androidx.compose.ui.graphics.painter.Painte
 private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: () -> Unit) {
     val currentSongFlow = playerConnection?.currentSong ?: kotlinx.coroutines.flow.flowOf(null)
     val currentSongState = currentSongFlow.collectAsState(initial = null)
-    val liked = currentSongState.value?.song?.liked == true
+    val currentMetadataFlow = playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)
+    val currentMetadataState = currentMetadataFlow.collectAsState(initial = null)
+    val liked = currentSongState.value?.song?.liked == true || currentMetadataState.value?.liked == true
     var showEffectsDialog by remember { mutableStateOf(false) }
     val downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -360,9 +361,14 @@ private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: ()
         }
         IconButton(onClick = {
             val song = currentSongState.value?.song
-            if (song != null) {
-                Timber.d("Download button clicked for %s", song.id)
-                downloadsViewModel.startDownload(song.id, song.title) { _, message ->
+            val activeMetadata = currentMetadataState.value
+            val videoId = song?.id ?: activeMetadata?.id
+            val title = song?.title ?: activeMetadata?.title
+            if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
+                val activeUri = playerConnection?.player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                val resolvedStreamUrl = activeUri?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+                Timber.d("Download button clicked for %s", videoId)
+                downloadsViewModel.startDownload(videoId, title, resolvedStreamUrl) { _, message ->
                     android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
                 }
             } else {

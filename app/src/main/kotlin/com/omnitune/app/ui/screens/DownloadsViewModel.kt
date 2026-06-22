@@ -75,14 +75,15 @@ class DownloadsViewModel @Inject constructor(
     fun startDownload(
         videoId: String,
         title: String,
+        resolvedStreamUrl: String? = null,
         onResult: (success: Boolean, message: String) -> Unit = { _, _ -> }
     ) {
         viewModelScope.launch {
             try {
                 Timber.d("Starting download resolve for %s", videoId)
-                val result = streamExtractor.extractWithFallback(videoId, StreamQuality.HIGH)
-                if (result != null) {
-                    val request = DownloadRequest.Builder(videoId, android.net.Uri.parse(result.url))
+                val streamUrl = resolvedStreamUrl ?: streamExtractor.extractWithFallback(videoId, StreamQuality.HIGH)?.url
+                if (streamUrl != null) {
+                    val request = DownloadRequest.Builder(videoId, android.net.Uri.parse(streamUrl))
                         .setCustomCacheKey(videoId)
                         .setData(title.toByteArray(Charsets.UTF_8))
                         .build()

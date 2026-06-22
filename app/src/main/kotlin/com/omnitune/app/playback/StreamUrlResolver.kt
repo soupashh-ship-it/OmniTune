@@ -31,6 +31,11 @@ object StreamUrlResolver {
         Timber.d("StreamUrlResolver: invalidated cache for $videoId")
     }
 
+    fun clearMemoryCache(reason: String) {
+        streamCache.evictAll()
+        Timber.d("StreamUrlResolver: cleared memory cache ($reason)")
+    }
+
     /**
      * Returns true if the given URI is a bare YouTube video ID (not a standard URL).
      */

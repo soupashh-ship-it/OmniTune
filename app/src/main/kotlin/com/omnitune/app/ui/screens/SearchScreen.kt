@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -82,6 +85,8 @@ fun SearchScreen(
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
     onPlaySong: (SongItem) -> Unit = {},
+    onPlayNext: (SongItem) -> Unit = {},
+    onAddToQueue: (SongItem) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -162,17 +167,36 @@ fun SearchScreen(
                 }
             }
             uiState.songs.isEmpty() && uiState.artists.isEmpty() && uiState.albums.isEmpty() && uiState.playlists.isEmpty() -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = "No results for \"${uiState.query}\"")
-            else -> SearchResultsContent(uiState.songs, uiState.artists, uiState.albums, uiState.playlists, onNavigateToAlbum, onNavigateToArtist, onPlaySong)
+            else -> SearchResultsContent(uiState.songs, uiState.artists, uiState.albums, uiState.playlists, onNavigateToAlbum, onNavigateToArtist, onPlaySong, onPlayNext, onAddToQueue)
         }
     }
 }
 
 @Composable
-private fun SearchResultsContent(songs: List<SongItem>, artists: List<ArtistItem>, albums: List<AlbumItem>, playlists: List<PlaylistItem>, onNavigateToAlbum: (String) -> Unit, onNavigateToArtist: (String) -> Unit, onPlaySong: (SongItem) -> Unit = {}) {
+private fun SearchResultsContent(
+    songs: List<SongItem>,
+    artists: List<ArtistItem>,
+    albums: List<AlbumItem>,
+    playlists: List<PlaylistItem>,
+    onNavigateToAlbum: (String) -> Unit,
+    onNavigateToArtist: (String) -> Unit,
+    onPlaySong: (SongItem) -> Unit = {},
+    onPlayNext: (SongItem) -> Unit = {},
+    onAddToQueue: (SongItem) -> Unit = {},
+) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (songs.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(8.dp)); OmniSectionHeader(title = "Songs", action = "${songs.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(songs) { song -> GlassSearchRow(song.title, song.artists.joinToString(", ") { it.name }, song.thumbnail, { onPlaySong(song) }) }
+            items(songs) { song ->
+                GlassSearchRow(
+                    title = song.title,
+                    subtitle = song.artists.joinToString(", ") { it.name },
+                    thumbnailUrl = song.thumbnail,
+                    onClick = { onPlaySong(song) },
+                    onPlayNext = { onPlayNext(song) },
+                    onAddToQueue = { onAddToQueue(song) },
+                )
+            }
         }
         if (artists.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Artists", action = "${artists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
@@ -191,8 +215,18 @@ private fun SearchResultsContent(songs: List<SongItem>, artists: List<ArtistItem
 }
 
 @Composable
-private fun GlassSearchRow(title: String, subtitle: String, thumbnailUrl: String?, onClick: () -> Unit, circular: Boolean = false, fallbackRes: Int = android.R.drawable.ic_media_play) {
+private fun GlassSearchRow(
+    title: String,
+    subtitle: String,
+    thumbnailUrl: String?,
+    onClick: () -> Unit,
+    circular: Boolean = false,
+    fallbackRes: Int = android.R.drawable.ic_media_play,
+    onPlayNext: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null,
+) {
     val focusManager = LocalFocusManager.current
+    var menuExpanded by remember { mutableStateOf(false) }
     Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(
         remember { MutableInteractionSource() },
         indication = androidx.compose.material3.ripple(bounded = true),
@@ -211,6 +245,33 @@ private fun GlassSearchRow(title: String, subtitle: String, thumbnailUrl: String
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotEmpty()) Text(subtitle, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (onPlayNext != null || onAddToQueue != null) {
+            Box {
+                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(40.dp)) {
+                    Icon(painterResource(android.R.drawable.ic_menu_more), contentDescription = "More options", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    if (onPlayNext != null) {
+                        DropdownMenuItem(
+                            text = { Text("Play next") },
+                            onClick = {
+                                menuExpanded = false
+                                onPlayNext()
+                            },
+                        )
+                    }
+                    if (onAddToQueue != null) {
+                        DropdownMenuItem(
+                            text = { Text("Add to queue") },
+                            onClick = {
+                                menuExpanded = false
+                                onAddToQueue()
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 }

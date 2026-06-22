@@ -269,6 +269,24 @@ fun OmniTuneMainScreen() {
                             playerConnection = localPlayerConnection,
                             onPlayerNotReady = { song -> pendingSearchSong = song }
                         )
+                    },
+                    onPlayNext = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.playNext(song.toMediaItem())
+                            Toast.makeText(context, "Added to play next", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onAddToQueue = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.addToQueue(song.toMediaItem())
+                            Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
                     })
             }
             composable("album/{albumId}") {

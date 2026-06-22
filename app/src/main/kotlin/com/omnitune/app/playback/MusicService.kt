@@ -12,6 +12,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -77,6 +78,7 @@ import com.omnitune.app.constants.ScrobbleDelaySecondsKey
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import javax.inject.Inject
 import com.omnitune.app.playback.EqualizerBand
@@ -160,6 +162,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
         observePreferences()
+        StreamUrlResolver.clearMemoryCache("service startup")
 
         // Restore persistent queue
         scope.launch(Dispatchers.IO) {
@@ -179,7 +182,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                             position = savedQueue.position
                         )
                         withContext(Dispatchers.Main) {
-                            playQueue(queue, playWhenReady = false)
+                            restoreQueueMetadataOnly(queue)
                         }
                     }
                 }
@@ -195,6 +198,31 @@ class MusicService : MediaLibraryService(), Player.Listener {
         sessionCallback.onToggleLike = { toggleLike() }
         sessionCallback.onToggleLibrary = { toggleLibrary() }
         sessionCallback.onStartRadio = { toggleStartRadio() }
+    }
+
+    private suspend fun restoreQueueMetadataOnly(queue: Queue) {
+        val initialStatus = queue.getInitialStatus()
+        if (initialStatus.items.isEmpty()) {
+            Timber.tag("OmniTunePlaybackTrace").w("Restore skipped: saved queue is empty")
+            return
+        }
+
+        val restoredIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
+        currentQueue = queue
+        queueTitle = initialStatus.title
+        player.playWhenReady = false
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaItems(
+            initialStatus.items.map { it.withOriginalVideoIdUri() },
+            restoredIndex,
+            initialStatus.position.coerceAtLeast(0L)
+        )
+        _currentMediaMetadata.value = player.currentMediaItem?.metadata
+        updateNotification()
+        Timber.tag("OmniTunePlaybackTrace").i(
+            "Restored queue metadata only: items=${initialStatus.items.size}, index=$restoredIndex, current=${player.currentMediaItem?.mediaId}"
+        )
     }
 
     private fun createNotificationChannel() {
@@ -467,6 +495,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 player.addMediaItems(0, resolvedItems.subList(0, resolvedIndex))
                 player.addMediaItems(resolvedItems.subList(resolvedIndex + 1, resolvedItems.size))
             } else {
+                Timber.tag("OmniTunePlaybackTrace").i(
+                    "Player setMediaItems: count=${resolvedItems.size}, index=$resolvedIndex, position=${initialStatus.position}"
+                )
                 player.setMediaItems(resolvedItems, resolvedIndex, initialStatus.position)
                 player.prepare()
                 player.playWhenReady = playWhenReady
@@ -475,6 +506,48 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 )
             }
         }
+    }
+
+    fun playOrResolveCurrent() {
+        val currentItem = player.currentMediaItem
+        if (currentItem == null) {
+            Timber.tag("OmniTunePlaybackTrace").w("Play requested with no current media item")
+            return
+        }
+
+        if (player.playbackState == Player.STATE_ENDED) {
+            player.seekTo(0, 0)
+            player.playWhenReady = true
+            return
+        }
+
+        if (currentItem.needsFreshResolution() || player.playbackState == Player.STATE_IDLE) {
+            val items = (0 until player.mediaItemCount).map { index ->
+                player.getMediaItemAt(index).withOriginalVideoIdUri()
+            }
+            val index = player.currentMediaItemIndex.coerceAtLeast(0)
+            val position = player.currentPosition.coerceAtLeast(0L)
+            Timber.tag("OmniTunePlaybackTrace").i(
+                "Play requested for recoverable/restored item: current=${currentItem.mediaId}, index=$index, state=${player.playbackState}"
+            )
+            playQueue(
+                ListQueue(
+                    title = queueTitle,
+                    items = items,
+                    startIndex = index.coerceIn(0, items.lastIndex.coerceAtLeast(0)),
+                    position = position
+                ),
+                playWhenReady = true
+            )
+            return
+        }
+
+        Timber.tag("OmniTunePlaybackTrace").i("Player play called: current=${currentItem.mediaId}, state=${player.playbackState}")
+        player.play()
+    }
+
+    fun pausePlayback() {
+        player.pause()
     }
 
     fun startRadioSeamlessly() {
@@ -750,7 +823,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (mediaId == lastRecordedMediaId) return
 
         playbackTrackerJob = scope.launch(Dispatchers.IO) {
-            var durationMs = player.duration
+            var durationMs = withContext(Dispatchers.Main) { player.duration }
             while (durationMs == C.TIME_UNSET || durationMs <= 0L) {
                 delay(1000)
                 if (!isActive) return@launch
@@ -821,10 +894,28 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     position = currentPos.coerceAtLeast(0L)
                 )
                 database.saveQueue(entity)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 timber.log.Timber.tag("MusicService").e(e, "Error saving queue state")
             }
         }
+    }
+
+    private fun MediaItem.withOriginalVideoIdUri(): MediaItem {
+        return if (StreamUrlResolver.isYouTubeVideoId(Uri.parse(mediaId))) {
+            buildUpon()
+                .setUri(mediaId)
+                .setCustomCacheKey(mediaId)
+                .build()
+        } else {
+            this
+        }
+    }
+
+    private fun MediaItem.needsFreshResolution(): Boolean {
+        return StreamUrlResolver.isYouTubeVideoId(localConfiguration?.uri) ||
+            localConfiguration?.uri?.toString()?.startsWith("file:///offline/") == true
     }
 
 }

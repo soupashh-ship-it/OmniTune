@@ -127,6 +127,14 @@ class PlayerConnection(
         service.playQueue(queue)
     }
 
+    fun playOrResolveCurrent() {
+        service.playOrResolveCurrent()
+    }
+
+    fun pause() {
+        service.pausePlayback()
+    }
+
     fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
         service.applyEqualizerBands(bands)
     }
