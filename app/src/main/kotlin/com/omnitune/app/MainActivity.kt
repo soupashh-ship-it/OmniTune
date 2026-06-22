@@ -129,6 +129,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         
+        val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
+        val lastCrash = prefs.getString("last_crash", null)
+        if (lastCrash != null) {
+            prefs.edit().remove("last_crash").commit()
+            val scrollView = android.widget.ScrollView(this).apply {
+                addView(android.widget.TextView(this@MainActivity).apply {
+                    text = "CRASH OCCURRED:\n\n$lastCrash"
+                    textSize = 12f
+                    setPadding(32, 100, 32, 32)
+                    setTextColor(android.graphics.Color.RED)
+                    setTextIsSelectable(true)
+                })
+            }
+            setContentView(scrollView)
+            return
+        }
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)

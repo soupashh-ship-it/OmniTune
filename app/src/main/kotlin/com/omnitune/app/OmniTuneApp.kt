@@ -207,6 +207,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
 
         // Global crash handler
         try {
+            val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 try {
                     val sw = StringWriter()
@@ -214,21 +215,18 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     throwable.printStackTrace(pw)
                     val stack = sw.toString()
                     
-                    // Write to external files dir so user can retrieve it
+                    // Save to SharedPreferences so we can read it on next launch
+                    val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().putString("last_crash", stack).commit()
+                    
+                    // Write to external files dir as fallback
                     val crashFile = java.io.File(getExternalFilesDir(null), "crash.txt")
                     crashFile.writeText("CRASH LOG:\n$stack")
 
-                    if (BuildConfig.DEBUG) {
-                        val intent = Intent().setClassName(this@OmniTuneApp, "com.omnitune.app.SimpleCrashActivity").apply {
-                            putExtra("extra_stack_trace", stack)
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                        startActivity(intent)
-                        try { Thread.sleep(100) } catch (_: InterruptedException) {}
-                    }
                 } catch (e: Exception) {
                     // Ignore
                 } finally {
+                    defaultHandler?.uncaughtException(thread, throwable)
                     Process.killProcess(Process.myPid())
                     exitProcess(2)
                 }
