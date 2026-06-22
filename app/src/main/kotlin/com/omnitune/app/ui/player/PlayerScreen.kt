@@ -71,6 +71,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.media3.common.Player
 import androidx.media3.common.Player.REPEAT_MODE_ALL
 import androidx.media3.common.Player.REPEAT_MODE_OFF
@@ -95,11 +99,16 @@ fun PlayerScreen(
     onOpenQueue: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
-    val isPlaying by playerConnection?.isPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
-    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
-    val shuffleEnabled by playerConnection?.shuffleModeEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
-    val repeatMode by playerConnection?.repeatMode?.collectAsState() ?: remember { mutableStateOf(REPEAT_MODE_OFF) }
+    val mediaMetadataFlow = playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)
+    val mediaMetadata by mediaMetadataFlow.collectAsState(initial = null)
+    val isPlayingFlow = playerConnection?.isPlaying ?: kotlinx.coroutines.flow.flowOf(false)
+    val isPlaying by isPlayingFlow.collectAsState(initial = false)
+    val playbackStateFlow = playerConnection?.playbackState ?: kotlinx.coroutines.flow.flowOf(Player.STATE_IDLE)
+    val playbackState by playbackStateFlow.collectAsState(initial = Player.STATE_IDLE)
+    val shuffleEnabledFlow = playerConnection?.shuffleModeEnabled ?: kotlinx.coroutines.flow.flowOf(false)
+    val shuffleEnabled by shuffleEnabledFlow.collectAsState(initial = false)
+    val repeatModeFlow = playerConnection?.repeatMode ?: kotlinx.coroutines.flow.flowOf(REPEAT_MODE_OFF)
+    val repeatMode by repeatModeFlow.collectAsState(initial = REPEAT_MODE_OFF)
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
     val isSeeking = remember { mutableFloatStateOf(-1f) }
 
@@ -136,72 +145,88 @@ fun PlayerScreen(
         label = "animatedColor"
     )
 
-    Box(modifier = modifier.fillMaxSize().background(
-        Brush.verticalGradient(
-            colors = listOf(animatedColor.copy(alpha = 0.8f), OmniColors.Background),
-            startY = 0f,
-            endY = Float.POSITIVE_INFINITY
-        )
-    )) {
-        thumbnailUrl?.let { url ->
-            AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().blur(60.dp), alpha = 0.25f)
-        }
-        Box(modifier = Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(OmniColors.Background.copy(alpha = 0.7f), OmniColors.Background.copy(alpha = 0.5f), OmniColors.Background.copy(alpha = 0.85f)))
-        ))
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            // Top bar
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp).clip(OmniShapes.SM).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).background(OmniColors.GlassSurface)) {
-                    Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(18.dp))
+    Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            // Metro Edge-to-Edge Album Art
+            Box(modifier = Modifier.fillMaxWidth().weight(0.55f)) {
+                AnimatedContent(
+                    targetState = mediaMetadata?.id ?: "",
+                    transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                    label = "album_art",
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (!thumbnailUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = "Album Art",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Dark gradient overlay at the bottom of the album art so text is readable if it overlaps
+                        Box(modifier = Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f), Color.Black),
+                                startY = 0f,
+                                endY = Float.POSITIVE_INFINITY
+                            )
+                        ))
+                    }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Text("Now Playing", style = androidx.compose.material3.MaterialTheme.typography.labelLarge, color = OmniColors.TextMuted)
-                Spacer(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.size(36.dp))
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            // Album Art
-            AnimatedContent(targetState = mediaMetadata?.id ?: "", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-                label = "album_art", modifier = Modifier.weight(0.45f)) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                    Box(modifier = Modifier.fillMaxWidth(0.72f).aspectRatio(1f).shadow(24.dp, OmniShapes.XL, ambientColor = OmniColors.Primary.copy(alpha = 0.15f))
-                        .clip(OmniShapes.XL).border(2.dp, OmniColors.GlassBorder, OmniShapes.XL).background(OmniColors.GlassSurfaceStrong)) {
-                        if (!thumbnailUrl.isNullOrBlank()) {
-                            AsyncImage(model = thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                        }
+                
+                // Top bar over album art
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Navigate up", tint = Color.White)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = onOpenQueue) {
+                        Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = Color.White)
                     }
                 }
             }
-            com.omnitune.app.ui.component.AudioVisualizer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(32.dp),
-                isPlaying = isPlaying,
-                color = OmniColors.Primary.copy(alpha = 0.4f),
-                activeColor = OmniColors.Primary,
-            )
-            // Lyrics
-            LyricsGlassPanel(playerConnection = playerConnection, modifier = Modifier.weight(0.25f))
-            // Song Info
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                AnimatedContent(targetState = mediaMetadata?.title ?: "No track", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "title") { title ->
-                    Text(title, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                AnimatedContent(targetState = mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown artist", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "artist") { artists ->
-                    Text(artists, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                PlayerSeekBar(playerConnection = playerConnection, isSeeking = isSeeking)
-                Spacer(modifier = Modifier.height(12.dp))
-                PlayerControlRow(isPlaying, playbackState, shuffleEnabled, repeatMode, playerConnection)
+
+            // Metro Typography and Controls
+            Column(modifier = Modifier.weight(0.45f).fillMaxWidth().padding(horizontal = 24.dp)) {
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                // Left-aligned bold typography
+                AnimatedContent(targetState = mediaMetadata?.title ?: "No track", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "title") { title ->
+                    Text(
+                        text = title.uppercase(),
+                        style = androidx.compose.material3.MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                AnimatedContent(targetState = mediaMetadata?.artists?.joinToString { it.name } ?: "Unknown artist", transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) }, label = "artist") { artists ->
+                    Text(
+                        text = artists,
+                        style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                        color = animatedColor, // Vibrant accent
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                PlayerSeekBar(playerConnection = playerConnection, isSeeking = isSeeking)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                PlayerControlRow(isPlaying, playbackState, shuffleEnabled, repeatMode, playerConnection)
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 PlayerExtrasRow(playerConnection, onOpenQueue)
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -209,7 +234,8 @@ fun PlayerScreen(
 @Composable
 private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androidx.compose.runtime.MutableFloatState) {
     val player = playerConnection?.player
-    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
+    val playbackStateFlow = playerConnection?.playbackState ?: kotlinx.coroutines.flow.flowOf(Player.STATE_IDLE)
+    val playbackState by playbackStateFlow.collectAsState(initial = Player.STATE_IDLE)
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     LaunchedEffect(playerConnection?.player) {
@@ -224,30 +250,34 @@ private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androi
         }
     }
     val progress by animateFloatAsState(targetValue = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f, label = "progress")
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().semantics { 
+        contentDescription = "Playback progress"
+    }) {
         Slider(value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
             onValueChange = { isSeeking.floatValue = it },
             onValueChangeFinished = { if (player != null && duration > 0) player.seekTo((isSeeking.floatValue * duration).toLong()); isSeeking.floatValue = -1f },
             colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong),
-            modifier = Modifier.fillMaxWidth())
+            modifier = Modifier.fillMaxWidth().semantics { stateDescription = "At ${formatDurationMs(currentPosition)} of ${formatDurationMs(duration)}" }
+        )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatDurationMs(if (isSeeking.floatValue >= 0f) (isSeeking.floatValue * duration).toLong() else currentPosition),
-                style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
-            Text(formatDurationMs(duration), style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted)
+                style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted, modifier = Modifier.clearAndSetSemantics {})
+            Text(formatDurationMs(duration), style = androidx.compose.material3.MaterialTheme.typography.labelSmall, color = OmniColors.TextMuted, modifier = Modifier.clearAndSetSemantics {})
         }
     }
 }
 
 @Composable
 private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnabled: Boolean, repeatMode: Int, playerConnection: PlayerConnection?) {
-    val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsState() ?: remember { mutableStateOf(false) }
+    val sleepTimerFlow = playerConnection?.sleepTimerRunning ?: kotlinx.coroutines.flow.flowOf(false)
+    val sleepTimerRunning by sleepTimerFlow.collectAsState(initial = false)
     var showSleepTimerDialog by remember { mutableStateOf(false) }
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        GlassCircleButton(painterResource(R.drawable.ic_shuffle), "Shuffle",
+        MetroIconButton(painterResource(R.drawable.ic_shuffle), "Shuffle",
             tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
             onClick = { playerConnection?.player?.shuffleModeEnabled = !shuffleEnabled })
-        GlassCircleButton(painterResource(R.drawable.ic_skip_previous), "Previous",
+        MetroIconButton(painterResource(R.drawable.ic_skip_previous), "Previous",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
             onClick = { playerConnection?.seekToPrevious() })
         // Play/Pause gradient circle
@@ -262,10 +292,10 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
                     contentDescription = if (isPlaying) "Pause" else "Play", tint = Color.White, modifier = Modifier.size(32.dp))
             }
         }
-        GlassCircleButton(painterResource(R.drawable.ic_skip_next), "Next",
+        MetroIconButton(painterResource(R.drawable.ic_skip_next), "Next",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
             onClick = { playerConnection?.seekToNext() })
-        GlassCircleButton(painterResource(R.drawable.ic_repeat), "Repeat",
+        MetroIconButton(painterResource(R.drawable.ic_repeat), "Repeat",
             tint = if (repeatMode != REPEAT_MODE_OFF) OmniColors.Primary else OmniColors.TextMuted,
             onClick = { playerConnection?.player?.let { p -> p.repeatMode = when (p.repeatMode) { REPEAT_MODE_OFF -> REPEAT_MODE_ALL; REPEAT_MODE_ALL -> REPEAT_MODE_ONE; else -> REPEAT_MODE_OFF } } })
             
@@ -300,30 +330,128 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
 }
 
 @Composable
-private fun GlassCircleButton(painter: androidx.compose.ui.graphics.painter.Painter, contentDescription: String, tint: Color, onClick: () -> Unit, size: Dp = 44.dp, iconSize: Dp = 22.dp) {
-    IconButton(onClick = onClick, modifier = Modifier.size(size).clip(CircleShape).border(1.dp, OmniColors.GlassBorderLight, CircleShape).background(OmniColors.GlassSurface)) {
+private fun MetroIconButton(painter: androidx.compose.ui.graphics.painter.Painter, contentDescription: String, tint: Color, onClick: () -> Unit, size: Dp = 44.dp, iconSize: Dp = 22.dp) {
+    IconButton(onClick = onClick, modifier = Modifier.size(size)) {
         Icon(painter, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 
 @Composable
 private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: () -> Unit) {
-    val currentSongState = playerConnection?.currentSong?.collectAsState(initial = null)
+    val currentSongFlow = playerConnection?.currentSong ?: kotlinx.coroutines.flow.flowOf(null)
+    val currentSongState = currentSongFlow.collectAsState(initial = null)
     val liked = currentSongState?.value?.song?.liked == true
+    var showEffectsDialog by remember { mutableStateOf(false) }
+
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { playerConnection?.toggleLike() }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
                 contentDescription = if (liked) "Unlike" else "Like", tint = if (liked) OmniColors.Hot else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
+        IconButton(onClick = { showEffectsDialog = true }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
+            Icon(painterResource(R.drawable.ic_settings), contentDescription = "Audio Effects", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+        }
         IconButton(onClick = onOpenQueue, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+        }
+    }
+
+    if (showEffectsDialog) {
+        AudioEffectsDialog(playerConnection = playerConnection, onDismiss = { showEffectsDialog = false })
+    }
+}
+
+@Composable
+private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: () -> Unit) {
+    val player = playerConnection?.player
+    var tempo by remember { mutableFloatStateOf(player?.playbackParameters?.speed ?: 1f) }
+    var pitch by remember { mutableFloatStateOf(player?.playbackParameters?.pitch ?: 1f) }
+    var skipSilence by remember { mutableStateOf(player?.skipSilenceEnabled ?: false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(OmniColors.GlassSurface)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text("Audio Effects", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OmniColors.TextPrimary)
+
+            // Tempo Slider
+            Column {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Tempo", color = OmniColors.TextPrimary, fontSize = 14.sp)
+                    Text(String.format("%.2fx", tempo), color = OmniColors.TextMuted, fontSize = 14.sp)
+                }
+                Slider(
+                    value = tempo,
+                    onValueChange = { tempo = it },
+                    onValueChangeFinished = { player?.playbackParameters = androidx.media3.common.PlaybackParameters(tempo, pitch) },
+                    valueRange = 0.5f..2.0f,
+                    colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong)
+                )
+            }
+
+            // Pitch Slider
+            Column {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Pitch", color = OmniColors.TextPrimary, fontSize = 14.sp)
+                    Text(String.format("%.2fx", pitch), color = OmniColors.TextMuted, fontSize = 14.sp)
+                }
+                Slider(
+                    value = pitch,
+                    onValueChange = { pitch = it },
+                    onValueChangeFinished = { player?.playbackParameters = androidx.media3.common.PlaybackParameters(tempo, pitch) },
+                    valueRange = 0.5f..2.0f,
+                    colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong)
+                )
+            }
+
+            // Skip Silence
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Skip Silence", color = OmniColors.TextPrimary, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = skipSilence,
+                    onCheckedChange = { 
+                        skipSilence = it
+                        player?.skipSilenceEnabled = it 
+                    }
+                )
+            }
+
+            // System Equalizer
+            Button(
+                onClick = {
+                    val audioSessionId = player?.audioSessionId ?: 0
+                    if (audioSessionId != 0) {
+                        try {
+                            val intent = android.content.Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+                            intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
+                            intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                            intent.putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "No system equalizer found", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        android.widget.Toast.makeText(context, "Audio session not ready", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
+            ) {
+                Text("Open System Equalizer")
+            }
         }
     }
 }
 
 @Composable
 private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modifier = Modifier) {
-    val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { mutableStateOf(null) }
+    val lyricsFlow = playerConnection?.currentLyrics ?: kotlinx.coroutines.flow.flowOf(null)
+    val lyricsEntity by lyricsFlow.collectAsState(initial = null)
     val player = playerConnection?.player
     val currentMediaId = player?.currentMediaItem?.mediaId
     var position by remember { mutableLongStateOf(0L) }
@@ -333,9 +461,11 @@ private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modi
             if (LyricsUtils.isTtml(it)) LyricsUtils.parseTtml(it) else LyricsUtils.parseLyrics(it) 
         } ?: emptyList() 
     }
-    if (parsedLines.isEmpty()) return
     val currentLineIndex = remember(position, parsedLines.size) { if (parsedLines.isEmpty()) -1 else LyricsUtils.findCurrentLineIndex(parsedLines, position) }
     val listState = rememberLazyListState()
+    
+    if (parsedLines.isEmpty()) return
+    
     LaunchedEffect(currentLineIndex) { if (currentLineIndex >= 0) listState.animateScrollToItem(index = currentLineIndex, scrollOffset = -200) }
     Box(modifier = modifier.fillMaxWidth().clip(OmniShapes.LG).background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.LG).padding(vertical = 8.dp)) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally, userScrollEnabled = true) {

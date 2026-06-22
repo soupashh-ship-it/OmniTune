@@ -1,0 +1,144 @@
+package com.omnitune.app.widget
+
+import android.content.Context
+import android.content.Intent
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.clickable
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.provideContent
+import androidx.glance.background
+import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
+import androidx.glance.layout.Column
+import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.layout.padding
+import androidx.glance.layout.size
+import androidx.glance.layout.width
+import androidx.glance.text.FontWeight
+import androidx.glance.text.Text
+import androidx.glance.text.TextStyle
+import com.omnitune.app.R
+import androidx.glance.Image
+import androidx.glance.ImageProvider
+import com.omnitune.app.playback.MusicService
+import androidx.media3.common.Player
+
+class OmniTuneWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = OmniTuneWidget()
+}
+
+class OmniTuneWidget : GlanceAppWidget() {
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideContent {
+            GlanceTheme {
+                WidgetContent(context)
+            }
+        }
+    }
+
+    @Composable
+    private fun WidgetContent(context: Context) {
+        val title = "OmniTune"
+        val artist = "Ready to play"
+
+        Box(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    provider = ImageProvider(R.drawable.ic_launcher_foreground),
+                    contentDescription = "Album Art",
+                    modifier = GlanceModifier.size(64.dp)
+                )
+
+                Spacer(modifier = GlanceModifier.width(16.dp))
+
+                Column(modifier = GlanceModifier.defaultWeight()) {
+                    Text(
+                        text = title,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1
+                    )
+                    Text(
+                        text = artist,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 14.sp
+                        ),
+                        maxLines = 1
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_skip_previous),
+                        contentDescription = "Previous",
+                        modifier = GlanceModifier.size(32.dp).clickable(actionRunCallback<PrevAction>())
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_play_arrow),
+                        contentDescription = "Play/Pause",
+                        modifier = GlanceModifier.size(48.dp).clickable(actionRunCallback<PlayPauseAction>())
+                    )
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_skip_next),
+                        contentDescription = "Next",
+                        modifier = GlanceModifier.size(32.dp).clickable(actionRunCallback<NextAction>())
+                    )
+                }
+            }
+        }
+    }
+}
+
+class PlayPauseAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        val player = MusicService.instance?.exoPlayer
+        if (player != null) {
+            if (player.playbackState == Player.STATE_ENDED) {
+                player.seekTo(0, 0)
+                player.playWhenReady = true
+            } else if (player.playWhenReady) {
+                player.pause()
+            } else {
+                player.play()
+            }
+        }
+    }
+}
+
+class NextAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        MusicService.instance?.exoPlayer?.seekToNextMediaItem()
+    }
+}
+
+class PrevAction : ActionCallback {
+    override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
+        MusicService.instance?.exoPlayer?.seekToPreviousMediaItem()
+    }
+}

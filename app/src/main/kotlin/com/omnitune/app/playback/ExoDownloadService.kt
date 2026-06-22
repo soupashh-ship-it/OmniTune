@@ -18,6 +18,9 @@ import com.omnitune.app.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
+
 private const val JOB_ID = 1001
 private const val DOWNLOAD_NOTIFICATION_ID = 2001
 const val DOWNLOAD_CHANNEL_ID = "omnitune_downloads"
@@ -34,18 +37,27 @@ class ExoDownloadService : DownloadService(
     @Inject
     lateinit var downloadUtil: DownloadUtil
 
+    @Inject
+    lateinit var streamExtractor: com.omnitune.app.data.StreamExtractor
+
     private lateinit var notificationHelper: DownloadNotificationHelper
+    private val serviceScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
         notificationHelper = DownloadNotificationHelper(this, DOWNLOAD_CHANNEL_ID)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+
     override fun getDownloadManager(): DownloadManager {
         // Use a simple DownloadManager with the download cache
         val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
         val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
-        return DownloadManager(
+        val downloadManager = DownloadManager(
             this,
             downloadUtil.databaseProvider,
             downloadUtil.downloadCache,
@@ -54,6 +66,34 @@ class ExoDownloadService : DownloadService(
         ).apply {
             maxParallelDownloads = 3
         }
+
+        downloadManager.addListener(object : DownloadManager.Listener {
+            override fun onDownloadChanged(
+                downloadManager: DownloadManager,
+                download: Download,
+                finalException: java.lang.Exception?
+            ) {
+                if (download.state == Download.STATE_FAILED && finalException is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException && finalException.responseCode == 403) {
+                    val videoId = download.request.id
+                    serviceScope.launch {
+                        val result = streamExtractor.extractWithFallback(videoId, com.omnitune.app.models.StreamQuality.HIGH)
+                        if (result != null) {
+                            val newRequest = androidx.media3.exoplayer.offline.DownloadRequest.Builder(download.request.id, android.net.Uri.parse(result.url))
+                                .setCustomCacheKey(download.request.customCacheKey)
+                                .setData(download.request.data)
+                                .build()
+                            DownloadService.sendAddDownload(
+                                this@ExoDownloadService,
+                                ExoDownloadService::class.java,
+                                newRequest,
+                                false
+                            )
+                        }
+                    }
+                }
+            }
+        })
+        return downloadManager
     }
 
     override fun getScheduler(): Scheduler =

@@ -14,31 +14,50 @@ import javax.inject.Singleton
 @Singleton
 class StreamExtractor @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val clientRotator: ClientRotator,
 ) {
 
-    suspend fun extract(songId: String, quality: StreamQuality): StreamResult? {
+    suspend fun extractWithFallback(songId: String, quality: StreamQuality, maxAttempts: Int = 3): StreamResult? {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
         val audioQuality = when (quality) {
             StreamQuality.LOW -> AudioQuality.LOW
             StreamQuality.MEDIUM, StreamQuality.HIGH -> AudioQuality.HIGH
             StreamQuality.BEST -> AudioQuality.HIGHEST
         }
-        val result = YTPlayerUtils.playerResponseForPlayback(
-            videoId = songId,
-            audioQuality = audioQuality,
-            connectivityManager = cm,
-            preferredStreamClient = PlayerStreamClient.ANDROID_VR,
-        )
-        return result.fold(
-            onSuccess = { data ->
-                StreamResult(
-                    url = data.streamUrl,
-                    contentType = data.format.mimeType,
-                    contentLength = data.format.contentLength,
-                    bitrate = data.format.bitrate,
-                )
-            },
-            onFailure = { null }
-        )
+
+        for (attempt in 0 until maxAttempts) {
+            val client = clientRotator.getNextClient(songId)
+            val result = YTPlayerUtils.playerResponseForPlayback(
+                videoId = songId,
+                audioQuality = audioQuality,
+                connectivityManager = cm,
+                preferredStreamClient = client,
+            )
+            
+            val streamResult = result.fold(
+                onSuccess = { data ->
+                    clientRotator.reportSuccess(songId)
+                    StreamResult(
+                        url = data.streamUrl,
+                        contentType = data.format.mimeType,
+                        contentLength = data.format.contentLength,
+                        bitrate = data.format.bitrate,
+                    )
+                },
+                onFailure = {
+                    clientRotator.reportFailure(songId)
+                    null
+                }
+            )
+
+            if (streamResult != null) {
+                return streamResult
+            }
+        }
+        return null
+    }
+
+    suspend fun extract(songId: String, quality: StreamQuality): StreamResult? {
+        return extractWithFallback(songId, quality)
     }
 }

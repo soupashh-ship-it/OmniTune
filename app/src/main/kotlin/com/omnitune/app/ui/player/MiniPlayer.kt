@@ -89,10 +89,17 @@ fun MiniPlayer(
     pureBlack: Boolean = false,
     playerConnection: PlayerConnection? = null,
 ) {
-    val isPlaying by playerConnection?.isPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
-    val playbackState by playerConnection?.playbackState?.collectAsState() ?: remember { mutableStateOf(Player.STATE_IDLE) }
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
-    val canSkipNext by playerConnection?.canSkipNext?.collectAsState() ?: remember { mutableStateOf(false) }
+    val isPlayingFlow = playerConnection?.isPlaying ?: kotlinx.coroutines.flow.flowOf(false)
+    val isPlaying by isPlayingFlow.collectAsState(initial = false)
+    
+    val playbackStateFlow = playerConnection?.playbackState ?: kotlinx.coroutines.flow.flowOf(Player.STATE_IDLE)
+    val playbackState by playbackStateFlow.collectAsState(initial = Player.STATE_IDLE)
+    
+    val mediaMetadataFlow = playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)
+    val mediaMetadata by mediaMetadataFlow.collectAsState(initial = null)
+    
+    val canSkipNextFlow = playerConnection?.canSkipNext ?: kotlinx.coroutines.flow.flowOf(false)
+    val canSkipNext by canSkipNextFlow.collectAsState(initial = false)
     val isLoading = playbackState == STATE_BUFFERING
     val hasPlayer = playerConnection != null
     val layoutDirection = LocalLayoutDirection.current
@@ -119,7 +126,8 @@ fun MiniPlayer(
     }
     
     // Lyrics fetching for miniplayer
-    val lyricsEntity by playerConnection?.currentLyrics?.collectAsState(initial = null) ?: remember { mutableStateOf(null) }
+    val currentLyricsFlow = playerConnection?.currentLyrics ?: kotlinx.coroutines.flow.flowOf(null)
+    val lyricsEntity by currentLyricsFlow.collectAsState(initial = null)
     val parsedLines = remember(lyricsEntity?.id, currentMediaId) {
         lyricsEntity?.lyrics?.let {
             if (LyricsUtils.isTtml(it)) LyricsUtils.parseTtml(it) else LyricsUtils.parseLyrics(it)
@@ -212,17 +220,18 @@ fun MiniPlayer(
             val context = androidx.compose.ui.platform.LocalContext.current
             val lastFmEnabled by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.EnableLastFMScrobblingKey, false)
 
+            val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "scrobble_pulse")
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.4f,
+                targetValue = 1.0f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable<Float>(
+                    animation = androidx.compose.animation.core.tween<Float>(800),
+                    repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                ),
+                label = "scrobble_alpha"
+            )
+
             if (lastFmEnabled && isPlaying) {
-                val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "scrobble_pulse")
-                val pulseAlpha by infiniteTransition.animateFloat(
-                    initialValue = 0.4f,
-                    targetValue = 1.0f,
-                    animationSpec = androidx.compose.animation.core.infiniteRepeatable<Float>(
-                        animation = androidx.compose.animation.core.tween<Float>(800),
-                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-                    ),
-                    label = "scrobble_alpha"
-                )
                 Box(
                     modifier = Modifier
                         .padding(end = 8.dp)
@@ -242,7 +251,7 @@ fun MiniPlayer(
                     },
                     modifier = Modifier.size(40.dp),
                 ) {
-                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = OmniColors.Primary, strokeWidth = 2.dp, strokeCap = StrokeCap.Round)
+                    if (isLoading) com.omnitune.app.ui.component.OmniTuneLoader(modifier = Modifier.size(20.dp), color = OmniColors.Primary, size = 20.dp)
                     else Icon(
                         painter = painterResource(if (playbackState == Player.STATE_ENDED || !isPlaying) R.drawable.ic_play_arrow else R.drawable.ic_pause),
                         contentDescription = if (isPlaying) "Pause" else "Play",

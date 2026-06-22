@@ -20,12 +20,55 @@ import com.omnitune.innertube.models.oddElements
 import com.omnitune.innertube.models.splitBySeparator
 import com.omnitune.innertube.utils.parseTime
 
+import com.omnitune.innertube.models.response.SearchResponse
+import com.omnitune.innertube.models.getContinuation
+import com.omnitune.innertube.models.getItems
+
 data class SearchResult(
     val items: List<YTItem>,
     val continuation: String? = null,
 )
 
 object SearchPage {
+    fun parseSearchResult(response: SearchResponse): SearchResult? {
+        val contents = response.contents ?: return null
+        
+        // V1: tabbedSearchResultsRenderer
+        contents.tabbedSearchResultsRenderer?.tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.let { sectionList ->
+            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
+            if (shelf != null) {
+                return SearchResult(
+                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
+                    continuation = shelf.continuations?.getContinuation()
+                )
+            }
+        }
+
+        // V2: twoColumnSearchResultsRenderer
+        contents.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.let { sectionList ->
+            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
+            if (shelf != null) {
+                return SearchResult(
+                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
+                    continuation = shelf.continuations?.getContinuation()
+                )
+            }
+        }
+
+        // Legacy/Direct: sectionListRenderer
+        contents.sectionListRenderer?.let { sectionList ->
+            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
+            if (shelf != null) {
+                return SearchResult(
+                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
+                    continuation = shelf.continuations?.getContinuation()
+                )
+            }
+        }
+
+        return null
+    }
+
     fun toYTItem(renderer: MusicResponsiveListItemRenderer): YTItem? {
         val secondaryLine =
             renderer.flexColumns

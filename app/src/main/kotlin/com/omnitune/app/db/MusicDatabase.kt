@@ -57,7 +57,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 3
+private const val CURRENT_VERSION = 4
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -165,9 +165,19 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `song` (`inLibrary`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isLocal` ON `song` (`isLocal`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_liked` ON `song` (`liked`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_album_inLibrary` ON `album` (`inLibrary`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_artist_bookmarkedAt` ON `artist` (`bookmarkedAt`)")
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
             val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(DatabaseCallback())
                 .fallbackToDestructiveMigration()
                 .fallbackToDestructiveMigrationOnDowngrade()

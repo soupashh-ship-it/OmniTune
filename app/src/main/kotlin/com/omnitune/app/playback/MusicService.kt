@@ -98,13 +98,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private var mediaSession: MediaLibrarySession? = null
-    private var scopeJob = Job()
-    var scope = CoroutineScope(Dispatchers.Main + scopeJob)
+    private var scopeJob = kotlinx.coroutines.SupervisorJob()
+    private val exceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, exception ->
+        timber.log.Timber.tag("MusicService").e(exception, "Uncaught exception in MusicService scope")
+    }
+    var scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + scopeJob + exceptionHandler)
     private val binder = MusicBinder()
 
 
     val exoPlayer: ExoPlayer get() = player
-    private lateinit var player: ExoPlayer
+    internal lateinit var player: ExoPlayer
     private val _playerVolume = MutableStateFlow(1f)
     val playerVolume = _playerVolume.asStateFlow()
     private val audioFocusVolumeFactor = MutableStateFlow(1f)
@@ -205,6 +208,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         player = ExoPlayer.Builder(this)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this))
             .setAudioAttributes(
@@ -246,7 +250,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                             .build(),
                         true
                     )
-                    .setHandleAudioBecomingNoisy(false)
+                    .setHandleAudioBecomingNoisy(true)
                     .build()
             }
         )
@@ -691,39 +695,42 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
-        super.onTimelineChanged(timeline, reason)
         saveQueueState()
     }
 
     private fun saveQueueState() {
         saveQueueJob?.cancel()
-        saveQueueJob = scope.launch(Dispatchers.IO) {
-            delay(1000) // Debounce
-            
-            val (count, currentIndex, currentPos) = withContext(Dispatchers.Main) { 
-                Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
-            }
-            
-            if (count == 0) {
-                database.clearQueue()
-                return@launch
-            }
-            
-            val mediaIds = mutableListOf<String>()
-            withContext(Dispatchers.Main) {
-                for (i in 0 until count) {
-                    mediaIds.add(player.getMediaItemAt(i).mediaId)
+        saveQueueJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                kotlinx.coroutines.delay(1000) // Debounce
+                
+                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
+                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
                 }
+                
+                if (count == 0) {
+                    database.clearQueue()
+                    return@launch
+                }
+                
+                val mediaIds = mutableListOf<String>()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    for (i in 0 until count) {
+                        mediaIds.add(player.getMediaItemAt(i).mediaId)
+                    }
+                }
+                
+                val entity = com.omnitune.app.db.entities.QueueEntity(
+                    id = 1,
+                    title = queueTitle,
+                    mediaIdList = mediaIds.joinToString(","),
+                    startIndex = currentIndex,
+                    position = currentPos.coerceAtLeast(0L)
+                )
+                database.saveQueue(entity)
+            } catch (e: Exception) {
+                timber.log.Timber.tag("MusicService").e(e, "Error saving queue state")
             }
-            
-            val entity = com.omnitune.app.db.entities.QueueEntity(
-                id = 1,
-                title = queueTitle,
-                mediaIdList = mediaIds.joinToString(","),
-                startIndex = currentIndex,
-                position = currentPos.coerceAtLeast(0L)
-            )
-            database.saveQueue(entity)
         }
     }
 
