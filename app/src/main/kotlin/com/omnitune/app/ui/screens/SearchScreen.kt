@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.innertube.models.AlbumItem
@@ -155,7 +157,7 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        items(uiState.searchHistory) { item ->
+                        items(uiState.searchHistory, key = { it.query }, contentType = { "history" }) { item ->
                             Row(modifier = Modifier.fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { viewModel.onQueryChanged(item.query) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(painterResource(R.drawable.ic_list), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -187,7 +189,7 @@ private fun SearchResultsContent(
     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (songs.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(8.dp)); OmniSectionHeader(title = "Songs", action = "${songs.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(songs) { song ->
+            items(songs, key = { "song-${it.id}" }, contentType = { "song" }) { song ->
                 GlassSearchRow(
                     title = song.title,
                     subtitle = song.artists.joinToString(", ") { it.name },
@@ -200,15 +202,15 @@ private fun SearchResultsContent(
         }
         if (artists.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Artists", action = "${artists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(artists) { artist -> GlassSearchRow(artist.title, "Artist", artist.thumbnail, { onNavigateToArtist(artist.id) }, circular = true) }
+            items(artists, key = { "artist-${it.id}" }, contentType = { "artist" }) { artist -> GlassSearchRow(artist.title, "Artist", artist.thumbnail, { onNavigateToArtist(artist.id) }, circular = true) }
         }
         if (albums.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Albums", action = "${albums.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(albums) { album -> GlassSearchRow(album.title, album.artists?.joinToString(", ") { it.name } ?: "", album.thumbnail, { onNavigateToAlbum(album.browseId) }) }
+            items(albums, key = { "album-${it.browseId}" }, contentType = { "album" }) { album -> GlassSearchRow(album.title, album.artists?.joinToString(", ") { it.name } ?: "", album.thumbnail, { onNavigateToAlbum(album.browseId) }) }
         }
         if (playlists.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Playlists", action = "${playlists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(playlists) { playlist -> GlassSearchRow(playlist.title, playlist.author?.name ?: "", playlist.thumbnail, {}, fallbackRes = R.drawable.ic_list) }
+            items(playlists, key = { "playlist-${it.id}" }, contentType = { "playlist" }) { playlist -> GlassSearchRow(playlist.title, playlist.author?.name ?: "", playlist.thumbnail, {}, fallbackRes = R.drawable.ic_list) }
         }
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }
@@ -226,7 +228,17 @@ private fun GlassSearchRow(
     onAddToQueue: (() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
+    val thumbnailModel = remember(thumbnailUrl) {
+        thumbnailUrl?.let {
+            ImageRequest.Builder(context)
+                .data(it)
+                .size(96, 96)
+                .memoryCacheKey(it)
+                .build()
+        }
+    }
     Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(
         remember { MutableInteractionSource() },
         indication = androidx.compose.material3.ripple(bounded = true),
@@ -237,7 +249,7 @@ private fun GlassSearchRow(
     }
         .background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(44.dp).clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM).background(OmniColors.GlassSurfaceStrong), contentAlignment = Alignment.Center) {
-            if (thumbnailUrl != null) AsyncImage(model = thumbnailUrl, contentDescription = null,
+            if (thumbnailModel != null) AsyncImage(model = thumbnailModel, contentDescription = null,
                 modifier = Modifier.fillMaxSize().clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
             else Icon(painterResource(fallbackRes), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }

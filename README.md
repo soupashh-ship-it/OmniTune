@@ -26,20 +26,22 @@
 
 OmniTune is a modern, lightweight music player for Android that streams music directly from YouTube. Built with Jetpack Compose and Material 3, it delivers a clean, responsive experience.
 
+Current release status: 0.6.3 is a stabilization candidate focused on playback recovery, queue behavior, offline downloads, release hygiene, and QA. It is not being presented as final stable or premium-ready until notification shade, lock-screen, and network-disabled error states are fully verified on physical devices.
+
 ## Features
 
-- **Stream from YouTube** — Search and play any song via YouTube's InnerTube API
-- **MiniPlayer** — Persistent mini player visible across all screens with live progress
-- **Full Player** — Album artwork, seek bar, play/pause/skip, volume, shuffle, and repeat controls
-- **Synced Lyrics** — Auto-scrolling lyrics fetched from multiple providers (LrcLib, KuGou, BetterLyrics, SimpMusic)
-- **Home Feed** — Recently played songs at a glance
-- **Library** — Browse albums and artists
-- **Queue Management** — Add to queue, play next, reorder
-- **Like & Save** — Favorite songs and manage your library
-- **Media Notifications** — Notification controls with custom actions
-- **Discord Rich Presence** — Show what you're listening to on Discord
-- **Last.fm Scrobbling** — Automatically scrobble plays to Last.fm
-- **Dark Theme** — Customizable color palettes with dark mode support
+- **Stream from YouTube** - Search and play songs via YouTube's InnerTube API
+- **MiniPlayer** - Persistent mini player visible across app screens with live state
+- **Full Player** - Album artwork, seek bar, play/pause/skip, shuffle, repeat, queue, and download controls
+- **Synced Lyrics** - Auto-scrolling lyrics fetched from multiple providers
+- **Home Feed** - Recently played songs at a glance
+- **Library** - Browse albums, artists, playlists, liked songs, and downloads
+- **Queue Management** - Add to queue and play next
+- **Downloads** - Media3-backed downloads for offline playback
+- **MediaSession** - External media controls through Android MediaSession
+- **Discord Rich Presence** - Show what you're listening to on Discord
+- **Last.fm Scrobbling** - Automatically scrobble plays to Last.fm
+- **Dark Theme** - Customizable color palettes with dark mode support
 
 ## Tech Stack
 
@@ -49,7 +51,7 @@ OmniTune is a modern, lightweight music player for Android that streams music di
 | Architecture | MVVM, Hilt DI |
 | Media | ExoPlayer (Media3), MediaSession |
 | Database | Room |
-| Networking | Retrofit, OkHttp |
+| Networking | Ktor, OkHttp |
 | Image Loading | Coil |
 | Lyrics | LrcLib, KuGou, BetterLyrics, SimpMusic |
 | Backend | YouTube InnerTube API |
@@ -58,9 +60,9 @@ OmniTune is a modern, lightweight music player for Android that streams music di
 
 ### Prerequisites
 
-- Android Studio Hedgehog (2023.1.1) or later
-- JDK 17+
-- Android SDK 34
+- Android Studio with Android Gradle Plugin 9 support
+- JDK 21
+- Android SDK 36
 
 ### Build
 
@@ -72,11 +74,13 @@ cd OmniTune
 
 The debug APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
+Firebase/Crashlytics is optional for local builds and is only enabled with `-PenableFirebase=true`. Release signing must be configured with signing properties or environment variables; release builds must not fall back to debug signing.
+
 ## Download
 
-Grab the latest APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page.
+Grab the latest stabilization-candidate APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page.
 
-> **Note:** This is pre-alpha software. Expect bugs and missing features.
+> **Note:** 0.6.x is focused on stabilization. Expect remaining bugs around device-specific notification UI, lock-screen controls, and network-disabled edge cases until QA closes those items.
 
 ## Project Structure
 
@@ -102,7 +106,11 @@ kugou/            # KuGou lyrics provider
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests.
+Contributions are welcome. Feel free to open issues or submit pull requests.
+
+## Credits
+
+This project includes code derived from or inspired by [Velune](https://github.com/nikhilvishwakarma00/Velune). See [CREDITS.md](CREDITS.md).
 
 ## License
 

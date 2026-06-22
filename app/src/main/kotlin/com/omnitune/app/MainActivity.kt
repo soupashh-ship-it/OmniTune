@@ -6,6 +6,7 @@
 package com.omnitune.app
 
 import android.os.Bundle
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -66,6 +67,8 @@ import com.omnitune.app.ui.screens.LibraryArtistsScreen
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import android.content.Intent
 import android.content.Context
 import kotlinx.coroutines.delay
@@ -302,7 +305,28 @@ fun OmniTuneMainScreen() {
             composable("queue") { QueueScreen(playerConnection = LocalPlayerConnection.current, onBack = { navController.popBackStack() }) }
             composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) }
             composable(ROUTE_DOWNLOADS) {
-                DownloadsScreen(onBack = { navController.popBackStack() })
+                DownloadsScreen(
+                    onBack = { navController.popBackStack() },
+                    onPlayDownload = { download ->
+                        val title = String(download.request.data, Charsets.UTF_8)
+                        val mediaItem = MediaItem.Builder()
+                            .setMediaId(download.request.id)
+                            .setUri(Uri.parse(download.request.id))
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(title)
+                                    .build()
+                            )
+                            .build()
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.playQueue(ListQueue(items = listOf(mediaItem)))
+                            navController.navigate("player")
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
             }
             composable(ROUTE_EQUALIZER) {
                 EqualizerScreen(

@@ -46,6 +46,7 @@ import com.omnitune.app.ui.theme.OmniShapes
 @Composable
 fun DownloadsScreen(
     onBack: () -> Unit,
+    onPlayDownload: (Download) -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -100,6 +101,7 @@ fun DownloadsScreen(
                 items(uiState.downloads) { download ->
                     DownloadItemRow(
                         download = download,
+                        onPlay = { onPlayDownload(download) },
                         onRetry = { viewModel.retryDownload(download.request.id) },
                         onRemove = { viewModel.removeDownload(download.request.id) }
                     )
@@ -114,6 +116,7 @@ fun DownloadsScreen(
 @Composable
 private fun DownloadItemRow(
     download: Download,
+    onPlay: () -> Unit,
     onRetry: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -132,6 +135,13 @@ private fun DownloadItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.SM)
+            .then(
+                if (download.state == Download.STATE_COMPLETED) {
+                    Modifier.clickable(onClick = onPlay)
+                } else {
+                    Modifier
+                }
+            )
             .background(OmniColors.GlassSurface)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
