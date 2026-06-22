@@ -32,6 +32,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".SimpleCrashActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light" />
+
 
         <service
             android:name=".playback.MusicService"

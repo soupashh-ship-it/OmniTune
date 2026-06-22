@@ -219,7 +219,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     crashFile.writeText("CRASH LOG:\n$stack")
 
                     if (BuildConfig.DEBUG) {
-                        val intent = Intent().setClassName(this@OmniTuneApp, "com.omnitune.app.DebugActivity").apply {
+                        val intent = Intent().setClassName(this@OmniTuneApp, "com.omnitune.app.SimpleCrashActivity").apply {
                             putExtra("extra_stack_trace", stack)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                         }
