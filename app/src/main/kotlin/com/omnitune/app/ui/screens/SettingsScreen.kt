@@ -25,10 +25,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
@@ -48,6 +51,9 @@ import com.omnitune.app.constants.*
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.update.ApkInstallLauncher
+import com.omnitune.app.update.UpdateState
+import com.omnitune.app.update.UpdateViewModel
 import androidx.compose.ui.platform.LocalContext
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
@@ -63,6 +69,7 @@ private enum class SettingsSection(val label: String, val iconRes: Int) {
     LYRICS("Lyrics", R.drawable.ic_list),
     CONTENT("Content", android.R.drawable.ic_menu_search),
     STORAGE("Storage & Cache", android.R.drawable.ic_menu_save),
+    UPDATES("Updates", android.R.drawable.stat_sys_download_done),
     SCROBBLING("Scrobbling", R.drawable.ic_favorite),
 }
 
@@ -167,6 +174,7 @@ private fun SettingsSectionCard(
                                 SettingsSection.LYRICS -> listOf(OmniColors.Hot, OmniColors.Primary)
                                 SettingsSection.CONTENT -> listOf(OmniColors.Primary, OmniColors.Hot)
                                 SettingsSection.STORAGE -> listOf(OmniColors.Warning, OmniColors.Hot)
+                                SettingsSection.UPDATES -> listOf(OmniColors.Secondary, OmniColors.Warning)
                                 SettingsSection.SCROBBLING -> listOf(OmniColors.Hot, OmniColors.Secondary)
                             }
                         )
@@ -204,6 +212,7 @@ private fun SettingsSectionCard(
                     SettingsSection.LYRICS -> LyricsSettings()
                     SettingsSection.CONTENT -> ContentSettings()
                     SettingsSection.STORAGE -> StorageSettings()
+                    SettingsSection.UPDATES -> UpdatesSettings()
                     SettingsSection.SCROBBLING -> ScrobblingSettings()
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -429,6 +438,154 @@ private fun StorageSettings() {
 }
 
 // ── Scrobbling Settings ──
+
+@Composable
+private fun UpdatesSettings(
+    viewModel: UpdateViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    val state by viewModel.state.collectAsState()
+
+    SettingsCategoryLabel("App Updates")
+    Text(
+        "Current version: ${viewModel.currentVersionLabel}",
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = OmniColors.TextMuted,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+
+    when (val current = state) {
+        UpdateState.Idle -> SettingsActionButton("Check for updates") {
+            viewModel.checkForUpdates()
+        }
+        UpdateState.Checking -> {
+            UpdateMessage("Checking GitHub releases...")
+            LinearProgressIndicator(
+                color = OmniColors.Primary,
+                trackColor = OmniColors.GlassSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+        UpdateState.NoUpdate -> {
+            UpdateMessage("You are on the latest version.")
+            SettingsActionButton("Check again") {
+                viewModel.checkForUpdates()
+            }
+        }
+        is UpdateState.UpdateAvailable -> {
+            UpdateDetails(current)
+            if (current.requireMeteredConfirmation) {
+                UpdateMessage("Mobile data connection detected. Tap again to confirm download.")
+            }
+            SettingsActionButton(
+                if (current.requireMeteredConfirmation) "Download on mobile data" else "Download update"
+            ) {
+                viewModel.downloadUpdate(confirmMetered = current.requireMeteredConfirmation)
+            }
+        }
+        is UpdateState.Downloading -> {
+            val percent = (current.progress * 100).toInt().coerceIn(0, 100)
+            UpdateMessage("Downloading update... $percent%")
+            LinearProgressIndicator(
+                progress = { current.progress.coerceIn(0f, 1f) },
+                color = OmniColors.Primary,
+                trackColor = OmniColors.GlassSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+        is UpdateState.Downloaded -> {
+            UpdateMessage("Update downloaded and verified.")
+            UpdateMessage("Package: ${current.update.packageName}, code ${current.update.versionCode}")
+            SettingsActionButton("Install now") {
+                runCatching {
+                    if (ApkInstallLauncher.canRequestPackageInstalls(context)) {
+                        context.startActivity(ApkInstallLauncher.installIntent(context, current.update.apkFile))
+                    } else {
+                        context.startActivity(ApkInstallLauncher.installPermissionIntent(context))
+                    }
+                }.onFailure {
+                    viewModel.showError("Could not open Android installer.")
+                }
+            }
+            if (!ApkInstallLauncher.canRequestPackageInstalls(context)) {
+                UpdateMessage("Install permission is required to continue.")
+            }
+        }
+        is UpdateState.Error -> {
+            UpdateMessage(current.message)
+            SettingsActionButton("Try again") {
+                viewModel.checkForUpdates()
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdateDetails(state: UpdateState.UpdateAvailable) {
+    val update = state.update
+    Text(
+        "Latest version available: ${update.versionName}",
+        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
+        color = OmniColors.TextPrimary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+    Text(
+        "APK: ${formatBytes(update.apkAsset.size)}",
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = OmniColors.TextMuted,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    if (update.releaseNotes.isNotBlank()) {
+        Text(
+            update.releaseNotes,
+            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+            color = OmniColors.TextSecondary,
+            maxLines = 6,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun UpdateMessage(message: String) {
+    Text(
+        message,
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = OmniColors.TextMuted,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+}
+
+@Composable
+private fun SettingsActionButton(
+    label: String,
+    onClick: () -> Unit,
+) {
+    androidx.compose.material3.Button(
+        onClick = onClick,
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            containerColor = OmniColors.Primary,
+            contentColor = OmniColors.Background,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(label, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes <= 0L) return "Unknown size"
+    val mb = bytes / (1024.0 * 1024.0)
+    return "%.1f MB".format(mb)
+}
 
 @Composable
 private fun ScrobblingSettings() {

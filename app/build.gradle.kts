@@ -23,27 +23,23 @@ if (enableFirebase) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
-val signingProperties = Properties().apply {
-    val signingFile = rootProject.file("signing.properties")
-    if (signingFile.exists()) {
-        signingFile.inputStream().use(::load)
+fun signingEnv(envName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+
+val releaseKeystoreFile = signingEnv("OMNITUNE_KEYSTORE_FILE")
+val releaseKeystorePassword = signingEnv("OMNITUNE_KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingEnv("OMNITUNE_KEY_ALIAS")
+val releaseKeyPassword = signingEnv("OMNITUNE_KEY_PASSWORD")
+val releaseSigningIssues = buildList {
+    if (releaseKeystoreFile.isNullOrBlank()) add("OMNITUNE_KEYSTORE_FILE")
+    if (releaseKeystorePassword.isNullOrBlank()) add("OMNITUNE_KEYSTORE_PASSWORD")
+    if (releaseKeyAlias.isNullOrBlank()) add("OMNITUNE_KEY_ALIAS")
+    if (releaseKeyPassword.isNullOrBlank()) add("OMNITUNE_KEY_PASSWORD")
+    if (!releaseKeystoreFile.isNullOrBlank() && !file(releaseKeystoreFile).exists()) {
+        add("OMNITUNE_KEYSTORE_FILE points to a missing file")
     }
 }
-
-fun signingValue(envName: String, propertyName: String): String? =
-    System.getenv(envName)?.takeIf { it.isNotBlank() }
-        ?: signingProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
-
-val releaseKeystoreFile = signingValue("OMNITUNE_KEYSTORE_FILE", "storeFile")
-val releaseKeystorePassword = signingValue("OMNITUNE_KEYSTORE_PASSWORD", "storePassword")
-val releaseKeyAlias = signingValue("OMNITUNE_KEY_ALIAS", "keyAlias")
-val releaseKeyPassword = signingValue("OMNITUNE_KEY_PASSWORD", "keyPassword")
-val hasReleaseSigning = listOf(
-    releaseKeystoreFile,
-    releaseKeystorePassword,
-    releaseKeyAlias,
-    releaseKeyPassword
-).all { !it.isNullOrBlank() } && releaseKeystoreFile?.let { file(it).exists() } == true
+val hasReleaseSigning = releaseSigningIssues.isEmpty()
 
 android {
     namespace = "com.omnitune.app"
@@ -144,8 +140,9 @@ gradle.taskGraph.whenReady {
     }
     if (requestedReleaseBuild && !hasReleaseSigning) {
         throw GradleException(
-            "Release signing is required. Set OMNITUNE_KEYSTORE_FILE, OMNITUNE_KEYSTORE_PASSWORD, " +
-                "OMNITUNE_KEY_ALIAS, and OMNITUNE_KEY_PASSWORD, or define storeFile/storePassword/keyAlias/keyPassword in signing.properties."
+            "Release signing is required. Missing or invalid environment variables: " +
+                releaseSigningIssues.joinToString(", ") +
+                ". Set OMNITUNE_KEYSTORE_FILE, OMNITUNE_KEYSTORE_PASSWORD, OMNITUNE_KEY_ALIAS, and OMNITUNE_KEY_PASSWORD."
         )
     }
 }
@@ -185,6 +182,7 @@ dependencies {
     implementation(libs.hilt.navigation)
 
     implementation(libs.activity)
+    implementation(libs.core)
     implementation(libs.navigation)
 
     implementation(libs.compose.runtime)
