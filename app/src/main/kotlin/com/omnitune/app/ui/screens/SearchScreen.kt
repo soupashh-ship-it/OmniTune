@@ -104,14 +104,14 @@ fun SearchScreen(
             TextField(value = textFieldValue.value, onValueChange = { textFieldValue.value = it; viewModel.onQueryChanged(it.text) },
                 modifier = Modifier.weight(1f).height(48.dp).clip(OmniShapes.MD).background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorder, OmniShapes.MD),
                 placeholder = { Text("Search songs, artists, albums...", color = OmniColors.TextMuted, fontSize = 14.sp) },
-                leadingIcon = { Icon(painterResource(android.R.drawable.ic_menu_search), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp)) },
-                trailingIcon = { if (uiState.query.isNotEmpty()) IconButton(onClick = { viewModel.clearQuery() }, modifier = Modifier.size(32.dp)) { Icon(painterResource(android.R.drawable.ic_menu_close_clear_cancel), contentDescription = "Clear", tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp)) } },
+                leadingIcon = { Icon(painterResource(com.omnitune.app.R.drawable.ic_search), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp)) },
+                trailingIcon = { if (uiState.query.isNotEmpty()) IconButton(onClick = { viewModel.clearQuery() }, modifier = Modifier.size(32.dp)) { Icon(painterResource(com.omnitune.app.R.drawable.ic_close), contentDescription = "Clear", tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp)) } },
                 colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = OmniColors.Primary, focusedTextColor = OmniColors.TextPrimary, unfocusedTextColor = OmniColors.TextPrimary),
                 singleLine = true)
         }
         when {
             uiState.isSearching -> Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) { OmniTuneLoader(size = 48.dp) }
-            uiState.error != null -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = uiState.error ?: "Search failed", action = {
+            uiState.error != null -> EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = uiState.error ?: "Search failed", action = {
                 androidx.compose.material3.Button(
                     onClick = { viewModel.retrySearch() },
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
@@ -165,10 +165,10 @@ fun SearchScreen(
                             }
                         }
                     }
-                    if (uiState.searchHistory.isEmpty()) item { EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = "Search for your favorite songs, artists, and albums") }
+                    if (uiState.searchHistory.isEmpty()) item { EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = "Search for your favorite songs, artists, and albums") }
                 }
             }
-            uiState.songs.isEmpty() && uiState.artists.isEmpty() && uiState.albums.isEmpty() && uiState.playlists.isEmpty() -> EmptyPlaceholder(icon = android.R.drawable.ic_menu_search, text = "No results for \"${uiState.query}\"")
+            uiState.songs.isEmpty() && uiState.artists.isEmpty() && uiState.albums.isEmpty() && uiState.playlists.isEmpty() -> EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = "No results for \"${uiState.query}\"")
             else -> SearchResultsContent(uiState.songs, uiState.artists, uiState.albums, uiState.playlists, onNavigateToAlbum, onNavigateToArtist, onPlaySong, onPlayNext, onAddToQueue)
         }
     }
@@ -223,7 +223,7 @@ private fun GlassSearchRow(
     thumbnailUrl: String?,
     onClick: () -> Unit,
     circular: Boolean = false,
-    fallbackRes: Int = android.R.drawable.ic_media_play,
+    fallbackRes: Int = com.omnitune.app.R.drawable.ic_play_arrow,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
 ) {
@@ -261,7 +261,7 @@ private fun GlassSearchRow(
         if (onPlayNext != null || onAddToQueue != null) {
             Box {
                 IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(40.dp)) {
-                    Icon(painterResource(android.R.drawable.ic_menu_more), contentDescription = "More options", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+                    Icon(painterResource(com.omnitune.app.R.drawable.ic_more_vert), contentDescription = "More options", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     if (onPlayNext != null) {

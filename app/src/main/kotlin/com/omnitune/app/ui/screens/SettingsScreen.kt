@@ -67,9 +67,9 @@ private enum class SettingsSection(val label: String, val iconRes: Int) {
     PLAYBACK("Playback", R.drawable.ic_play_arrow),
     APPEARANCE("Appearance", R.drawable.ic_repeat),
     LYRICS("Lyrics", R.drawable.ic_list),
-    CONTENT("Content", android.R.drawable.ic_menu_search),
-    STORAGE("Storage & Cache", android.R.drawable.ic_menu_save),
-    UPDATES("Updates", android.R.drawable.stat_sys_download_done),
+    CONTENT("Content", com.omnitune.app.R.drawable.ic_search),
+    STORAGE("Storage & Cache", com.omnitune.app.R.drawable.ic_list),
+    UPDATES("Updates", com.omnitune.app.R.drawable.ic_download),
     SCROBBLING("Scrobbling", R.drawable.ic_favorite),
 }
 

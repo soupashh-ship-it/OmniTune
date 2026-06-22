@@ -88,7 +88,7 @@ fun DownloadsScreen(
 
         if (uiState.downloads.isEmpty()) {
             EmptyPlaceholder(
-                icon = android.R.drawable.ic_menu_send,
+                icon = com.omnitune.app.R.drawable.ic_download,
                 text = "No downloaded songs yet"
             )
         } else {
@@ -154,7 +154,7 @@ private fun DownloadItemRow(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painterResource(android.R.drawable.ic_menu_send),
+                painterResource(com.omnitune.app.R.drawable.ic_download),
                 contentDescription = null,
                 tint = OmniColors.TextMuted,
                 modifier = Modifier.size(20.dp)
@@ -199,7 +199,7 @@ private fun DownloadItemRow(
                 .background(OmniColors.GlassSurfaceStrong)
         ) {
             Icon(
-                painterResource(android.R.drawable.ic_menu_delete),
+                painterResource(com.omnitune.app.R.drawable.ic_close),
                 contentDescription = "Remove",
                 tint = OmniColors.TextMuted,
                 modifier = Modifier.size(16.dp)

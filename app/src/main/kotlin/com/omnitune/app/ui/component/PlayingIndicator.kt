@@ -106,7 +106,7 @@ fun PlayingIndicatorBox(
                 )
             } else {
                 Icon(
-                    painter = painterResource(android.R.drawable.ic_media_play),
+                    painter = painterResource(com.omnitune.app.R.drawable.ic_play_arrow),
                     contentDescription = null,
                     tint = color,
                 )

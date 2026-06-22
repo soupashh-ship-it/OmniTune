@@ -376,7 +376,7 @@ private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: ()
                 android.widget.Toast.makeText(context, "No active song to download", android.widget.Toast.LENGTH_SHORT).show()
             }
         }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
-            Icon(painterResource(android.R.drawable.ic_menu_send), contentDescription = "Download", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+            Icon(painterResource(com.omnitune.app.R.drawable.ic_download), contentDescription = "Download", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
         }
         IconButton(onClick = { showEffectsDialog = true }, modifier = Modifier.size(40.dp).clip(CircleShape).background(OmniColors.GlassSurface)) {
             Icon(painterResource(R.drawable.ic_settings), contentDescription = "Audio Effects", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))

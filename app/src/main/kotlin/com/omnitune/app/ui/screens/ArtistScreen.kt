@@ -96,7 +96,7 @@ fun ArtistScreen(
             }
             error != null -> {
                 EmptyPlaceholder(
-                    icon = android.R.drawable.ic_menu_myplaces,
+                    icon = com.omnitune.app.R.drawable.ic_artist,
                     text = error ?: "Failed to load artist",
                 )
             }
@@ -152,7 +152,7 @@ fun ArtistScreen(
                     if (page.sections.isEmpty()) {
                         item {
                             EmptyPlaceholder(
-                                icon = android.R.drawable.ic_menu_myplaces,
+                                icon = com.omnitune.app.R.drawable.ic_artist,
                                 text = "No content available",
                             )
                         }

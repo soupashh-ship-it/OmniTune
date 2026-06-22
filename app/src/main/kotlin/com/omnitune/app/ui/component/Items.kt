@@ -236,7 +236,7 @@ fun ItemThumbnail(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f), shape)
             ) {
-                Icon(                        painter = painterResource(android.R.drawable.ic_input_add),
+                Icon(                        painter = painterResource(com.omnitune.app.R.drawable.ic_add),
                     contentDescription = null,
                     tint = Color.White
                 )

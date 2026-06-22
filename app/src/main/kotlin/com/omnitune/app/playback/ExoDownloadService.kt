@@ -98,7 +98,7 @@ class ExoDownloadService : DownloadService(
     ): Notification {
         return notificationHelper.buildProgressNotification(
             this,
-            android.R.drawable.stat_sys_download,
+            com.omnitune.app.R.drawable.ic_download,
             null,
             null,
             downloads,

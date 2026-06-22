@@ -66,7 +66,7 @@ fun LibraryScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LibrarySmartCard(painterResource(R.drawable.ic_favorite), "Liked", "${uiState.likedCount} songs", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLiked, Modifier.weight(1f))
-                LibrarySmartCard(painterResource(android.R.drawable.ic_menu_send), "Downloads", "", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToDownloads, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(com.omnitune.app.R.drawable.ic_download), "Downloads", "", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToDownloads, Modifier.weight(1f))
             }
         }
         item {
@@ -85,7 +85,7 @@ fun LibraryScreen(
             GlassCard(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToArtists) {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(OmniColors.Primary.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                        Icon(painterResource(android.R.drawable.ic_menu_myplaces), contentDescription = null, tint = OmniColors.Primary, modifier = Modifier.size(22.dp))
+                        Icon(painterResource(com.omnitune.app.R.drawable.ic_artist), contentDescription = null, tint = OmniColors.Primary, modifier = Modifier.size(22.dp))
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Text("Artists", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary)
@@ -96,7 +96,7 @@ fun LibraryScreen(
             GlassCard(modifier = Modifier.fillMaxWidth(), onClick = onNavigateToAlbums) {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(OmniColors.Secondary.copy(alpha = 0.15f)), contentAlignment = Alignment.Center) {
-                        Icon(painterResource(android.R.drawable.ic_menu_gallery), contentDescription = null, tint = OmniColors.Secondary, modifier = Modifier.size(22.dp))
+                        Icon(painterResource(com.omnitune.app.R.drawable.ic_album), contentDescription = null, tint = OmniColors.Secondary, modifier = Modifier.size(22.dp))
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Text("Albums", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary)

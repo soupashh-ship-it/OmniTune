@@ -58,7 +58,7 @@ fun ShowMediaInfo(videoId: String) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    painter = painterResource(android.R.drawable.ic_dialog_info),
+                    painter = painterResource(com.omnitune.app.R.drawable.ic_info),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.padding(end = 8.dp)

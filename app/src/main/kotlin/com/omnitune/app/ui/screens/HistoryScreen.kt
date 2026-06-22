@@ -93,7 +93,7 @@ fun HistoryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
-                            painter = painterResource(android.R.drawable.ic_menu_recent_history),
+                            painter = painterResource(com.omnitune.app.R.drawable.ic_history),
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(48.dp),

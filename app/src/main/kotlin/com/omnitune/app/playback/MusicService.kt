@@ -794,22 +794,22 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 CommandButton.Builder(CommandButton.ICON_PLAY)
                     .setSessionCommand(CommandToggleLike)
                     .setDisplayName("Like")
-                    .setIconResId(android.R.drawable.ic_input_add)
+                    .setIconResId(com.omnitune.app.R.drawable.ic_add)
                     .build(),
                 CommandButton.Builder(CommandButton.ICON_PLAY)
                     .setSessionCommand(CommandToggleRepeatMode)
                     .setDisplayName("Repeat")
-                    .setIconResId(android.R.drawable.ic_menu_recent_history)
+                    .setIconResId(com.omnitune.app.R.drawable.ic_history)
                     .build(),
                 CommandButton.Builder(CommandButton.ICON_PLAY)
                     .setSessionCommand(CommandToggleShuffle)
                     .setDisplayName("Shuffle")
-                    .setIconResId(android.R.drawable.ic_menu_sort_by_size)
+                    .setIconResId(com.omnitune.app.R.drawable.ic_sort)
                     .build(),
                 CommandButton.Builder(CommandButton.ICON_PLAY)
                     .setSessionCommand(CommandToggleStartRadio)
                     .setDisplayName("Radio")
-                    .setIconResId(android.R.drawable.ic_menu_share)
+                    .setIconResId(com.omnitune.app.R.drawable.ic_share)
                     .build(),
             )
             mediaSession?.setCustomLayout(customLayout)

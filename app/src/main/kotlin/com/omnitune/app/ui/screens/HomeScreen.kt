@@ -71,7 +71,7 @@ fun HomeScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 QuickGlassAction(painterResource(R.drawable.ic_play_arrow), "Play", listOf(OmniColors.Primary, OmniColors.Secondary), onResumePlayback, Modifier.weight(1f))
-                QuickGlassAction(painterResource(android.R.drawable.ic_menu_search), "Search", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToSearch, Modifier.weight(1f))
+                QuickGlassAction(painterResource(com.omnitune.app.R.drawable.ic_search), "Search", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToSearch, Modifier.weight(1f))
                 QuickGlassAction(painterResource(R.drawable.ic_list), "Library", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLibrary, Modifier.weight(1f))
             }
         }

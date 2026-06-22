@@ -104,7 +104,7 @@ fun AlbumScreen(
             }
             error != null -> {
                 EmptyPlaceholder(
-                    icon = android.R.drawable.ic_menu_gallery,
+                    icon = com.omnitune.app.R.drawable.ic_album,
                     text = error ?: "Failed to load album",
                 )
             }
@@ -187,7 +187,7 @@ fun AlbumScreen(
                     if (songList.isEmpty()) {
                         item {
                             EmptyPlaceholder(
-                                icon = android.R.drawable.ic_menu_gallery,
+                                icon = com.omnitune.app.R.drawable.ic_album,
                                 text = "No tracks available",
                             )
                         }

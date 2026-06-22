@@ -84,13 +84,13 @@ fun StatsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StatCard(
-                        icon = android.R.drawable.ic_media_play,
+                        icon = com.omnitune.app.R.drawable.ic_play_arrow,
                         label = "Songs in Library",
                         value = uiState.songCount.toString(),
                         modifier = Modifier.weight(1f),
                     )
                     StatCard(
-                        icon = android.R.drawable.ic_menu_recent_history,
+                        icon = com.omnitune.app.R.drawable.ic_history,
                         label = "Times Played",
                         value = uiState.totalPlayed.toString(),
                         modifier = Modifier.weight(1f),
@@ -104,13 +104,13 @@ fun StatsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StatCard(
-                        icon = android.R.drawable.ic_menu_gallery,
+                        icon = com.omnitune.app.R.drawable.ic_album,
                         label = "Albums",
                         value = uiState.albumCount.toString(),
                         modifier = Modifier.weight(1f),
                     )
                     StatCard(
-                        icon = android.R.drawable.ic_menu_myplaces,
+                        icon = com.omnitune.app.R.drawable.ic_artist,
                         label = "Artists",
                         value = uiState.artistCount.toString(),
                         modifier = Modifier.weight(1f),
@@ -124,7 +124,7 @@ fun StatsScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StatCard(
-                        icon = android.R.drawable.ic_menu_today,
+                        icon = com.omnitune.app.R.drawable.ic_calendar,
                         label = "Minutes Listened",
                         value = uiState.minutesListened.toString(),
                         modifier = Modifier.weight(1f),
@@ -156,7 +156,7 @@ fun StatsScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
-                                painter = painterResource(android.R.drawable.ic_menu_info_details),
+                                painter = painterResource(com.omnitune.app.R.drawable.ic_info),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(40.dp),

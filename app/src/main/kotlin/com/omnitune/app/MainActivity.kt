@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
         
         val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
         val lastCrash = prefs.getString("last_crash", null)
-        if (lastCrash != null) {
+        if (BuildConfig.DEBUG && lastCrash != null) {
             prefs.edit().remove("last_crash").commit()
             val scrollView = android.widget.ScrollView(this).apply {
                 addView(android.widget.TextView(this@MainActivity).apply {
@@ -149,6 +149,8 @@ class MainActivity : ComponentActivity() {
             }
             setContentView(scrollView)
             return
+        } else if (lastCrash != null) {
+            prefs.edit().remove("last_crash").apply()
         }
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {

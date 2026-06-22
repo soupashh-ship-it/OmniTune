@@ -63,7 +63,7 @@ fun LibraryArtistsScreen(
         }
 
         if (artists.isEmpty()) {
-            EmptyPlaceholder(icon = android.R.drawable.ic_menu_myplaces, text = "No artists in your library yet")
+            EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_artist, text = "No artists in your library yet")
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(artists) { artist ->

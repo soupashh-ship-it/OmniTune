@@ -69,7 +69,7 @@ fun QueueScreen(
 
         if (playerConnection == null || mediaMetadata == null) {
             com.omnitune.app.ui.component.EmptyPlaceholder(
-                icon = android.R.drawable.ic_menu_sort_by_size,
+                icon = com.omnitune.app.R.drawable.ic_sort,
                 text = "No items in queue",
             )
         } else {
@@ -109,7 +109,7 @@ fun QueueScreen(
                 if (itemCount <= 1) {
                     item {
                         com.omnitune.app.ui.component.EmptyPlaceholder(
-                            icon = android.R.drawable.ic_menu_sort_by_size,
+                            icon = com.omnitune.app.R.drawable.ic_sort,
                             text = "No upcoming items",
                         )
                     }
@@ -147,7 +147,7 @@ fun QueueScreen(
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     Icon(
-                                        painterResource(android.R.drawable.ic_menu_delete),
+                                        painterResource(com.omnitune.app.R.drawable.ic_close),
                                         contentDescription = "Delete",
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
@@ -216,7 +216,7 @@ private fun NowPlayingRow(mediaMetadata: MediaMetadata) {
         }
 
         Icon(
-            painter = painterResource(android.R.drawable.ic_media_play),
+            painter = painterResource(com.omnitune.app.R.drawable.ic_play_arrow),
             contentDescription = "Now Playing",
             tint = MaterialTheme.colorScheme.primary,
         )
