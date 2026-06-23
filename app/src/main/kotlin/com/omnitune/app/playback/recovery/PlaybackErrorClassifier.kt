@@ -40,7 +40,6 @@ object PlaybackErrorClassifier {
             }
         }
         
-        val message = error.message?.lowercase() ?: cause?.message?.lowercase() ?: ""
         if (message.contains("signature") && message.contains("expired")) {
             return PlaybackErrorType.SignatureExpired
         }

@@ -1,4 +1,4 @@
-# OmniTune v0.6.7 Playback Interaction Polish & Network Reliability
+# OmniTune v0.6.8 Playback Interaction Polish & Network Reliability
 
 ## Focus
 
@@ -20,7 +20,7 @@ This release focuses on refining the playback interaction experience (Queue, Shu
 
 ## Status
 
-Version 0.6.7 delivers significant playback stability and polish. The fundamental playback experience (shuffle, repeat, queue manipulation, and dynamic network transitions) is now much closer to premium expectations.
+Version 0.6.8 delivers significant playback stability and polish. The fundamental playback experience (shuffle, repeat, queue manipulation, and dynamic network transitions) is now much closer to premium expectations.
 
 ### Issue Fixes
 - **Widget Updates**: The home screen widget now dynamically displays current playback state using preferences.

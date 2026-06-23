@@ -962,17 +962,17 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private fun updateNotification() {
         try {
             val customLayout = listOf(
-                CommandButton.Builder(CommandButton.ICON_HEART)
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setSessionCommand(CommandToggleLike)
                     .setDisplayName("Like")
                     .setIconResId(com.omnitune.app.R.drawable.ic_add)
                     .build(),
-                CommandButton.Builder(CommandButton.ICON_REPEAT_ALL)
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setSessionCommand(CommandToggleRepeatMode)
                     .setDisplayName("Repeat")
                     .setIconResId(com.omnitune.app.R.drawable.ic_history)
                     .build(),
-                CommandButton.Builder(CommandButton.ICON_SHUFFLE_ON)
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setSessionCommand(CommandToggleShuffle)
                     .setDisplayName("Shuffle")
                     .setIconResId(com.omnitune.app.R.drawable.ic_sort)
