@@ -25,6 +25,7 @@ import javax.inject.Singleton
 @UnstableApi
 class DownloadUtil @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val okHttpClient: okhttp3.OkHttpClient,
 ) {
     val databaseProvider by lazy {
         StandaloneDatabaseProvider(context)
@@ -48,7 +49,8 @@ class DownloadUtil @Inject constructor(
     }
 
     val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
-        val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        val dataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okHttpClient)
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
         val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
         androidx.media3.exoplayer.offline.DownloadManager(
             context,

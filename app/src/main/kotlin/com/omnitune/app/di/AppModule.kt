@@ -46,7 +46,10 @@ object AppModule {
     @Provides
     @Singleton
     @androidx.media3.common.util.UnstableApi
-    fun provideDownloadUtil(@ApplicationContext context: android.content.Context): com.omnitune.app.playback.DownloadUtil {
-        return com.omnitune.app.playback.DownloadUtil(context)
+    fun provideDownloadUtil(
+        @ApplicationContext context: android.content.Context,
+        okHttpClient: okhttp3.OkHttpClient
+    ): com.omnitune.app.playback.DownloadUtil {
+        return com.omnitune.app.playback.DownloadUtil(context, okHttpClient)
     }
 }
