@@ -258,7 +258,7 @@ fun MiniPlayer(
                         if (playbackState == Player.STATE_ENDED || !isPlaying) pc.playOrResolveCurrent()
                         else pc.pause()
                     },
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(48.dp),
                 ) {
                     if (isLoading) com.omnitune.app.ui.component.OmniTuneLoader(modifier = Modifier.size(20.dp), color = OmniColors.Primary, size = 20.dp)
                     else Icon(
@@ -267,9 +267,11 @@ fun MiniPlayer(
                         tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp),
                     )
                 }
-                IconButton(enabled = canSkipNext, onClick = { pc.seekToNext() }, modifier = Modifier.size(40.dp)) {
-                    Icon(painterResource(R.drawable.ic_skip_next), contentDescription = "Next",
-                        tint = if (canSkipNext) OmniColors.TextPrimary else OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+                if (canSkipNext) {
+                    IconButton(enabled = canSkipNext, onClick = { pc.seekToNext() }, modifier = Modifier.size(48.dp)) {
+                        Icon(painterResource(R.drawable.ic_skip_next), contentDescription = "Next",
+                            tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp))
+                    }
                 }
             }
         }

@@ -279,11 +279,21 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
     val sleepTimerFlow = playerConnection?.sleepTimerRunning ?: kotlinx.coroutines.flow.flowOf(false)
     val sleepTimerRunning by sleepTimerFlow.collectAsState(initial = false)
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        MetroIconButton(painterResource(R.drawable.ic_shuffle), "Shuffle",
+        MetroIconButton(painterResource(R.drawable.ic_shuffle), if (shuffleEnabled) "Shuffle on" else "Shuffle off",
             tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
-            onClick = { playerConnection?.player?.shuffleModeEnabled = !shuffleEnabled })
+            onClick = { 
+                val player = playerConnection?.player
+                if (player != null) {
+                    if (player.mediaItemCount <= 1) {
+                        android.widget.Toast.makeText(context, "Add more songs to shuffle", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        player.shuffleModeEnabled = !shuffleEnabled
+                    }
+                }
+            })
         MetroIconButton(painterResource(R.drawable.ic_skip_previous), "Previous",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
             onClick = { playerConnection?.seekToPrevious() })
@@ -301,7 +311,18 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         MetroIconButton(painterResource(R.drawable.ic_skip_next), "Next",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
             onClick = { playerConnection?.seekToNext() })
-        MetroIconButton(painterResource(R.drawable.ic_repeat), "Repeat",
+            
+        val repeatIcon = when (repeatMode) {
+            REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+            else -> R.drawable.ic_repeat
+        }
+        val repeatContentDesc = when (repeatMode) {
+            REPEAT_MODE_OFF -> "Repeat off"
+            REPEAT_MODE_ALL -> "Repeat all"
+            REPEAT_MODE_ONE -> "Repeat one"
+            else -> "Repeat"
+        }
+        MetroIconButton(painterResource(repeatIcon), repeatContentDesc,
             tint = if (repeatMode != REPEAT_MODE_OFF) OmniColors.Primary else OmniColors.TextMuted,
             onClick = { playerConnection?.player?.let { p -> p.repeatMode = when (p.repeatMode) { REPEAT_MODE_OFF -> REPEAT_MODE_ALL; REPEAT_MODE_ALL -> REPEAT_MODE_ONE; else -> REPEAT_MODE_OFF } } })
             

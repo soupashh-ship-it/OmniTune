@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DropdownMenu
@@ -86,7 +87,7 @@ fun SearchScreen(
     onBack: () -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
-    onPlaySong: (SongItem) -> Unit = {},
+    onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
@@ -186,19 +187,19 @@ private fun SearchResultsContent(
     playlists: List<PlaylistItem>,
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
-    onPlaySong: (SongItem) -> Unit = {},
+    onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (songs.isNotEmpty()) {
             item { Spacer(modifier = Modifier.height(8.dp)); OmniSectionHeader(title = "Songs", action = "${songs.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(songs, key = { "song-${it.id}" }, contentType = { "song" }) { song ->
+            itemsIndexed(songs, key = { _, song -> "song-${song.id}" }, contentType = { _, _ -> "song" }) { index, song ->
                 GlassSearchRow(
                     title = song.title,
                     subtitle = song.artists.joinToString(", ") { it.name },
                     thumbnailUrl = song.thumbnail,
-                    onClick = { onPlaySong(song) },
+                    onClick = { onPlaySong(songs, index) },
                     onPlayNext = { onPlayNext(song) },
                     onAddToQueue = { onAddToQueue(song) },
                 )

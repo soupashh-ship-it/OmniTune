@@ -186,18 +186,21 @@ class MainActivity : ComponentActivity() {
 
 private fun playSongFromSearch(
     context: android.content.Context,
-    songItem: SongItem,
+    songs: List<SongItem>,
+    index: Int,
     playerConnection: com.omnitune.app.playback.PlayerConnection?,
-    onPlayerNotReady: (SongItem) -> Unit,
+    onPlayerNotReady: (List<SongItem>, Int) -> Unit,
 ) {
+    val songItem = songs[index]
     Timber.tag("OmniTunePlaybackTrace").i("Search play requested: ${songItem.title} (${songItem.id})")
     val connection = playerConnection ?: run {
         Timber.tag("OmniTunePlaybackTrace").w("Search play queued: player connection not ready")
-        onPlayerNotReady(songItem)
+        onPlayerNotReady(songs, index)
         Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
         return
     }
-    connection.playQueue(ListQueue(items = listOf(songItem.toMediaItem())))
+    val mediaItems = songs.map { it.toMediaItem() }
+    connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
 }
 
 @Composable
@@ -210,16 +213,18 @@ fun OmniTuneMainScreen() {
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
-    var pendingSearchSong by remember { mutableStateOf<SongItem?>(null) }
+    var pendingSearchQueue by remember { mutableStateOf<Pair<List<SongItem>, Int>?>(null) }
     val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
 
-    LaunchedEffect(localPlayerConnection, pendingSearchSong) {
-        val song = pendingSearchSong
+    LaunchedEffect(localPlayerConnection, pendingSearchQueue) {
+        val queueData = pendingSearchQueue
         val connection = localPlayerConnection
-        if (song != null && connection != null) {
-            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search song: ${song.title} (${song.id})")
-            pendingSearchSong = null
-            connection.playQueue(ListQueue(items = listOf(song.toMediaItem())))
+        if (queueData != null && connection != null) {
+            val (songs, index) = queueData
+            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
+            pendingSearchQueue = null
+            val mediaItems = songs.map { it.toMediaItem() }
+            connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
         }
     }
 
@@ -267,12 +272,13 @@ fun OmniTuneMainScreen() {
             composable(Screens.Search.route) {
                 SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
                     onNavigateToArtist = { navController.navigate("artist/$it") },
-                    onPlaySong = {
+                    onPlaySong = { songs, index ->
                         playSongFromSearch(
                             context = context,
-                            songItem = it,
+                            songs = songs,
+                            index = index,
                             playerConnection = localPlayerConnection,
-                            onPlayerNotReady = { song -> pendingSearchSong = song }
+                            onPlayerNotReady = { s, i -> pendingSearchQueue = Pair(s, i) }
                         )
                     },
                     onPlayNext = { song ->
