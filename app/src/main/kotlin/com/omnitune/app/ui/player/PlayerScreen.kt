@@ -240,19 +240,18 @@ fun PlayerScreen(
 
 @Composable
 private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androidx.compose.runtime.MutableFloatState) {
-    val player = playerConnection?.player
     val playbackStateFlow = playerConnection?.playbackState ?: kotlinx.coroutines.flow.flowOf(Player.STATE_IDLE)
     val playbackState by playbackStateFlow.collectAsState(initial = Player.STATE_IDLE)
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection?.player) {
+    LaunchedEffect(playerConnection) {
         while (true) {
-            val p = playerConnection?.player
-            if (p != null) {
-                val dur = p.duration; val pos = p.currentPosition
+            val pc = playerConnection
+            if (pc != null) {
+                val dur = pc.duration
                 if (playbackState == Player.STATE_ENDED) { if (dur > 0) { currentPosition = dur; duration = dur } }
-                else { duration = if (dur > 0) dur else 0L; currentPosition = if (pos in 0..dur) pos else 0L }
-            } else { currentPosition = 0L; duration = 0L }
+                else { duration = if (dur > 0) dur else 0L; currentPosition = pc.currentPosition }
+            }
             delay(200)
         }
     }
@@ -262,7 +261,7 @@ private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androi
     }) {
         Slider(value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
             onValueChange = { isSeeking.floatValue = it },
-            onValueChangeFinished = { if (player != null && duration > 0) player.seekTo((isSeeking.floatValue * duration).toLong()); isSeeking.floatValue = -1f },
+            onValueChangeFinished = { if (playerConnection != null && duration > 0) playerConnection.seekTo((isSeeking.floatValue * duration).toLong()); isSeeking.floatValue = -1f },
             colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong),
             modifier = Modifier.fillMaxWidth().semantics { stateDescription = "At ${formatDurationMs(currentPosition)} of ${formatDurationMs(duration)}" }
         )
@@ -288,12 +287,12 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         MetroIconButton(painterResource(R.drawable.ic_shuffle), if (shuffleEnabled) "Shuffle on" else "Shuffle off",
             tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
             onClick = { 
-                val player = playerConnection?.player
-                if (player != null) {
-                    if (player.mediaItemCount <= 1) {
-                        android.widget.Toast.makeText(context, "Add more songs to shuffle", android.widget.Toast.LENGTH_SHORT).show()
+                val pc = playerConnection
+                if (pc != null) {
+                    if (pc.mediaItemCount <= 1) {
+                        android.widget.Toast.makeText(context, "Shuffle requires more than one track", android.widget.Toast.LENGTH_SHORT).show()
                     } else {
-                        player.shuffleModeEnabled = !shuffleEnabled
+                        pc.setShuffleModeEnabled(!shuffleEnabled)
                     }
                 }
             })
@@ -329,7 +328,7 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         }
         MetroIconButton(painterResource(repeatIcon), repeatContentDesc,
             tint = if (repeatMode != REPEAT_MODE_OFF) OmniColors.Primary else OmniColors.TextMuted,
-            onClick = { playerConnection?.player?.let { p -> p.repeatMode = when (p.repeatMode) { REPEAT_MODE_OFF -> REPEAT_MODE_ALL; REPEAT_MODE_ALL -> REPEAT_MODE_ONE; else -> REPEAT_MODE_OFF } } })
+            onClick = { playerConnection?.toggleRepeatMode() })
             
         // OMNITUNE: Sleep timer button
         IconButton(onClick = { showSleepTimerDialog = true }) {
@@ -399,7 +398,7 @@ private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: ()
             val videoId = song?.id ?: activeMetadata?.id
             val title = song?.title ?: activeMetadata?.title
             if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
-                val activeUri = playerConnection?.player?.currentMediaItem?.localConfiguration?.uri?.toString()
+                val activeUri = playerConnection?.activeUri
                 val resolvedStreamUrl = activeUri?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
                 Timber.d("Download button clicked for %s", videoId)
                 downloadsViewModel.startDownload(videoId, title, resolvedStreamUrl) { _, message ->
@@ -427,10 +426,9 @@ private fun PlayerExtrasRow(playerConnection: PlayerConnection?, onOpenQueue: ()
 
 @Composable
 private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: () -> Unit) {
-    val player = playerConnection?.player
-    var tempo by remember { mutableFloatStateOf(player?.playbackParameters?.speed ?: 1f) }
-    var pitch by remember { mutableFloatStateOf(player?.playbackParameters?.pitch ?: 1f) }
-    var skipSilence by remember { mutableStateOf(player?.skipSilenceEnabled ?: false) }
+    var tempo by remember { mutableFloatStateOf(playerConnection?.playbackSpeed ?: 1f) }
+    var pitch by remember { mutableFloatStateOf(playerConnection?.playbackPitch ?: 1f) }
+    var skipSilence by remember { mutableStateOf(playerConnection?.skipSilenceEnabled ?: false) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     Dialog(onDismissRequest = onDismiss) {
@@ -452,7 +450,7 @@ private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: (
                 Slider(
                     value = tempo,
                     onValueChange = { tempo = it },
-                    onValueChangeFinished = { player?.playbackParameters = androidx.media3.common.PlaybackParameters(tempo, pitch) },
+                    onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
                     valueRange = 0.5f..2.0f,
                     colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong)
                 )
@@ -467,7 +465,7 @@ private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: (
                 Slider(
                     value = pitch,
                     onValueChange = { pitch = it },
-                    onValueChangeFinished = { player?.playbackParameters = androidx.media3.common.PlaybackParameters(tempo, pitch) },
+                    onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
                     valueRange = 0.5f..2.0f,
                     colors = SliderDefaults.colors(thumbColor = OmniColors.Primary, activeTrackColor = OmniColors.Primary, inactiveTrackColor = OmniColors.GlassSurfaceStrong)
                 )
@@ -480,7 +478,7 @@ private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: (
                     checked = skipSilence,
                     onCheckedChange = { 
                         skipSilence = it
-                        player?.skipSilenceEnabled = it 
+                        playerConnection?.setSkipSilenceEnabled(it) 
                     }
                 )
             }
@@ -488,7 +486,7 @@ private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: (
             // System Equalizer
             Button(
                 onClick = {
-                    val audioSessionId = player?.audioSessionId ?: 0
+                    val audioSessionId = playerConnection?.audioSessionId ?: 0
                     if (audioSessionId != 0) {
                         try {
                             val intent = android.content.Intent(android.media.audiofx.AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
@@ -516,10 +514,9 @@ private fun AudioEffectsDialog(playerConnection: PlayerConnection?, onDismiss: (
 private fun LyricsGlassPanel(playerConnection: PlayerConnection?, modifier: Modifier = Modifier) {
     val lyricsFlow = playerConnection?.currentLyrics ?: kotlinx.coroutines.flow.flowOf(null)
     val lyricsEntity by lyricsFlow.collectAsState(initial = null)
-    val player = playerConnection?.player
-    val currentMediaId = player?.currentMediaItem?.mediaId
+    val currentMediaId = playerConnection?.currentMediaId
     var position by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection?.player) { while (true) { position = player?.currentPosition ?: 0L; delay(50) } }
+    LaunchedEffect(playerConnection) { while (true) { position = playerConnection?.currentPosition ?: 0L; delay(50) } }
     val parsedLines = remember(lyricsEntity?.id, currentMediaId) { 
         lyricsEntity?.lyrics?.let { 
             if (LyricsUtils.isTtml(it)) LyricsUtils.parseTtml(it) else LyricsUtils.parseLyrics(it) 

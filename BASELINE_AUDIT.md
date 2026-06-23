@@ -1,4 +1,4 @@
-# Baseline Audit - v0.5.2
+# Baseline Audit - v0.6.8
 
 ## Current Architecture
 - **UI:** Jetpack Compose, directly depends on `MusicService.instance` in many places (violates separation of concerns).

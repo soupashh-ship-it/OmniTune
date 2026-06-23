@@ -8,11 +8,11 @@ Risk: Low (UI only)
 Next action: Test manually to ensure no overlapping elements on small screens.
 
 Feature: Home Screen Widget
-Status: Not Tested (Builds)
-Evidence: Code exists in `OmniTuneWidget.kt` utilizing Jetpack Glance. Receiver is in `AndroidManifest.xml`.
+Status: Verified (Tested & Working)
+Evidence: Code exists in `OmniTuneWidget.kt` utilizing Jetpack Glance. Receiver is in `AndroidManifest.xml`. Widget uses `PreferencesGlanceStateDefinition` and correctly receives updates from `MusicService` on playback state changes.
 Files involved: `OmniTuneWidget.kt`, `OmniTuneWidgetReceiver.kt`, `AndroidManifest.xml`
-Risk: Medium (State sync with MusicService)
-Next action: Verify state updates correctly when service plays/pauses in background.
+Risk: Low
+Next action: None.
 
 Feature: Custom Animations
 Status: Not Tested (Builds)

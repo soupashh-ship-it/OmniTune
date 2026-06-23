@@ -102,6 +102,8 @@ fun MiniPlayer(
     
     val canSkipNextFlow = playerConnection?.canSkipNext ?: kotlinx.coroutines.flow.flowOf(false)
     val canSkipNext by canSkipNextFlow.collectAsState(initial = false)
+    val canSkipPreviousFlow = playerConnection?.canSkipPrevious ?: kotlinx.coroutines.flow.flowOf(false)
+    val canSkipPrevious by canSkipPreviousFlow.collectAsState(initial = false)
     val isLoading = playbackState == STATE_BUFFERING
     val hasPlayer = playerConnection != null
     val layoutDirection = LocalLayoutDirection.current
@@ -110,12 +112,12 @@ fun MiniPlayer(
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableFloatStateOf(0f) }
     val currentMediaId = mediaMetadata?.id
-    LaunchedEffect(playerConnection?.player, currentMediaId) {
+    LaunchedEffect(playerConnection, currentMediaId, isPlaying) {
         while (true) {
-            val player = playerConnection?.player
-            if (player != null) {
-                val dur = player.duration
-                val pos = player.currentPosition
+            val pc = playerConnection
+            if (pc != null) {
+                val dur = pc.duration
+                val pos = pc.currentPosition
                 if (playbackState == Player.STATE_ENDED) {
                     if (dur > 0) { position = dur.toFloat(); duration = dur.toFloat() }
                 } else {
@@ -123,7 +125,7 @@ fun MiniPlayer(
                     position = if (pos in 0..dur) pos.toFloat() else 0f
                 }
             } else { duration = 0f; position = 0f }
-            delay(50) // Reduced delay for smoother lyrics
+            delay(if (isPlaying) 50 else 500)
         }
     }
     
@@ -170,9 +172,8 @@ fun MiniPlayer(
                     onDragCancel = { coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) } },
                     onHorizontalDrag = { _, dragAmount ->
                         val pc = playerConnection ?: return@detectHorizontalDragGestures
-                        val p = pc.player
                         val adj = if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                        val allow = (adj < 0 && p.nextMediaItemIndex != -1) || (adj > 0 && p.previousMediaItemIndex != -1)
+                        val allow = (adj < 0 && canSkipNext) || (adj > 0 && canSkipPrevious)
                         if (allow) {
                             totalDragDistance += kotlin.math.abs(adj)
                             coroutineScope.launch { offsetXAnimatable.snapTo(offsetXAnimatable.value + adj) }
@@ -180,13 +181,12 @@ fun MiniPlayer(
                     },
                     onDragEnd = {
                         val pc = playerConnection ?: return@detectHorizontalDragGestures
-                        val p = pc.player
                         val dur = System.currentTimeMillis() - dragStartTime
                         val vel = if (dur > 0) totalDragDistance / dur else 0f
                         val off = offsetXAnimatable.value
                         val should = (kotlin.math.abs(off) > 50f && vel > (swipeSensitivity * -8.25f + 8.5f)) || kotlin.math.abs(off) > autoSwipeThreshold
                         if (should) {
-                            if (off > 0 && p.previousMediaItemIndex != -1) p.seekToPreviousMediaItem()
+                            if (off > 0 && canSkipPrevious) pc.seekToPrevious()
                             else if (off < 0 && canSkipNext) pc.seekToNext()
                         }
                         coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
@@ -253,6 +253,12 @@ fun MiniPlayer(
             // Playback controls
             if (hasPlayer) {
                 val pc = playerConnection
+                if (canSkipPrevious) {
+                    IconButton(enabled = canSkipPrevious, onClick = { pc?.seekToPrevious() }, modifier = Modifier.size(48.dp)) {
+                        Icon(painterResource(R.drawable.ic_skip_previous), contentDescription = "Previous",
+                            tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp))
+                    }
+                }
                 IconButton(
                     onClick = {
                         if (playbackState == Player.STATE_ENDED || !isPlaying) pc.playOrResolveCurrent()

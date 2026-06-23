@@ -76,7 +76,7 @@ object StreamUrlResolver {
 
         val cached = streamCache.get(videoId)
         if (cached != null) {
-            val isExpired = (System.currentTimeMillis() - cached.fetchedAtMs) > 4 * 60 * 60 * 1000L
+            val isExpired = (System.currentTimeMillis() - cached.fetchedAtMs) > 90 * 60 * 1000L
             if (!isExpired) {
                 Timber.d("StreamUrlResolver: cache hit for $videoId")
                 return mediaItem.buildUpon()

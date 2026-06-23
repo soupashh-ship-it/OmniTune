@@ -44,7 +44,7 @@ class PlayerConnection(
     scope: CoroutineScope,
 ) : Player.Listener {
     val service = binder.service
-    val player = service.exoPlayer
+    internal val player = service.exoPlayer
 
     val playbackState = MutableStateFlow(player.playbackState)
     private val playWhenReady = MutableStateFlow(player.playWhenReady)
@@ -271,4 +271,25 @@ class PlayerConnection(
     fun dispose() {
         player.removeListener(this)
     }
+
+    // Decoupled player accessors
+    val duration: Long get() = player.duration
+    val currentPosition: Long get() = player.currentPosition
+    val mediaItemCount: Int get() = player.mediaItemCount
+    fun seekTo(position: Long) = player.seekTo(position)
+    fun seekTo(index: Int, position: Long) = player.seekTo(index, position)
+    fun getMediaItemAt(index: Int): MediaItem = player.getMediaItemAt(index)
+    fun removeMediaItem(index: Int) = player.removeMediaItem(index)
+    fun setShuffleModeEnabled(enabled: Boolean) { player.shuffleModeEnabled = enabled }
+    fun setRepeatMode(mode: Int) { player.repeatMode = mode }
+    fun prepare() = player.prepare()
+    val currentMediaId: String? get() = player.currentMediaItem?.mediaId
+    val activeUri: String? get() = player.currentMediaItem?.localConfiguration?.uri?.toString()
+    fun toggleRepeatMode() { player.repeatMode = when (player.repeatMode) { Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL; Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }
+    val skipSilenceEnabled: Boolean get() = player.skipSilenceEnabled
+    fun setSkipSilenceEnabled(enabled: Boolean) { player.skipSilenceEnabled = enabled }
+    val audioSessionId: Int get() = player.audioSessionId
+    fun setPlaybackParameters(speed: Float, pitch: Float) { player.playbackParameters = PlaybackParameters(speed, pitch) }
+    val playbackSpeed: Float get() = player.playbackParameters.speed
+    val playbackPitch: Float get() = player.playbackParameters.pitch
 }

@@ -73,8 +73,7 @@ fun QueueScreen(
                 text = "No items in queue",
             )
         } else {
-            val player = playerConnection.player
-            val itemCount = player.mediaItemCount
+            val itemCount = playerConnection.mediaItemCount
 
             LazyColumn(
                 modifier = Modifier
@@ -115,16 +114,16 @@ fun QueueScreen(
                     }
                 } else {
                     itemsIndexed(
-                        items = (0 until itemCount).filter { it != player.currentMediaItemIndex },
+                        items = (0 until itemCount).filter { it != currentIndex },
                         key = { _, index -> index }
                     ) { _, index ->
-                        val mediaItem = player.getMediaItemAt(index)
+                        val mediaItem = playerConnection.getMediaItemAt(index)
                         val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                         
                         val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
                             confirmValueChange = { dismissValue ->
                                 if (dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart || dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd) {
-                                    player.removeMediaItem(index)
+                                    playerConnection.removeMediaItem(index)
                                     true
                                 } else {
                                     false
@@ -160,9 +159,9 @@ fun QueueScreen(
                                     thumbnail = meta?.thumbnailUrl,
                                     isCurrent = false,
                                     onClick = {
-                                        player.seekTo(index, 0)
-                                        player.prepare()
-                                        player.playWhenReady = true
+                                        playerConnection.seekTo(index, 0)
+                                        playerConnection.prepare()
+                                        // The playback will auto-resume due to playWhenReady in playerConnection
                                     },
                                 )
                             }
