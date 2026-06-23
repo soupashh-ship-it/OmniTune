@@ -23,8 +23,13 @@ object PlaybackErrorClassifier {
             return PlaybackErrorType.NetworkError
         }
 
-        if (error.errorCode == 2000) {
+        val message = error.message?.lowercase() ?: cause?.message?.lowercase() ?: ""
+        if (message.contains("error 2000") || message.contains("errorcode=2000")) {
             return PlaybackErrorType.Error2000
+        }
+        
+        if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
+            return PlaybackErrorType.NetworkError
         }
 
         if (cause is HttpDataSource.InvalidResponseCodeException) {

@@ -37,11 +37,45 @@ import androidx.glance.ImageProvider
 import com.omnitune.app.playback.MusicService
 import androidx.media3.common.Player
 
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.state.PreferencesGlanceStateDefinition
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.glance.currentState
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+
+object WidgetState {
+    val titleKey = stringPreferencesKey("title")
+    val artistKey = stringPreferencesKey("artist")
+    val isPlayingKey = booleanPreferencesKey("isPlaying")
+}
+
+fun updateWidgetState(context: Context, title: String, artist: String, isPlaying: Boolean) {
+    CoroutineScope(Dispatchers.IO).launch {
+        val manager = GlanceAppWidgetManager(context)
+        manager.getGlanceIds(OmniTuneWidget::class.java).forEach { glanceId ->
+            updateAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId) { prefs ->
+                prefs.toMutablePreferences().apply {
+                    this[WidgetState.titleKey] = title
+                    this[WidgetState.artistKey] = artist
+                    this[WidgetState.isPlayingKey] = isPlaying
+                }
+            }
+            OmniTuneWidget().update(context, glanceId)
+        }
+    }
+}
+
 class OmniTuneWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = OmniTuneWidget()
 }
 
 class OmniTuneWidget : GlanceAppWidget() {
+    override val stateDefinition = PreferencesGlanceStateDefinition
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
             GlanceTheme {
@@ -52,8 +86,10 @@ class OmniTuneWidget : GlanceAppWidget() {
 
     @Composable
     private fun WidgetContent(context: Context) {
-        val title = "OmniTune"
-        val artist = "Ready to play"
+        val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
+        val title = prefs[WidgetState.titleKey] ?: "OmniTune"
+        val artist = prefs[WidgetState.artistKey] ?: "Ready to play"
+        val isPlaying = prefs[WidgetState.isPlayingKey] ?: false
 
         Box(
             modifier = GlanceModifier
@@ -100,7 +136,7 @@ class OmniTuneWidget : GlanceAppWidget() {
                     )
                     Spacer(modifier = GlanceModifier.width(8.dp))
                     Image(
-                        provider = ImageProvider(R.drawable.ic_play_arrow),
+                        provider = ImageProvider(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play_arrow),
                         contentDescription = "Play/Pause",
                         modifier = GlanceModifier.size(48.dp).clickable(actionRunCallback<PlayPauseAction>())
                     )

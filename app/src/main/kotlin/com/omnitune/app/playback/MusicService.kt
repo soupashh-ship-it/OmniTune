@@ -962,28 +962,36 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private fun updateNotification() {
         try {
             val customLayout = listOf(
-                CommandButton.Builder(CommandButton.ICON_PLAY)
+                CommandButton.Builder(CommandButton.ICON_HEART)
                     .setSessionCommand(CommandToggleLike)
                     .setDisplayName("Like")
                     .setIconResId(com.omnitune.app.R.drawable.ic_add)
                     .build(),
-                CommandButton.Builder(CommandButton.ICON_PLAY)
+                CommandButton.Builder(CommandButton.ICON_REPEAT_ALL)
                     .setSessionCommand(CommandToggleRepeatMode)
                     .setDisplayName("Repeat")
                     .setIconResId(com.omnitune.app.R.drawable.ic_history)
                     .build(),
-                CommandButton.Builder(CommandButton.ICON_PLAY)
+                CommandButton.Builder(CommandButton.ICON_SHUFFLE_ON)
                     .setSessionCommand(CommandToggleShuffle)
                     .setDisplayName("Shuffle")
                     .setIconResId(com.omnitune.app.R.drawable.ic_sort)
                     .build(),
-                CommandButton.Builder(CommandButton.ICON_PLAY)
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                     .setSessionCommand(CommandToggleStartRadio)
                     .setDisplayName("Radio")
                     .setIconResId(com.omnitune.app.R.drawable.ic_share)
                     .build(),
             )
             mediaSession?.setCustomLayout(customLayout)
+
+            if (::player.isInitialized) {
+                val isPlaying = player.playWhenReady && player.playbackState != androidx.media3.common.Player.STATE_ENDED && player.playbackState != androidx.media3.common.Player.STATE_IDLE
+                val meta = player.currentMediaItem?.mediaMetadata
+                val title = meta?.title?.toString() ?: "OmniTune"
+                val artist = meta?.artist?.toString() ?: "Ready to play"
+                com.omnitune.app.widget.updateWidgetState(this, title, artist, isPlaying)
+            }
         } catch (e: Exception) {
             reportException(e)
         }
@@ -1223,8 +1231,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun MediaItem.needsFreshResolution(): Boolean {
+        val uriStr = localConfiguration?.uri?.toString() ?: ""
         return StreamUrlResolver.isYouTubeVideoId(localConfiguration?.uri) ||
-            localConfiguration?.uri?.toString()?.startsWith("file:///offline/") == true
+            uriStr.startsWith("file:///offline/") ||
+            uriStr.startsWith("omnitune-unresolved://")
     }
 
 }

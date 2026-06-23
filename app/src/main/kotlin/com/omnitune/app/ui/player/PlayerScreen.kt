@@ -278,9 +278,12 @@ private fun PlayerSeekBar(playerConnection: PlayerConnection?, isSeeking: androi
 private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnabled: Boolean, repeatMode: Int, playerConnection: PlayerConnection?) {
     val sleepTimerFlow = playerConnection?.sleepTimerRunning ?: kotlinx.coroutines.flow.flowOf(false)
     val sleepTimerRunning by sleepTimerFlow.collectAsState(initial = false)
+    val canSkipPreviousFlow = playerConnection?.canSkipPrevious ?: kotlinx.coroutines.flow.flowOf(false)
+    val canSkipNextFlow = playerConnection?.canSkipNext ?: kotlinx.coroutines.flow.flowOf(false)
+    val canSkipPrevious by canSkipPreviousFlow.collectAsState(initial = false)
+    val canSkipNext by canSkipNextFlow.collectAsState(initial = false)
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
-
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
         MetroIconButton(painterResource(R.drawable.ic_shuffle), if (shuffleEnabled) "Shuffle on" else "Shuffle off",
             tint = if (shuffleEnabled) OmniColors.Primary else OmniColors.TextMuted,
@@ -296,6 +299,7 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
             })
         MetroIconButton(painterResource(R.drawable.ic_skip_previous), "Previous",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
+            enabled = canSkipPrevious || repeatMode == REPEAT_MODE_ALL,
             onClick = { playerConnection?.seekToPrevious() })
         // Play/Pause gradient circle
         Box(modifier = Modifier.size(64.dp).shadow(16.dp, CircleShape, ambientColor = OmniColors.Primary.copy(alpha = 0.3f))
@@ -310,6 +314,7 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
         }
         MetroIconButton(painterResource(R.drawable.ic_skip_next), "Next",
             tint = OmniColors.TextPrimary, size = 48.dp, iconSize = 28.dp,
+            enabled = canSkipNext || repeatMode == REPEAT_MODE_ALL,
             onClick = { playerConnection?.seekToNext() })
             
         val repeatIcon = when (repeatMode) {
@@ -357,9 +362,17 @@ private fun PlayerControlRow(isPlaying: Boolean, playbackState: Int, shuffleEnab
 }
 
 @Composable
-private fun MetroIconButton(painter: androidx.compose.ui.graphics.painter.Painter, contentDescription: String, tint: Color, onClick: () -> Unit, size: Dp = 44.dp, iconSize: Dp = 22.dp) {
-    IconButton(onClick = onClick, modifier = Modifier.size(size)) {
-        Icon(painter, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
+private fun MetroIconButton(
+    painter: androidx.compose.ui.graphics.painter.Painter, 
+    contentDescription: String, 
+    tint: Color, 
+    onClick: () -> Unit, 
+    size: Dp = 44.dp, 
+    iconSize: Dp = 22.dp,
+    enabled: Boolean = true
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(size), enabled = enabled) {
+        Icon(painter, contentDescription = contentDescription, tint = if (enabled) tint else tint.copy(alpha = 0.38f), modifier = Modifier.size(iconSize))
     }
 }
 

@@ -21,3 +21,10 @@ This release focuses on refining the playback interaction experience (Queue, Shu
 ## Status
 
 Version 0.6.7 delivers significant playback stability and polish. The fundamental playback experience (shuffle, repeat, queue manipulation, and dynamic network transitions) is now much closer to premium expectations.
+
+### Issue Fixes
+- **Widget Updates**: The home screen widget now dynamically displays current playback state using preferences.
+- **Semantic Notification Icons**: Updated media notification to use standard Media3 CommandButton.ICON_* constants.
+- **Error Handling**: Improved Playback Error 2000 classification to correctly identify error types based on messages.
+- **Library Downloads**: Added accurate download count tracking directly to the Library screen Downloads card.
+- **Unresolved URLs**: Added specific scheme handling for unresolved track URLs so they can correctly trigger fresh resolution.

@@ -66,7 +66,7 @@ fun LibraryScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LibrarySmartCard(painterResource(R.drawable.ic_favorite), "Liked", "${uiState.likedCount} songs", listOf(OmniColors.Hot, OmniColors.Primary), onNavigateToLiked, Modifier.weight(1f))
-                LibrarySmartCard(painterResource(com.omnitune.app.R.drawable.ic_download), "Downloads", "", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToDownloads, Modifier.weight(1f))
+                LibrarySmartCard(painterResource(com.omnitune.app.R.drawable.ic_download), "Downloads", "${uiState.downloadCount} songs", listOf(OmniColors.Secondary, OmniColors.Primary), onNavigateToDownloads, Modifier.weight(1f))
             }
         }
         item {

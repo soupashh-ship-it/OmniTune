@@ -26,15 +26,18 @@ data class LibraryUiState(
     val recentlyPlayed: List<EventWithSong> = emptyList(),
     val librarySongCount: Int = 0,
     val playlistCount: Int = 0,
+    val downloadCount: Int = 0,
     val isLoading: Boolean = true,
 )
 
 /** Default sort type for liked songs */
 private val LIKED_SONGS_SORT = com.omnitune.app.constants.SongSortType.CREATE_DATE
 
+@androidx.media3.common.util.UnstableApi
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val database: MusicDatabase,
+    private val downloadUtil: com.omnitune.app.playback.DownloadUtil,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -45,7 +48,31 @@ class LibraryViewModel @Inject constructor(
     val libraryAlbums: StateFlow<List<com.omnitune.app.db.entities.Album>>
     val playlists: StateFlow<List<com.omnitune.app.db.entities.Playlist>>
 
+    private val downloadListener = object : androidx.media3.exoplayer.offline.DownloadManager.Listener {
+        override fun onDownloadChanged(manager: androidx.media3.exoplayer.offline.DownloadManager, download: androidx.media3.exoplayer.offline.Download, finalException: Exception?) {
+            refreshDownloadCount()
+        }
+        override fun onDownloadRemoved(manager: androidx.media3.exoplayer.offline.DownloadManager, download: androidx.media3.exoplayer.offline.Download) {
+            refreshDownloadCount()
+        }
+    }
+
+    private fun refreshDownloadCount() {
+        var count = 0
+        val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
+        try {
+            while (cursor.moveToNext()) {
+                count++
+            }
+        } finally {
+            cursor.close()
+        }
+        _uiState.value = _uiState.value.copy(downloadCount = count)
+    }
+
     init {
+        downloadUtil.downloadManager.addListener(downloadListener)
+        refreshDownloadCount()
         // Initialize flows
         likedSongs = database.likedSongs(LIKED_SONGS_SORT, true)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -82,5 +109,10 @@ class LibraryViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(playlistCount = list.size)
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        downloadUtil.downloadManager.removeListener(downloadListener)
     }
 }

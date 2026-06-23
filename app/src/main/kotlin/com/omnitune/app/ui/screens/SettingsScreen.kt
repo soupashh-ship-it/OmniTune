@@ -240,7 +240,6 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
     val skipSilence by rememberPreference(SkipSilenceKey, false)
     val autoSkipOnError by rememberPreference(AutoSkipNextOnErrorKey, true)
-    val permanentShuffle by rememberPreference(PermanentShuffleKey, false)
     val pauseOnMute by rememberPreference(PauseOnDeviceMuteKey, false)
 
     SettingsCategoryLabel("Audio Quality")
@@ -290,12 +289,6 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         description = "Skip to next song if playback fails",
         key = AutoSkipNextOnErrorKey,
         defaultValue = true,
-    )
-    TogglePreferenceRow(
-        label = "Permanent Shuffle",
-        description = "Keep shuffle on always",
-        key = PermanentShuffleKey,
-        defaultValue = false,
     )
     TogglePreferenceRow(
         label = "Pause on Device Mute",

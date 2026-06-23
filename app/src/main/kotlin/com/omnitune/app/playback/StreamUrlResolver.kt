@@ -122,8 +122,8 @@ object StreamUrlResolver {
         suspend fun resolveOrKeep(index: Int, item: MediaItem): MediaItem {
             if (!isYouTubeVideoId(item.localConfiguration?.uri)) return item
             return resolveMediaItem(item, streamExtractor, downloadUtil)
-                ?: item.also {
-                    Timber.w("StreamUrlResolver: preserving unresolved queue item ${item.mediaId}")
+                ?: item.buildUpon().setUri("omnitune-unresolved://${item.mediaId}").build().also {
+                    Timber.w("StreamUrlResolver: marking queue item ${item.mediaId} as unresolved")
                 }
         }
 
