@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OmniTune</string>
+    <string name="music_player_channel_name">OmniTune Playback</string>
     <string name="download_channel_name">OmniTune Downloads</string>
 </resources>

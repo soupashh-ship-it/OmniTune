@@ -116,7 +116,11 @@ fun SearchScreen(
                     onClick = { viewModel.retrySearch() },
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
                 ) {
-                    Text("Retry", color = OmniColors.Background, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (uiState.status == SearchStatus.NetworkError) "Retry when online" else "Retry",
+                        color = OmniColors.Background,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             })
             uiState.query.isEmpty() -> {

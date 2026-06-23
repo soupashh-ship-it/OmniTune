@@ -46,9 +46,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
+import android.app.NotificationManager
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import com.omnitune.app.R
 import com.omnitune.app.constants.*
 import com.omnitune.app.diagnostics.DiagnosticReportExporter
+import com.omnitune.app.playback.MusicService
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -533,6 +541,10 @@ private fun AdvancedSettings() {
     val context = LocalContext.current
     var message by remember { mutableStateOf<String?>(null) }
 
+    SettingsCategoryLabel("Media Controls")
+    MediaControlsHelp()
+    Divider()
+
     SettingsCategoryLabel("Diagnostics")
     Text(
         "Exports a sanitized report with app version, device details, network state, and recent app-readable logs.",
@@ -548,6 +560,57 @@ private fun AdvancedSettings() {
         }
     }
     message?.let { UpdateMessage(it) }
+}
+
+@Composable
+private fun MediaControlsHelp() {
+    val context = LocalContext.current
+    val notificationsEnabled = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
+    val channelStatus = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            when (manager.getNotificationChannel(MusicService.CHANNEL_ID)?.importance) {
+                null -> "Playback channel will be created after playback starts."
+                NotificationManager.IMPORTANCE_NONE -> "Playback notification channel is blocked."
+                NotificationManager.IMPORTANCE_MIN -> "Playback channel is set very low; controls may be hidden."
+                else -> "Playback notification channel is allowed."
+            }
+        } else {
+            "Notification channels are not used on this Android version."
+        }
+    }
+    val batteryStatus = remember {
+        val powerManager = context.getSystemService(PowerManager::class.java)
+        if (powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+            "Battery optimization is unrestricted for OmniTune."
+        } else {
+            "Battery optimization may restrict background playback controls."
+        }
+    }
+
+    Text(
+        "Fix notification & lock-screen controls",
+        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+        fontWeight = FontWeight.Medium,
+        color = OmniColors.TextPrimary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+    UpdateMessage(
+        "Notification permission: ${if (notificationsEnabled) "Allowed" else "Blocked"}\n" +
+            "$channelStatus\n$batteryStatus"
+    )
+    UpdateMessage(
+        "On Vivo/iQOO/Funtouch OS, allow notifications, lock-screen notifications, background activity, unrestricted battery, and autostart if your device offers it. Some OEM Android skins can hide media controls until these settings are allowed by the user."
+    )
+    SettingsActionButton("Open notification settings") {
+        context.startActivity(openNotificationSettingsIntent(context))
+    }
+    SettingsActionButton("Open app settings") {
+        context.startActivity(openAppDetailsIntent(context))
+    }
+    SettingsActionButton("Open battery settings") {
+        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
 }
 
 @Composable
@@ -611,6 +674,22 @@ private fun formatBytes(bytes: Long): String {
     if (bytes <= 0L) return "Unknown size"
     val mb = bytes / (1024.0 * 1024.0)
     return "%.1f MB".format(mb)
+}
+
+private fun openNotificationSettingsIntent(context: android.content.Context): Intent {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    } else {
+        openAppDetailsIntent(context)
+    }
+}
+
+private fun openAppDetailsIntent(context: android.content.Context): Intent {
+    return Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null)
+    )
 }
 
 @Composable

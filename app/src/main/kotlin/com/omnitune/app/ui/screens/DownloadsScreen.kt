@@ -123,7 +123,7 @@ private fun DownloadItemRow(
     val title = String(download.request.data, Charsets.UTF_8)
     
     val (statusText, statusColor) = when (download.state) {
-        Download.STATE_COMPLETED -> "Downloaded" to OmniColors.Primary
+        Download.STATE_COMPLETED -> "Downloaded song is ready offline." to OmniColors.Primary
         Download.STATE_DOWNLOADING -> "Downloading... ${download.percentDownloaded.toInt()}%" to OmniColors.Secondary
         Download.STATE_FAILED -> "Failed" to OmniColors.Hot
         Download.STATE_QUEUED -> "Queued" to OmniColors.TextMuted

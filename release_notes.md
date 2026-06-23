@@ -1,43 +1,42 @@
-# OmniTune v0.6.5 Hardening Candidate
+# OmniTune v0.6.6 Media Controls Compatibility Hardening
 
 ## Focus
 
-This release candidate focuses on stability over new features: playback recovery, stream resolution, queue behavior, downloads/offline playback, search list responsiveness, and release hygiene.
+This release focuses on Android media notification and lock-screen compatibility, especially for OEM Android skins such as Vivo/iQOO/Funtouch OS. It does not redesign the UI or rewrite playback.
 
 ## Fixes and Improvements
 
-- Updated NewPipeExtractor usage to the current `v0.26.3` artifact and aligned Rhino to `1.8.1` to reduce YouTube stream resolution failures.
-- Verified force-stop/process-death recovery: reopening the app and tapping a new search result starts fresh playback instead of reusing stale stream URLs.
-- Kept stream cache clearing on service startup so expired direct stream URLs are not trusted after process death.
-- Improved search result scrolling with stable list keys/content types and bounded thumbnail requests.
-- Added a completed-download playback handoff from Library > Downloads.
-- Verified completed Media3 downloads can play after force-stop with Wi-Fi and mobile data disabled.
-- Added a manual Settings > Updates checker backed by GitHub Releases with package/version verification before install.
-- Fixed a Settings crash caused by using framework drawable resources in Compose `painterResource`.
-- Removed corrupt packaged font resources and returned typography to Android's system font.
-- Added a sanitized diagnostic report export from Settings > Advanced.
-- Preserved release hygiene: Firebase remains opt-in, release signing requires real secrets, and known secret/artifact files are ignored and untracked.
+- Bound Media3 playback notifications to OmniTune's explicit playback channel and stable notification ID.
+- Hardened the playback notification channel for media usage: low importance, public lock-screen visibility, no sound, no vibration, and no badge.
+- Switched the playback notification small icon to an app-owned vector icon.
+- Added a guarded platform `Notification.MediaStyle` fallback for devices where Media3 exposes an active MediaSession but the OEM notification service does not post a visible media notification.
+- The fallback uses the same `music_player` channel and notification ID, so it updates the same playback notification instead of creating a duplicate.
+- Added debug-only `MediaControls` logs for notification permission, channel importance, MediaSession presence, player state, current title, mediaId, and queue count.
+- Added Settings > Advanced > Fix notification & lock-screen controls.
+- Added shortcuts to app notification settings, app details, and battery optimization settings.
+- Added Vivo/iQOO/Funtouch OS guidance for notifications, lock-screen notifications, background activity, unrestricted battery, autostart, and cleanup exclusions.
+- Documented the limitation that some OEM Android skins can hide media controls until the user allows notification, lock-screen, or battery settings.
 
 ## Verified
 
-- Debug build and clean debug build.
-- ADB install and launch.
-- Search result playback.
-- Force-stop/reopen/new playback recovery.
-- MiniPlayer and full player smoke tests.
-- Queue/Add to Queue/Play Next from prior 0.6.x QA.
-- MediaSession pause/play through Android media keys.
-- Offline playback from completed Media3 download.
-- Signed GitHub release workflow for `v0.6.4`.
-- Settings > Updates no-update path against the public latest release.
+- `clean assembleDebug` before edits.
+- `assembleDebug` after the media-controls compatibility patch.
+- `assembleRelease lintDebug` after the fallback patch.
+- Signed release APK install and launch through ADB.
+- Signed release playback from search result.
+- `dumpsys media_session` showed OmniTune as the active media button session with `Faded / Alan Walker` metadata.
+- `dumpsys notification` showed an active OmniTune `Notification$MediaStyle` record with transport category, actions, public visibility, and MediaSession token.
+- Android media key pause/play changed the active OmniTune MediaSession state.
+- Network-disabled search still showed `No internet connection.` and `Retry when online.`
+- Manifest already includes foreground service and media playback foreground service declarations.
+- Media3 notification provider remains the source of playback notification behavior.
 
-## Still Partial
+## Known Limitations
 
-- Notification shade visual controls need physical phone verification.
-- Lock-screen visual controls need physical phone verification.
-- Network-disabled search and non-downloaded playback error copy needs a manual UI pass.
-- Download rows currently preserve title and completion state; richer artist/album/artwork metadata should be improved in a future patch.
+- Notification shade play/pause/next/previous need one physical tap verification on the target iQOO Neo 6 / Funtouch OS device.
+- Lock-screen controls need one physical verification on the target iQOO Neo 6 / Funtouch OS device.
+- Some OEM Android skins can hide media controls until notification, lock-screen, autostart, or battery settings are allowed by the user.
 
 ## Status
 
-0.6.5 is a hardening candidate, not a final stable or premium-ready release.
+0.6.6 is a compatibility hardening release, not a premium-ready release. Some OEM Android skins can still require notification, lock-screen, or battery settings to be allowed by the user before media controls appear reliably.

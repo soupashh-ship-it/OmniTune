@@ -5,10 +5,12 @@
 
 package com.omnitune.app.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
+import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 enum class SearchStatus {
     Idle,
@@ -54,6 +57,7 @@ private const val SEARCH_DEBOUNCE_MS = 400L
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
 ) : ViewModel() {
 
@@ -134,8 +138,23 @@ class SearchViewModel @Inject constructor(
         var usedCachedResults = false
 
         try {
+            val networkAvailable = isInternetAvailable(context)
+            if (!networkAvailable) {
+                val cached = lastGoodResults[query]
+                if (cached != null) {
+                    usedCachedResults = true
+                    songsList = cached.songs
+                    artistsList = cached.artists
+                    albumsList = cached.albums
+                    playlistsList = cached.playlists
+                } else {
+                    searchError = "No internet connection.\nRetry when online."
+                    status = SearchStatus.NetworkError
+                }
+            }
+
             // Fallback 1: supervisorScope ensures one failed bucket does not cancel siblings.
-            kotlinx.coroutines.supervisorScope {
+            if (networkAvailable && !usedCachedResults) kotlinx.coroutines.supervisorScope {
                 val songDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG) }
                 val albumDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM) }
                 val artistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST) }
@@ -156,7 +175,7 @@ class SearchViewModel @Inject constructor(
             }
 
             // Fallback 2: Mixed-result parser if primary failed
-            if (songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
+            if (networkAvailable && searchError == null && songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
                 YouTube.searchSummary(query)
                     .onSuccess { summaryResult ->
                         summaryResult.summaries.forEach { summary ->
@@ -172,7 +191,7 @@ class SearchViewModel @Inject constructor(
             }
 
             // Fallback 3: Last-good cached result
-            if (songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
+            if (searchError == null && songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
                 val cached = lastGoodResults[query]
                 if (cached != null) {
                     usedCachedResults = true

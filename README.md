@@ -26,7 +26,7 @@
 
 OmniTune is a modern, lightweight music player for Android that streams music directly from YouTube. Built with Jetpack Compose and Material 3, it delivers a clean, responsive experience.
 
-Current release status: 0.6.5 is a signed hardening candidate focused on playback recovery, queue behavior, offline downloads, release hygiene, in-app updates, diagnostics, and QA. It is not being presented as premium-ready until notification shade, lock-screen, and network-disabled error states are fully verified on physical devices.
+Current release status: 0.6.x is a signed hardening line focused on playback recovery, queue behavior, offline downloads, release hygiene, in-app updates, diagnostics, and OEM media-control compatibility. It is not being presented as premium-ready until notification shade and lock-screen controls are fully verified on physical target devices.
 
 ## Features
 
@@ -39,6 +39,7 @@ Current release status: 0.6.5 is a signed hardening candidate focused on playbac
 - **Queue Management** - Add to queue and play next
 - **Downloads** - Media3-backed downloads for offline playback
 - **MediaSession** - External media controls through Android MediaSession
+- **Media Controls Help** - Settings guidance for notification and lock-screen controls on restrictive OEM Android skins
 - **Manual Updates** - Settings-based GitHub release checker with user-confirmed APK install
 - **Discord Rich Presence** - Show what you're listening to on Discord
 - **Last.fm Scrobbling** - Automatically scrobble plays to Last.fm
@@ -82,6 +83,8 @@ Firebase/Crashlytics is optional for local builds and is only enabled with `-Pen
 Grab the latest signed stabilization-candidate APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page. Public release assets are named `OmniTune-vX.Y.Z-release.apk` with a matching `.sha256` checksum.
 
 > **Note:** 0.6.x is focused on stabilization. Device-specific notification UI, lock-screen controls, and network-disabled edge cases remain under active QA.
+
+If notification shade or lock-screen controls do not appear, see [Notification and Lock-Screen Controls](docs/troubleshooting/notification-controls.md). Some OEM Android skins can hide media controls until notification, lock-screen, or battery settings are allowed by the user.
 
 ## Project Structure
 
