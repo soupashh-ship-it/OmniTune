@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
 import com.omnitune.app.R
 import com.omnitune.app.constants.*
+import com.omnitune.app.diagnostics.DiagnosticReportExporter
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -70,6 +71,7 @@ private enum class SettingsSection(val label: String, val iconRes: Int) {
     CONTENT("Content", com.omnitune.app.R.drawable.ic_search),
     STORAGE("Storage & Cache", com.omnitune.app.R.drawable.ic_list),
     UPDATES("Updates", com.omnitune.app.R.drawable.ic_download),
+    ADVANCED("Advanced", com.omnitune.app.R.drawable.ic_info),
     SCROBBLING("Scrobbling", R.drawable.ic_favorite),
 }
 
@@ -175,6 +177,7 @@ private fun SettingsSectionCard(
                                 SettingsSection.CONTENT -> listOf(OmniColors.Primary, OmniColors.Hot)
                                 SettingsSection.STORAGE -> listOf(OmniColors.Warning, OmniColors.Hot)
                                 SettingsSection.UPDATES -> listOf(OmniColors.Secondary, OmniColors.Warning)
+                                SettingsSection.ADVANCED -> listOf(OmniColors.Primary, OmniColors.Warning)
                                 SettingsSection.SCROBBLING -> listOf(OmniColors.Hot, OmniColors.Secondary)
                             }
                         )
@@ -213,6 +216,7 @@ private fun SettingsSectionCard(
                     SettingsSection.CONTENT -> ContentSettings()
                     SettingsSection.STORAGE -> StorageSettings()
                     SettingsSection.UPDATES -> UpdatesSettings()
+                    SettingsSection.ADVANCED -> AdvancedSettings()
                     SettingsSection.SCROBBLING -> ScrobblingSettings()
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -522,6 +526,28 @@ private fun UpdatesSettings(
             }
         }
     }
+}
+
+@Composable
+private fun AdvancedSettings() {
+    val context = LocalContext.current
+    var message by remember { mutableStateOf<String?>(null) }
+
+    SettingsCategoryLabel("Diagnostics")
+    Text(
+        "Exports a sanitized report with app version, device details, network state, and recent app-readable logs.",
+        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+        color = OmniColors.TextMuted,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    )
+    SettingsActionButton("Export diagnostic report") {
+        runCatching {
+            context.startActivity(DiagnosticReportExporter.createShareIntent(context))
+        }.onFailure {
+            message = "Could not export diagnostic report."
+        }
+    }
+    message?.let { UpdateMessage(it) }
 }
 
 @Composable

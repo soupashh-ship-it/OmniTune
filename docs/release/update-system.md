@@ -23,8 +23,8 @@ Do not use debug APKs for public updater assets. The updater rejects assets with
 
 Recommended assets:
 
-- `OmniTune-v0.6.3-release.apk`
-- `OmniTune-v0.6.3-release.apk.sha256`
+- `OmniTune-v0.6.5-release.apk`
+- `OmniTune-v0.6.5-release.apk.sha256`
 
 ## SHA-256 Convention
 

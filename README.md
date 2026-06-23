@@ -26,7 +26,7 @@
 
 OmniTune is a modern, lightweight music player for Android that streams music directly from YouTube. Built with Jetpack Compose and Material 3, it delivers a clean, responsive experience.
 
-Current release status: 0.6.3 is a stabilization candidate focused on playback recovery, queue behavior, offline downloads, release hygiene, and QA. It is not being presented as final stable or premium-ready until notification shade, lock-screen, and network-disabled error states are fully verified on physical devices.
+Current release status: 0.6.5 is a signed hardening candidate focused on playback recovery, queue behavior, offline downloads, release hygiene, in-app updates, diagnostics, and QA. It is not being presented as premium-ready until notification shade, lock-screen, and network-disabled error states are fully verified on physical devices.
 
 ## Features
 
@@ -39,6 +39,7 @@ Current release status: 0.6.3 is a stabilization candidate focused on playback r
 - **Queue Management** - Add to queue and play next
 - **Downloads** - Media3-backed downloads for offline playback
 - **MediaSession** - External media controls through Android MediaSession
+- **Manual Updates** - Settings-based GitHub release checker with user-confirmed APK install
 - **Discord Rich Presence** - Show what you're listening to on Discord
 - **Last.fm Scrobbling** - Automatically scrobble plays to Last.fm
 - **Dark Theme** - Customizable color palettes with dark mode support
@@ -78,9 +79,9 @@ Firebase/Crashlytics is optional for local builds and is only enabled with `-Pen
 
 ## Download
 
-Grab the latest stabilization-candidate APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page.
+Grab the latest signed stabilization-candidate APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page. Public release assets are named `OmniTune-vX.Y.Z-release.apk` with a matching `.sha256` checksum.
 
-> **Note:** 0.6.x is focused on stabilization. Expect remaining bugs around device-specific notification UI, lock-screen controls, and network-disabled edge cases until QA closes those items.
+> **Note:** 0.6.x is focused on stabilization. Device-specific notification UI, lock-screen controls, and network-disabled edge cases remain under active QA.
 
 ## Project Structure
 
