@@ -456,6 +456,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         } catch (e: Exception) {
             Timber.w(e, "Failed to initialize equalizer")
+            // Inform user if system EQ is unavailable
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(this, "System Equalizer is unavailable on this device.", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
