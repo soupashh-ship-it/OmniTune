@@ -1,4 +1,4 @@
-# Regression Tests
+﻿# Regression Tests
 
 To guarantee we do not break OmniTune while fortifying it, the following manual flows must be verified before proceeding to UI phases:
 
@@ -29,3 +29,4 @@ To guarantee we do not break OmniTune while fortifying it, the following manual 
    - Search a known Hindi song (verifies language support/fallback).
    - Search an English song.
    - Trigger a deliberate typo to test mixed/fallback results.
+

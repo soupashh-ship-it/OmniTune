@@ -1,6 +1,6 @@
 # Release Claim Verification
 
-Status: post-`v0.7.0` OmniGlass release.
+Status: post-`v0.7.1` RC GO release.
 
 This file tracks public-facing claims that must be verified or downgraded before `1.0.0`.
 
@@ -121,3 +121,4 @@ This file tracks public-facing claims that must be verified or downgraded before
 - Evidence: Firebase is gated behind `-PenableFirebase=true`.
 - Risk: Low for default builds.
 - Next action: Keep public wording clear that Firebase/Crashlytics is optional and not active by default.
+

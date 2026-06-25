@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26
-        versionName = "0.7.0"
+        versionCode = 27
+        versionName = "0.7.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -100,6 +100,12 @@ android {
             applicationIdSuffix = ".debug"
             isDebuggable = true
         }
+    }
+
+
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 
     compileOptions {
@@ -228,15 +234,57 @@ dependencies {
     implementation(project(":simpmusic"))
     implementation(project(":betterlyrics"))
     implementation(project(":lrclib"))
+
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.util)
+    implementation(libs.compose.animation)
+    debugImplementation(libs.compose.ui.tooling)
+
+    implementation(libs.viewmodel)
+    implementation(libs.viewmodel.compose)
+
+    implementation(libs.material3)
+
+    implementation(libs.coil)
+    implementation(libs.coil.network.okhttp)
+
+    implementation(libs.shimmer)
+
+    implementation(libs.media3)
+    implementation(libs.media3.okhttp)
+    implementation(libs.media3.session)
+    implementation(libs.media3.exoplayer.workmanager)
+    implementation(libs.work.runtime)
+
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+
+    implementation(libs.room.runtime)
+    ksp(libs.room.compiler)
+    implementation(libs.room.ktx)
+
+    implementation(libs.timber)
+    implementation(libs.guava)
+    implementation(libs.coroutines.guava)
+    implementation(libs.concurrent.futures)
+    implementation(libs.datastore)
+    implementation(libs.annotation)
+    implementation(libs.apache.lang3)
+    implementation(libs.kuromoji.ipadic)
+
+    implementation(project(":innertube"))
+    implementation(project(":simpmusic"))
+    implementation(project(":betterlyrics"))
+    implementation(project(":lrclib"))
     implementation(project(":kugou"))
     implementation(project(":lastfm"))
     implementation(project(":kizzy"))
     implementation(project(":canvas"))
 
-    testImplementation(libs.junit)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.12.0")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
-
-
-

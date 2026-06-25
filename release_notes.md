@@ -1,6 +1,15 @@
-# OmniTune v0.7.0 - OmniGlass UI Overhaul
+# OmniTune v0.7.1 - RC GO Verification
 
 Released: 2026-06-25
+
+## What's New
+
+- Completed final RC verification for offline and completed download playback (Phase 30C).
+- Hardened lyrics, queue, and library flows before 1.0 (Phase 23-28).
+- Verified completed download playback online and offline.
+- Passed crash and privacy leak checks.
+
+# OmniTune v0.7.0 - OmniGlass UI Overhaul
 
 ## What's New
 
@@ -24,7 +33,7 @@ Released: 2026-06-25
 - Note: Synced lyric auto-scroll may need tuning for unusual LRC formatting.
 - Notification and lock-screen behavior can vary by device/OEM.
 
-## Phase 28 — Library Depth + Dead Route Hardening
+## Phase 28 ï¿½ Library Depth + Dead Route Hardening
 
 - Implemented real PlaylistDetailScreen showing playlist songs from Room database.
 - Wired playlist item tap to `playlist/{playlistId}` route (replaced dead "coming soon" Toast).
@@ -33,3 +42,4 @@ Released: 2026-06-25
 - Added root-only `/window*.xml` gitignore rule for UI dump files.
 - Active and failed download states need broader QA when those states are available.
 - Older downloads may show limited metadata unless the song exists in the local database.
+

@@ -1,6 +1,6 @@
 # Known Issues
 
-Status: post-`v0.7.0` OmniGlass release.
+Status: post-`v0.7.1` RC GO release.
 
 ## Current Known Issues
 
@@ -53,3 +53,4 @@ Status: post-`v0.7.0` OmniGlass release.
 - Completed-download playback works while a Search track is active.
 - Offline completed-download playback was verified before `v0.7.0`.
 - Signed release APK and checksum generation are handled by the verified GitHub Actions release workflow.
+

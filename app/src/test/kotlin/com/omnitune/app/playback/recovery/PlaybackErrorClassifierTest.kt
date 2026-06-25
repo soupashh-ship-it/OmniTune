@@ -43,7 +43,7 @@ class PlaybackErrorClassifierTest {
             "Forbidden",
             null,
             emptyMap(),
-            androidx.media3.datasource.DataSpec(android.net.Uri.parse("http://example.com")),
+            org.mockito.Mockito.mock(androidx.media3.datasource.DataSpec::class.java),
             ByteArray(0)
         )
         val error = PlaybackException("HTTP Error", cause, PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)
@@ -58,7 +58,7 @@ class PlaybackErrorClassifierTest {
             "Not Found",
             null,
             emptyMap(),
-            androidx.media3.datasource.DataSpec(android.net.Uri.parse("http://example.com")),
+            org.mockito.Mockito.mock(androidx.media3.datasource.DataSpec::class.java),
             ByteArray(0)
         )
         val error = PlaybackException("HTTP Error", cause, PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)
@@ -73,7 +73,7 @@ class PlaybackErrorClassifierTest {
             "Too Many Requests",
             null,
             emptyMap(),
-            androidx.media3.datasource.DataSpec(android.net.Uri.parse("http://example.com")),
+            org.mockito.Mockito.mock(androidx.media3.datasource.DataSpec::class.java),
             ByteArray(0)
         )
         val error = PlaybackException("HTTP Error", cause, PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)
