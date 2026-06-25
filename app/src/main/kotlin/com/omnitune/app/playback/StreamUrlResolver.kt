@@ -64,6 +64,8 @@ object StreamUrlResolver {
                 val download = downloadUtil.downloadManager.downloadIndex.getDownload(videoId)
                 if (download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
                     Timber.d("StreamUrlResolver: offline cache hit for $videoId")
+                    StartupTracker.cacheHit = true
+                    StartupTracker.networkType = "OFFLINE"
                     return mediaItem.buildUpon()
                         .setUri(download.request.uri)
                         .setCustomCacheKey(videoId)
@@ -79,6 +81,7 @@ object StreamUrlResolver {
             val isExpired = (System.currentTimeMillis() - cached.fetchedAtMs) > 90 * 60 * 1000L
             if (!isExpired) {
                 Timber.d("StreamUrlResolver: cache hit for $videoId")
+                StartupTracker.cacheHit = true
                 return mediaItem.buildUpon()
                     .setUri(Uri.parse(cached.streamResult.url))
                     .setMimeType(cached.streamResult.contentType)
@@ -90,9 +93,12 @@ object StreamUrlResolver {
         }
 
         Timber.d("StreamUrlResolver: resolving $videoId")
+        StartupTracker.logResolverStart()
         val streamResult = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
             streamExtractor.extract(videoId, StreamQuality.HIGH)
         }
+        StartupTracker.logResolverDone()
+        
         if (streamResult == null) {
             Timber.w("StreamUrlResolver: no stream found for $videoId or timed out")
             return null
@@ -119,34 +125,18 @@ object StreamUrlResolver {
         priorityIndex: Int? = null
     ): List<MediaItem> = coroutineScope {
         val resolved = MutableList<MediaItem?>(items.size) { null }
-        val semaphore = Semaphore(3)
-
-        suspend fun resolveOrKeep(index: Int, item: MediaItem): MediaItem {
-            if (!isYouTubeVideoId(item.localConfiguration?.uri)) return item
-            return resolveMediaItem(item, streamExtractor, downloadUtil)
-                ?: item.buildUpon().setUri("omnitune-unresolved://${item.mediaId}").build().also {
-                    Timber.w("StreamUrlResolver: marking queue item ${item.mediaId} as unresolved")
-                }
-        }
-
+        
         if (priorityIndex != null && priorityIndex in items.indices) {
-            resolved[priorityIndex] = semaphore.withPermit {
-                resolveOrKeep(priorityIndex, items[priorityIndex])
+            val item = items[priorityIndex]
+            if (isYouTubeVideoId(item.localConfiguration?.uri)) {
+                resolved[priorityIndex] = resolveMediaItem(item, streamExtractor, downloadUtil) ?: item
+            } else {
+                resolved[priorityIndex] = item
             }
         }
 
-        items.mapIndexedNotNull { index, item ->
-            if (resolved[index] != null) return@mapIndexedNotNull null
-            async {
-                semaphore.withPermit {
-                    index to resolveOrKeep(index, item)
-                }
-            }
-        }.forEach { deferred ->
-            val (index, item) = deferred.await()
-            resolved[index] = item
+        items.mapIndexed { index, item ->
+            resolved[index] ?: item
         }
-
-        resolved.mapIndexed { index, item -> item ?: items[index] }
     }
 }
