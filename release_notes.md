@@ -1,6 +1,15 @@
-# OmniTune v0.7.1 - RC GO Verification
+# OmniTune v0.7.2 - Network Resilience Update
 
 Released: 2026-06-25
+
+## What's New
+
+- Fixed an issue where the app could hang indefinitely when attempting to start playback on Wi-Fi networks that are connected but lack validated internet access (e.g., captive portals or IPv6 blackholes).
+- Added a 10-second timeout for stream URL resolution to prevent the player from stalling on dead connections.
+- Added a 15-second playback startup watchdog that intercepts endless buffering and provides a clear retry option.
+- Improved error handling to show a clear user-facing toast notification when network retries are exhausted.
+
+# OmniTune v0.7.1 - RC GO Verification
 
 ## What's New
 

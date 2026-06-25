@@ -90,9 +90,11 @@ object StreamUrlResolver {
         }
 
         Timber.d("StreamUrlResolver: resolving $videoId")
-        val streamResult = streamExtractor.extract(videoId, StreamQuality.HIGH)
+        val streamResult = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+            streamExtractor.extract(videoId, StreamQuality.HIGH)
+        }
         if (streamResult == null) {
-            Timber.w("StreamUrlResolver: no stream found for $videoId")
+            Timber.w("StreamUrlResolver: no stream found for $videoId or timed out")
             return null
         }
 

@@ -831,6 +831,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // --- Player.Listener ---
 
+    private var playbackWatchdogJob: kotlinx.coroutines.Job? = null
+
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
         crossfadeAudio?.onPlaybackStateChanged(state)
@@ -842,6 +844,19 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
+            playbackWatchdogJob?.cancel()
+        } else if (state == Player.STATE_BUFFERING && player.playWhenReady) {
+            playbackWatchdogJob?.cancel()
+            playbackWatchdogJob = scope.launch(Dispatchers.Main) {
+                kotlinx.coroutines.delay(15_000L) // 15 seconds max buffering
+                if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
+                    Timber.tag("MusicService").w("Playback watchdog timeout!")
+                    val exception = PlaybackException(
+                        "Buffering timeout", null, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+                    )
+                    onPlayerError(exception)
+                }
+            }
         }
     }
 
@@ -957,20 +972,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 } catch (e: Exception) {
                     Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
                 }
-                fallbackSkip()
+                fallbackSkip(errorType)
             }
         } else {
             Timber.tag("MusicService").w("Recovery policy denied retry for $mediaId, error: $errorType")
-            fallbackSkip()
+            fallbackSkip(errorType)
         }
     }
 
-    private fun fallbackSkip() {
+    private fun fallbackSkip(errorType: com.omnitune.app.playback.recovery.PlaybackErrorType) {
         if (autoSkipNextOnError && player.hasNextMediaItem()) {
             Timber.tag("MusicService").i("Auto-skipping to next track after error")
             player.seekToNextMediaItem()
             player.prepare()
             player.play()
+        } else {
+            val message = when (errorType) {
+                com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError -> "Network error during playback. Please check your connection."
+                com.omnitune.app.playback.recovery.PlaybackErrorType.Timeout -> "Playback timed out. Please try again."
+                else -> "Playback failed after retries."
+            }
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(this@MusicService, message, android.widget.Toast.LENGTH_LONG).show()
+            }
         }
     }
 
