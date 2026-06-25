@@ -48,6 +48,9 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 
+import androidx.compose.ui.platform.LocalContext
+import com.omnitune.app.LocalPlayerConnection
+
 @androidx.media3.common.util.UnstableApi
 @Composable
 fun DownloadsScreen(
@@ -56,9 +59,12 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val playerConnection = LocalPlayerConnection.current
+    
     val completedCount = uiState.downloads.count { it.state == Download.STATE_COMPLETED }
     val activeCount = uiState.downloads.count {
-        it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED || it.state == Download.STATE_STOPPED
+        it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED || it.state == Download.STATE_STOPPED || it.state == Download.STATE_REMOVING
     }
     val failedCount = uiState.downloads.count { it.state == Download.STATE_FAILED }
 
@@ -107,7 +113,7 @@ fun DownloadsScreen(
                 ) { download ->
                     DownloadItemRow(
                         download = download,
-                        onPlay = { onPlayDownload(download) },
+                        onPlay = { viewModel.playDownload(download, playerConnection, context) },
                         onRetry = { viewModel.retryDownload(download.request.id) },
                         onRemove = { viewModel.removeDownload(download.request.id) },
                     )
@@ -357,8 +363,8 @@ private fun downloadPresentation(download: Download): DownloadPresentation {
             playable = true,
         )
         Download.STATE_DOWNLOADING -> {
-            val progress = download.percentDownloaded
-                .takeIf { it >= 0f }
+            val percent = download.percentDownloaded
+            val progress = percent.takeIf { !it.isNaN() && it >= 0f }
                 ?.coerceIn(0f, 100f)
             DownloadPresentation(
                 label = if (progress == null) "Downloading" else "Downloading ${progress.toInt()}%",
@@ -382,6 +388,12 @@ private fun downloadPresentation(download: Download): DownloadPresentation {
         Download.STATE_FAILED -> DownloadPresentation(
             label = "Failed - retry available",
             accent = OmniColors.Error,
+            progress = null,
+            playable = false,
+        )
+        Download.STATE_REMOVING -> DownloadPresentation(
+            label = "Removing...",
+            accent = OmniColors.TextTertiary,
             progress = null,
             playable = false,
         )

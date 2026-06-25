@@ -17,6 +17,7 @@ import com.omnitune.innertube.models.ArtistItem
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.utils.reportException
+import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -137,6 +138,8 @@ class SearchViewModel @Inject constructor(
         var bucketFailures = 0
         var usedCachedResults = false
 
+        Timber.tag("OmniTuneSearch").i("Starting search: length=${query.length}, blank=${query.isBlank()}")
+
         try {
             val networkAvailable = isInternetAvailable(context)
             if (!networkAvailable) {
@@ -220,6 +223,7 @@ class SearchViewModel @Inject constructor(
         }
 
         if (searchError == null) {
+            Timber.tag("OmniTuneSearch").i("Search succeeded: songs=${songsList.size}, artists=${artistsList.size}, albums=${albumsList.size}, playlists=${playlistsList.size}")
             status = when {
                 usedCachedResults -> SearchStatus.CachedResultsShown
                 bucketFailures > 0 -> SearchStatus.PartialResults

@@ -59,7 +59,7 @@ class LibraryViewModel @Inject constructor(
 
     private fun refreshDownloadCount() {
         var count = 0
-        val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
+        val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads(androidx.media3.exoplayer.offline.Download.STATE_COMPLETED)
         try {
             while (cursor.moveToNext()) {
                 count++
@@ -98,6 +98,7 @@ class LibraryViewModel @Inject constructor(
                     recentlyPlayed = events,
                     librarySongCount = librarySongs.size,
                     playlistCount = _uiState.value.playlistCount,
+                    downloadCount = _uiState.value.downloadCount,
                     isLoading = false,
                 )
             }.collect { state ->

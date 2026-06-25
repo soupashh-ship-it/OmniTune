@@ -9,6 +9,7 @@ import com.omnitune.app.models.StreamQuality
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.utils.YTPlayerUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -59,7 +60,13 @@ class StreamExtractor @Inject constructor(
         var lastFailure: Throwable? = null
         var lastReason: PlaybackResolveError = PlaybackResolveError.NoPlayableFormat
 
-        for (client in clientRotator.getClientSequence(songId)) {
+        val clientSequence = clientRotator.getClientSequence(songId)
+        val totalAttempts = clientSequence.size
+        Timber.tag("OmniTuneStreamFallback").i("Stream resolve attempt started (total clients: $totalAttempts)")
+
+        for ((index, client) in clientSequence.withIndex()) {
+            val attemptIndex = index + 1
+            Timber.tag("OmniTuneStreamFallback").i("Attempting client: ${client.name} ($attemptIndex/$totalAttempts)")
             attemptedClients += client
             val result = YTPlayerUtils.playerResponseForPlayback(
                 videoId = songId,
@@ -82,14 +89,19 @@ class StreamExtractor @Inject constructor(
                     lastFailure = throwable
                     lastReason = classifyFailure(throwable)
                     clientRotator.reportFailure(songId)
+                    val exceptionClass = throwable::class.java.simpleName
+                    val classification = lastReason::class.java.simpleName
+                    Timber.tag("OmniTuneStreamFallback").w("Client ${client.name} failed. Exception: $exceptionClass, Classification: $classification")
                     null
                 }
             )
 
             if (streamResult != null) {
+                Timber.tag("OmniTuneStreamFallback").i("Fallback success using client: ${client.name} on attempt $attemptIndex/$totalAttempts")
                 return StreamResolveResult.Success(streamResult, client)
             }
         }
+        Timber.tag("OmniTuneStreamFallback").e("All clients failed to resolve stream")
         return StreamResolveResult.Failure(songId, lastReason, attemptedClients, lastFailure)
     }
 

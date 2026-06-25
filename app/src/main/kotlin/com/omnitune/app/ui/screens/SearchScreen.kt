@@ -480,8 +480,14 @@ private fun SearchResultsContent(
                         Timber.tag("OmniTunePlaybackTrace").i("Search row clicked: ${song.title}")
                         onPlaySong(songs, index)
                     },
-                    onPlayNext = { onPlayNext(song) },
-                    onAddToQueue = { onAddToQueue(song) },
+                    onPlayNext = { 
+                        Timber.tag("OmniTuneSearch").i("Play Next clicked: ${song.title}")
+                        onPlayNext(song) 
+                    },
+                    onAddToQueue = { 
+                        Timber.tag("OmniTuneSearch").i("Add to Queue clicked: ${song.title}")
+                        onAddToQueue(song) 
+                    },
                 )
             }
         }
@@ -540,6 +546,7 @@ private fun SearchResultsContent(
                     thumbnailUrl = playlist.thumbnail,
                     fallbackRes = R.drawable.ic_list,
                     onClick = null,
+                    statusText = "Playlist details pending",
                 )
             }
         }
@@ -613,6 +620,7 @@ private fun SearchResultRow(
     circular: Boolean = false,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
+    statusText: String = "Info",
 ) {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -759,7 +767,7 @@ private fun SearchResultRow(
             }
         } else if (onClick == null) {
             Text(
-                text = "Info",
+                text = statusText,
                 style = OmniTextStyles.caption,
                 color = OmniColors.TextTertiary,
             )

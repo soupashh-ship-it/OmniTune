@@ -71,4 +71,30 @@ class DownloadUtil @Inject constructor(
             Timber.w(e, "Error releasing caches")
         }
     }
+
+    /**
+     * Reusable playability gate that checks state and safely verifies cache presence.
+     */
+    fun isPlayable(download: androidx.media3.exoplayer.offline.Download): Boolean {
+        Timber.i("Diagnostics: Playback request for download ${download.request.id}, state: ${download.state}")
+        
+        if (download.state == androidx.media3.exoplayer.offline.Download.STATE_REMOVING) {
+            Timber.w("Diagnostics: Playback rejected (Removing)")
+            return false
+        }
+        if (download.state != androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
+            Timber.w("Diagnostics: Playback rejected (Not Completed: ${download.state})")
+            return false
+        }
+        
+        // Safe cache detection without brittle file-path assumptions
+        val cachedSpans = downloadCache.getCachedSpans(download.request.id)
+        if (cachedSpans.isEmpty()) {
+            Timber.e("Diagnostics: Playback failed (Missing Cache)")
+            return false
+        }
+        
+        Timber.i("Diagnostics: Playback approved")
+        return true
+    }
 }

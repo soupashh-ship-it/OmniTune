@@ -103,7 +103,7 @@ fun LibraryScreen(
                 LibraryDestinationCard(
                     painter = painterResource(R.drawable.ic_download),
                     title = "Downloads",
-                    detail = "Open offline songs",
+                    detail = countLabel(uiState.downloadCount, "song"),
                     accent = OmniColors.Downloaded,
                     onClick = onNavigateToDownloads,
                     modifier = Modifier.weight(1f),

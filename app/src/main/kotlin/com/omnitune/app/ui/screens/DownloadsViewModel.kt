@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.playback.PlayerConnection
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 data class DownloadsUiState(
     val downloads: List<Download> = emptyList(),
@@ -29,7 +34,8 @@ data class DownloadsUiState(
 class DownloadsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadUtil: DownloadUtil,
-    private val streamExtractor: StreamExtractor
+    private val streamExtractor: StreamExtractor,
+    private val database: MusicDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DownloadsUiState())
@@ -70,6 +76,36 @@ class DownloadsViewModel @Inject constructor(
             cursor.close()
         }
         _uiState.value = DownloadsUiState(downloads = list)
+    }
+
+    fun isPlayable(download: Download): Boolean {
+        return downloadUtil.isPlayable(download)
+    }
+
+    fun playDownload(download: Download, playerConnection: PlayerConnection?, context: Context) {
+        if (!downloadUtil.isPlayable(download)) {
+            android.widget.Toast.makeText(context, "Playback rejected: Download is not ready or missing.", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewModelScope.launch {
+            val dbSong = withContext(Dispatchers.IO) { database.getSongById(download.request.id) }
+            val mediaItem = if (dbSong != null) {
+                dbSong.toMediaItem()
+            } else {
+                Timber.i("Diagnostics: Metadata fallback for non-DB-backed download")
+                val title = String(download.request.data, Charsets.UTF_8)
+                androidx.media3.common.MediaItem.Builder()
+                    .setMediaId(download.request.id)
+                    .setMediaMetadata(
+                        androidx.media3.common.MediaMetadata.Builder()
+                            .setTitle(title)
+                            .build()
+                    )
+                    .build()
+            }
+            playerConnection?.playQueue(com.omnitune.app.playback.queues.ListQueue(items = listOf(mediaItem)))
+        }
     }
 
     fun startDownload(

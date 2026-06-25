@@ -1,33 +1,24 @@
-# OmniTune v0.7.0 — OmniGlass UI Overhaul
+# OmniTune v0.7.0 - OmniGlass UI Overhaul
 
-## Highlights
+Released: 2026-06-25
 
-- OmniGlass visual overhaul across the app.
-- Redesigned Home, Search, MiniPlayer, full player, Queue, Library, Downloads, and Settings.
-- Improved dark-first glass UI with more consistent spacing, accessibility, and responsive layout polish.
-- Improved Settings presentation for appearance, updates, diagnostics, notification/lock-screen guidance, About, credits, and license access.
-- Fixed completed-download playback so tapping a completed download starts the tapped offline item, updates MiniPlayer/full-player metadata, and replaces an active Search track when needed.
-- Offline completed-download playback verified on device `138898743000055`.
+## What's New
 
-## Stability And QA
+- New OmniGlass visual design across Home, Search, Library, Downloads, Queue, Settings, MiniPlayer, and full player.
+- Refined dark-first layout with improved spacing, accessibility, and compact-screen polish.
+- Cleaner Settings experience for updates, diagnostics, notification guidance, About, credits, and license access.
 
-- Search playback verified.
-- MiniPlayer and full player verified.
-- Queue and Add to Queue verified.
-- Completed downloads verified online and offline.
-- Update checker verified.
-- Diagnostics/export verified.
-- About, credits, license, and GPL access verified.
-- Final debug/device regression passed on device `138898743000055`.
+## Fixes
 
-## Known Limitations
+- Fixed completed-download playback so tapping a downloaded track switches playback correctly, including when another Search track is already active.
+- Verified completed-download playback works offline.
+- Preserved Search playback, MiniPlayer/full-player controls, Queue/Add to Queue, update checker, diagnostics export, and legal access.
 
-- Lyrics display surface remains unavailable.
-- OEM notification and lock-screen controls may vary by device.
-- Active/failed download states need broader QA when those states are available.
-- Older completed downloads may have limited metadata unless the song exists in the local database.
-- Signed release APK is produced by GitHub Actions using repository secrets.
+## Notes
 
-## Release Process
-
-This release has not been published by this note. After explicit approval, create and push the `v0.7.0` tag so the verified GitHub Actions release workflow can build, sign, verify, checksum, and upload the release APK.
+- Signed release assets were produced by GitHub Actions using repository secrets.
+- Release assets include `OmniTune-v0.7.0-release.apk` and `OmniTune-v0.7.0-release.apk.sha256`.
+- Lyrics display is not available in this release.
+- Notification and lock-screen behavior can vary by device/OEM.
+- Active and failed download states need broader QA when those states are available.
+- Older downloads may show limited metadata unless the song exists in the local database.
