@@ -5,9 +5,10 @@
 
 package com.omnitune.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,74 +23,223 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.EmptyPlaceholder
-import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
 
 @Composable
 fun LikedSongsScreen(
     onBack: () -> Unit = {},
     onPlaySong: (Song) -> Unit = {},
-    viewModel: LibraryViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
+    viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val likedSongs by viewModel.likedSongs.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().background(OmniColors.Background).statusBarsPadding()) {
-        // Top bar
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp).clip(OmniShapes.SM).background(OmniColors.GlassSurface)) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Liked Songs", style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
-            Spacer(modifier = Modifier.weight(1f))
-            Text("${likedSongs.size} songs", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = OmniColors.TextMuted)
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient)
+            .statusBarsPadding()
+            .padding(horizontal = OmniSpacing.section),
+    ) {
+        LibraryListHeader(
+            title = "Liked Songs",
+            subtitle = countLabel(likedSongs.size, "song"),
+            icon = R.drawable.ic_favorite,
+            onBack = onBack,
+        )
 
         if (likedSongs.isEmpty()) {
-            EmptyPlaceholder(icon = R.drawable.ic_favorite, text = "No liked songs yet\nTap the heart icon on any song to add it here")
+            LibraryEmptyState(
+                icon = R.drawable.ic_favorite,
+                text = "No liked songs yet",
+            )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                items(likedSongs) { song ->
-                    SongRow(song = song, onClick = { onPlaySong(song) })
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                items(
+                    items = likedSongs,
+                    key = { it.song.id },
+                    contentType = { "likedSong" },
+                ) { song ->
+                    LibrarySongRow(
+                        title = song.song.title,
+                        artists = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                        thumbnail = song.song.thumbnailUrl,
+                        onClick = { onPlaySong(song) },
+                    )
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
     }
 }
 
 @Composable
-private fun SongRow(song: Song, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)), onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(48.dp).clip(OmniShapes.SM).background(OmniColors.GlassSurface)) {
-            if (song.song.thumbnailUrl != null) {
-                AsyncImage(model = song.song.thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-            }
+private fun LibraryListHeader(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    onBack: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = OmniSpacing.medium, bottom = OmniSpacing.large),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(OmniColors.OmniGlassMedium)
+                .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_arrow_back),
+                contentDescription = "Back",
+                tint = OmniColors.TextPrimary,
+            )
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
-            Text(song.song.title, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.artists.joinToString(", ") { it.name }, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(OmniColors.Hot.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = OmniColors.Hot,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
+}
+
+@Composable
+private fun LibrarySongRow(
+    title: String,
+    artists: String,
+    thumbnail: String?,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.OmniGlassSubtle)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Large)
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .clip(OmniShapes.ArtworkSmall)
+                .background(OmniColors.OmniGlassStrong),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (thumbnail.isNullOrBlank()) {
+                Icon(
+                    painterResource(R.drawable.ic_album),
+                    contentDescription = null,
+                    tint = OmniColors.TextTertiary,
+                    modifier = Modifier.size(24.dp),
+                )
+            } else {
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = artists,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryEmptyState(
+    icon: Int,
+    text: String,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.ExtraLarge)
+            .background(OmniColors.OmniGlassSubtle)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.ExtraLarge)
+            .padding(OmniSpacing.screen),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyPlaceholder(
+            icon = icon,
+            text = text,
+        )
+    }
+}
+
+private fun countLabel(count: Int, singular: String): String {
+    val noun = if (count == 1) singular else "${singular}s"
+    return "$count $noun"
 }

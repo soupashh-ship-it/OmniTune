@@ -6,15 +6,11 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,12 +24,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -43,45 +43,44 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
+import com.omnitune.app.ui.component.GlassCard
+import com.omnitune.app.ui.component.GlassSurface
+import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniSectionHeader
+import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.ShimmerBar
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.models.SongItem
-import com.omnitune.app.ui.component.EmptyPlaceholder
-import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.OmniShapes
 import timber.log.Timber
 
-private val moodChips = listOf(
-    "Late Night" to "late night lofi vibes",
-    "Gym" to "workout energetic phonk",
-    "Rain" to "relaxing rain music",
-    "Focus" to "deep focus space ambient",
-    "Lofi" to "lofi hip hop beats"
-)
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onBack: () -> Unit = {},
@@ -94,89 +93,345 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val textFieldValue = remember { mutableStateOf(TextFieldValue(uiState.query)) }
-    LaunchedEffect(Unit) { snapshotFlow { uiState.query }.collect { q -> if (q != textFieldValue.value.text) textFieldValue.value = TextFieldValue(q) } }
 
-    Column(modifier = Modifier.fillMaxSize().background(OmniColors.Background).statusBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp).clip(OmniShapes.SM).border(1.dp, OmniColors.GlassBorder, OmniShapes.SM).background(OmniColors.GlassSurface)) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(20.dp))
+    LaunchedEffect(Unit) {
+        snapshotFlow { uiState.query }.collect { query ->
+            if (query != textFieldValue.value.text) {
+                textFieldValue.value = TextFieldValue(query)
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            TextField(value = textFieldValue.value, onValueChange = { textFieldValue.value = it; viewModel.onQueryChanged(it.text) },
-                modifier = Modifier.weight(1f).height(48.dp).clip(OmniShapes.MD).background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorder, OmniShapes.MD),
-                placeholder = { Text("Search songs, artists, albums...", color = OmniColors.TextMuted, fontSize = 14.sp) },
-                leadingIcon = { Icon(painterResource(com.omnitune.app.R.drawable.ic_search), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp)) },
-                trailingIcon = { if (uiState.query.isNotEmpty()) IconButton(onClick = { viewModel.clearQuery() }, modifier = Modifier.size(32.dp)) { Icon(painterResource(com.omnitune.app.R.drawable.ic_close), contentDescription = "Clear", tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp)) } },
-                colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = OmniColors.Primary, focusedTextColor = OmniColors.TextPrimary, unfocusedTextColor = OmniColors.TextPrimary),
-                singleLine = true)
-        }
-        when {
-            uiState.isSearching -> Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) { OmniTuneLoader(size = 48.dp) }
-            uiState.error != null -> EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = uiState.error ?: "Search failed", action = {
-                androidx.compose.material3.Button(
-                    onClick = { viewModel.retrySearch() },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OmniColors.Primary)
-                ) {
-                    Text(
-                        if (uiState.status == SearchStatus.NetworkError) "Retry when online" else "Retry",
-                        color = OmniColors.Background,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            })
-            uiState.query.isEmpty() -> {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-                    item {
-                        OmniSectionHeader(title = "Mood"); Spacer(modifier = Modifier.height(10.dp))
-                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            moodChips.forEach { (label, query) ->
-                                val isActive = uiState.query == query
-                                val bgColor by androidx.compose.animation.animateColorAsState(
-                                    targetValue = if (isActive) OmniColors.Primary.copy(alpha = 0.2f) else OmniColors.GlassSurface,
-                                    label = "bgColor"
-                                )
-                                val borderColor by androidx.compose.animation.animateColorAsState(
-                                    targetValue = if (isActive) OmniColors.Primary.copy(alpha = 0.5f) else OmniColors.GlassBorder,
-                                    label = "borderColor"
-                                )
-                                val textColor by androidx.compose.animation.animateColorAsState(
-                                    targetValue = if (isActive) OmniColors.Primary else OmniColors.TextSecondary,
-                                    label = "textColor"
-                                )
-                                Box(modifier = Modifier.clip(OmniShapes.Pill).border(1.dp, borderColor, OmniShapes.Pill).background(bgColor)
-                                    .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { 
-                                        if (isActive) viewModel.clearQuery() else viewModel.onQueryChanged(query) 
-                                    }.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                    Text(label, color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-                    if (uiState.searchHistory.isNotEmpty()) {
-                        item {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("Recent Searches", style = androidx.compose.material3.MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, modifier = Modifier.weight(1f))
-                                Text("Clear all", color = OmniColors.Secondary, fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = false, color = OmniColors.Secondary.copy(alpha = 0.2f))) { viewModel.clearSearchHistory() })
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        items(uiState.searchHistory, key = { it.query }, contentType = { "history" }) { item ->
-                            Row(modifier = Modifier.fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f))) { viewModel.onQueryChanged(item.query) }.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(painterResource(R.drawable.ic_list), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(item.query, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, color = OmniColors.TextSecondary)
-                            }
-                        }
-                    }
-                    if (uiState.searchHistory.isEmpty()) item { EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = "Search for your favorite songs, artists, and albums") }
-                }
-            }
-            uiState.songs.isEmpty() && uiState.artists.isEmpty() && uiState.albums.isEmpty() && uiState.playlists.isEmpty() -> EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_search, text = "No results for \"${uiState.query}\"")
-            else -> SearchResultsContent(uiState.songs, uiState.artists, uiState.albums, uiState.playlists, onNavigateToAlbum, onNavigateToArtist, onPlaySong, onPlayNext, onAddToQueue)
         }
     }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Transparent)
+            .statusBarsPadding()
+            .padding(horizontal = OmniSpacing.medium),
+    ) {
+        SearchTopBar(
+            query = textFieldValue.value,
+            isSearching = uiState.isSearching,
+            onQueryChange = {
+                textFieldValue.value = it
+                viewModel.onQueryChanged(it.text)
+            },
+            onClear = {
+                textFieldValue.value = TextFieldValue("")
+                viewModel.clearQuery()
+            },
+            onBack = onBack,
+        )
+
+        Spacer(modifier = Modifier.height(OmniSpacing.medium))
+
+        when {
+            uiState.isSearching -> SearchLoadingState()
+            uiState.error != null -> SearchErrorState(
+                message = uiState.error.orEmpty(),
+                status = uiState.status,
+                onRetry = viewModel::retrySearch,
+            )
+            uiState.query.isBlank() -> SearchStartState(
+                history = uiState.searchHistory,
+                onHistoryClick = viewModel::onQueryChanged,
+                onClearHistory = viewModel::clearSearchHistory,
+            )
+            uiState.hasNoResults -> SearchEmptyResults(query = uiState.query)
+            else -> SearchResultsContent(
+                songs = uiState.songs,
+                artists = uiState.artists,
+                albums = uiState.albums,
+                playlists = uiState.playlists,
+                status = uiState.status,
+                onNavigateToAlbum = onNavigateToAlbum,
+                onNavigateToArtist = onNavigateToArtist,
+                onPlaySong = onPlaySong,
+                onPlayNext = onPlayNext,
+                onAddToQueue = onAddToQueue,
+            )
+        }
+    }
+}
+
+private val SearchUiState.hasNoResults: Boolean
+    get() = songs.isEmpty() && artists.isEmpty() && albums.isEmpty() && playlists.isEmpty()
+
+@Composable
+private fun SearchTopBar(
+    query: TextFieldValue,
+    isSearching: Boolean,
+    onQueryChange: (TextFieldValue) -> Unit,
+    onClear: () -> Unit,
+    onBack: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = OmniSpacing.compact),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SearchIconButton(
+                icon = R.drawable.ic_arrow_back,
+                contentDescription = "Back",
+                onClick = onBack,
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.small))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Search",
+                    style = OmniTextStyles.screenTitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "Find songs, artists, albums, and playlists",
+                    style = OmniTextStyles.metadata,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        GlassSurface(
+            cornerRadius = OmniShapes.Large,
+            tone = GlassTone.Strong,
+            backgroundAlpha = 0.14f,
+            borderAlpha = 0.28f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+        ) {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxSize(),
+                placeholder = {
+                    Text(
+                        text = "Search songs, artists, albums...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OmniColors.TextTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_search),
+                        contentDescription = null,
+                        tint = OmniColors.OmniAccentSecondary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                },
+                trailingIcon = {
+                    when {
+                        isSearching -> OmniTuneLoader(size = 22.dp, color = OmniColors.ActivePlayback)
+                        query.text.isNotEmpty() -> IconButton(
+                            onClick = {
+                                focusManager.clearFocus(force = true)
+                                onClear()
+                            },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_close),
+                                contentDescription = "Clear search",
+                                tint = OmniColors.TextSecondary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = OmniColors.OmniAccentPrimary,
+                    focusedTextColor = OmniColors.TextPrimary,
+                    unfocusedTextColor = OmniColors.TextPrimary,
+                ),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = OmniColors.TextPrimary,
+                    fontWeight = FontWeight.Medium,
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { focusManager.clearFocus(force = true) },
+                ),
+                singleLine = true,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchLoadingState() {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        item {
+            OmniSectionHeader(title = "Searching", action = "Working")
+            Spacer(modifier = Modifier.height(OmniSpacing.compact))
+        }
+        items(5, key = { "search-loading-$it" }, contentType = { "loading" }) {
+            GlassSurface(
+                cornerRadius = OmniShapes.Large,
+                tone = GlassTone.Subtle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(76.dp),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(OmniSpacing.small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ShimmerBar(
+                        modifier = Modifier.size(54.dp),
+                        tone = GlassTone.Medium,
+                    )
+                    Spacer(modifier = Modifier.width(OmniSpacing.small))
+                    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+                        ShimmerBar(
+                            modifier = Modifier
+                                .fillMaxWidth(0.66f)
+                                .height(14.dp),
+                        )
+                        ShimmerBar(
+                            modifier = Modifier
+                                .fillMaxWidth(0.42f)
+                                .height(10.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchStartState(
+    history: List<SearchHistory>,
+    onHistoryClick: (String) -> Unit,
+    onClearHistory: () -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        item {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = OmniShapes.ExtraLarge,
+                tone = GlassTone.Medium,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.18f),
+                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.08f),
+                                    Color.Transparent,
+                                )
+                            )
+                        )
+                        .padding(OmniSpacing.large),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+                        Text(
+                            text = "Start with a song",
+                            style = OmniTextStyles.sectionTitle,
+                        )
+                        Text(
+                            text = "Search for real tracks and play them through the existing OmniTune player.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = OmniColors.TextSecondary,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (history.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(OmniSpacing.compact))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OmniSectionHeader(
+                        title = "Recent searches",
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onClearHistory) {
+                        Text(
+                            text = "Clear",
+                            color = OmniColors.OmniAccentSecondary,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            }
+
+            items(
+                items = history,
+                key = { "history-${it.query}" },
+                contentType = { "history" },
+            ) { item ->
+                SearchHistoryRow(
+                    query = item.query,
+                    onClick = { onHistoryClick(item.query) },
+                )
+            }
+        } else {
+            item {
+                SearchMessageCard(
+                    icon = R.drawable.ic_search,
+                    title = "Search for a song to start listening",
+                    message = "Results will appear here as songs, artists, albums, and playlists when real data is available.",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchErrorState(
+    message: String,
+    status: SearchStatus,
+    onRetry: () -> Unit,
+) {
+    val title = when (status) {
+        SearchStatus.NetworkError -> "Search needs a connection"
+        SearchStatus.ParserChanged -> "Search could not read results"
+        else -> "Search failed"
+    }
+
+    SearchMessageCard(
+        icon = R.drawable.ic_search,
+        title = title,
+        message = message.ifBlank { "Try again in a moment." },
+        actionLabel = if (status == SearchStatus.NetworkError) "Retry when online" else "Retry",
+        onAction = onRetry,
+    )
+}
+
+@Composable
+private fun SearchEmptyResults(query: String) {
+    SearchMessageCard(
+        icon = R.drawable.ic_search,
+        title = "No results found",
+        message = "No songs, artists, albums, or playlists matched \"$query\".",
+    )
 }
 
 @Composable
@@ -185,92 +440,299 @@ private fun SearchResultsContent(
     artists: List<ArtistItem>,
     albums: List<AlbumItem>,
     playlists: List<PlaylistItem>,
+    status: SearchStatus,
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
     onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+    ) {
+        if (status == SearchStatus.PartialResults || status == SearchStatus.CachedResultsShown) {
+            item(contentType = "status") {
+                val message = if (status == SearchStatus.CachedResultsShown) {
+                    "Showing the last available results for this search."
+                } else {
+                    "Some result groups could not load, but available results are shown."
+                }
+                SearchStatusPill(message = message)
+            }
+        }
+
         if (songs.isNotEmpty()) {
-            item { Spacer(modifier = Modifier.height(8.dp)); OmniSectionHeader(title = "Songs", action = "${songs.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            itemsIndexed(songs, key = { _, song -> "song-${song.id}" }, contentType = { _, _ -> "song" }) { index, song ->
-                GlassSearchRow(
+            item(contentType = "section-songs") {
+                SectionLabel(title = "Songs", count = songs.size)
+            }
+            itemsIndexed(
+                items = songs,
+                key = { index, song -> "song-${song.id.ifBlank { index.toString() }}" },
+                contentType = { _, _ -> "song" },
+            ) { index, song ->
+                SearchResultRow(
                     title = song.title,
-                    subtitle = song.artists.joinToString(", ") { it.name },
+                    subtitle = song.artists.joinToString(", ") { it.name }.ifBlank { "Song" },
                     thumbnailUrl = song.thumbnail,
-                    onClick = { onPlaySong(songs, index) },
+                    fallbackRes = R.drawable.ic_play_arrow,
+                    onClick = {
+                        Timber.tag("OmniTunePlaybackTrace").i("Search row clicked: ${song.title}")
+                        onPlaySong(songs, index)
+                    },
                     onPlayNext = { onPlayNext(song) },
                     onAddToQueue = { onAddToQueue(song) },
                 )
             }
         }
+
         if (artists.isNotEmpty()) {
-            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Artists", action = "${artists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(artists, key = { "artist-${it.id}" }, contentType = { "artist" }) { artist -> GlassSearchRow(artist.title, "Artist", artist.thumbnail, { onNavigateToArtist(artist.id) }, circular = true) }
+            item(contentType = "section-artists") {
+                SectionLabel(title = "Artists", count = artists.size)
+            }
+            items(
+                items = artists,
+                key = { "artist-${it.id}" },
+                contentType = { "artist" },
+            ) { artist ->
+                SearchResultRow(
+                    title = artist.title,
+                    subtitle = "Artist",
+                    thumbnailUrl = artist.thumbnail,
+                    fallbackRes = R.drawable.ic_artist,
+                    circular = true,
+                    onClick = { onNavigateToArtist(artist.id) },
+                )
+            }
         }
+
         if (albums.isNotEmpty()) {
-            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Albums", action = "${albums.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(albums, key = { "album-${it.browseId}" }, contentType = { "album" }) { album -> GlassSearchRow(album.title, album.artists?.joinToString(", ") { it.name } ?: "", album.thumbnail, { onNavigateToAlbum(album.browseId) }) }
+            item(contentType = "section-albums") {
+                SectionLabel(title = "Albums", count = albums.size)
+            }
+            items(
+                items = albums,
+                key = { "album-${it.browseId}" },
+                contentType = { "album" },
+            ) { album ->
+                SearchResultRow(
+                    title = album.title,
+                    subtitle = album.artists?.joinToString(", ") { it.name }.orEmpty().ifBlank { "Album" },
+                    thumbnailUrl = album.thumbnail,
+                    fallbackRes = R.drawable.ic_album,
+                    onClick = { onNavigateToAlbum(album.browseId) },
+                )
+            }
         }
+
         if (playlists.isNotEmpty()) {
-            item { Spacer(modifier = Modifier.height(16.dp)); OmniSectionHeader(title = "Playlists", action = "${playlists.size} results"); Spacer(modifier = Modifier.height(8.dp)) }
-            items(playlists, key = { "playlist-${it.id}" }, contentType = { "playlist" }) { playlist -> GlassSearchRow(playlist.title, playlist.author?.name ?: "", playlist.thumbnail, {}, fallbackRes = R.drawable.ic_list) }
+            item(contentType = "section-playlists") {
+                SectionLabel(title = "Playlists", count = playlists.size)
+            }
+            items(
+                items = playlists,
+                key = { "playlist-${it.id}" },
+                contentType = { "playlist" },
+            ) { playlist ->
+                SearchResultRow(
+                    title = playlist.title,
+                    subtitle = playlist.author?.name ?: "Playlist",
+                    thumbnailUrl = playlist.thumbnail,
+                    fallbackRes = R.drawable.ic_list,
+                    onClick = null,
+                )
+            }
         }
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+
+        item(contentType = "bottom-spacer") {
+            Spacer(modifier = Modifier.height(OmniSpacing.section))
+        }
     }
 }
 
 @Composable
-private fun GlassSearchRow(
+private fun SectionLabel(
+    title: String,
+    count: Int,
+) {
+    OmniSectionHeader(
+        title = title,
+        action = "$count",
+        modifier = Modifier.padding(top = OmniSpacing.compact),
+    )
+}
+
+@Composable
+private fun SearchHistoryRow(
+    query: String,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.OmniGlassSubtle)
+            .omniPressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                ),
+                onClick = onClick,
+            )
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_history),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Text(
+            text = query,
+            style = MaterialTheme.typography.bodyLarge,
+            color = OmniColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SearchResultRow(
     title: String,
     subtitle: String,
     thumbnailUrl: String?,
-    onClick: () -> Unit,
+    fallbackRes: Int,
+    onClick: (() -> Unit)?,
     circular: Boolean = false,
-    fallbackRes: Int = com.omnitune.app.R.drawable.ic_play_arrow,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
+    val interactionSource = remember { MutableInteractionSource() }
     var menuExpanded by remember { mutableStateOf(false) }
+    val artworkShape = if (circular) RoundedCornerShape(999.dp) else OmniShapes.ArtworkSmall
     val thumbnailModel = remember(thumbnailUrl) {
         thumbnailUrl?.let {
             ImageRequest.Builder(context)
                 .data(it)
-                .size(96, 96)
+                .size(144, 144)
                 .memoryCacheKey(it)
                 .build()
         }
     }
-    Row(modifier = Modifier.fillMaxWidth().clip(OmniShapes.SM).clickable(
-        remember { MutableInteractionSource() },
-        indication = androidx.compose.material3.ripple(bounded = true),
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        OmniColors.OmniGlassMedium,
+                        OmniColors.OmniGlassSubtle,
+                    )
+                )
+            )
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .omniPressScale(interactionSource)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = androidx.compose.material3.ripple(
+                                bounded = true,
+                                color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
+                            ),
+                        ) {
+                            focusManager.clearFocus(force = true)
+                            onClick()
+                        }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        focusManager.clearFocus(force = true)
-        Timber.tag("OmniTunePlaybackTrace").i("Search row clicked: $title")
-        onClick()
-    }
-        .background(OmniColors.GlassSurface).border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(44.dp).clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM).background(OmniColors.GlassSurfaceStrong), contentAlignment = Alignment.Center) {
-            if (thumbnailModel != null) AsyncImage(model = thumbnailModel, contentDescription = null,
-                modifier = Modifier.fillMaxSize().clip(if (circular) RoundedCornerShape(22.dp) else OmniShapes.SM), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-            else Icon(painterResource(fallbackRes), contentDescription = null, tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+        Box(
+            modifier = Modifier
+                .size(62.dp)
+                .clip(artworkShape)
+                .background(OmniColors.OmniGlassStrong),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (thumbnailModel != null) {
+                AsyncImage(
+                    model = thumbnailModel,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Icon(
+                    painter = painterResource(fallbackRes),
+                    contentDescription = null,
+                    tint = OmniColors.TextTertiary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = androidx.compose.material3.MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle.isNotEmpty()) Text(subtitle, style = androidx.compose.material3.MaterialTheme.typography.bodySmall, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = title,
+                style = OmniTextStyles.songTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                style = OmniTextStyles.metadata,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+
         if (onPlayNext != null || onAddToQueue != null) {
             Box {
-                IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(40.dp)) {
-                    Icon(painterResource(com.omnitune.app.R.drawable.ic_more_vert), contentDescription = "More options", tint = OmniColors.TextMuted, modifier = Modifier.size(20.dp))
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_vert),
+                        contentDescription = "More options",
+                        tint = OmniColors.TextSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                ) {
                     if (onPlayNext != null) {
                         DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_skip_next),
+                                    contentDescription = null,
+                                )
+                            },
                             text = { Text("Play next") },
                             onClick = {
                                 menuExpanded = false
@@ -280,6 +742,12 @@ private fun GlassSearchRow(
                     }
                     if (onAddToQueue != null) {
                         DropdownMenuItem(
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_list),
+                                    contentDescription = null,
+                                )
+                            },
                             text = { Text("Add to queue") },
                             onClick = {
                                 menuExpanded = false
@@ -289,6 +757,123 @@ private fun GlassSearchRow(
                     }
                 }
             }
+        } else if (onClick == null) {
+            Text(
+                text = "Info",
+                style = OmniTextStyles.caption,
+                color = OmniColors.TextTertiary,
+            )
         }
+    }
+}
+
+@Composable
+private fun SearchStatusPill(message: String) {
+    GlassSurface(
+        cornerRadius = OmniShapes.Medium,
+        tone = GlassTone.Subtle,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(OmniSpacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_info),
+                contentDescription = null,
+                tint = OmniColors.Warning,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            Text(
+                text = message,
+                style = OmniTextStyles.metadata,
+                color = OmniColors.TextSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchMessageCard(
+    icon: Int,
+    title: String,
+    message: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = OmniShapes.ExtraLarge,
+        tone = GlassTone.Medium,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(OmniSpacing.large),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(OmniShapes.Large)
+                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = OmniColors.OmniAccentSecondary,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Text(
+                text = title,
+                style = OmniTextStyles.sectionTitle,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            if (actionLabel != null && onAction != null) {
+                TextButton(onClick = onAction) {
+                    Text(
+                        text = actionLabel,
+                        color = OmniColors.OmniAccentSecondary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchIconButton(
+    icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(44.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.OmniGlassMedium)
+            .omniPressScale(interactionSource),
+        interactionSource = interactionSource,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = contentDescription,
+            tint = OmniColors.TextPrimary,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

@@ -17,7 +17,7 @@ val OmniTypography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 40.sp,
         lineHeight = 46.sp,
-        letterSpacing = (-0.5).sp,
+        letterSpacing = 0.sp,
         color = OmniColors.TextPrimary,
     ),
     displayMedium = TextStyle(
@@ -25,7 +25,7 @@ val OmniTypography = Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 38.sp,
-        letterSpacing = (-0.25).sp,
+        letterSpacing = 0.sp,
         color = OmniColors.TextPrimary,
     ),
     headlineLarge = TextStyle(
@@ -125,4 +125,30 @@ val OmniTypography = Typography(
         color = OmniColors.TextMuted,
     ),
 )
+
+object OmniTextStyles {
+    val heroTitle = OmniTypography.displayLarge.copy(
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 0.sp,
+        color = OmniColors.TextPrimary,
+    )
+    val screenTitle = OmniTypography.headlineLarge.copy(
+        fontWeight = FontWeight.Bold,
+        color = OmniColors.TextPrimary,
+    )
+    val sectionTitle = OmniTypography.titleLarge.copy(
+        fontWeight = FontWeight.SemiBold,
+        color = OmniColors.TextPrimary,
+    )
+    val songTitle = OmniTypography.bodyLarge.copy(
+        fontWeight = FontWeight.SemiBold,
+        color = OmniColors.TextPrimary,
+    )
+    val metadata = OmniTypography.bodySmall.copy(
+        color = OmniColors.TextSecondary,
+    )
+    val caption = OmniTypography.labelSmall.copy(
+        color = OmniColors.TextTertiary,
+    )
+}
 

@@ -6,7 +6,6 @@
 package com.omnitune.app
 
 import android.os.Bundle
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -67,15 +67,18 @@ import com.omnitune.app.ui.screens.LibraryArtistsScreen
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import android.content.Intent
 import android.content.Context
+import androidx.media3.exoplayer.offline.Download
+import com.omnitune.app.models.MediaMetadata
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.compositionLocalOf
 import com.omnitune.app.db.MusicDatabase
@@ -96,6 +99,7 @@ import com.omnitune.app.ui.screens.SettingsScreen
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTuneTheme
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -166,7 +170,9 @@ class MainActivity : ComponentActivity() {
                 
             OmniTuneTheme(dynamicColor = dynamicTheme) {
                 CompositionLocalProvider(LocalPlayerConnection provides playerConnection) {
-                    Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) { OmniTuneMainScreen() }
+                    OmniShellBackground {
+                        OmniTuneMainScreen(database = database)
+                    }
                 }
             }
         }
@@ -181,6 +187,47 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         unbindService(serviceConnection)
+    }
+}
+
+@Composable
+private fun OmniShellBackground(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OmniColors.OmniBackgroundBase)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(OmniColors.BackgroundGradient)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.18f),
+                            Color.Transparent,
+                        ),
+                        radius = 980f,
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            OmniColors.OmniBackgroundBase.copy(alpha = 0.72f),
+                        )
+                    )
+                )
+        )
+        content()
     }
 }
 
@@ -204,12 +251,13 @@ private fun playSongFromSearch(
 }
 
 @Composable
-fun OmniTuneMainScreen() {
+fun OmniTuneMainScreen(database: MusicDatabase) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val topLevelScreens = Screens.MainScreens.map { it.route }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
@@ -228,11 +276,22 @@ fun OmniTuneMainScreen() {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(OmniColors.Background)) {
+    val showMiniPlayer = currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
+    val shellBottomPadding = when {
+        currentRoute == "player" || currentRoute == "queue" -> 0.dp
+        showMiniPlayer && showBottomBar -> 196.dp
+        showBottomBar -> 112.dp
+        showMiniPlayer -> 104.dp
+        else -> 0.dp
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = Screens.Home.route,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = shellBottomPadding),
             enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
             exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
             popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
@@ -316,20 +375,26 @@ fun OmniTuneMainScreen() {
                 DownloadsScreen(
                     onBack = { navController.popBackStack() },
                     onPlayDownload = { download ->
-                        val title = String(download.request.data, Charsets.UTF_8)
-                        val mediaItem = MediaItem.Builder()
-                            .setMediaId(download.request.id)
-                            .setUri(Uri.parse(download.request.id))
-                            .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setTitle(title)
-                                    .build()
-                            )
-                            .build()
                         val connection = localPlayerConnection
                         if (connection != null) {
-                            connection.playQueue(ListQueue(items = listOf(mediaItem)))
-                            navController.navigate("player")
+                            if (download.state != Download.STATE_COMPLETED) {
+                                Toast.makeText(context, "Download is not ready to play.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                coroutineScope.launch {
+                                    val mediaItem = withContext(Dispatchers.IO) {
+                                        database.getSongById(download.request.id)?.toMediaItem()
+                                            ?: MediaMetadata(
+                                                id = download.request.id,
+                                                title = String(download.request.data, Charsets.UTF_8)
+                                                    .ifBlank { download.request.id },
+                                                artists = emptyList(),
+                                                duration = -1,
+                                            ).toMediaItem()
+                                    }
+                                    connection.playQueue(ListQueue(title = "Downloads", items = listOf(mediaItem)))
+                                    navController.navigate("player")
+                                }
+                            }
                         } else {
                             Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
                         }
@@ -345,9 +410,15 @@ fun OmniTuneMainScreen() {
                 )
             }
         }
-        // MiniPlayer + Glass Bottom Dock
-        Column(modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))) {
-            if (currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = OmniSpacing.compact),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        ) {
+            if (showMiniPlayer) {
                 MiniPlayer(
                     pureBlack = false,
                     playerConnection = localPlayerConnection,
@@ -369,11 +440,12 @@ private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit)
         NavItem(R.drawable.ic_settings, "Settings", "settings")
     )
 
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
-        .shadow(16.dp, OmniShapes.Dock, ambientColor = OmniColors.Primary.copy(alpha = 0.15f), spotColor = OmniColors.Primary.copy(alpha = 0.1f))
-        .clip(OmniShapes.Dock).border(1.dp, OmniColors.GlassBorder, OmniShapes.Dock)
-        .background(Brush.verticalGradient(listOf(Color(0xE60C0E16), Color(0xF2080A12))))
-        .padding(horizontal = 12.dp, vertical = 8.dp),
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp)
+        .height(76.dp)
+        .shadow(18.dp, OmniShapes.Dock, ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.28f), spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.18f))
+        .clip(OmniShapes.Dock).border(1.dp, OmniColors.OmniGlassBorderStrong, OmniShapes.Dock)
+        .background(Brush.verticalGradient(listOf(OmniColors.OmniGlassDock, OmniColors.OmniBackgroundBase.copy(alpha = 0.9f))))
+        .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         navItems.forEach { item ->
             val selected = currentRoute == item.route
@@ -394,10 +466,10 @@ private fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit)
                 label = "bg_alpha"
             )
             
-            Box(modifier = Modifier.weight(if (selected) 1.2f else 1f).clip(RoundedCornerShape(16.dp))
-                .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = OmniColors.Secondary.copy(alpha = 0.15f))) { onNavigate(item.route) }
-                .then(if (backgroundAlpha > 0f) Modifier.background(Brush.horizontalGradient(listOf(OmniColors.Primary.copy(alpha = 0.2f * backgroundAlpha), OmniColors.Secondary.copy(alpha = 0.15f * backgroundAlpha)))) else Modifier)
-                .padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(if (selected) 1.2f else 1f).clip(RoundedCornerShape(18.dp))
+                .clickable(remember { MutableInteractionSource() }, indication = androidx.compose.material3.ripple(bounded = true, color = OmniColors.OmniAccentSecondary.copy(alpha = 0.15f))) { onNavigate(item.route) }
+                .then(if (backgroundAlpha > 0f) Modifier.background(Brush.horizontalGradient(listOf(OmniColors.OmniAccentPrimary.copy(alpha = 0.24f * backgroundAlpha), OmniColors.OmniAccentSecondary.copy(alpha = 0.16f * backgroundAlpha)))) else Modifier)
+                .padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Icon(painterResource(item.resId), contentDescription = item.label, tint = tint, modifier = Modifier.size(iconSize))
                     androidx.compose.animation.AnimatedVisibility(

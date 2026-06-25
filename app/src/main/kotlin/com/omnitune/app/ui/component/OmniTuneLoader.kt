@@ -14,7 +14,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.omnitune.app.ui.theme.OmniColors
 
 @Composable
 fun OmniTuneLoader(
@@ -35,7 +35,7 @@ fun OmniTuneLoader(
     size: Dp = 40.dp,
     color: Color? = null,
 ) {
-    val accentColor = color ?: MaterialTheme.colorScheme.primary
+    val accentColor = color ?: OmniColors.ActivePlayback
 
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
 

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.EventWithSong
+import com.omnitune.app.db.entities.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +26,11 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // OMNITUNE: Quick picks from YouTube home feed
-    val quickPicks = MutableStateFlow<List<com.omnitune.app.db.entities.Song>>(emptyList())
+    private val _quickPicks = MutableStateFlow<List<Song>>(emptyList())
+    val quickPicks: StateFlow<List<Song>> = _quickPicks.asStateFlow()
+
+    private val _quickPicksLoading = MutableStateFlow(true)
+    val quickPicksLoading: StateFlow<Boolean> = _quickPicksLoading.asStateFlow()
 
     init {
         loadQuickPicks()
@@ -85,8 +89,10 @@ class HomeViewModel @Inject constructor(
                             }
                         )
                     } ?: emptyList()
-                quickPicks.value = songs
+                _quickPicks.value = songs
+                _quickPicksLoading.value = false
             } catch (e: Exception) {
+                _quickPicksLoading.value = false
                 // Silently fail — home feed is best-effort
             }
         }

@@ -6,7 +6,6 @@
 package com.omnitune.app.ui.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +24,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniGlassSurface
 
 @Composable
 fun EmptyPlaceholder(
@@ -39,7 +41,7 @@ fun EmptyPlaceholder(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp, vertical = 48.dp),
+            .padding(horizontal = OmniSpacing.section, vertical = OmniSpacing.screen),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -49,29 +51,33 @@ fun EmptyPlaceholder(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(96.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f))
+                    .clip(OmniShapes.Pill)
+                    .omniGlassSurface(
+                        shape = OmniShapes.Pill,
+                        background = OmniColors.OmniGlassSubtle,
+                        borderColor = OmniColors.OmniGlassBorderSubtle,
+                    )
             ) {
                 Image(
                     painter = painterResource(icon),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                    colorFilter = ColorFilter.tint(OmniColors.OmniAccentSecondary.copy(alpha = 0.62f)),
                     modifier = Modifier.size(48.dp),
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(OmniSpacing.large))
 
             Text(
                 text = text,
-                style = MaterialTheme.typography.titleMedium,
+                style = OmniTextStyles.metadata,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = OmniColors.TextSecondary,
                 textAlign = TextAlign.Center,
             )
 
             if (action != null) {
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(OmniSpacing.section))
                 action()
             }
         }

@@ -9,57 +9,82 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 object OmniColors {
-    // ── Backgrounds ──
-    val Background = Color(0xFF05060A)
-    val BackgroundAlt = Color(0xFF080A12)
-    val Surface = Color(0xFF0C0E16)
-    val SurfaceElevated = Color(0xFF10131C)
+    // Backgrounds
+    val OmniBackgroundBase = Color(0xFF040508)
+    val OmniBackgroundElevated = Color(0xFF0B0E16)
+    val OmniBackgroundGradientTop = Color(0xFF10172A)
+    val OmniBackgroundGradientBottom = OmniBackgroundBase
 
-    // ── Glass ──
-    val GlassSurface = Color.White.copy(alpha = 0.06f)
-    val GlassSurfaceStrong = Color.White.copy(alpha = 0.10f)
-    val GlassBorder = Color.White.copy(alpha = 0.14f)
-    val GlassBorderLight = Color.White.copy(alpha = 0.08f)
+    val Background = OmniBackgroundBase
+    val BackgroundAlt = Color(0xFF070A12)
+    val Surface = Color(0xFF0A0D14)
+    val SurfaceElevated = OmniBackgroundElevated
 
-    // ── Accents ──
-    val Primary = Color(0xFF7C5CFF)        // Violet
-    val PrimaryLight = Color(0xFF9B7FFF)
-    val Secondary = Color(0xFF00D4FF)       // Cyan
-    val SecondaryLight = Color(0xFF33DEFF)
-    val Hot = Color(0xFFFF3D81)             // Pink
-    val HotLight = Color(0xFFFF6B9E)
+    // Glass surfaces
+    val OmniGlassSubtle = Color.White.copy(alpha = 0.05f)
+    val OmniGlassMedium = Color.White.copy(alpha = 0.08f)
+    val OmniGlassStrong = Color.White.copy(alpha = 0.12f)
+    val OmniGlassDock = Color(0xFF11182A).copy(alpha = 0.84f)
+    val OmniGlassPlayer = Color(0xFF121A2E).copy(alpha = 0.88f)
+    val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.09f)
+    val OmniGlassBorderStrong = Color.White.copy(alpha = 0.18f)
 
-    // ── Text ──
-    val TextPrimary = Color(0xFFF5F7FA)
-    val TextSecondary = Color(0xFFA7ADB8)
-    val TextMuted = Color(0xFF5F6673)
+    val GlassSurface = OmniGlassMedium
+    val GlassSurfaceStrong = OmniGlassStrong
+    val GlassBorder = OmniGlassBorderStrong
+    val GlassBorderLight = OmniGlassBorderSubtle
 
-    // ── Functional ──
-    val Success = Color(0xFF3DDC84)
-    val Warning = Color(0xFFFFB74D)
-    val Error = Color(0xFFFF5252)
+    // Accents
+    val OmniAccentPrimary = Color(0xFF8E7CFF)
+    val OmniAccentSecondary = Color(0xFF5DD9FF)
+    val OmniAccentMuted = Color(0xFF756AC4)
+    val OmniAccentGlow = Color(0x668E7CFF)
+    val OmniAccentOnPrimary = Color(0xFF05060A)
 
-    // ── Gradients ──
+    val Primary = OmniAccentPrimary
+    val PrimaryLight = Color(0xFFA99CFF)
+    val Secondary = OmniAccentSecondary
+    val SecondaryLight = Color(0xFF8CE6FF)
+    val Hot = Color(0xFFFF5C93)
+    val HotLight = Color(0xFFFF83AD)
+
+    // Semantic colors
+    val Success = Color(0xFF4EDB8F)
+    val Warning = Color(0xFFFFC46B)
+    val Error = Color(0xFFFF6363)
+    val Offline = Color(0xFF6E7787)
+    val Downloaded = Color(0xFF6EE7B7)
+    val ActivePlayback = OmniAccentSecondary
+
+    // Text
+    val TextPrimary = Color(0xFFF7F8FB)
+    val TextSecondary = Color(0xFFB3BAC8)
+    val TextTertiary = Color(0xFF747C8D)
+    val TextDisabled = Color(0xFF4C5361)
+    val TextOnAccent = OmniAccentOnPrimary
+    val TextMuted = TextTertiary
+
+    // Gradients
     val PrimaryGradient = Brush.horizontalGradient(
-        colors = listOf(Primary, Secondary)
+        colors = listOf(OmniAccentPrimary, OmniAccentSecondary)
     )
     val PrimaryGradientVertical = Brush.verticalGradient(
-        colors = listOf(Primary, PrimaryLight)
+        colors = listOf(OmniAccentPrimary, PrimaryLight)
     )
     val HotGradient = Brush.horizontalGradient(
-        colors = listOf(Hot, Primary)
+        colors = listOf(Hot, OmniAccentPrimary)
     )
     val GlassGradient = Brush.verticalGradient(
         colors = listOf(
-            GlassSurface,
-            GlassSurfaceStrong,
+            OmniGlassSubtle,
+            OmniGlassMedium,
         )
     )
     val BackgroundGradient = Brush.verticalGradient(
-        colors = listOf(Background, BackgroundAlt)
+        colors = listOf(OmniBackgroundGradientTop, OmniBackgroundGradientBottom)
     )
 
-    // ── Gradient color pairs (for brushes) ──
-    val PrimaryGradientColors = listOf(Primary, Secondary)
-    val HotGradientColors = listOf(Hot, Primary)
+    // Gradient color pairs for brushes
+    val PrimaryGradientColors = listOf(OmniAccentPrimary, OmniAccentSecondary)
+    val HotGradientColors = listOf(Hot, OmniAccentPrimary)
 }

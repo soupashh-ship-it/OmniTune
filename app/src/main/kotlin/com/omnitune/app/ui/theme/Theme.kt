@@ -10,53 +10,50 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Midnight Prism Glass color scheme — always dark-first
 private val MidnightDarkScheme = darkColorScheme(
-    primary = OmniColors.Primary,
-    onPrimary = Color.White,
-    primaryContainer = OmniColors.Primary.copy(alpha = 0.15f),
+    primary = OmniColors.OmniAccentPrimary,
+    onPrimary = OmniColors.OmniAccentOnPrimary,
+    primaryContainer = OmniColors.OmniAccentPrimary.copy(alpha = 0.18f),
     onPrimaryContainer = OmniColors.PrimaryLight,
 
-    secondary = OmniColors.Secondary,
-    onSecondary = Color.Black,
-    secondaryContainer = OmniColors.Secondary.copy(alpha = 0.15f),
+    secondary = OmniColors.OmniAccentSecondary,
+    onSecondary = OmniColors.OmniAccentOnPrimary,
+    secondaryContainer = OmniColors.OmniAccentSecondary.copy(alpha = 0.16f),
     onSecondaryContainer = OmniColors.SecondaryLight,
 
     tertiary = OmniColors.Hot,
-    onTertiary = Color.White,
+    onTertiary = OmniColors.TextPrimary,
     tertiaryContainer = OmniColors.Hot.copy(alpha = 0.15f),
     onTertiaryContainer = OmniColors.HotLight,
 
-    background = OmniColors.Background,
+    background = OmniColors.OmniBackgroundBase,
     onBackground = OmniColors.TextPrimary,
 
     surface = OmniColors.Surface,
     onSurface = OmniColors.TextPrimary,
 
-    surfaceVariant = OmniColors.SurfaceElevated,
+    surfaceVariant = OmniColors.OmniBackgroundElevated,
     onSurfaceVariant = OmniColors.TextSecondary,
 
-    surfaceTint = OmniColors.Primary,
+    surfaceTint = OmniColors.OmniAccentPrimary,
 
-    outline = OmniColors.GlassBorder,
-    outlineVariant = OmniColors.GlassBorderLight,
+    outline = OmniColors.OmniGlassBorderStrong,
+    outlineVariant = OmniColors.OmniGlassBorderSubtle,
 
     error = OmniColors.Error,
-    onError = Color.White,
+    onError = OmniColors.TextPrimary,
 )
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
 fun OmniTuneTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Disabled — use our Midnight Prism Glass theme
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    // Always use the dark Midnight Prism Glass scheme
     val colorScheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val context = LocalContext.current
         dynamicDarkColorScheme(context)

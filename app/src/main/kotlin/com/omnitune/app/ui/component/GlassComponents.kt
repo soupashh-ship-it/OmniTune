@@ -12,7 +12,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,20 +40,50 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniPressScale
+import com.omnitune.app.ui.theme.omniSoftBorder
 
-// ── GlassSurface ──
+enum class GlassTone {
+    Subtle,
+    Medium,
+    Strong,
+    Dock,
+    Player,
+}
+
+private fun glassColorFor(tone: GlassTone): Color =
+    when (tone) {
+        GlassTone.Subtle -> OmniColors.OmniGlassSubtle
+        GlassTone.Medium -> OmniColors.OmniGlassMedium
+        GlassTone.Strong -> OmniColors.OmniGlassStrong
+        GlassTone.Dock -> OmniColors.OmniGlassDock
+        GlassTone.Player -> OmniColors.OmniGlassPlayer
+    }
+
+private fun glassBorderFor(tone: GlassTone): Color =
+    when (tone) {
+        GlassTone.Subtle,
+        GlassTone.Medium,
+        -> OmniColors.OmniGlassBorderSubtle
+        GlassTone.Strong,
+        GlassTone.Dock,
+        GlassTone.Player,
+        -> OmniColors.OmniGlassBorderStrong
+    }
+
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    cornerRadius: RoundedCornerShape = OmniShapes.MD,
-    backgroundAlpha: Float = 0.06f,
-    borderAlpha: Float = 0.14f,
+    cornerRadius: RoundedCornerShape = OmniShapes.Medium,
+    backgroundAlpha: Float = 0.08f,
+    borderAlpha: Float = 0.18f,
+    tone: GlassTone = GlassTone.Medium,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -61,55 +91,59 @@ fun GlassSurface(
             .shadow(
                 elevation = 8.dp,
                 shape = cornerRadius,
-                ambientColor = Color.Black.copy(alpha = 0.3f),
+                ambientColor = Color.Black.copy(alpha = 0.28f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.18f),
             )
             .clip(cornerRadius)
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = borderAlpha),
+            .omniSoftBorder(
                 shape = cornerRadius,
+                color = glassBorderFor(tone).copy(alpha = borderAlpha),
             )
-            .background(Color.White.copy(alpha = backgroundAlpha)),
+            .background(glassColorFor(tone).copy(alpha = backgroundAlpha)),
         content = content,
     )
 }
 
-// ── GlassCard ──
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    cornerRadius: RoundedCornerShape = OmniShapes.LG,
+    cornerRadius: RoundedCornerShape = OmniShapes.Large,
+    tone: GlassTone = GlassTone.Medium,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val baseModifier = modifier
         .shadow(
-            elevation = 6.dp,
+            elevation = 8.dp,
             shape = cornerRadius,
-            ambientColor = Color.Black.copy(alpha = 0.25f),
+            ambientColor = Color.Black.copy(alpha = 0.26f),
+            spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.16f),
         )
         .clip(cornerRadius)
-        .border(
-            width = 1.dp,
-            color = OmniColors.GlassBorder,
-            shape = cornerRadius,
-        )
+        .omniSoftBorder(cornerRadius, glassBorderFor(tone))
         .background(
             Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF232736).copy(alpha = 0.4f),
-                    Color(0xFF0C0E16).copy(alpha = 0.7f)
+                    OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.42f),
+                    glassColorFor(tone),
+                    OmniColors.OmniBackgroundBase.copy(alpha = 0.72f),
                 )
             )
         )
 
     Column(
         modifier = if (onClick != null) {
-            baseModifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = androidx.compose.material3.ripple(bounded = true, color = Color.White.copy(alpha = 0.15f)),
-                onClick = onClick,
-            )
+            baseModifier
+                .omniPressScale(interactionSource)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = androidx.compose.material3.ripple(
+                        bounded = true,
+                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                    ),
+                    onClick = onClick,
+                )
         } else {
             baseModifier
         },
@@ -117,22 +151,21 @@ fun GlassCard(
     )
 }
 
-// ── GlassRow ──
 @Composable
 fun GlassRow(
     modifier: Modifier = Modifier,
+    tone: GlassTone = GlassTone.Subtle,
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(
         modifier = modifier
-            .clip(OmniShapes.MD)
-            .border(1.dp, OmniColors.GlassBorderLight, OmniShapes.MD)
-            .background(OmniColors.GlassSurface),
+            .clip(OmniShapes.Medium)
+            .omniSoftBorder(OmniShapes.Medium, glassBorderFor(tone))
+            .background(glassColorFor(tone)),
         content = content,
     )
 }
 
-// ── GlassIconButton ──
 @Composable
 fun GlassIconButton(
     icon: ImageVector,
@@ -142,14 +175,19 @@ fun GlassIconButton(
     tint: Color = OmniColors.TextPrimary,
     size: Dp = 40.dp,
     iconSize: Dp = 20.dp,
+    tone: GlassTone = GlassTone.Subtle,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     IconButton(
         onClick = onClick,
         modifier = modifier
             .size(size)
-            .clip(OmniShapes.SM)
-            .border(1.dp, OmniColors.GlassBorderLight, OmniShapes.SM)
-            .background(OmniColors.GlassSurface),
+            .clip(OmniShapes.Small)
+            .omniSoftBorder(OmniShapes.Small, glassBorderFor(tone))
+            .background(glassColorFor(tone))
+            .omniPressScale(interactionSource),
+        interactionSource = interactionSource,
     ) {
         Icon(
             imageVector = icon,
@@ -160,7 +198,6 @@ fun GlassIconButton(
     }
 }
 
-// ── GradientIconButton ──
 @Composable
 fun GradientIconButton(
     icon: ImageVector,
@@ -169,54 +206,56 @@ fun GradientIconButton(
     modifier: Modifier = Modifier,
     size: Dp = 56.dp,
     iconSize: Dp = 28.dp,
-    gradientColors: List<Color> = listOf(OmniColors.Primary, OmniColors.Secondary),
+    gradientColors: List<Color> = OmniColors.PrimaryGradientColors,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     IconButton(
         onClick = onClick,
         modifier = modifier
             .size(size)
             .shadow(
-                elevation = 12.dp,
+                elevation = 14.dp,
                 shape = OmniShapes.Circle,
-                ambientColor = OmniColors.Primary.copy(alpha = 0.3f),
-                spotColor = OmniColors.Primary.copy(alpha = 0.3f),
+                ambientColor = OmniColors.OmniAccentGlow,
+                spotColor = OmniColors.OmniAccentGlow,
             )
             .clip(OmniShapes.Circle)
-            .background(Brush.linearGradient(gradientColors)),
+            .background(Brush.linearGradient(gradientColors))
+            .omniPressScale(interactionSource),
+        interactionSource = interactionSource,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = OmniColors.TextOnAccent,
             modifier = Modifier.size(iconSize),
         )
     }
 }
 
-// ── Accent Pill (for active tab indicator, chips, etc.) ──
 @Composable
 fun AccentPill(
     text: String,
     modifier: Modifier = Modifier,
-    gradientColors: List<Color> = listOf(OmniColors.Primary, OmniColors.Secondary),
+    gradientColors: List<Color> = OmniColors.PrimaryGradientColors,
 ) {
     Box(
         modifier = modifier
             .clip(OmniShapes.Pill)
             .background(Brush.horizontalGradient(gradientColors))
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 14.dp, vertical = OmniSpacing.compact),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            color = Color.White,
-            fontSize = 12.sp,
+            color = OmniColors.TextOnAccent,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
         )
     }
 }
 
-// ── Section Header ──
 @Composable
 fun OmniSectionHeader(
     title: String,
@@ -230,19 +269,20 @@ fun OmniSectionHeader(
     ) {
         Text(
             text = title,
-            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
+            style = OmniTextStyles.sectionTitle,
             modifier = Modifier.weight(1f),
         )
         if (action != null && onAction != null) {
             Text(
                 text = action,
-                style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
-                color = OmniColors.Secondary,
+                style = MaterialTheme.typography.labelLarge,
+                color = OmniColors.OmniAccentSecondary,
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = androidx.compose.material3.ripple(bounded = false, color = OmniColors.Secondary.copy(alpha = 0.2f)),
+                    indication = androidx.compose.material3.ripple(
+                        bounded = false,
+                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.2f),
+                    ),
                     onClick = onAction,
                 ),
             )
@@ -250,15 +290,15 @@ fun OmniSectionHeader(
     }
 }
 
-// ── Shimmer loading bar ──
 @Composable
 fun ShimmerBar(
     modifier: Modifier = Modifier,
+    tone: GlassTone = GlassTone.Subtle,
 ) {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val alpha by transition.animateFloat(
-        initialValue = 0.15f,
-        targetValue = 0.35f,
+        initialValue = 0.12f,
+        targetValue = 0.28f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
@@ -268,7 +308,7 @@ fun ShimmerBar(
 
     Box(
         modifier = modifier
-            .clip(OmniShapes.SM)
-            .background(OmniColors.GlassSurface.copy(alpha = alpha)),
+            .clip(OmniShapes.Small)
+            .background(glassColorFor(tone).copy(alpha = alpha)),
     )
 }

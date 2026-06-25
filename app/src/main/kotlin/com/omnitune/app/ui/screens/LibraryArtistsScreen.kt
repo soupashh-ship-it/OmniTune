@@ -5,9 +5,12 @@
 
 package com.omnitune.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,13 +39,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.omnitune.app.ui.theme.OmniSpacing
 
 @Composable
 fun LibraryArtistsScreen(
@@ -51,25 +56,37 @@ fun LibraryArtistsScreen(
 ) {
     val artists by viewModel.libraryArtists.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().background(OmniColors.Background).statusBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp).clip(OmniShapes.SM).background(OmniColors.GlassSurface)) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Artists", style = androidx.compose.material3.MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
-            Spacer(modifier = Modifier.weight(1f))
-            Text("${artists.size} artists", style = androidx.compose.material3.MaterialTheme.typography.bodyMedium, color = OmniColors.TextMuted)
-        }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient)
+            .statusBarsPadding()
+            .padding(horizontal = OmniSpacing.section),
+    ) {
+        LibraryListHeader(
+            title = "Artists",
+            subtitle = countLabel(artists.size, "artist"),
+            icon = R.drawable.ic_artist,
+            accent = OmniColors.OmniAccentPrimary,
+            onBack = onBack,
+        )
 
         if (artists.isEmpty()) {
-            EmptyPlaceholder(icon = com.omnitune.app.R.drawable.ic_artist, text = "No artists in your library yet")
+            LibraryEmptyState(icon = R.drawable.ic_artist, text = "No artists in your library yet")
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(artists) { artist ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                items(
+                    items = artists,
+                    key = { it.id },
+                    contentType = { "artist" },
+                ) { artist ->
                     ArtistRow(artist = artist, onClick = { onNavigateToArtist(artist.id) })
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
     }
@@ -80,38 +97,84 @@ private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.MD)
-            .background(OmniColors.GlassSurface)
+            .clip(OmniShapes.Large)
+            .background(OmniColors.OmniGlassSubtle)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Large)
             .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(
-            model = artist.thumbnailUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(OmniColors.Primary.copy(alpha = 0.1f))
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier.size(58.dp).clip(CircleShape).background(OmniColors.OmniGlassStrong),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (artist.thumbnailUrl.isNullOrBlank()) {
+                Icon(painterResource(R.drawable.ic_artist), contentDescription = null, tint = OmniColors.TextTertiary, modifier = Modifier.size(24.dp))
+            } else {
+                AsyncImage(model = artist.thumbnailUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = artist.title,
-                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = OmniColors.TextPrimary,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "${artist.songCount} songs",
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextMuted,
-                maxLines = 1
+                text = countLabel(artist.songCount, "song"),
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
+}
+
+@Composable
+private fun LibraryListHeader(
+    title: String,
+    subtitle: String,
+    icon: Int,
+    accent: androidx.compose.ui.graphics.Color,
+    onBack: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = OmniSpacing.medium, bottom = OmniSpacing.large),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.size(48.dp).clip(CircleShape).background(OmniColors.OmniGlassMedium).border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+        ) {
+            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary)
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = OmniColors.TextSecondary)
+        }
+        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+            Icon(painterResource(icon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun LibraryEmptyState(icon: Int, text: String) {
+    Box(
+        modifier = Modifier.fillMaxWidth().clip(OmniShapes.ExtraLarge).background(OmniColors.OmniGlassSubtle).border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.ExtraLarge).padding(OmniSpacing.screen),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyPlaceholder(icon = icon, text = text)
+    }
+}
+
+private fun countLabel(count: Int, singular: String): String {
+    val noun = if (count == 1) singular else "${singular}s"
+    return "$count $noun"
 }

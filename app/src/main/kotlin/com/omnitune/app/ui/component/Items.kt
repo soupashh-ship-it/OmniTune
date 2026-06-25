@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +38,10 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.OmniTextStyles
 
 private const val LIST_ITEM_HEIGHT = 64
 private val LIST_THUMBNAIL_SIZE = 48.dp
@@ -60,15 +63,19 @@ fun ListItem(
             .padding(horizontal = 8.dp)
             .then(
                 if (isActive) Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .clip(OmniShapes.Small)
+                    .background(OmniColors.OmniGlassMedium)
                 else Modifier
             )
     ) {
         Box(Modifier.padding(6.dp), contentAlignment = Alignment.Center) { thumbnailContent() }
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
             Text(
-                text = title, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                text = title,
+                style = OmniTextStyles.songTitle,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) { subtitle() }
@@ -93,7 +100,7 @@ fun ListItem(
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
-                color = MaterialTheme.colorScheme.secondary,
+                color = OmniColors.TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -116,11 +123,11 @@ fun GridItem(
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(12.dp)
+                .padding(OmniSpacing.small)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(12.dp)
+                .padding(OmniSpacing.small)
                 .width(180.dp)
         }
     ) {
@@ -155,6 +162,7 @@ fun GridItem(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Start,
@@ -165,7 +173,7 @@ fun GridItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.secondary,
+            color = OmniColors.TextSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -195,7 +203,7 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
-                shape = RoundedCornerShape(4.dp),
+                shape = OmniShapes.ArtworkSmall,
                 modifier = Modifier.size(LIST_THUMBNAIL_SIZE)
             )
         },
@@ -234,11 +242,12 @@ fun ItemThumbnail(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f), shape)
+                    .background(OmniColors.Background.copy(alpha = 0.58f), shape)
             ) {
-                Icon(                        painter = painterResource(com.omnitune.app.R.drawable.ic_add),
+                Icon(
+                    painter = painterResource(com.omnitune.app.R.drawable.ic_add),
                     contentDescription = null,
-                    tint = Color.White
+                    tint = OmniColors.TextPrimary
                 )
             }
         }
@@ -246,7 +255,7 @@ fun ItemThumbnail(
         PlayingIndicatorBox(
             isActive = isActive,
             playWhenReady = isPlaying,
-            color = Color.White,
+            color = OmniColors.TextPrimary,
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -275,7 +284,7 @@ fun SongListItem(
                 isSelected = isSelected,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = RoundedCornerShape(4.dp),
+                shape = OmniShapes.ArtworkSmall,
                 modifier = Modifier.size(LIST_THUMBNAIL_SIZE)
             )
         },

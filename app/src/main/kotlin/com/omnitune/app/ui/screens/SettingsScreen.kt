@@ -5,6 +5,14 @@
 
 package com.omnitune.app.ui.screens
 
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +20,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,10 +31,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -40,50 +56,121 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.graphicsLayer
-import android.app.NotificationManager
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.os.PowerManager
-import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
+import androidx.datastore.preferences.core.Preferences
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.omnitune.app.BuildConfig
 import com.omnitune.app.R
-import com.omnitune.app.constants.*
+import com.omnitune.app.constants.AudioCrossfadeDurationKey
+import com.omnitune.app.constants.AudioQuality
+import com.omnitune.app.constants.AudioQualityKey
+import com.omnitune.app.constants.AutoSkipNextOnErrorKey
+import com.omnitune.app.constants.DisableBlurKey
+import com.omnitune.app.constants.EnableBetterLyricsKey
+import com.omnitune.app.constants.EnableKugouKey
+import com.omnitune.app.constants.EnableLastFMScrobblingKey
+import com.omnitune.app.constants.EnableLrcLibKey
+import com.omnitune.app.constants.EnableSimpMusicLyricsKey
+import com.omnitune.app.constants.GridItemSize
+import com.omnitune.app.constants.GridItemsSizeKey
+import com.omnitune.app.constants.HideExplicitKey
+import com.omnitune.app.constants.HideVideoKey
+import com.omnitune.app.constants.LastFMUseNowPlaying
+import com.omnitune.app.constants.ListenBrainzEnabledKey
+import com.omnitune.app.constants.LyricsAnimationStyle
+import com.omnitune.app.constants.LyricsAnimationStyleKey
+import com.omnitune.app.constants.PauseListenHistoryKey
+import com.omnitune.app.constants.PauseOnDeviceMuteKey
+import com.omnitune.app.constants.PauseSearchHistoryKey
+import com.omnitune.app.constants.PureBlackKey
+import com.omnitune.app.constants.SkipSilenceKey
+import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.diagnostics.DiagnosticReportExporter
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.update.ApkInstallLauncher
 import com.omnitune.app.update.UpdateState
 import com.omnitune.app.update.UpdateViewModel
-import androidx.compose.ui.platform.LocalContext
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
-import com.omnitune.app.utils.dataStore
-import com.omnitune.app.utils.PreferenceStore
-import androidx.hilt.navigation.compose.hiltViewModel
 
-// ── Settings Sections ──
-
-private enum class SettingsSection(val label: String, val iconRes: Int) {
-    PLAYBACK("Playback", R.drawable.ic_play_arrow),
-    APPEARANCE("Appearance", R.drawable.ic_repeat),
-    LYRICS("Lyrics", R.drawable.ic_list),
-    CONTENT("Content", com.omnitune.app.R.drawable.ic_search),
-    STORAGE("Storage & Cache", com.omnitune.app.R.drawable.ic_list),
-    UPDATES("Updates", com.omnitune.app.R.drawable.ic_download),
-    ADVANCED("Advanced", com.omnitune.app.R.drawable.ic_info),
-    SCROBBLING("Scrobbling", R.drawable.ic_favorite),
+private enum class SettingsSection(
+    val label: String,
+    val description: String,
+    val iconRes: Int,
+    val accent: Color,
+) {
+    APPEARANCE(
+        "Appearance",
+        "OLED, glass, and layout preferences",
+        R.drawable.ic_repeat,
+        OmniColors.OmniAccentPrimary,
+    ),
+    PLAYBACK(
+        "Playback",
+        "Quality, crossfade, equalizer, and playback behavior",
+        R.drawable.ic_play_arrow,
+        OmniColors.ActivePlayback,
+    ),
+    STORAGE(
+        "Downloads & cache",
+        "Cache policy and offline-library guidance",
+        R.drawable.ic_download,
+        OmniColors.Downloaded,
+    ),
+    NOTIFICATIONS(
+        "Notifications & lock screen",
+        "Device-specific media control guidance",
+        R.drawable.ic_notification_play,
+        OmniColors.Warning,
+    ),
+    UPDATES(
+        "Updates",
+        "Check GitHub releases without changing update logic",
+        R.drawable.ic_download,
+        OmniColors.OmniAccentSecondary,
+    ),
+    DIAGNOSTICS(
+        "Diagnostics",
+        "Export the existing diagnostic report",
+        R.drawable.ic_share,
+        OmniColors.Hot,
+    ),
+    CONTENT(
+        "Content & history",
+        "Explicit filters, video results, and history controls",
+        R.drawable.ic_search,
+        OmniColors.OmniAccentMuted,
+    ),
+    LYRICS(
+        "Lyrics providers",
+        "Provider toggles and lyric animation preference",
+        R.drawable.ic_list,
+        OmniColors.Hot,
+    ),
+    SCROBBLING(
+        "Scrobbling",
+        "Last.fm and ListenBrainz preferences",
+        R.drawable.ic_favorite,
+        OmniColors.HotLight,
+    ),
+    ABOUT(
+        "About",
+        "Version, source, license, and credits",
+        R.drawable.ic_info,
+        OmniColors.TextSecondary,
+    ),
 }
-
-// ── Main Settings Screen ──
 
 @Composable
 fun SettingsScreen(
@@ -95,41 +182,21 @@ fun SettingsScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.Background)
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient)
+            .padding(horizontal = OmniSpacing.section),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
         item {
             Spacer(modifier = Modifier.statusBarsPadding())
-            Spacer(modifier = Modifier.height(12.dp))
-            // Top bar
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(OmniShapes.SM)
-                        .background(OmniColors.GlassSurface),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_arrow_back),
-                        contentDescription = "Back",
-                        tint = OmniColors.TextPrimary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    "Settings",
-                    style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = OmniColors.TextPrimary,
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+            SettingsHeader(onBack = onBack)
         }
 
-        // Settings sections
+        item {
+            SettingsQuickSummary()
+        }
+
         SettingsSection.entries.forEach { section ->
             item {
                 SettingsSectionCard(
@@ -138,311 +205,376 @@ fun SettingsScreen(
                     onToggle = {
                         expandedSection = if (expandedSection == section) null else section
                     },
-                    onNavigateToEqualizer = onNavigateToEqualizer
+                    onNavigateToEqualizer = onNavigateToEqualizer,
                 )
             }
         }
 
-        item { Spacer(modifier = Modifier.height(80.dp)) }
+        item { Spacer(modifier = Modifier.height(104.dp)) }
     }
 }
 
-// ── Section Card ──
+@Composable
+private fun SettingsHeader(onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.ExtraLarge)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        OmniColors.OmniGlassPlayer,
+                        OmniColors.OmniGlassSubtle,
+                    )
+                )
+            )
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.ExtraLarge)
+            .padding(OmniSpacing.section),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(OmniShapes.Small)
+                    .background(OmniColors.OmniGlassMedium),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Back",
+                    tint = OmniColors.TextPrimary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(OmniSpacing.medium))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    text = "Playback, appearance, updates, and diagnostics",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OmniColors.TextSecondary,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(OmniSpacing.large))
+        SettingsStatusPill(
+            label = "Installed",
+            value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        )
+    }
+}
+
+@Composable
+private fun SettingsQuickSummary() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        SettingsMiniCard(
+            label = "Updates",
+            value = "GitHub release check",
+            iconRes = R.drawable.ic_download,
+            accent = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        SettingsMiniCard(
+            label = "Diagnostics",
+            value = "Share report",
+            iconRes = R.drawable.ic_share,
+            accent = OmniColors.Hot,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun SettingsMiniCard(
+    label: String,
+    value: String,
+    iconRes: Int,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    GlassCard(modifier = modifier, cornerRadius = OmniShapes.Large) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(OmniSpacing.medium),
+        ) {
+            SettingsIconBadge(iconRes = iconRes, accent = accent, size = 40.dp)
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextTertiary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 @Composable
 private fun SettingsSectionCard(
     section: SettingsSection,
     isExpanded: Boolean,
     onToggle: () -> Unit,
-    onNavigateToEqualizer: () -> Unit = {},
+    onNavigateToEqualizer: () -> Unit,
 ) {
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.LG,
+        cornerRadius = OmniShapes.Large,
     ) {
-        // Section header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
-                    onClick = onToggle,
-                )
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
+        Column {
+            Row(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        Brush.linearGradient(
-                            when (section) {
-                                SettingsSection.PLAYBACK -> listOf(OmniColors.Primary, OmniColors.Secondary)
-                                SettingsSection.APPEARANCE -> listOf(OmniColors.Secondary, OmniColors.Primary)
-                                SettingsSection.LYRICS -> listOf(OmniColors.Hot, OmniColors.Primary)
-                                SettingsSection.CONTENT -> listOf(OmniColors.Primary, OmniColors.Hot)
-                                SettingsSection.STORAGE -> listOf(OmniColors.Warning, OmniColors.Hot)
-                                SettingsSection.UPDATES -> listOf(OmniColors.Secondary, OmniColors.Warning)
-                                SettingsSection.ADVANCED -> listOf(OmniColors.Primary, OmniColors.Warning)
-                                SettingsSection.SCROBBLING -> listOf(OmniColors.Hot, OmniColors.Secondary)
-                            }
-                        )
-                    ),
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = androidx.compose.material3.ripple(
+                            bounded = true,
+                            color = Color.White.copy(alpha = 0.08f),
+                        ),
+                        onClick = onToggle,
+                    )
+                    .padding(OmniSpacing.medium),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    painterResource(section.iconRes),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
+                SettingsIconBadge(iconRes = section.iconRes, accent = section.accent)
+                Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = section.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OmniColors.TextPrimary,
+                    )
+                    Text(
+                        text = section.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OmniColors.TextTertiary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = if (isExpanded) "Hide" else "Open",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isExpanded) section.accent else OmniColors.TextTertiary,
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
-            Text(
-                section.label,
-                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                if (isExpanded) "▾" else "▸",
-                fontSize = 14.sp,
-                color = OmniColors.TextMuted,
-            )
-        }
 
-        // Expanded content
-        if (isExpanded) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                when (section) {
-                    SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
-                    SettingsSection.APPEARANCE -> AppearanceSettings()
-                    SettingsSection.LYRICS -> LyricsSettings()
-                    SettingsSection.CONTENT -> ContentSettings()
-                    SettingsSection.STORAGE -> StorageSettings()
-                    SettingsSection.UPDATES -> UpdatesSettings()
-                    SettingsSection.ADVANCED -> AdvancedSettings()
-                    SettingsSection.SCROBBLING -> ScrobblingSettings()
+            if (isExpanded) {
+                Divider()
+                Column(
+                    modifier = Modifier.padding(
+                        horizontal = OmniSpacing.medium,
+                        vertical = OmniSpacing.small,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+                ) {
+                    when (section) {
+                        SettingsSection.APPEARANCE -> AppearanceSettings()
+                        SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
+                        SettingsSection.STORAGE -> StorageSettings()
+                        SettingsSection.NOTIFICATIONS -> MediaControlsHelp()
+                        SettingsSection.UPDATES -> UpdatesSettings()
+                        SettingsSection.DIAGNOSTICS -> DiagnosticsSettings()
+                        SettingsSection.CONTENT -> ContentSettings()
+                        SettingsSection.LYRICS -> LyricsSettings()
+                        SettingsSection.SCROBBLING -> ScrobblingSettings()
+                        SettingsSection.ABOUT -> AboutSettings()
+                    }
+                    Spacer(modifier = Modifier.height(OmniSpacing.compact))
                 }
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
 }
 
-// ── Playback Settings ──
-
 @Composable
 private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
-    val skipSilence by rememberPreference(SkipSilenceKey, false)
-    val autoSkipOnError by rememberPreference(AutoSkipNextOnErrorKey, true)
-    val pauseOnMute by rememberPreference(PauseOnDeviceMuteKey, false)
 
-    SettingsCategoryLabel("Audio Quality")
+    SettingsCategoryLabel("Audio quality")
     EnumPreferenceRow(
-        label = "Stream Quality",
-        description = "Current: ${audioQuality.name}",
+        label = "Stream quality",
+        description = "Current: ${audioQuality.displayName()}",
         options = AudioQuality.entries.toList(),
         current = audioQuality,
         key = AudioQualityKey,
     )
-    Divider()
 
-    SettingsCategoryLabel("Playback Behavior")
-    
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNavigateToEqualizer() }
-            .padding(vertical = 14.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(painterResource(R.drawable.ic_settings), "Equalizer", tint = OmniColors.Primary, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Text("Equalizer", color = OmniColors.TextPrimary, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        Icon(painterResource(R.drawable.ic_arrow_back), "Open", tint = OmniColors.TextPrimary.copy(alpha = 0.4f),
-             modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = 180f })
-    }
-
+    SettingsCategoryLabel("Playback behavior")
+    SettingsActionRow(
+        iconRes = R.drawable.ic_settings,
+        label = "Equalizer",
+        description = "Open the existing Android audio effects screen",
+        accent = OmniColors.ActivePlayback,
+        onClick = onNavigateToEqualizer,
+    )
     IntPreferenceSliderRow(
-        label = "Crossfade Duration",
-        description = "Fade between songs (seconds)",
+        label = "Crossfade duration",
+        description = "Fade between songs without changing playback logic",
         key = AudioCrossfadeDurationKey,
         defaultValue = 0,
         valueRange = 0f..15f,
         steps = 14,
-        valueFormat = { if (it == 0) "Off" else "${it}s" }
+        valueFormat = { if (it == 0) "Off" else "${it}s" },
     )
-    
     TogglePreferenceRow(
-        label = "Skip Silence",
+        label = "Skip silence",
         description = "Automatically skip silent parts",
         key = SkipSilenceKey,
         defaultValue = false,
     )
     TogglePreferenceRow(
-        label = "Auto-Skip on Error",
-        description = "Skip to next song if playback fails",
+        label = "Auto-skip on error",
+        description = "Skip to the next song if playback fails",
         key = AutoSkipNextOnErrorKey,
         defaultValue = true,
     )
     TogglePreferenceRow(
-        label = "Pause on Device Mute",
-        description = "Pause when device is muted",
+        label = "Pause on device mute",
+        description = "Pause when the device is muted",
         key = PauseOnDeviceMuteKey,
         defaultValue = false,
     )
 }
 
-// ── Appearance Settings ──
-
 @Composable
 private fun AppearanceSettings() {
-    val pureBlack by rememberPreference(PureBlackKey, false)
-    val disableBlur by rememberPreference(DisableBlurKey, false)
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
+    SettingsCategoryLabel("Display")
     TogglePreferenceRow(
-        label = "Pure Black Mode",
+        label = "Pure black mode",
         description = "Use true black for OLED screens",
         key = PureBlackKey,
         defaultValue = false,
     )
     TogglePreferenceRow(
-        label = "Disable Blur Effects",
-        description = "Reduce GPU usage by disabling blur",
+        label = "Disable blur effects",
+        description = "Reduce GPU work by disabling blur where supported",
         key = DisableBlurKey,
         defaultValue = false,
     )
 
-    SettingsCategoryLabel("Grid Layout")
+    SettingsCategoryLabel("Library layout")
     EnumPreferenceRow(
-        label = "Grid Item Size",
-        description = "Current: ${gridItemSize.name}",
+        label = "Grid item size",
+        description = "Current: ${gridItemSize.displayName()}",
         options = GridItemSize.entries.toList(),
         current = gridItemSize,
         key = GridItemsSizeKey,
     )
 }
 
-// ── Lyrics Settings ──
+@Composable
+private fun StorageSettings() {
+    SettingsCategoryLabel("Cache")
+    TogglePreferenceRow(
+        label = "Smart cache trimmer",
+        description = "Automatically clear old cache",
+        key = SmartTrimmerKey,
+        defaultValue = true,
+    )
+
+    SettingsInfoBlock(
+        title = "Downloads are managed by the offline library",
+        body = "This section does not change completed-download playback or storage paths. Completed downloads remain playable from Downloads when the existing download state marks them ready.",
+        accent = OmniColors.Downloaded,
+    )
+    SettingsInfoBlock(
+        title = "Current cache limits",
+        body = "Image cache: 128 MB max\nSong cache: 2 GB max",
+        accent = OmniColors.OmniAccentMuted,
+    )
+}
 
 @Composable
 private fun LyricsSettings() {
-    val enableLrcLib by rememberPreference(EnableLrcLibKey, true)
-    val enableKugou by rememberPreference(EnableKugouKey, true)
-    val enableBetterLyrics by rememberPreference(EnableBetterLyricsKey, true)
-    val enableSimpMusic by rememberPreference(EnableSimpMusicLyricsKey, true)
     val lyricsAnim by rememberEnumPreference(LyricsAnimationStyleKey, LyricsAnimationStyle.KARAOKE)
 
-    SettingsCategoryLabel("Lyrics Providers")
+    SettingsCategoryLabel("Lyrics providers")
     TogglePreferenceRow(
         label = "LrcLib",
-        description = "Synced lyrics from LrcLib",
+        description = "Use the existing LrcLib provider",
         key = EnableLrcLibKey,
         defaultValue = true,
     )
     TogglePreferenceRow(
         label = "KuGou",
-        description = "Synced lyrics from KuGou",
+        description = "Use the existing KuGou provider",
         key = EnableKugouKey,
         defaultValue = true,
     )
     TogglePreferenceRow(
         label = "Better Lyrics",
-        description = "Enhanced lyrics source",
+        description = "Use the existing Better Lyrics provider",
         key = EnableBetterLyricsKey,
         defaultValue = true,
     )
     TogglePreferenceRow(
         label = "SimpMusic",
-        description = "SimpMusic lyrics provider",
+        description = "Use the existing SimpMusic provider",
         key = EnableSimpMusicLyricsKey,
         defaultValue = true,
     )
-    Divider()
 
     SettingsCategoryLabel("Animation")
     EnumPreferenceRow(
-        label = "Lyrics Animation",
-        description = "Current: ${lyricsAnim.name}",
+        label = "Lyrics animation",
+        description = "Current: ${lyricsAnim.displayName()}",
         options = LyricsAnimationStyle.entries.toList(),
         current = lyricsAnim,
         key = LyricsAnimationStyleKey,
     )
 }
 
-// ── Content Settings ──
-
 @Composable
 private fun ContentSettings() {
-    val hideExplicit by rememberPreference(HideExplicitKey, false)
-    val hideVideo by rememberPreference(HideVideoKey, false)
-    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, false)
-    val pauseListenHistory by rememberPreference(PauseListenHistoryKey, false)
-
+    SettingsCategoryLabel("Search and content")
     TogglePreferenceRow(
-        label = "Hide Explicit Content",
+        label = "Hide explicit content",
         description = "Filter out explicit songs",
         key = HideExplicitKey,
         defaultValue = false,
     )
     TogglePreferenceRow(
-        label = "Hide Video Results",
+        label = "Hide video results",
         description = "Only show audio tracks",
         key = HideVideoKey,
         defaultValue = false,
     )
-    Divider()
 
     SettingsCategoryLabel("History")
     TogglePreferenceRow(
-        label = "Pause Search History",
+        label = "Pause search history",
         description = "Stop saving search history",
         key = PauseSearchHistoryKey,
         defaultValue = false,
     )
     TogglePreferenceRow(
-        label = "Pause Listen History",
+        label = "Pause listen history",
         description = "Stop saving listening history",
         key = PauseListenHistoryKey,
         defaultValue = false,
     )
 }
-
-// ── Storage Settings ──
-
-@Composable
-private fun StorageSettings() {
-    val smartTrimmer by rememberPreference(SmartTrimmerKey, true)
-
-    TogglePreferenceRow(
-        label = "Smart Cache Trimmer",
-        description = "Automatically clear old cache",
-        key = SmartTrimmerKey,
-        defaultValue = true,
-    )
-
-    SettingsCategoryLabel("Cache Limits")
-    Text(
-        "Image cache: 128 MB max",
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-    Text(
-        "Song cache: 2 GB max",
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-}
-
-// ── Scrobbling Settings ──
 
 @Composable
 private fun UpdatesSettings(
@@ -451,30 +583,37 @@ private fun UpdatesSettings(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
 
-    SettingsCategoryLabel("App Updates")
-    Text(
-        "Current version: ${viewModel.currentVersionLabel}",
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    SettingsInfoBlock(
+        title = "Installed version",
+        body = viewModel.currentVersionLabel,
+        accent = OmniColors.OmniAccentSecondary,
     )
 
     when (val current = state) {
-        UpdateState.Idle -> SettingsActionButton("Check for updates") {
-            viewModel.checkForUpdates()
+        UpdateState.Idle -> {
+            UpdateStateCard(
+                title = "Ready to check",
+                body = "Uses the existing GitHub latest-release check. No release status is assumed until you run it.",
+                accent = OmniColors.OmniAccentSecondary,
+            )
+            SettingsActionButton("Check for updates") {
+                viewModel.checkForUpdates()
+            }
         }
         UpdateState.Checking -> {
-            UpdateMessage("Checking GitHub releases...")
-            LinearProgressIndicator(
-                color = OmniColors.Primary,
-                trackColor = OmniColors.GlassSurface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            UpdateStateCard(
+                title = "Checking GitHub releases",
+                body = "Waiting for the existing update checker to return.",
+                accent = OmniColors.OmniAccentSecondary,
+                progress = null,
             )
         }
         UpdateState.NoUpdate -> {
-            UpdateMessage("You are on the latest version.")
+            UpdateStateCard(
+                title = "Already latest",
+                body = "The update checker did not find a newer public release.",
+                accent = OmniColors.Success,
+            )
             SettingsActionButton("Check again") {
                 viewModel.checkForUpdates()
             }
@@ -491,20 +630,21 @@ private fun UpdatesSettings(
             }
         }
         is UpdateState.Downloading -> {
-            val percent = (current.progress * 100).toInt().coerceIn(0, 100)
-            UpdateMessage("Downloading update... $percent%")
-            LinearProgressIndicator(
-                progress = { current.progress.coerceIn(0f, 1f) },
-                color = OmniColors.Primary,
-                trackColor = OmniColors.GlassSurface,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            val progress = current.progress.coerceIn(0f, 1f)
+            val percent = (progress * 100).toInt().coerceIn(0, 100)
+            UpdateStateCard(
+                title = "Downloading update",
+                body = "$percent% complete",
+                accent = OmniColors.OmniAccentSecondary,
+                progress = progress,
             )
         }
         is UpdateState.Downloaded -> {
-            UpdateMessage("Update downloaded and verified.")
-            UpdateMessage("Package: ${current.update.packageName}, code ${current.update.versionCode}")
+            UpdateStateCard(
+                title = "Update downloaded and verified",
+                body = "Package: ${current.update.packageName}, code ${current.update.versionCode}",
+                accent = OmniColors.Success,
+            )
             SettingsActionButton("Install now") {
                 runCatching {
                     if (ApkInstallLauncher.canRequestPackageInstalls(context)) {
@@ -521,7 +661,11 @@ private fun UpdatesSettings(
             }
         }
         is UpdateState.Error -> {
-            UpdateMessage(current.message)
+            UpdateStateCard(
+                title = "Update check failed",
+                body = current.message,
+                accent = OmniColors.Error,
+            )
             SettingsActionButton("Try again") {
                 viewModel.checkForUpdates()
             }
@@ -530,24 +674,19 @@ private fun UpdatesSettings(
 }
 
 @Composable
-private fun AdvancedSettings() {
+private fun DiagnosticsSettings() {
     val context = LocalContext.current
     var message by remember { mutableStateOf<String?>(null) }
 
-    SettingsCategoryLabel("Media Controls")
-    MediaControlsHelp()
-    Divider()
-
-    SettingsCategoryLabel("Diagnostics")
-    Text(
-        "Exports a sanitized report with app version, device details, network state, and recent app-readable logs.",
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    SettingsInfoBlock(
+        title = "Export diagnostic report",
+        body = "Useful for debugging playback, downloads, update checks, and device-specific behavior. This uses the existing exporter and does not collect new data.",
+        accent = OmniColors.Hot,
     )
     SettingsActionButton("Export diagnostic report") {
         runCatching {
             context.startActivity(DiagnosticReportExporter.createShareIntent(context))
+            message = "Share sheet opened for the diagnostic report."
         }.onFailure {
             message = "Could not export diagnostic report."
         }
@@ -558,7 +697,10 @@ private fun AdvancedSettings() {
 @Composable
 private fun MediaControlsHelp() {
     val context = LocalContext.current
-    val notificationsEnabled = remember { NotificationManagerCompat.from(context).areNotificationsEnabled() }
+    var message by remember { mutableStateOf<String?>(null) }
+    val notificationsEnabled = remember {
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
     val channelStatus = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = context.getSystemService(NotificationManager::class.java)
@@ -577,71 +719,316 @@ private fun MediaControlsHelp() {
         if (powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
             "Battery optimization is unrestricted for OmniTune."
         } else {
-            "Battery optimization may restrict background playback controls."
+            "Battery restrictions may affect background playback and media controls."
         }
     }
 
-    Text(
-        "Fix notification & lock-screen controls",
-        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
-        color = OmniColors.TextPrimary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+    SettingsInfoBlock(
+        title = "Notification and lock-screen controls",
+        body = "Behavior can vary by device and OEM. Battery restrictions may affect background playback.",
+        accent = OmniColors.Warning,
     )
     UpdateMessage(
         "Notification permission: ${if (notificationsEnabled) "Allowed" else "Blocked"}\n" +
             "$channelStatus\n$batteryStatus"
     )
     UpdateMessage(
-        "On Vivo/iQOO/Funtouch OS, allow notifications, lock-screen notifications, background activity, unrestricted battery, and autostart if your device offers it. Some OEM Android skins can hide media controls until these settings are allowed by the user."
+        "On Vivo/iQOO/Funtouch OS and similar Android skins, allow notifications, lock-screen notifications, background activity, unrestricted battery, and autostart if your device offers those options."
     )
     SettingsActionButton("Open notification settings") {
-        context.startActivity(openNotificationSettingsIntent(context))
+        openSettingsIntent(context, openNotificationSettingsIntent(context)) {
+            message = "Could not open notification settings."
+        }
     }
     SettingsActionButton("Open app settings") {
-        context.startActivity(openAppDetailsIntent(context))
+        openSettingsIntent(context, openAppDetailsIntent(context)) {
+            message = "Could not open app settings."
+        }
     }
     SettingsActionButton("Open battery settings") {
-        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        openSettingsIntent(context, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) {
+            message = "Could not open battery settings."
+        }
     }
+    message?.let { UpdateMessage(it) }
+}
+
+@Composable
+private fun ScrobblingSettings() {
+    val lastfmEnabled by rememberPreference(EnableLastFMScrobblingKey, false)
+
+    SettingsCategoryLabel("Last.fm")
+    TogglePreferenceRow(
+        label = "Enable scrobbling",
+        description = "Scrobble plays to Last.fm",
+        key = EnableLastFMScrobblingKey,
+        defaultValue = false,
+    )
+    if (lastfmEnabled) {
+        TogglePreferenceRow(
+            label = "Now playing",
+            description = "Share now playing to Last.fm",
+            key = LastFMUseNowPlaying,
+            defaultValue = false,
+        )
+    }
+
+    SettingsCategoryLabel("ListenBrainz")
+    TogglePreferenceRow(
+        label = "Enable scrobbling",
+        description = "Scrobble plays to ListenBrainz",
+        key = ListenBrainzEnabledKey,
+        defaultValue = false,
+    )
+}
+
+@Composable
+private fun AboutSettings() {
+    val context = LocalContext.current
+    var message by remember { mutableStateOf<String?>(null) }
+
+    SettingsInfoBlock(
+        title = "OmniTune",
+        body = "Version ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})\nOpen-source music player for Android\nLicense: GPL-3.0",
+        accent = OmniColors.TextSecondary,
+    )
+    SettingsInfoBlock(
+        title = "Legal access",
+        body = "License and credits remain in the project repository as LICENSE and CREDITS.md. Phase 10 does not rewrite or remove legal text.",
+        accent = OmniColors.Warning,
+    )
+    SettingsActionButton("Open project repository") {
+        openUrl(context, "https://github.com/soupashh-ship-it/OmniTune") {
+            message = "Could not open project repository."
+        }
+    }
+    SettingsActionButton("Open GPL license") {
+        openUrl(context, "https://github.com/soupashh-ship-it/OmniTune/blob/main/LICENSE") {
+            message = "Could not open license link."
+        }
+    }
+    SettingsActionButton("Open credits") {
+        openUrl(context, "https://github.com/soupashh-ship-it/OmniTune/blob/main/CREDITS.md") {
+            message = "Could not open credits link."
+        }
+    }
+    message?.let { UpdateMessage(it) }
 }
 
 @Composable
 private fun UpdateDetails(state: UpdateState.UpdateAvailable) {
     val update = state.update
-    Text(
-        "Latest version available: ${update.versionName}",
-        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
-        color = OmniColors.TextPrimary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-    )
-    Text(
-        "APK: ${formatBytes(update.apkAsset.size)}",
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    UpdateStateCard(
+        title = "Update available",
+        body = "Latest version: ${update.versionName}\nAPK: ${formatBytes(update.apkAsset.size)}",
+        accent = OmniColors.Success,
     )
     if (update.releaseNotes.isNotBlank()) {
         Text(
-            update.releaseNotes,
-            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+            text = update.releaseNotes,
+            style = MaterialTheme.typography.bodySmall,
             color = OmniColors.TextSecondary,
             maxLines = 6,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
         )
     }
 }
 
 @Composable
-private fun UpdateMessage(message: String) {
+private fun UpdateStateCard(
+    title: String,
+    body: String,
+    accent: Color,
+    progress: Float? = null,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.OmniGlassMedium)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Medium)
+            .padding(OmniSpacing.medium),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(accent),
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+            )
+        }
+        Spacer(modifier = Modifier.height(OmniSpacing.compact))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodySmall,
+            color = OmniColors.TextSecondary,
+        )
+        progress?.let {
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            LinearProgressIndicator(
+                progress = { it.coerceIn(0f, 1f) },
+                color = accent,
+                trackColor = OmniColors.OmniGlassSubtle,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } ?: if (title.startsWith("Checking")) {
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            LinearProgressIndicator(
+                color = accent,
+                trackColor = OmniColors.OmniGlassSubtle,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Unit
+        }
+    }
+}
+
+@Composable
+private fun SettingsInfoBlock(
+    title: String,
+    body: String,
+    accent: Color,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.OmniGlassSubtle)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Medium)
+            .padding(OmniSpacing.medium),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = accent,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.micro))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodySmall,
+            color = OmniColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun SettingsStatusPill(
+    label: String,
+    value: String,
+) {
+    Column(
+        modifier = Modifier
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.OmniGlassMedium)
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Pill)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = OmniColors.TextTertiary,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.TextPrimary,
+        )
+    }
+}
+
+@Composable
+private fun SettingsIconBadge(
+    iconRes: Int,
+    accent: Color,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(OmniShapes.Small)
+            .background(accent.copy(alpha = 0.16f))
+            .border(BorderStroke(1.dp, accent.copy(alpha = 0.34f)), OmniShapes.Small),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(size * 0.46f),
+        )
+    }
+}
+
+@Composable
+private fun SettingsCategoryLabel(text: String) {
     Text(
-        message,
-        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-        color = OmniColors.TextMuted,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = OmniColors.OmniAccentSecondary,
+        modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
     )
+}
+
+@Composable
+private fun SettingsActionRow(
+    iconRes: Int,
+    label: String,
+    description: String,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 64.dp)
+            .clip(OmniShapes.Medium)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = Color.White.copy(alpha = 0.08f),
+                ),
+                onClick = onClick,
+            )
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsIconBadge(iconRes = iconRes, accent = accent, size = 38.dp)
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextTertiary,
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.ic_arrow_back),
+            contentDescription = "Open $label",
+            tint = OmniColors.TextTertiary,
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer { rotationZ = 180f },
+        )
+    }
 }
 
 @Composable
@@ -649,130 +1036,69 @@ private fun SettingsActionButton(
     label: String,
     onClick: () -> Unit,
 ) {
-    androidx.compose.material3.Button(
+    Button(
         onClick = onClick,
-        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-            containerColor = OmniColors.Primary,
-            contentColor = OmniColors.Background,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = OmniColors.OmniAccentPrimary,
+            contentColor = OmniColors.OmniAccentOnPrimary,
         ),
+        shape = OmniShapes.Pill,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .defaultMinSize(minHeight = 48.dp)
+            .padding(vertical = OmniSpacing.micro),
     ) {
         Text(label, fontWeight = FontWeight.Bold)
     }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0L) return "Unknown size"
-    val mb = bytes / (1024.0 * 1024.0)
-    return "%.1f MB".format(mb)
-}
-
-private fun openNotificationSettingsIntent(context: android.content.Context): Intent {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-    } else {
-        openAppDetailsIntent(context)
-    }
-}
-
-private fun openAppDetailsIntent(context: android.content.Context): Intent {
-    return Intent(
-        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-        Uri.fromParts("package", context.packageName, null)
-    )
-}
-
-@Composable
-private fun ScrobblingSettings() {
-    val lastfmEnabled by rememberPreference(EnableLastFMScrobblingKey, false)
-    val listenbrainzEnabled by rememberPreference(ListenBrainzEnabledKey, false)
-    val lastfmNowPlaying by rememberPreference(LastFMUseNowPlaying, false)
-
-    SettingsCategoryLabel("Last.fm")
-    TogglePreferenceRow(
-        label = "Enable Scrobbling",
-        description = "Scrobble plays to Last.fm",
-        key = EnableLastFMScrobblingKey,
-        defaultValue = false,
-    )
-    if (lastfmEnabled) {
-        TogglePreferenceRow(
-            label = "Now Playing",
-            description = "Share now playing to Last.fm",
-            key = LastFMUseNowPlaying,
-            defaultValue = false,
-        )
-    }
-    Divider()
-
-    SettingsCategoryLabel("ListenBrainz")
-    TogglePreferenceRow(
-        label = "Enable Scrobbling",
-        description = "Scrobble plays to ListenBrainz",
-        key = ListenBrainzEnabledKey,
-        defaultValue = false,
-    )
-}
-
-// ── Reusable Settings Components ──
-
-@Composable
-private fun SettingsCategoryLabel(text: String) {
-    Text(
-        text = text,
-        style = androidx.compose.material3.MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = OmniColors.Secondary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
 }
 
 @Composable
 private fun TogglePreferenceRow(
     label: String,
     description: String,
-    key: androidx.datastore.preferences.core.Preferences.Key<Boolean>,
+    key: Preferences.Key<Boolean>,
     defaultValue: Boolean,
 ) {
     var value by rememberPreference(key, defaultValue)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.SM)
+            .defaultMinSize(minHeight = 64.dp)
+            .clip(OmniShapes.Medium)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = Color.White.copy(alpha = 0.08f),
+                ),
                 onClick = { value = !value },
             )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                label,
-                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = OmniColors.TextPrimary,
             )
             Text(
-                description,
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextMuted,
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextTertiary,
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Switch(
             checked = value,
             onCheckedChange = { newValue -> value = newValue },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = OmniColors.Primary,
-                uncheckedThumbColor = OmniColors.TextMuted,
-                uncheckedTrackColor = OmniColors.GlassSurface,
-                uncheckedBorderColor = OmniColors.GlassBorder,
+                checkedTrackColor = OmniColors.OmniAccentPrimary,
+                uncheckedThumbColor = OmniColors.TextTertiary,
+                uncheckedTrackColor = OmniColors.OmniGlassMedium,
+                uncheckedBorderColor = OmniColors.OmniGlassBorderSubtle,
             ),
         )
     }
@@ -784,44 +1110,49 @@ private fun <T : Enum<T>> EnumPreferenceRow(
     description: String,
     options: List<T>,
     current: T,
-    key: androidx.datastore.preferences.core.Preferences.Key<String>,
+    key: Preferences.Key<String>,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.SM)
+            .defaultMinSize(minHeight = 64.dp)
+            .clip(OmniShapes.Medium)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = androidx.compose.material3.ripple(bounded = true, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.1f)),
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = Color.White.copy(alpha = 0.08f),
+                ),
                 onClick = { showDialog = true },
             )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                label,
-                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = OmniColors.TextPrimary,
             )
             Text(
-                description,
-                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextMuted,
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextTertiary,
             )
         }
         Text(
-            "▸",
-            fontSize = 14.sp,
-            color = OmniColors.TextMuted,
+            text = "Change",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.OmniAccentSecondary,
         )
     }
 
-    val context = LocalContext.current
     if (showDialog) {
         EnumSelectionDialog(
             title = label,
@@ -844,33 +1175,34 @@ private fun <T : Enum<T>> EnumSelectionDialog(
     onDismiss: () -> Unit,
     onSelected: (T) -> Unit,
 ) {
-    androidx.compose.material3.AlertDialog(
+    AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = OmniColors.SurfaceElevated,
+        containerColor = OmniColors.OmniBackgroundElevated,
         titleContentColor = OmniColors.TextPrimary,
         textContentColor = OmniColors.TextSecondary,
         title = {
             Text(title, fontWeight = FontWeight.Bold)
         },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro)) {
                 options.forEach { option ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(OmniShapes.SM)
+                            .defaultMinSize(minHeight = 48.dp)
+                            .clip(OmniShapes.Small)
                             .clickable { onSelected(option) }
-                            .padding(vertical = 12.dp, horizontal = 8.dp),
+                            .padding(vertical = OmniSpacing.small, horizontal = OmniSpacing.compact),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(20.dp)
-                                .clip(RoundedCornerShape(50))
+                                .clip(CircleShape)
                                 .border(
                                     2.dp,
-                                    if (option == current) OmniColors.Primary else OmniColors.GlassBorder,
-                                    RoundedCornerShape(50),
+                                    if (option == current) OmniColors.OmniAccentPrimary else OmniColors.OmniGlassBorderSubtle,
+                                    CircleShape,
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -878,17 +1210,16 @@ private fun <T : Enum<T>> EnumSelectionDialog(
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
-                                        .clip(RoundedCornerShape(50))
-                                        .background(OmniColors.Primary),
+                                        .clip(CircleShape)
+                                        .background(OmniColors.OmniAccentPrimary),
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(OmniSpacing.small))
                         Text(
-                            option.name.replace("_", " ").lowercase()
-                                .replaceFirstChar { it.uppercase() },
-                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                            color = if (option == current) OmniColors.Primary else OmniColors.TextPrimary,
+                            text = option.displayName(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (option == current) OmniColors.OmniAccentPrimary else OmniColors.TextPrimary,
                         )
                     }
                 }
@@ -904,8 +1235,7 @@ private fun Divider() {
         modifier = Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .padding(horizontal = 16.dp)
-            .background(OmniColors.GlassBorderLight),
+            .background(OmniColors.OmniGlassBorderSubtle),
     )
 }
 
@@ -913,50 +1243,108 @@ private fun Divider() {
 private fun IntPreferenceSliderRow(
     label: String,
     description: String,
-    key: androidx.datastore.preferences.core.Preferences.Key<Int>,
+    key: Preferences.Key<Int>,
     defaultValue: Int,
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int = 0,
-    valueFormat: (Int) -> String = { it.toString() }
+    valueFormat: (Int) -> String = { it.toString() },
 ) {
     var value by rememberPreference(key, defaultValue)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .defaultMinSize(minHeight = 64.dp)
+            .clip(OmniShapes.Medium)
+            .padding(OmniSpacing.medium),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    label,
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = OmniColors.TextPrimary,
                 )
                 Text(
-                    description,
-                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    color = OmniColors.TextMuted,
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextTertiary,
                 )
             }
             Text(
-                valueFormat(value),
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                text = valueFormat(value),
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.Primary,
+                color = OmniColors.OmniAccentSecondary,
             )
         }
-        androidx.compose.material3.Slider(
+        Slider(
             value = value.toFloat(),
             onValueChange = { value = it.toInt() },
             valueRange = valueRange,
             steps = steps,
-            colors = androidx.compose.material3.SliderDefaults.colors(
-                thumbColor = OmniColors.Primary,
-                activeTrackColor = OmniColors.Primary,
-                inactiveTrackColor = OmniColors.GlassSurface
+            colors = SliderDefaults.colors(
+                thumbColor = OmniColors.OmniAccentPrimary,
+                activeTrackColor = OmniColors.OmniAccentPrimary,
+                inactiveTrackColor = OmniColors.OmniGlassMedium,
             ),
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = Modifier.padding(top = OmniSpacing.compact),
         )
     }
+}
+
+@Composable
+private fun UpdateMessage(message: String) {
+    Text(
+        text = message,
+        style = MaterialTheme.typography.bodySmall,
+        color = OmniColors.TextSecondary,
+        modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.micro),
+    )
+}
+
+private fun formatBytes(bytes: Long): String {
+    if (bytes <= 0L) return "Unknown size"
+    val mb = bytes / (1024.0 * 1024.0)
+    return "%.1f MB".format(mb)
+}
+
+private fun openNotificationSettingsIntent(context: Context): Intent {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    } else {
+        openAppDetailsIntent(context)
+    }
+}
+
+private fun openAppDetailsIntent(context: Context): Intent {
+    return Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null),
+    )
+}
+
+private fun openSettingsIntent(
+    context: Context,
+    intent: Intent,
+    onFailure: () -> Unit,
+) {
+    runCatching { context.startActivity(intent) }.onFailure { onFailure() }
+}
+
+private fun openUrl(
+    context: Context,
+    url: String,
+    onFailure: () -> Unit,
+) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    runCatching { context.startActivity(intent) }.onFailure { onFailure() }
+}
+
+private fun Enum<*>.displayName(): String {
+    return name
+        .replace("_", " ")
+        .lowercase()
+        .replaceFirstChar { it.uppercase() }
 }
