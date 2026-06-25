@@ -18,7 +18,18 @@ Released: 2026-06-25
 
 - Signed release assets were produced by GitHub Actions using repository secrets.
 - Release assets include `OmniTune-v0.7.0-release.apk` and `OmniTune-v0.7.0-release.apk.sha256`.
-- Lyrics display is not available in this release.
+- Added full-player lyrics entry and bottom sheet UI.
+- Supports synced lyrics, plain fallback, no-lyrics, and error states.
+- Privacy protection: full lyrics are not logged.
+- Note: Synced lyric auto-scroll may need tuning for unusual LRC formatting.
 - Notification and lock-screen behavior can vary by device/OEM.
+
+## Phase 28 — Library Depth + Dead Route Hardening
+
+- Implemented real PlaylistDetailScreen showing playlist songs from Room database.
+- Wired playlist item tap to `playlist/{playlistId}` route (replaced dead "coming soon" Toast).
+- Playlist songs load from `playlist_song_map` join table with real playback support.
+- Empty state: "No songs in this playlist yet" shown when playlist has no songs.
+- Added root-only `/window*.xml` gitignore rule for UI dump files.
 - Active and failed download states need broader QA when those states are available.
 - Older downloads may show limited metadata unless the song exists in the local database.

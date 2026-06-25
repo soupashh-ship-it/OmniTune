@@ -35,7 +35,7 @@ The `0.7.x` line ships the OmniGlass UI overhaul and the completed-download play
 - **Stream from YouTube** - Search and play songs via YouTube's InnerTube API
 - **MiniPlayer** - Persistent mini player visible across app screens with live state
 - **Full Player** - Album artwork, seek bar, play/pause/skip, shuffle, repeat, queue, and download controls
-- **Lyrics Providers** - Provider code exists, but the lyrics display surface is not available in the current release
+- **Lyrics** - User-accessible lyrics via the full player. Supports synced lyrics and plain text fallback. Availability depends on provider coverage and track metadata; some tracks may show a no-results or provider-error state.
 - **Home** - OmniGlass landing screen with Search entry, current playback, and real available app state
 - **Library** - Browse available liked songs, recently played items, albums, artists, playlists, and downloads where real data exists; Library honesty remains part of pre-1.0 QA
 - **Queue Management** - Add to queue and play next

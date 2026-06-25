@@ -95,6 +95,7 @@ import com.omnitune.app.ui.player.PlayerScreen
 import com.omnitune.app.ui.screens.QueueScreen
 import com.omnitune.app.ui.screens.LikedSongsScreen
 import com.omnitune.app.ui.screens.RecentlyPlayedScreen
+import com.omnitune.app.ui.screens.PlaylistDetailScreen
 import com.omnitune.app.ui.screens.SettingsScreen
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniColors
@@ -318,7 +319,11 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 LibraryAlbumsScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") })
             }
             composable("library_playlists") {
-                LibraryPlaylistsScreen(onBack = { navController.popBackStack() }, onNavigateToPlaylist = { Toast.makeText(context, "Playlist details coming soon", Toast.LENGTH_SHORT).show() })
+                LibraryPlaylistsScreen(onBack = { navController.popBackStack() }, onNavigateToPlaylist = { navController.navigate("playlist/$it") })
+            }
+            composable("playlist/{playlistId}") {
+                PlaylistDetailScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
             composable("liked_songs") {
                 LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->

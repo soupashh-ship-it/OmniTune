@@ -644,6 +644,7 @@ private fun PlayerActionsRow(
     val context = LocalContext.current
     var showEffectsDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showLyricsSheet by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
@@ -691,6 +692,11 @@ private fun PlayerActionsRow(
             onClick = { showEffectsDialog = true },
         )
         ActionButton(
+            icon = R.drawable.ic_sort,
+            contentDescription = "Lyrics",
+            onClick = { showLyricsSheet = true },
+        )
+        ActionButton(
             icon = R.drawable.ic_bedtime,
             contentDescription = if (sleepTimerRunning) "Cancel sleep timer" else "Set sleep timer",
             active = sleepTimerRunning,
@@ -721,6 +727,12 @@ private fun PlayerActionsRow(
                 showSleepTimerDialog = false
             },
             isRunning = sleepTimerRunning,
+        )
+    }
+    if (showLyricsSheet) {
+        LyricsBottomSheet(
+            playerConnection = playerConnection,
+            onDismissRequest = { showLyricsSheet = false }
         )
     }
 }

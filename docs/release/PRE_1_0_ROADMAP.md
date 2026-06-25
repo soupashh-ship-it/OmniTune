@@ -17,7 +17,7 @@ This roadmap keeps pre-1.0 work focused on reliability, honesty, QA, and release
 1. Keep Search playback, MiniPlayer, full player, Queue/Add to Queue, completed downloads, offline completed downloads, Settings, update checker, diagnostics/export, About, credits, and license access stable.
 2. Audit download states before changing download behavior.
 3. Audit search/provider failures before hardening failure states.
-4. Verify or downgrade lyrics, Library, widget, accessibility, tempo/pitch, equalizer, Discord, Last.fm, Firebase, and migration claims.
+4. Verify or downgrade Library, widget, accessibility, tempo/pitch, equalizer, Discord, Last.fm, Firebase, and migration claims.
 5. Build device/OEM media-control evidence without promising universal notification or lock-screen behavior.
 6. Add focused automated tests for mapping, queue, download playability, repeat/shuffle state, and failure classification.
 7. Keep public docs aligned with verified behavior.

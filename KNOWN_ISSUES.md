@@ -4,9 +4,8 @@ Status: post-`v0.7.0` OmniGlass release.
 
 ## Current Known Issues
 
-1. **Lyrics display surface unavailable**
-   - Lyrics provider code exists, but a safe user-facing lyrics display surface is not available in the current release.
-   - Public docs should not claim shipped lyrics UI support until Phase 23/24 verifies or downgrades the feature.
+1. **Synced lyric auto-scroll may need tuning**
+   - Synced lyric auto-scroll and highlight behavior may need tuning for unusual LRC formatting or edge-case provider responses.
 
 2. **Active, paused, failed, and unknown download states need broader QA**
    - Completed-download playback was fixed and verified online/offline for `v0.7.0`.
@@ -34,7 +33,8 @@ Status: post-`v0.7.0` OmniGlass release.
 
 8. **Library sections and playlists need honesty audit**
    - Library UI is redesigned and uses real available data where present.
-   - Albums, artists, playlists, liked songs, and recently played routes need a feature-by-feature honesty audit before 1.0.
+   - Playlist detail route is now wired (Phase 28). Playlist contents display real Room-backed songs.
+   - Playlist create/edit/delete management may still be limited. Albums, artists, liked songs, and recently played routes passed honesty audit.
 
 9. **TalkBack/accessibility not fully verified**
    - Accessibility labels and touch targets were improved during OmniGlass, but TalkBack has not been fully tested across the app.

@@ -6,6 +6,13 @@ This file tracks public-facing claims that must be verified or downgraded before
 
 ## Verified
 
+### Lyrics
+
+- Status: Verified.
+- Evidence: Phase 24A successfully wired `LyricsBottomSheet` to the UI via `LyricsRepositoryImpl`. UI entry is present, and syncing, plain text fallback, no-lyrics, and error states are all verified. Full lyrics are verified not to leak in logs.
+- Risk: Low to Medium (Provider dependent).
+- Next action: Keep lyrics UI verified for future releases. Offline/cache behavior is unverified.
+
 ### Home Screen Widget
 
 - Status: Verified based on existing evidence.
@@ -19,6 +26,13 @@ This file tracks public-facing claims that must be verified or downgraded before
 - Evidence: `.github/workflows/release.yml` built `v0.7.0`, verified the APK with `apksigner`, generated `.sha256`, and uploaded both assets.
 - Risk: Low.
 - Next action: For every release, confirm workflow success and asset presence.
+
+### Library Playlist Detail
+
+- Status: Code path verified (Runtime NOT AVAILABLE).
+- Evidence: Phase 28 implemented real PlaylistDetailScreen backed by Room `playlistSongs()` DAO query. Empty state is honest ("No songs in this playlist yet"). Dead Toast placeholder removed. Playback route is wired. Runtime verification of detail screen was NOT AVAILABLE due to empty test library.
+- Risk: Low.
+- Next action: Keep verified. Playlist create/edit/delete management remains limited.
 
 ### Core v0.7.0 Playback Paths
 

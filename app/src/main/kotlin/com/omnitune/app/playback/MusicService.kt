@@ -66,6 +66,8 @@ import com.omnitune.app.constants.SkipSilenceKey
 import com.omnitune.app.constants.AudioOffload
 import com.omnitune.app.constants.PlayerVolumeKey
 import com.omnitune.app.constants.RepeatModeKey
+import com.omnitune.app.constants.ShuffleEnabledKey
+import androidx.datastore.preferences.core.edit
 import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -526,6 +528,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         }
 
+        // Shuffle Mode
+        scope.launch {
+            ds.data.map { it[ShuffleEnabledKey] ?: false }.distinctUntilChanged().collect { enabled ->
+                player.shuffleModeEnabled = enabled
+                Timber.tag("OmniTuneQueue").d("Shuffle restored/changed: enabled=$enabled")
+            }
+        }
+
         // Crossfade
         scope.launch {
             ds.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged().collectLatest { durationMs ->
@@ -724,10 +734,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val resolvedItems = withContext(Dispatchers.IO) {
                 StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
             }
+            val insertIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
             player.addMediaItems(
-                if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1,
+                insertIndex,
                 resolvedItems
             )
+            Timber.tag("OmniTuneQueue").i("Play Next: inserted ${resolvedItems.size} items at index $insertIndex")
             player.prepare()
         }
     }
@@ -738,6 +750,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
             }
             player.addMediaItems(resolvedItems)
+            Timber.tag("OmniTuneQueue").i("Add to Queue: added ${resolvedItems.size} items, new queue size: ${player.mediaItemCount}")
             player.prepare()
         }
     }
@@ -829,6 +842,27 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
+        }
+    }
+
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                applicationContext.dataStore.edit { it[ShuffleEnabledKey] = shuffleModeEnabled }
+                Timber.tag("OmniTuneQueue").d("Shuffle mode persisted: $shuffleModeEnabled")
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to save shuffle mode")
+            }
+        }
+    }
+
+    override fun onRepeatModeChanged(repeatMode: Int) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                applicationContext.dataStore.edit { it[RepeatModeKey] = repeatMode }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to save repeat mode")
+            }
         }
     }
 
@@ -1215,6 +1249,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     position = currentPos.coerceAtLeast(0L)
                 )
                 database.saveQueue(entity)
+                Timber.tag("OmniTuneQueue").i("Queue saved: count=$count, index=$currentIndex, pos=$currentPos")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

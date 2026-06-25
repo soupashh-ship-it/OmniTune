@@ -6,6 +6,7 @@
 package com.omnitune.app.di
 
 import com.omnitune.app.data.LyricsRepository
+import com.omnitune.app.data.LyricsRepositoryImpl
 import com.omnitune.app.data.MusicRepository
 import com.omnitune.app.data.MusicRepositoryImpl
 import com.omnitune.app.data.StreamRepository
@@ -25,6 +26,12 @@ abstract class DataModule {
     abstract fun bindStreamRepository(
         impl: StreamRepositoryImpl
     ): StreamRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLyricsRepository(
+        impl: LyricsRepositoryImpl
+    ): LyricsRepository
 
     @Binds
     @Singleton
