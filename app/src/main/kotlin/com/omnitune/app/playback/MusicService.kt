@@ -367,9 +367,19 @@ class MusicService : MediaLibraryService(), Player.Listener {
             .setUpstreamDataSourceFactory(dataSourceFactory)
             .setCacheWriteDataSinkFactory(null)
 
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15000, // minBufferMs
+                50000, // maxBufferMs
+                1000,  // bufferForPlaybackMs (lowered from default 2500ms for faster startup)
+                1500   // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+
         player = ExoPlayer.Builder(this)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(cacheDataSourceFactory))
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -575,6 +585,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
+        StartupTracker.reset()
         currentQueue = queue
         queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
@@ -638,11 +649,46 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     "Player setMediaItems: count=${resolvedItems.size}, index=$resolvedIndex, position=${initialStatus.position}"
                 )
                 player.setMediaItems(resolvedItems, resolvedIndex, initialStatus.position)
+                StartupTracker.logPlayerPrepare()
                 player.prepare()
                 player.playWhenReady = playWhenReady
                 Timber.tag("OmniTunePlaybackTrace").i(
                     "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
                 )
+                preResolveNextTracks()
+            }
+        }
+    }
+
+    private var preResolveJob: kotlinx.coroutines.Job? = null
+
+    private fun preResolveNextTracks() {
+        preResolveJob?.cancel()
+        preResolveJob = scope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            try {
+                if (player.mediaItemCount == 0) return@launch
+                
+                // Get the actual next index considering shuffle and repeat modes
+                val nextIndex1 = player.nextMediaItemIndex
+                if (nextIndex1 == androidx.media3.common.C.INDEX_UNSET || nextIndex1 == player.currentMediaItemIndex) return@launch
+                
+                val item1 = player.getMediaItemAt(nextIndex1)
+                
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    if (StreamUrlResolver.isYouTubeVideoId(item1.localConfiguration?.uri)) {
+                        val resolved = StreamUrlResolver.resolveMediaItem(item1, streamExtractor, downloadUtil)
+                        if (resolved != null) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                if (StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(nextIndex1).localConfiguration?.uri)) {
+                                    player.replaceMediaItem(nextIndex1, resolved)
+                                    Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $nextIndex1")
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Pre-resolve failed")
             }
         }
     }
@@ -835,6 +881,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
+        StartupTracker.logState(state)
         crossfadeAudio?.onPlaybackStateChanged(state)
         updateNotification()
         logMediaControlState("state-$state")
@@ -891,6 +938,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("item-transition")
         startPlaybackTracker(mediaItem)
         saveQueueState()
+        preResolveNextTracks()
 
         // Fetch lyrics for the current song in the background
         meta?.let { metadata ->
@@ -927,7 +975,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         val currentMediaItem = player.currentMediaItem
         val mediaId = currentMediaItem?.mediaId
 
-        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError) {
+        val isUnresolved = StreamUrlResolver.isYouTubeVideoId(currentMediaItem?.localConfiguration?.uri)
+
+        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError && !isUnresolved) {
             val hasInternet = isInternetAvailable(this)
             if (!hasInternet) {
                 _waitingForNetworkConnection.value = true
@@ -945,6 +995,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         }
         
+        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.Forbidden403 ||
+            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NotFound404 ||
+            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.BotCheck) {
+            if (mediaId != null) {
+                StreamUrlResolver.invalidate(mediaId)
+            }
+        }
+
         if (mediaId != null && playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
             Timber.tag("MusicService").w("Recovering from $errorType for mediaId: $mediaId")
             playbackRecoveryPolicy.incrementRetry(mediaId)
