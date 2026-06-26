@@ -57,3 +57,9 @@ The lyrics backend architecture (providers, database cache, and settings) is ful
 - **Docs Changed**: README.md, release_notes.md, KNOWN_ISSUES.md, RELEASE_CLAIM_VERIFICATION.md.
 - **Claims Intentionally Avoided**: "perfect synced lyrics", "offline lyrics" (since not fully audited), "lyrics for every song".
 - **Remaining Limitations**: Synced lyric auto-scroll may need tuning for unusual LRC formatting.
+
+## 11. Phase 2 (Unreleased) - Lyrics Loading Speed and Auto-Scroll
+- **Auto-scroll fix**: Added active index tracking and nimateScrollToItem to LyricsBottomSheet for synchronized highlighting and scrolling.
+- **Loading speed fix**: Parallelized requests across LyricsProvider implementations in LyricsHelper.getLyrics, halting upon the highest-priority provider's success.
+- **Offline playback fix**: LyricsRepositoryImpl now checks the local database via DatabaseDao before falling back to network fetch.
+- **Status**: IMPLEMENTATION COMPLETE. (Changes are marked as unreleased pending Phase 1 manual verification)

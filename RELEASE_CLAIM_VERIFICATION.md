@@ -1,6 +1,6 @@
 # Release Claim Verification
 
-Status: post-`v0.7.1` RC GO release.
+Status: post-`v0.7.3` baseline truth audit.
 
 This file tracks public-facing claims that must be verified or downgraded before `1.0.0`.
 
@@ -8,10 +8,10 @@ This file tracks public-facing claims that must be verified or downgraded before
 
 ### Lyrics
 
-- Status: Verified.
-- Evidence: Phase 24A successfully wired `LyricsBottomSheet` to the UI via `LyricsRepositoryImpl`. UI entry is present, and syncing, plain text fallback, no-lyrics, and error states are all verified. Full lyrics are verified not to leak in logs.
-- Risk: Low to Medium (Provider dependent).
-- Next action: Keep lyrics UI verified for future releases. Offline/cache behavior is unverified.
+- Status: Partially Verified (Needs Fixes).
+- Evidence: UI entry is present, and plain text fallback, no-lyrics, and error states are verified. However, lyrics loading is currently very slow and synced lyrics do not automatically scroll/move with the song.
+- Risk: High (Core UX issue).
+- Next action: Fix lyrics loading speed, implement auto-scroll, and verify offline/cache behavior in Phase 2.
 
 ### Home Screen Widget
 
