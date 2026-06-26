@@ -1,14 +1,18 @@
 package com.omnitune.app.data
 
+import com.omnitune.app.db.DatabaseDao
+import com.omnitune.app.db.entities.LyricsEntity
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.models.AppResult
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.MediaMetadata
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
 class LyricsRepositoryImpl @Inject constructor(
-    private val lyricsHelper: LyricsHelper
+    private val lyricsHelper: LyricsHelper,
+    private val databaseDao: DatabaseDao
 ) : LyricsRepository {
 
     override suspend fun loadLyrics(
@@ -24,8 +28,14 @@ class LyricsRepositoryImpl @Inject constructor(
                 artists = listOf(MediaMetadata.Artist(id = "", name = artist)),
                 duration = duration.toInt()
             )
-            val lrcText = lyricsHelper.getLyrics(metadata)
-            if (lrcText == com.omnitune.app.db.entities.LyricsEntity.LYRICS_NOT_FOUND) {
+            val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
+            val lrcText = if (dbLyrics != null && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                dbLyrics
+            } else {
+                lyricsHelper.getLyrics(metadata)
+            }
+            
+            if (lrcText == LyricsEntity.LYRICS_NOT_FOUND) {
                 AppResult.Error("Lyrics not found")
             } else {
                 AppResult.Success(parseLrc(lrcText))

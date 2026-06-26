@@ -52,4 +52,12 @@ object AppModule {
     ): com.omnitune.app.playback.DownloadUtil {
         return com.omnitune.app.playback.DownloadUtil(context, okHttpClient)
     }
+
+    @Provides
+    @Singleton
+    fun provideDatabaseDao(
+        database: MusicDatabase
+    ): com.omnitune.app.db.DatabaseDao {
+        return database as com.omnitune.app.db.DatabaseDao
+    }
 }

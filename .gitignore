@@ -44,3 +44,8 @@ page@6c78803ef718b2d15f66e9efe9ef01be.webm
 
 # Root-level UI dump files
 /window*.xml
+
+# Debug/generated artifacts
+/all_logs.txt
+/view.xml
+/test.kt

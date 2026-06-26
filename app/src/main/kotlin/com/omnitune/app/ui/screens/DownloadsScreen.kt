@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +62,8 @@ fun DownloadsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
+    
+    var downloadToRemove by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Download?>(null) }
     
     val completedCount = uiState.downloads.count { it.state == Download.STATE_COMPLETED }
     val activeCount = uiState.downloads.count {
@@ -96,10 +99,12 @@ fun DownloadsScreen(
                     .padding(OmniSpacing.section),
                 contentAlignment = Alignment.Center,
             ) {
-                EmptyPlaceholder(
-                    icon = R.drawable.ic_download,
-                    text = "No downloaded songs yet",
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    EmptyPlaceholder(
+                        icon = R.drawable.ic_download,
+                        text = "No downloaded songs yet\nSearch and download music to play it offline.",
+                    )
+                }
             }
         } else {
             LazyColumn(
@@ -115,12 +120,38 @@ fun DownloadsScreen(
                         download = download,
                         onPlay = { viewModel.playDownload(download, playerConnection, context) },
                         onRetry = { viewModel.retryDownload(download.request.id) },
-                        onRemove = { viewModel.removeDownload(download.request.id) },
+                        onRemove = { downloadToRemove = download },
                     )
                 }
                 item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
+    }
+
+    if (downloadToRemove != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { downloadToRemove = null },
+            title = { Text("Remove Download", color = OmniColors.TextPrimary) },
+            text = { Text("Are you sure you want to delete this downloaded song?", color = OmniColors.TextSecondary) },
+            containerColor = OmniColors.OmniBackgroundBase,
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        downloadToRemove?.let { viewModel.removeDownload(it.request.id) }
+                        downloadToRemove = null
+                    }
+                ) {
+                    Text("Delete", color = OmniColors.Error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { downloadToRemove = null }
+                ) {
+                    Text("Cancel", color = OmniColors.TextSecondary)
+                }
+            }
+        )
     }
 }
 
@@ -297,8 +328,13 @@ private fun DownloadItemRow(
             )
             if (state.progress != null) {
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
+                val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = state.progress ?: 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000, easing = androidx.compose.animation.core.LinearEasing),
+                    label = "progressAnim"
+                )
                 LinearProgressIndicator(
-                    progress = { state.progress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)

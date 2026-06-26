@@ -58,6 +58,15 @@ class DownloadsViewModel @Inject constructor(
     init {
         downloadUtil.downloadManager.addListener(listener)
         refreshDownloads()
+        
+        viewModelScope.launch {
+            while (true) {
+                if (_uiState.value.downloads.any { it.state == Download.STATE_DOWNLOADING }) {
+                    refreshDownloads()
+                }
+                kotlinx.coroutines.delay(1000)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -66,16 +75,21 @@ class DownloadsViewModel @Inject constructor(
     }
 
     private fun refreshDownloads() {
-        val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
-        val list = mutableListOf<Download>()
-        try {
-            while (cursor.moveToNext()) {
-                list.add(cursor.download)
+        viewModelScope.launch {
+            val list = withContext(Dispatchers.IO) {
+                val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
+                val result = mutableListOf<Download>()
+                try {
+                    while (cursor.moveToNext()) {
+                        result.add(cursor.download)
+                    }
+                } finally {
+                    cursor.close()
+                }
+                result
             }
-        } finally {
-            cursor.close()
+            _uiState.value = DownloadsUiState(downloads = list)
         }
-        _uiState.value = DownloadsUiState(downloads = list)
     }
 
     fun isPlayable(download: Download): Boolean {
@@ -89,22 +103,28 @@ class DownloadsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val dbSong = withContext(Dispatchers.IO) { database.getSongById(download.request.id) }
-            val mediaItem = if (dbSong != null) {
-                dbSong.toMediaItem()
-            } else {
-                Timber.i("Diagnostics: Metadata fallback for non-DB-backed download")
-                val title = String(download.request.data, Charsets.UTF_8)
-                androidx.media3.common.MediaItem.Builder()
-                    .setMediaId(download.request.id)
-                    .setMediaMetadata(
-                        androidx.media3.common.MediaMetadata.Builder()
-                            .setTitle(title)
+            val playableDownloads = _uiState.value.downloads.filter { downloadUtil.isPlayable(it) }
+            val mediaItems = withContext(Dispatchers.IO) {
+                playableDownloads.map { dl ->
+                    val dbSong = database.getSongById(dl.request.id)
+                    if (dbSong != null) {
+                        dbSong.toMediaItem()
+                    } else {
+                        Timber.i("Diagnostics: Metadata fallback for non-DB-backed download: ${dl.request.id}")
+                        val title = String(dl.request.data, Charsets.UTF_8).ifBlank { dl.request.id }
+                        androidx.media3.common.MediaItem.Builder()
+                            .setMediaId(dl.request.id)
+                            .setMediaMetadata(
+                                androidx.media3.common.MediaMetadata.Builder()
+                                    .setTitle(title)
+                                    .build()
+                            )
                             .build()
-                    )
-                    .build()
+                    }
+                }
             }
-            playerConnection?.playQueue(com.omnitune.app.playback.queues.ListQueue(items = listOf(mediaItem)))
+            val startIndex = playableDownloads.indexOfFirst { it.request.id == download.request.id }.coerceAtLeast(0)
+            playerConnection?.playQueue(com.omnitune.app.playback.queues.ListQueue(items = mediaItems, startIndex = startIndex))
         }
     }
 
@@ -139,7 +159,7 @@ class DownloadsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Failed to start download for $videoId")
-                onResult(false, "Download failed")
+                onResult(false, "Download failed: stream unavailable")
             }
         }
     }

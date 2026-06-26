@@ -13,8 +13,8 @@ import kotlinx.coroutines.withContext
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
-    val LINE_REGEX = "((\\[\\d\\d:\\d\\d\\.\\d{2,3}\\] ?)+)(.+)".toRegex()
-    val TIME_REGEX = "\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]".toRegex()
+    val LINE_REGEX = "((\\[(?:\\d\\d:)?\\d\\d:\\d\\d\\.\\d{2,3}\\] ?)+)(.*)".toRegex()
+    val TIME_REGEX = "\\[(?:(\\d\\d):)?(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]".toRegex()
 
     private val KANA_ROMAJI_MAP: Map<String, String> = mapOf(
         "キャ" to "kya", "キュ" to "kyu", "キョ" to "kyo",
@@ -153,14 +153,16 @@ object LyricsUtils {
 
         return timeMatchResults
             .map { timeMatchResult ->
-                val min = timeMatchResult.groupValues[1].toLong()
-                val sec = timeMatchResult.groupValues[2].toLong()
-                val milString = timeMatchResult.groupValues[3]
+                val hrGroup = timeMatchResult.groupValues[1]
+                val hr = if (hrGroup.isNotEmpty()) hrGroup.toLong() else 0L
+                val min = timeMatchResult.groupValues[2].toLong()
+                val sec = timeMatchResult.groupValues[3].toLong()
+                val milString = timeMatchResult.groupValues[4]
                 var mil = milString.toLong()
                 if (milString.length == 2) {
                     mil *= 10
                 }
-                val time = min * DateUtils.MINUTE_IN_MILLIS + sec * DateUtils.SECOND_IN_MILLIS + mil
+                val time = hr * 3600000L + min * 60000L + sec * 1000L + mil
                 LyricsEntry(time, text)
             }.toList()
     }

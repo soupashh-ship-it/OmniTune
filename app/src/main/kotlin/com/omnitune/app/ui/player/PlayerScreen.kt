@@ -74,6 +74,7 @@ import androidx.media3.common.Player.REPEAT_MODE_ALL
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.REPEAT_MODE_ONE
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.models.MediaMetadata
@@ -86,12 +87,13 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniSoftBorder
+import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import timber.log.Timber
 
-private const val ARTWORK_REQUEST_SIZE = 640
+private const val ARTWORK_REQUEST_SIZE = 1200
 
 @Composable
 fun PlayerScreen(
@@ -230,7 +232,9 @@ private fun PlayerTopBar(
 @Composable
 private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
     val context = LocalContext.current
-    val thumbnailUrl = mediaMetadata?.thumbnailUrl
+    val thumbnailUrl = remember(mediaMetadata?.thumbnailUrl) {
+        mediaMetadata?.thumbnailUrl?.resize(1200, 1200)
+    }
     val imageModel = remember(thumbnailUrl) {
         thumbnailUrl?.let {
             ImageRequest.Builder(context)
@@ -273,11 +277,19 @@ private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
             label = "player_artwork",
         ) { model ->
             if (model != null) {
-                AsyncImage(
+                SubcomposeAsyncImage(
                     model = model,
                     contentDescription = "Album Art",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
+                    error = {
+                        AsyncImage(
+                            model = mediaMetadata?.thumbnailUrl,
+                            contentDescription = "Album Art Fallback",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                 )
             } else {
                 Column(

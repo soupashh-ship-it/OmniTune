@@ -72,28 +72,38 @@ constructor(
         val ordered = orderedProviders()
         val providers = if (preferredProviderOnly) listOf(ordered.first()) else ordered
         val deferred = helperScope.async {
-            for (provider in providers) {
-                val enabled = provider.isEnabled(context)
-
-                if (enabled) {
+            val jobs = providers.filter { it.isEnabled(context) }.map { provider ->
+                async {
                     try {
-                        val result = provider.getLyrics(
-                            mediaMetadata.id,
-                            mediaMetadata.title,
-                            mediaMetadata.artists.joinToString { it.name },
-                            mediaMetadata.album?.title,
-                            mediaMetadata.duration,
-                        )
-                        result.onSuccess { lyrics ->
-                            if (isMeaningfulLyrics(lyrics)) {
-                                return@async lyrics
+                        kotlinx.coroutines.withTimeoutOrNull(10000L) {
+                            val result = provider.getLyrics(
+                                mediaMetadata.id,
+                                mediaMetadata.title,
+                                mediaMetadata.artists.joinToString { it.name },
+                                mediaMetadata.album?.title,
+                                mediaMetadata.duration,
+                            )
+                            result.onSuccess { lyrics ->
+                                if (isMeaningfulLyrics(lyrics)) {
+                                    return@withTimeoutOrNull lyrics
+                                }
+                            }.onFailure {
+                                reportException(it)
                             }
-                        }.onFailure {
-                            reportException(it)
+                            null
                         }
                     } catch (e: Exception) {
                         reportException(e)
+                        null
                     }
+                }
+            }
+
+            for (job in jobs) {
+                val lyrics = job.await()
+                if (lyrics != null) {
+                    jobs.forEach { it.cancel() }
+                    return@async lyrics
                 }
             }
             return@async LYRICS_NOT_FOUND
@@ -137,11 +147,13 @@ constructor(
             providers.forEach { provider ->
                 if (provider.isEnabled(context)) {
                     try {
-                        provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
-                            if (!isMeaningfulLyrics(lyrics)) return@lyricsCallback
-                            val result = LyricsResult(provider.name, lyrics)
-                            allResult += result
-                            callback(result)
+                        kotlinx.coroutines.withTimeoutOrNull(10000L) {
+                            provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
+                                if (!isMeaningfulLyrics(lyrics)) return@lyricsCallback
+                                val result = LyricsResult(provider.name, lyrics)
+                                allResult += result
+                                callback(result)
+                            }
                         }
                     } catch (e: Exception) {
                         reportException(e)

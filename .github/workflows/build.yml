@@ -23,8 +23,11 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Run Unit Tests
+      run: ./gradlew testDebugUnitTest --stacktrace
+
     - name: Run Lint
-      run: ./gradlew lintDebug
+      run: ./gradlew lintDebug --stacktrace
 
     - name: Build Debug APK
       run: ./gradlew assembleDebug

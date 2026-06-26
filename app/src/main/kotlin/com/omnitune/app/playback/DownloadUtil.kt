@@ -32,7 +32,12 @@ class DownloadUtil @Inject constructor(
     }
 
     val downloadCache: SimpleCache by lazy {
-        val downloadDir = File(context.filesDir, "downloads")
+        val externalMusicDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC)
+        val downloadDir = if (externalMusicDir != null) {
+            File(externalMusicDir, "downloads")
+        } else {
+            File(context.filesDir, "downloads")
+        }
         if (!downloadDir.exists()) downloadDir.mkdirs()
         SimpleCache(downloadDir, NoOpCacheEvictor(), databaseProvider)
     }
@@ -51,7 +56,7 @@ class DownloadUtil @Inject constructor(
     val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
         val dataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
-        val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(6)
         androidx.media3.exoplayer.offline.DownloadManager(
             context,
             databaseProvider,
@@ -59,7 +64,8 @@ class DownloadUtil @Inject constructor(
             dataSourceFactory,
             executor
         ).apply {
-            maxParallelDownloads = 3
+            maxParallelDownloads = 5
+            minRetryCount = 5
         }
     }
 

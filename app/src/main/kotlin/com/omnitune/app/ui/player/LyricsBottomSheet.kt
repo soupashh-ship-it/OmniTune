@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -146,6 +147,21 @@ private fun LyricsContent(
     var currentPosition by remember { mutableLongStateOf(0L) }
     val listState = rememberLazyListState()
 
+    var isManualScrolling by remember { mutableStateOf(false) }
+    var forceReturn by remember { mutableStateOf(false) }
+
+    LaunchedEffect(listState.isScrollInProgress, forceReturn) {
+        if (forceReturn) {
+            isManualScrolling = false
+            forceReturn = false
+        } else if (listState.isScrollInProgress) {
+            isManualScrolling = true
+        } else if (isManualScrolling) {
+            delay(5000)
+            isManualScrolling = false
+        }
+    }
+
     if (isSynced) {
         LaunchedEffect(playerConnection, playbackState) {
             while (true) {
@@ -157,34 +173,58 @@ private fun LyricsContent(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 120.dp, top = OmniSpacing.medium),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)
-    ) {
-        itemsIndexed(lines) { index, line ->
-            val isActive = if (isSynced) {
-                val nextTimestamp = lines.getOrNull(index + 1)?.timestamp ?: Long.MAX_VALUE
-                currentPosition in line.timestamp until nextTimestamp
-            } else {
-                false
-            }
-            
-            val textColor = if (isActive) OmniColors.TextPrimary else OmniColors.TextTertiary
-            val fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
-            val textStyle = if (isActive) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+    val activeIndex = if (isSynced) {
+        lines.indexOfFirst { line ->
+            val index = lines.indexOf(line)
+            val nextTimestamp = lines.getOrNull(index + 1)?.timestamp ?: Long.MAX_VALUE
+            currentPosition in line.timestamp until nextTimestamp
+        }
+    } else -1
 
-            Text(
-                text = line.text,
-                style = textStyle,
-                color = textColor,
-                fontWeight = fontWeight,
-                textAlign = TextAlign.Center,
+    LaunchedEffect(activeIndex, isManualScrolling) {
+        if (activeIndex >= 0 && !isManualScrolling) {
+            val centerOffset = listState.layoutInfo.viewportSize.height / 2
+            listState.animateScrollToItem(activeIndex, scrollOffset = -centerOffset / 2)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 120.dp, top = OmniSpacing.medium),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)
+        ) {
+            itemsIndexed(lines) { index, line ->
+                val isActive = index == activeIndex
+                
+                val textColor = if (isActive) OmniColors.TextPrimary else OmniColors.TextTertiary
+                val fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+                val textStyle = if (isActive) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+
+                Text(
+                    text = line.text,
+                    style = textStyle,
+                    color = textColor,
+                    fontWeight = fontWeight,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = OmniSpacing.medium)
+                )
+            }
+        }
+
+        if (isManualScrolling && isSynced) {
+            Button(
+                onClick = { forceReturn = true },
+                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentSecondary),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = OmniSpacing.medium)
-            )
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text("Return to current lyric", color = OmniColors.TextOnAccent)
+            }
         }
     }
 }
