@@ -35,6 +35,7 @@ fun TrackOptionsBottomSheet(
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     onAddToPlaylist: () -> Unit,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -114,6 +115,17 @@ fun TrackOptionsBottomSheet(
                     label = "Add to queue",
                     onClick = {
                         onAddToQueue()
+                        onDismissRequest()
+                    }
+                )
+            }
+
+            if (onRemoveFromPlaylist != null) {
+                TrackOptionRow(
+                    icon = R.drawable.ic_close,
+                    label = "Remove from this playlist",
+                    onClick = {
+                        onRemoveFromPlaylist()
                         onDismissRequest()
                     }
                 )

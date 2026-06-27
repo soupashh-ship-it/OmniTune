@@ -106,19 +106,132 @@ fun PlaylistDetailScreen(
                     color = OmniColors.TextSecondary,
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(OmniColors.Hot.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_list),
-                    contentDescription = null,
-                    tint = OmniColors.Hot,
-                    modifier = Modifier.size(22.dp),
-                )
+            
+            var showPlaylistMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
+            var showRenameDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+            var showDeleteDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+            
+            if (playlist?.playlist?.isEditable == true) {
+                Box {
+                    IconButton(
+                        onClick = { showPlaylistMenu = true },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(OmniColors.OmniGlassMedium),
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_more_vert),
+                            contentDescription = "More options",
+                            tint = OmniColors.TextSecondary,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = showPlaylistMenu,
+                        onDismissRequest = { showPlaylistMenu = false },
+                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                    ) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Rename playlist") },
+                            onClick = {
+                                showPlaylistMenu = false
+                                showRenameDialog = true
+                            },
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Delete playlist", color = OmniColors.Error) },
+                            onClick = {
+                                showPlaylistMenu = false
+                                showDeleteDialog = true
+                            },
+                        )
+                    }
+                }
+                
+                if (showRenameDialog) {
+                    var newName by remember { androidx.compose.runtime.mutableStateOf(playlist?.playlist?.name ?: "") }
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showRenameDialog = false },
+                        title = { Text("Rename Playlist", fontWeight = FontWeight.Bold) },
+                        text = {
+                            androidx.compose.material3.OutlinedTextField(
+                                value = newName,
+                                onValueChange = { newName = it },
+                                singleLine = true,
+                                placeholder = { Text("Playlist name") },
+                                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = OmniColors.OmniAccentPrimary,
+                                    unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                                    focusedTextColor = OmniColors.TextPrimary,
+                                    unfocusedTextColor = OmniColors.TextPrimary
+                                )
+                            )
+                        },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    if (newName.isNotBlank()) {
+                                        viewModel.renamePlaylist(newName.trim())
+                                        showRenameDialog = false
+                                    }
+                                },
+                                enabled = newName.isNotBlank()
+                            ) {
+                                Text("Rename", color = if (newName.isNotBlank()) OmniColors.Hot else OmniColors.TextSecondary)
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { showRenameDialog = false }) {
+                                Text("Cancel", color = OmniColors.TextPrimary)
+                            }
+                        },
+                        containerColor = OmniColors.OmniBackgroundElevated,
+                        titleContentColor = OmniColors.TextPrimary,
+                    )
+                }
+                
+                if (showDeleteDialog) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showDeleteDialog = false },
+                        title = { Text("Delete Playlist?", fontWeight = FontWeight.Bold) },
+                        text = { Text("This removes the playlist only. Songs and downloads will not be deleted.") },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    viewModel.deletePlaylist()
+                                    showDeleteDialog = false
+                                    onBack()
+                                }
+                            ) {
+                                Text("Delete", color = OmniColors.Error)
+                            }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
+                                Text("Cancel", color = OmniColors.TextPrimary)
+                            }
+                        },
+                        containerColor = OmniColors.OmniBackgroundElevated,
+                        titleContentColor = OmniColors.TextPrimary,
+                        textContentColor = OmniColors.TextSecondary,
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(OmniColors.Hot.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_list),
+                        contentDescription = null,
+                        tint = OmniColors.Hot,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
         }
 
@@ -141,6 +254,7 @@ fun PlaylistDetailScreen(
                         index = index,
                         playlistSong = playlistSong,
                         onClick = { onPlaySong(playlistSong.song) },
+                        onRemove = { viewModel.removeSong(playlistSong.song.id) }
                     )
                 }
                 item { Spacer(modifier = Modifier.height(88.dp)) }
@@ -154,6 +268,7 @@ private fun PlaylistSongRow(
     index: Int,
     playlistSong: PlaylistSong,
     onClick: () -> Unit,
+    onRemove: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -229,7 +344,8 @@ private fun PlaylistSongRow(
                 onDismissMenu = { menuExpanded = false },
                 mediaMetadata = playlistSong.song.toMediaMetadata(),
                 onPlayNext = { playerConnection?.playNext(playlistSong.song.toMediaItem()) },
-                onAddToQueue = { playerConnection?.addToQueue(playlistSong.song.toMediaItem()) }
+                onAddToQueue = { playerConnection?.addToQueue(playlistSong.song.toMediaItem()) },
+                onRemoveFromPlaylist = onRemove
             )
         }
     }

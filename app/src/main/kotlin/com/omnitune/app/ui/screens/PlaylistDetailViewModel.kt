@@ -15,11 +15,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class PlaylistDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    database: MusicDatabase,
+    private val database: MusicDatabase,
 ) : ViewModel() {
     private val playlistId: String = savedStateHandle["playlistId"] ?: ""
 
@@ -28,4 +29,29 @@ class PlaylistDetailViewModel @Inject constructor(
 
     val songs: StateFlow<List<PlaylistSong>> = database.playlistSongs(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun renamePlaylist(newName: String) {
+        val current = playlist.value ?: return
+        if (!current.playlist.isEditable) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.update(current.playlist.copy(name = newName))
+        }
+    }
+
+    fun deletePlaylist() {
+        val current = playlist.value ?: return
+        if (!current.playlist.isEditable) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.delete(current.playlist)
+        }
+    }
+
+    fun removeSong(songId: String) {
+        val current = playlist.value ?: return
+        if (!current.playlist.isEditable) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.removeSongFromPlaylist(current.playlist.id, songId)
+        }
+    }
+
 }

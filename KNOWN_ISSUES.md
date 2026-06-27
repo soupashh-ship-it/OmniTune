@@ -6,12 +6,9 @@ Status: post-`v0.7.3` baseline truth audit.
 
 1. **Recently Played and Liked Songs**
    - Recently Played does not currently show what users expect (or behavior is inconsistent).
-   - Liked songs do not work globally across all required UI surfaces yet.
 
 2. **Playlists and Library Integration**
-   - Playlists need full create/edit/delete functionality.
    - Playlist folders/collections are not currently possible.
-   - Songs need to be addable to playlists from all major screens (search, player, downloads, library, recently played).
    - Saved Artists and Saved Albums features are not fully realized.
    - Library sections must be wired together with real data, avoiding fake counts.
 
@@ -30,6 +27,9 @@ Status: post-`v0.7.3` baseline truth audit.
 
 ## Recently Fixed
 
+
+- Global track options menu (Like, Play next, Add to queue, Add to playlist) implemented across all screens.
+- Playlist full lifecycle (create, rename, delete, duplicate prevention) implemented.
 - MiniPlayer tap targets and honest disabled previous/next controls.
 - Shuffle correctness and QueueScreen order.
 - Offline playback reliability and fallback metadata fixes.

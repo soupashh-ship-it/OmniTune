@@ -1095,17 +1095,22 @@ interface DatabaseDao {
         songIds: List<String>,
     ): List<String>
 
+    @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId AND songId = :songId")
+    fun removeSongFromPlaylist(playlistId: String, songId: String)
+
     @Transaction
     fun addSongToPlaylist(playlist: Playlist, songIds: List<String>) {
         var position = playlist.songCount
         songIds.forEach { id ->
-            insert(
-                PlaylistSongMap(
-                    songId = id,
-                    playlistId = playlist.id,
-                    position = position++
+            if (checkInPlaylist(playlist.id, id) == 0) {
+                insert(
+                    PlaylistSongMap(
+                        songId = id,
+                        playlistId = playlist.id,
+                        position = position++
+                    )
                 )
-            )
+            }
         }
     }
 

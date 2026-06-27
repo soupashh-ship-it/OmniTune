@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.component
 
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.omnitune.app.models.MediaMetadata
@@ -12,6 +13,7 @@ fun TrackMenuProvider(
     mediaMetadata: MediaMetadata,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryViewModel: LibraryViewModel = hiltViewModel()
 ) {
     if (!showMenu) return
@@ -36,11 +38,14 @@ fun TrackMenuProvider(
             },
             onPlayNext = onPlayNext,
             onAddToQueue = onAddToQueue,
+            onRemoveFromPlaylist = onRemoveFromPlaylist,
             onAddToPlaylist = { showPlaylistDialog = true }
         )
     }
 
     if (showPlaylistDialog) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val scope = rememberCoroutineScope()
         AddToPlaylistDialog(
             playlists = playlists,
             onDismissRequest = { 
@@ -49,11 +54,19 @@ fun TrackMenuProvider(
             },
             onPlaylistSelected = { playlist ->
                 libraryViewModel.ensureSongExists(mediaMetadata)
-                libraryViewModel.addToPlaylist(playlist, mediaMetadata.id)
+                scope.launch {
+                    val added = libraryViewModel.addToPlaylist(playlist, mediaMetadata.id)
+                    if (!added) {
+                        android.widget.Toast.makeText(context, "Already in playlist", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, "Added to playlist", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
             },
             onCreatePlaylist = { name ->
                 libraryViewModel.ensureSongExists(mediaMetadata)
                 libraryViewModel.createPlaylist(name, mediaMetadata.id)
+                android.widget.Toast.makeText(context, "Playlist created", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }
