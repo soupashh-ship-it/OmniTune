@@ -1,3 +1,12 @@
+# OmniTune v0.8.0 Playlist RC
+
+### 🚀 Features
+* **Global Track Options Menu**: "Like", "Play next", "Add to queue", and "Add to playlist" actions are now available natively on every song row throughout the app (Search, Albums, Artists, History, and Liked Songs).
+* **Full Playlist Lifecycle**: You can now create, rename, and delete playlists natively.
+* **Playlist Duplicate Prevention**: Seamless duplicate rejection checks are now built right into the local database mappings!
+
+---
+
 # OmniTune v0.7.3
 
 ### 🚀 Performance & Playback Latency Improvements
