@@ -9,6 +9,7 @@ Status: post-`v0.7.3` baseline truth audit.
 
 2. **Playlists and Library Integration**
    - Playlist folders/collections are not currently possible.
+   - Current duplicate prevention is application-level, not database-enforced.
    - Saved Artists and Saved Albums features are not fully realized.
    - Library sections must be wired together with real data, avoiding fake counts.
 
