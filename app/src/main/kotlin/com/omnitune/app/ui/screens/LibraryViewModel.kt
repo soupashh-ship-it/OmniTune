@@ -47,6 +47,9 @@ class LibraryViewModel @Inject constructor(
     val libraryArtists: StateFlow<List<com.omnitune.app.db.entities.Artist>>
     val libraryAlbums: StateFlow<List<com.omnitune.app.db.entities.Album>>
     val playlists: StateFlow<List<com.omnitune.app.db.entities.Playlist>>
+    val editablePlaylists: kotlinx.coroutines.flow.Flow<List<com.omnitune.app.db.entities.Playlist>> = database.editablePlaylistsByCreateDateAsc()
+
+    fun song(songId: String): kotlinx.coroutines.flow.Flow<com.omnitune.app.db.entities.Song?> = database.song(songId)
 
     private val downloadListener = object : androidx.media3.exoplayer.offline.DownloadManager.Listener {
         override fun onDownloadChanged(manager: androidx.media3.exoplayer.offline.DownloadManager, download: androidx.media3.exoplayer.offline.Download, finalException: Exception?) {
@@ -115,5 +118,47 @@ class LibraryViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         downloadUtil.downloadManager.removeListener(downloadListener)
+    }
+
+    fun toggleLike(songId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val song = database.getSongById(songId)
+            if (song != null) {
+                database.upsert(song.song.localToggleLike())
+                try {
+                    com.omnitune.innertube.YouTube.likeVideo(songId, song.song.likedDate == null)
+                } catch (e: Exception) {
+                    timber.log.Timber.e(e, "Failed to sync like with YouTube")
+                }
+            }
+        }
+    }
+
+    fun addToPlaylist(playlist: com.omnitune.app.db.entities.Playlist, songId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.addSongToPlaylist(playlist, listOf(songId))
+        }
+    }
+
+    fun createPlaylist(name: String, initialSongId: String? = null) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val playlist = com.omnitune.app.db.entities.PlaylistEntity(name = name)
+            database.insert(playlist)
+            if (initialSongId != null) {
+                val savedPlaylist = database.getPlaylistByIdBlocking(playlist.id)
+                if (savedPlaylist != null) {
+                    database.addSongToPlaylist(savedPlaylist, listOf(initialSongId))
+                }
+            }
+        }
+    }
+
+    fun ensureSongExists(metadata: com.omnitune.app.models.MediaMetadata) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val song = database.getSongById(metadata.id)
+            if (song == null) {
+                database.upsert(metadata.toSongEntity())
+            }
+        }
     }
 }

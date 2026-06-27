@@ -59,6 +59,14 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import kotlinx.coroutines.flow.flowOf
 
+import com.omnitune.app.LocalPlayerConnection
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.IconButton
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.TrackMenuProvider
+
 @Composable
 fun HomeScreen(
     onNavigateToSearch: () -> Unit = {},
@@ -612,12 +620,30 @@ private fun RecentSongRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Icon(
-                painter = painterResource(R.drawable.ic_play_arrow),
-                contentDescription = "Play",
-                tint = OmniColors.OmniAccentSecondary,
-                modifier = Modifier.size(22.dp),
-            )
+            var menuExpanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+            val playerConnection = LocalPlayerConnection.current
+            
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_vert),
+                        contentDescription = "More options",
+                        tint = OmniColors.TextSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                
+                TrackMenuProvider(
+                    showMenu = menuExpanded,
+                    onDismissMenu = { menuExpanded = false },
+                    mediaMetadata = event.song.toMediaMetadata(),
+                    onPlayNext = { playerConnection?.playNext(event.song.toMediaItem()) },
+                    onAddToQueue = { playerConnection?.addToQueue(event.song.toMediaItem()) }
+                )
+            }
         }
     }
 }

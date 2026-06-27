@@ -32,6 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.omnitune.app.LocalPlayerConnection
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.TrackMenuProvider
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -199,6 +205,31 @@ private fun PlaylistSongRow(
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        
+        var menuExpanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        val playerConnection = LocalPlayerConnection.current
+        
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more_vert),
+                    contentDescription = "More options",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            
+            TrackMenuProvider(
+                showMenu = menuExpanded,
+                onDismissMenu = { menuExpanded = false },
+                mediaMetadata = playlistSong.song.toMediaMetadata(),
+                onPlayNext = { playerConnection?.playNext(playlistSong.song.toMediaItem()) },
+                onAddToQueue = { playerConnection?.addToQueue(playlistSong.song.toMediaItem()) }
             )
         }
     }

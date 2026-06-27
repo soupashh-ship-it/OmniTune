@@ -46,6 +46,10 @@ import com.omnitune.innertube.pages.AlbumPage
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.utils.formatDurationSeconds
+import com.omnitune.app.LocalPlayerConnection
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.TrackMenuProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -255,6 +259,33 @@ private fun SongRow(
                 text = formatDurationSeconds(duration.toLong()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        var menuExpanded by remember { mutableStateOf(false) }
+        val playerConnection = LocalPlayerConnection.current
+        
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    painter = painterResource(com.omnitune.app.R.drawable.ic_more_vert),
+                    contentDescription = "More options",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            
+            TrackMenuProvider(
+                showMenu = menuExpanded,
+                onDismissMenu = { menuExpanded = false },
+                mediaMetadata = song.toMediaMetadata(),
+                onPlayNext = { playerConnection?.playNext(song.toMediaItem()) },
+                onAddToQueue = { playerConnection?.addToQueue(song.toMediaItem()) }
             )
         }
     }

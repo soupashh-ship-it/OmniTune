@@ -31,6 +31,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,11 +65,56 @@ fun LibraryPlaylistsScreen(
             .statusBarsPadding()
             .padding(horizontal = OmniSpacing.section),
     ) {
+        var showCreateDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+        if (showCreateDialog) {
+            var playlistName by remember { androidx.compose.runtime.mutableStateOf("") }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showCreateDialog = false },
+                title = { Text("New Playlist", fontWeight = FontWeight.Bold) },
+                text = {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = playlistName,
+                        onValueChange = { playlistName = it },
+                        singleLine = true,
+                        placeholder = { Text("Playlist name") },
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OmniColors.OmniAccentPrimary,
+                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                            focusedTextColor = OmniColors.TextPrimary,
+                            unfocusedTextColor = OmniColors.TextPrimary
+                        )
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            if (playlistName.isNotBlank()) {
+                                viewModel.createPlaylist(playlistName.trim())
+                                showCreateDialog = false
+                            }
+                        },
+                        enabled = playlistName.isNotBlank()
+                    ) {
+                        Text("Create", color = if (playlistName.isNotBlank()) OmniColors.Hot else OmniColors.TextSecondary)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showCreateDialog = false }) {
+                        Text("Cancel", color = OmniColors.TextPrimary)
+                    }
+                },
+                containerColor = OmniColors.OmniBackgroundElevated,
+                titleContentColor = OmniColors.TextPrimary,
+            )
+        }
+
         LibraryListHeader(
             title = "Playlists",
             subtitle = countLabel(playlists.size, "playlist"),
             icon = R.drawable.ic_list,
             accent = OmniColors.Hot,
+            actionIcon = R.drawable.ic_add,
+            onAction = { showCreateDialog = true },
             onBack = onBack,
         )
 
@@ -143,6 +191,8 @@ private fun LibraryListHeader(
     subtitle: String,
     icon: Int,
     accent: androidx.compose.ui.graphics.Color,
+    actionIcon: Int? = null,
+    onAction: (() -> Unit)? = null,
     onBack: () -> Unit,
 ) {
     Row(
@@ -160,8 +210,17 @@ private fun LibraryListHeader(
             Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
             Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = OmniColors.TextSecondary)
         }
-        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-            Icon(painterResource(icon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+        if (actionIcon != null && onAction != null) {
+            IconButton(
+                onClick = onAction,
+                modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f))
+            ) {
+                Icon(painterResource(actionIcon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            }
+        } else {
+            Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
+                Icon(painterResource(icon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }

@@ -70,6 +70,8 @@ import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.component.ShimmerBar
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -488,6 +490,7 @@ private fun SearchResultsContent(
                         Timber.tag("OmniTuneSearch").i("Add to Queue clicked: ${song.title}")
                         onAddToQueue(song) 
                     },
+                    mediaMetadata = song.toMediaMetadata(),
                 )
             }
         }
@@ -621,6 +624,7 @@ private fun SearchResultRow(
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     statusText: String = "Info",
+    mediaMetadata: com.omnitune.app.models.MediaMetadata? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -728,40 +732,50 @@ private fun SearchResultRow(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
-                ) {
-                    if (onPlayNext != null) {
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_skip_next),
-                                    contentDescription = null,
-                                )
-                            },
-                            text = { Text("Play next") },
-                            onClick = {
-                                menuExpanded = false
-                                onPlayNext()
-                            },
-                        )
-                    }
-                    if (onAddToQueue != null) {
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_list),
-                                    contentDescription = null,
-                                )
-                            },
-                            text = { Text("Add to queue") },
-                            onClick = {
-                                menuExpanded = false
-                                onAddToQueue()
-                            },
-                        )
+                if (mediaMetadata != null) {
+                    TrackMenuProvider(
+                        showMenu = menuExpanded,
+                        onDismissMenu = { menuExpanded = false },
+                        mediaMetadata = mediaMetadata,
+                        onPlayNext = onPlayNext,
+                        onAddToQueue = onAddToQueue
+                    )
+                } else {
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                    ) {
+                        if (onPlayNext != null) {
+                            DropdownMenuItem(
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_skip_next),
+                                        contentDescription = null,
+                                    )
+                                },
+                                text = { Text("Play next") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onPlayNext()
+                                },
+                            )
+                        }
+                        if (onAddToQueue != null) {
+                            DropdownMenuItem(
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_list),
+                                        contentDescription = null,
+                                    )
+                                },
+                                text = { Text("Add to queue") },
+                                onClick = {
+                                    menuExpanded = false
+                                    onAddToQueue()
+                                },
+                            )
+                        }
                     }
                 }
             }
