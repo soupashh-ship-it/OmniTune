@@ -225,6 +225,16 @@ fun MiniPlayer(
             modifier = Modifier
                 .fillMaxSize()
                 .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                .clip(OmniShapes.Dock)
+                .omniPressScale(bodyInteraction)
+                .clickable(
+                    interactionSource = bodyInteraction,
+                    indication = androidx.compose.material3.ripple(
+                        bounded = true,
+                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
+                    ),
+                    onClick = onClick,
+                )
                 .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -232,16 +242,6 @@ fun MiniPlayer(
                 modifier = Modifier
                     .weight(1f)
                     .height(64.dp)
-                    .clip(OmniShapes.Large)
-                    .omniPressScale(bodyInteraction)
-                    .clickable(
-                        interactionSource = bodyInteraction,
-                        indication = androidx.compose.material3.ripple(
-                            bounded = true,
-                            color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
-                        ),
-                        onClick = onClick,
-                    )
                     .padding(horizontal = OmniSpacing.compact),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,13 +88,12 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniSoftBorder
-import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import timber.log.Timber
 
-private const val ARTWORK_REQUEST_SIZE = 1200
+private const val ARTWORK_REQUEST_SIZE = 800
 
 @Composable
 fun PlayerScreen(
@@ -229,22 +229,38 @@ private fun PlayerTopBar(
     }
 }
 
+private fun buildArtworkCandidates(videoId: String?, thumbnailUrl: String?): List<String> {
+    val candidates = mutableListOf<String>()
+    if (videoId != null && videoId.matches(Regex("^[a-zA-Z0-9_-]{11}$"))) {
+        candidates.add("https://i.ytimg.com/vi/$videoId/maxresdefault.jpg")
+        candidates.add("https://i.ytimg.com/vi/$videoId/sddefault.jpg")
+    }
+    if (thumbnailUrl != null) candidates.add(thumbnailUrl)
+    return candidates
+}
+
 @Composable
 private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
     val context = LocalContext.current
-    val thumbnailUrl = remember(mediaMetadata?.thumbnailUrl) {
-        mediaMetadata?.thumbnailUrl?.resize(1200, 1200)
+    val videoId = mediaMetadata?.id
+    val thumbnailUrl = mediaMetadata?.thumbnailUrl
+    val candidates = remember(videoId, thumbnailUrl) { buildArtworkCandidates(videoId, thumbnailUrl) }
+    var candidateIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(videoId, thumbnailUrl) {
+        candidateIndex = 0
     }
-    val imageModel = remember(thumbnailUrl) {
-        thumbnailUrl?.let {
+
+    val currentUrl = candidates.getOrNull(candidateIndex)
+    val imageRequest = remember(currentUrl, candidateIndex) {
+        currentUrl?.let { url ->
             ImageRequest.Builder(context)
-                .data(it)
+                .data(url)
                 .size(ARTWORK_REQUEST_SIZE, ARTWORK_REQUEST_SIZE)
-                .memoryCacheKey(it)
+                .memoryCacheKey("full-artwork:${mediaMetadata?.id}:$url")
                 .build()
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxWidth(0.86f)
@@ -259,60 +275,80 @@ private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
             .omniSoftBorder(
                 shape = OmniShapes.ArtworkLarge,
                 color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.48f),
-            )
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        OmniColors.OmniAccentPrimary.copy(alpha = 0.2f),
-                        OmniColors.OmniGlassStrong,
-                        OmniColors.OmniBackgroundElevated,
-                    )
-                )
             ),
         contentAlignment = Alignment.Center,
     ) {
-        AnimatedContent(
-            targetState = imageModel,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "player_artwork",
-        ) { model ->
-            if (model != null) {
-                SubcomposeAsyncImage(
-                    model = model,
-                    contentDescription = "Album Art",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                    error = {
-                        AsyncImage(
-                            model = mediaMetadata?.thumbnailUrl,
-                            contentDescription = "Album Art Fallback",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
+        // Background gradient
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.2f),
+                            OmniColors.OmniGlassStrong,
+                            OmniColors.OmniBackgroundElevated,
+                        )
+                    )
+                )
+        )
+
+        // Foreground artwork fills the 16:9 card
+        if (imageRequest != null) {
+            SubcomposeAsyncImage(
+                model = imageRequest,
+                contentDescription = "Album Art",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    OmniTuneLoader(
+                        modifier = Modifier.size(48.dp),
+                        color = OmniColors.ActivePlayback,
+                        size = 48.dp,
+                    )
+                },
+                error = {
+                    LaunchedEffect(candidateIndex) {
+                        if (candidateIndex < candidates.size - 1) {
+                            candidateIndex += 1
+                            Timber.tag("OmniTuneArtwork").w(
+                                "Full player artwork candidate %d/%d failed, trying next",
+                                candidateIndex + 1, candidates.size
+                            )
+                        }
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        OmniTuneLoader(
+                            modifier = Modifier.size(32.dp),
+                            color = OmniColors.ActivePlayback,
+                            size = 32.dp,
                         )
                     }
+                },
+            )
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_album),
+                    contentDescription = null,
+                    tint = OmniColors.TextTertiary,
+                    modifier = Modifier.size(58.dp),
                 )
-            } else {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_album),
-                        contentDescription = null,
-                        tint = OmniColors.TextTertiary,
-                        modifier = Modifier.size(58.dp),
-                    )
-                    Text(
-                        text = "No artwork",
-                        style = OmniTextStyles.caption,
-                        color = OmniColors.TextTertiary,
-                    )
-                }
+                Text(
+                    text = "No artwork",
+                    style = OmniTextStyles.caption,
+                    color = OmniColors.TextTertiary,
+                )
             }
         }
     }
 }
-
 @Composable
 private fun MetadataBlock(mediaMetadata: MediaMetadata?) {
     val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
@@ -497,7 +533,7 @@ private fun PlayerControlRow(
         PlayerIconButton(
             icon = R.drawable.ic_skip_previous,
             contentDescription = "Previous",
-            enabled = canSkipPrevious || repeatMode == REPEAT_MODE_ALL,
+            enabled = canSkipPrevious,
             size = 52.dp,
             iconSize = 28.dp,
             onClick = { playerConnection?.seekToPrevious() },
@@ -517,7 +553,7 @@ private fun PlayerControlRow(
         PlayerIconButton(
             icon = R.drawable.ic_skip_next,
             contentDescription = "Next",
-            enabled = canSkipNext || repeatMode == REPEAT_MODE_ALL,
+            enabled = canSkipNext,
             size = 52.dp,
             iconSize = 28.dp,
             onClick = { playerConnection?.seekToNext() },

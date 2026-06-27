@@ -330,7 +330,7 @@ private fun DownloadItemRow(
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
                 val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
                     targetValue = state.progress ?: 0f,
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000, easing = androidx.compose.animation.core.LinearEasing),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.LinearEasing),
                     label = "progressAnim"
                 )
                 LinearProgressIndicator(

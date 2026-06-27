@@ -60,6 +60,35 @@ fun Player.getQueueWindows(): List<Timeline.Window> {
     return queue.toList()
 }
 
+fun Player.getQueueIndices(): List<Int> {
+    val timeline = currentTimeline
+    if (timeline.isEmpty) return emptyList()
+
+    val queue = ArrayDeque<Int>()
+    val queueSize = timeline.windowCount
+    val currentMediaItemIndex: Int = currentMediaItemIndex
+    queue.add(currentMediaItemIndex)
+
+    var firstMediaItemIndex = currentMediaItemIndex
+    var lastMediaItemIndex = currentMediaItemIndex
+    val shuffleModeEnabled = shuffleModeEnabled
+    while ((firstMediaItemIndex != C.INDEX_UNSET || lastMediaItemIndex != C.INDEX_UNSET) && queue.size < queueSize) {
+        if (lastMediaItemIndex != C.INDEX_UNSET) {
+            lastMediaItemIndex = timeline.getNextWindowIndex(lastMediaItemIndex, REPEAT_MODE_OFF, shuffleModeEnabled)
+            if (lastMediaItemIndex != C.INDEX_UNSET) {
+                queue.add(lastMediaItemIndex)
+            }
+        }
+        if (firstMediaItemIndex != C.INDEX_UNSET && queue.size < queueSize) {
+            firstMediaItemIndex = timeline.getPreviousWindowIndex(firstMediaItemIndex, REPEAT_MODE_OFF, shuffleModeEnabled)
+            if (firstMediaItemIndex != C.INDEX_UNSET) {
+                queue.addFirst(firstMediaItemIndex)
+            }
+        }
+    }
+    return queue.toList()
+}
+
 fun Player.getCurrentQueueIndex(): Int {
     if (currentTimeline.isEmpty) return -1
     var index = 0

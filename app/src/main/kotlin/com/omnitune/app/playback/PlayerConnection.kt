@@ -19,7 +19,7 @@ import androidx.media3.common.Timeline
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.currentMetadata
 import com.omnitune.app.extensions.getCurrentQueueIndex
-import com.omnitune.app.extensions.getQueueWindows
+import com.omnitune.app.extensions.getQueueIndices
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.playback.MusicService.MusicBinder
 import com.omnitune.app.playback.queues.Queue
@@ -71,7 +71,7 @@ class PlayerConnection(
         }
 
     val queueTitle = MutableStateFlow<String?>(null)
-    val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
+    val queueIndices = MutableStateFlow<List<Int>>(emptyList())
     val currentMediaItemIndex = MutableStateFlow(-1)
     val currentWindowIndex = MutableStateFlow(-1)
 
@@ -109,7 +109,7 @@ class PlayerConnection(
         val currentMeta = player.currentMetadata ?: service.currentMediaMetadata.value
         mediaMetadata.value = currentMeta
         queueTitle.value = service.queueTitle
-        queueWindows.value = player.getQueueWindows()
+        queueIndices.value = player.getQueueIndices()
         currentWindowIndex.value = player.getCurrentQueueIndex()
         currentMediaItemIndex.value = player.currentMediaItemIndex
         shuffleModeEnabled.value = player.shuffleModeEnabled
@@ -226,7 +226,7 @@ class PlayerConnection(
         timeline: Timeline,
         reason: Int,
     ) {
-        queueWindows.value = player.getQueueWindows()
+        queueIndices.value = player.getQueueIndices()
         queueTitle.value = service.queueTitle
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
@@ -235,7 +235,7 @@ class PlayerConnection(
 
     override fun onShuffleModeEnabledChanged(enabled: Boolean) {
         shuffleModeEnabled.value = enabled
-        queueWindows.value = player.getQueueWindows()
+        queueIndices.value = player.getQueueIndices()
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
     }

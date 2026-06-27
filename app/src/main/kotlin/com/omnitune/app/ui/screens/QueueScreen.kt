@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -69,8 +70,11 @@ fun QueueScreen(
     val queueTitle by playerConnection?.queueTitle?.collectAsState() ?: remember { mutableStateOf(null) }
     val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsState() ?: remember { mutableStateOf(-1) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
-    val itemCount = playerConnection?.mediaItemCount ?: 0
-    val upcomingCount = max(itemCount - 1, 0)
+    val queueIndices by playerConnection?.queueIndices?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val itemCount = queueIndices.size
+    val currentIndexInQueue = queueIndices.indexOf(currentIndex).coerceAtLeast(0)
+    val upcomingIndices = queueIndices.drop(currentIndexInQueue + 1)
+    val upcomingCount = upcomingIndices.size
 
     Box(
         modifier = Modifier
@@ -121,7 +125,7 @@ fun QueueScreen(
                         )
                     }
 
-                    if (itemCount <= 1) {
+                    if (upcomingCount == 0) {
                         item(contentType = "emptyUpcoming") {
                             QueueEmptyState(
                                 text = "No upcoming items",
@@ -129,12 +133,12 @@ fun QueueScreen(
                             )
                         }
                     } else {
-                        itemsIndexed(
-                            items = (0 until itemCount).filter { it != currentIndex },
-                            key = { _, index -> queueItemKey(playerConnection, index) },
-                            contentType = { _, _ -> "queueItem" },
-                        ) { _, index ->
-                            val mediaItem = playerConnection.getMediaItemAt(index)
+                        items(
+                            items = upcomingIndices,
+                            key = { windowIndex -> queueItemKey(playerConnection, windowIndex) },
+                            contentType = { _ -> "queueItem" },
+                        ) { windowIndex ->
+                            val mediaItem = playerConnection.getMediaItemAt(windowIndex)
                             val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                             val title = meta?.title
                                 ?: mediaItem.mediaMetadata.title?.toString()
@@ -150,7 +154,7 @@ fun QueueScreen(
                                         dismissValue == SwipeToDismissBoxValue.EndToStart ||
                                         dismissValue == SwipeToDismissBoxValue.StartToEnd
                                     ) {
-                                        playerConnection.removeMediaItem(index)
+                                        playerConnection.removeMediaItem(windowIndex)
                                         true
                                     } else {
                                         false
@@ -190,7 +194,7 @@ fun QueueScreen(
                                         thumbnail = meta?.thumbnailUrl,
                                         isCurrent = false,
                                         onClick = {
-                                            playerConnection.seekTo(index, 0)
+                                            playerConnection.seekTo(windowIndex, 0)
                                             playerConnection.prepare()
                                         },
                                     )
@@ -496,10 +500,10 @@ private fun queueCountLabel(itemCount: Int, upcomingCount: Int): String {
 }
 
 private fun queueItemKey(
-    playerConnection: PlayerConnection,
+    playerConnection: PlayerConnection?,
     index: Int,
 ): String {
-    val mediaItem = playerConnection.getMediaItemAt(index)
+    val mediaItem = playerConnection?.getMediaItemAt(index) ?: return "unknown_$index"
     val mediaId = mediaItem.mediaId.takeIf { it.isNotBlank() }
     val title = mediaItem.mediaMetadata.title?.toString()
     return mediaId ?: "$index-${title.orEmpty()}"

@@ -1,0 +1,21 @@
+  Sessions Stack - have 1 sessions:
+    androidx.media3.session.id.OmniTune com.omnitune.app.debug/androidx.media3.session.id.OmniTune (userId=0)
+      ownerPid=23403, ownerUid=10671, userId=0
+      package=com.omnitune.app.debug
+      launchIntent=PendingIntent{93c8402: PendingIntentRecord{a8f00eb com.omnitune.app.debug startActivity (allowlist: 9a93efa:+30s0ms/0/NOTIFICATION_SERVICE/NotificationManagerService)}}
+      mediaButtonReceiver=null
+      active=true
+      flags=7
+      rating type=0
+      controllers: 6
+      state=PlaybackState {state=PLAYING(3), position=60944, buffered position=128401, speed=1.0, updated=917383426, actions=7340027, custom actions=[], active item id=9, error=null}
+      audioAttrs=AudioAttributes: usage=USAGE_MEDIA content=CONTENT_TYPE_MUSIC flags=0x800 tags= bundle=null
+      volumeType=LOCAL, controlType=ABSOLUTE, max=0, current=0, volumeControlId=null
+      metadata: size=12, description=The Spectre, Alan Walker, The Spectre
+      queueTitle=null, size=20
+Audio playback (lastly played comes first)
+  uid=10671 packages=com.omnitune.app.debug 
+mMediaButtionCustomizationEnabled:true
+Media session config:
+  media_button_receiver_fgs_allowlist_duration_ms: [cur: 10000, def: 10000]
+  media_session_calback_fgs_allowlist_duration_ms: [cur: 10000, def: 10000]

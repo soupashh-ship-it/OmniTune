@@ -64,7 +64,7 @@ class DownloadsViewModel @Inject constructor(
                 if (_uiState.value.downloads.any { it.state == Download.STATE_DOWNLOADING }) {
                     refreshDownloads()
                 }
-                kotlinx.coroutines.delay(1000)
+                kotlinx.coroutines.delay(300)
             }
         }
     }
@@ -112,8 +112,17 @@ class DownloadsViewModel @Inject constructor(
                     } else {
                         Timber.i("Diagnostics: Metadata fallback for non-DB-backed download: ${dl.request.id}")
                         val title = String(dl.request.data, Charsets.UTF_8).ifBlank { dl.request.id }
+                        val downloadMeta = com.omnitune.app.models.MediaMetadata(
+                            id = dl.request.id,
+                            title = title,
+                            artists = emptyList(),
+                            duration = 0,
+                        )
                         androidx.media3.common.MediaItem.Builder()
                             .setMediaId(dl.request.id)
+                            .setUri(dl.request.id)
+                            .setCustomCacheKey(dl.request.id)
+                            .setTag(downloadMeta)
                             .setMediaMetadata(
                                 androidx.media3.common.MediaMetadata.Builder()
                                     .setTitle(title)
