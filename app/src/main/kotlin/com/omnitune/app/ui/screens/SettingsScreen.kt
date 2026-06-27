@@ -51,6 +51,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.widget.Toast
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -447,44 +449,68 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         key = AutoSkipNextOnErrorKey,
         defaultValue = true,
     )
-    TogglePreferenceRow(
-        label = "Pause on device mute",
-        description = "Pause when the device is muted",
-        key = PauseOnDeviceMuteKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Pause on device mute",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 }
 
 @Composable
 private fun AppearanceSettings() {
-    val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
     SettingsCategoryLabel("Display")
-    TogglePreferenceRow(
-        label = "Pure black mode",
-        description = "Use true black for OLED screens",
-        key = PureBlackKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Pure black mode",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
-    TogglePreferenceRow(
-        label = "Disable blur effects",
-        description = "Reduce GPU work by disabling blur where supported",
-        key = DisableBlurKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Disable blur effects",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 
     SettingsCategoryLabel("Library layout")
-    EnumPreferenceRow(
-        label = "Grid item size",
-        description = "Current: ${gridItemSize.displayName()}",
-        options = GridItemSize.entries.toList(),
-        current = gridItemSize,
-        key = GridItemsSizeKey,
+    SettingsInfoBlock(
+        title = "Grid item size",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 }
 
 @Composable
-private fun StorageSettings() {
+private fun StorageSettings(
+    viewModel: SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+) {
+    val context = LocalContext.current
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+
+    if (showClearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheDialog = false },
+            title = { androidx.compose.material3.Text("Clear cache?", fontWeight = FontWeight.Bold) },
+            text = { androidx.compose.material3.Text("This clears stream cache, image cache, and temporary resolver cache. It does NOT delete completed downloads.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearAppCache(context)
+                    Toast.makeText(context, "Cache cleared", Toast.LENGTH_SHORT).show()
+                    showClearCacheDialog = false
+                }) {
+                    androidx.compose.material3.Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearCacheDialog = false }) {
+                    androidx.compose.material3.Text("Cancel")
+                }
+            },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary
+        )
+    }
+
     SettingsCategoryLabel("Cache")
     TogglePreferenceRow(
         label = "Smart cache trimmer",
@@ -503,11 +529,17 @@ private fun StorageSettings() {
         body = "Image cache: 128 MB max\nSong cache: 2 GB max",
         accent = OmniColors.OmniAccentMuted,
     )
+    SettingsActionRow(
+        iconRes = R.drawable.ic_settings,
+        label = "Clear cache",
+        description = "Free up space used by temporary files",
+        accent = OmniColors.Warning,
+        onClick = { showClearCacheDialog = true }
+    )
 }
 
 @Composable
 private fun LyricsSettings() {
-    val lyricsAnim by rememberEnumPreference(LyricsAnimationStyleKey, LyricsAnimationStyle.KARAOKE)
 
     SettingsCategoryLabel("Lyrics providers")
     TogglePreferenceRow(
@@ -536,43 +568,106 @@ private fun LyricsSettings() {
     )
 
     SettingsCategoryLabel("Animation")
-    EnumPreferenceRow(
-        label = "Lyrics animation",
-        description = "Current: ${lyricsAnim.displayName()}",
-        options = LyricsAnimationStyle.entries.toList(),
-        current = lyricsAnim,
-        key = LyricsAnimationStyleKey,
+    SettingsInfoBlock(
+        title = "Lyrics animation",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 }
 
 @Composable
-private fun ContentSettings() {
+private fun ContentSettings(
+    viewModel: SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+) {
+    val context = LocalContext.current
+    var showClearSearchHistoryDialog by remember { mutableStateOf(false) }
+    var showClearListenHistoryDialog by remember { mutableStateOf(false) }
+
+    if (showClearSearchHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearSearchHistoryDialog = false },
+            title = { androidx.compose.material3.Text("Clear search history?", fontWeight = FontWeight.Bold) },
+            text = { androidx.compose.material3.Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearSearchHistory()
+                    Toast.makeText(context, "Search history cleared", Toast.LENGTH_SHORT).show()
+                    showClearSearchHistoryDialog = false
+                }) {
+                    androidx.compose.material3.Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearSearchHistoryDialog = false }) {
+                    androidx.compose.material3.Text("Cancel")
+                }
+            },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary
+        )
+    }
+
+    if (showClearListenHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearListenHistoryDialog = false },
+            title = { androidx.compose.material3.Text("Clear listen history?", fontWeight = FontWeight.Bold) },
+            text = { androidx.compose.material3.Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearListenHistory()
+                    Toast.makeText(context, "Listen history cleared", Toast.LENGTH_SHORT).show()
+                    showClearListenHistoryDialog = false
+                }) {
+                    androidx.compose.material3.Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearListenHistoryDialog = false }) {
+                    androidx.compose.material3.Text("Cancel")
+                }
+            },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary
+        )
+    }
     SettingsCategoryLabel("Search and content")
-    TogglePreferenceRow(
-        label = "Hide explicit content",
-        description = "Filter out explicit songs",
-        key = HideExplicitKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Hide explicit content",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
-    TogglePreferenceRow(
-        label = "Hide video results",
-        description = "Only show audio tracks",
-        key = HideVideoKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Hide video results",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 
     SettingsCategoryLabel("History")
-    TogglePreferenceRow(
-        label = "Pause search history",
-        description = "Stop saving search history",
-        key = PauseSearchHistoryKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Pause search history",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
-    TogglePreferenceRow(
-        label = "Pause listen history",
-        description = "Stop saving listening history",
-        key = PauseListenHistoryKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Pause listen history",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
+    )
+    SettingsActionRow(
+        iconRes = R.drawable.ic_history,
+        label = "Clear search history",
+        description = "Remove all past searches",
+        accent = OmniColors.Warning,
+        onClick = { showClearSearchHistoryDialog = true }
+    )
+    SettingsActionRow(
+        iconRes = R.drawable.ic_history,
+        label = "Clear listen history",
+        description = "Remove all past listens",
+        accent = OmniColors.Warning,
+        onClick = { showClearListenHistoryDialog = true }
     )
 }
 
@@ -755,30 +850,18 @@ private fun MediaControlsHelp() {
 
 @Composable
 private fun ScrobblingSettings() {
-    val lastfmEnabled by rememberPreference(EnableLastFMScrobblingKey, false)
-
     SettingsCategoryLabel("Last.fm")
-    TogglePreferenceRow(
-        label = "Enable scrobbling",
-        description = "Scrobble plays to Last.fm",
-        key = EnableLastFMScrobblingKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Enable scrobbling",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
-    if (lastfmEnabled) {
-        TogglePreferenceRow(
-            label = "Now playing",
-            description = "Share now playing to Last.fm",
-            key = LastFMUseNowPlaying,
-            defaultValue = false,
-        )
-    }
 
     SettingsCategoryLabel("ListenBrainz")
-    TogglePreferenceRow(
-        label = "Enable scrobbling",
-        description = "Scrobble plays to ListenBrainz",
-        key = ListenBrainzEnabledKey,
-        defaultValue = false,
+    SettingsInfoBlock(
+        title = "Enable scrobbling",
+        body = "Not yet implemented",
+        accent = OmniColors.OmniAccentMuted,
     )
 }
 

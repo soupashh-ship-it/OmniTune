@@ -24,6 +24,10 @@ Status: post-`v0.7.3` baseline truth audit.
    - Equalizer, pitch, and tempo controls need device QA or honest experimental labels.
    - Android 11+ App-specific storage means downloaded tracks will not survive an app uninstall/reinstall.
 
+5. **Settings Limitations**
+   - Several settings (e.g., Pure Black mode, Blur toggles, grid layout toggles, explicit/video hiding, and scrobbling) are currently disabled and shown as "Not yet implemented" to maintain UI honesty.
+   - History pauses are not supported yet, though users can manually clear search and listen history.
+
 ## Recently Fixed
 
 - MiniPlayer tap targets and honest disabled previous/next controls.

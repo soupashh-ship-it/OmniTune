@@ -93,24 +93,10 @@ object DiagnosticReportExporter {
         "Recent logs unavailable: ${it.javaClass.simpleName}"
     }
 
-    private fun sanitize(text: String): String {
-        val sensitiveKeys = listOf(
-            "authorization",
-            "cookie",
-            "token",
-            "potoken",
-            "visitor",
-            "session",
-            "password",
-            "keystore",
-            "key_password",
-        )
-        return text
-            .lineSequence()
-            .filterNot { line ->
-                sensitiveKeys.any { key -> line.contains(key, ignoreCase = true) }
-            }
-            .take(200)
-            .joinToString(separator = "\n")
+    @androidx.annotation.VisibleForTesting
+    internal fun sanitize(text: String): String {
+        return text.lineSequence().take(200).joinToString("\n")
+            .replace("""https?://[^\s"']+\?[^\s"']+""".toRegex(RegexOption.IGNORE_CASE), "<REDACTED_URL>")
+            .replace("""(?i)(authorization|cookie|potoken|token|session|password|keystore|key_password|visitor)[_a-z]*[:=]\s*([^\s,;"']+)""".toRegex(), "$1: <REDACTED>")
     }
 }
