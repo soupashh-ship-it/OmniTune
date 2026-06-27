@@ -1279,6 +1279,15 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(event: Event)
 
+    @Query("DELETE FROM event WHERE songId = :songId")
+    fun deleteEventBySongId(songId: String)
+
+    @Transaction
+    fun insertRecentEvent(songId: String, playTime: Long) {
+        deleteEventBySongId(songId)
+        insert(Event(songId = songId, timestamp = LocalDateTime.now(), playTime = playTime))
+    }
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)
 

@@ -150,6 +150,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // OMNITUNE: Playback tracking
     private var lastRecordedMediaId: String? = null
+    private var lastRecordedRecentMediaId: String? = null
     private var playbackTrackerJob: Job? = null
 
     private val _currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
@@ -1059,6 +1060,25 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         logMediaControlState("is-playing-$isPlaying")
         postMediaNotificationFallback("is-playing-$isPlaying", force = true)
+
+        if (isPlaying) {
+            val mediaItem = player.currentMediaItem
+            val mediaId = mediaItem?.mediaId
+            if (mediaId != null && mediaId != lastRecordedRecentMediaId) {
+                lastRecordedRecentMediaId = mediaId
+                val meta = mediaItem.metadata
+                if (meta != null) {
+                    val durationMs = if (player.duration == androidx.media3.common.C.TIME_UNSET) 0L else player.duration
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        database.insert(meta)
+                        database.insertRecentEvent(mediaId, durationMs)
+                        timber.log.Timber.tag("OmniTuneRecent").d("Recorded recent play: ${meta.title}")
+                    }
+                } else {
+                    timber.log.Timber.tag("OmniTuneRecent").w("Metadata is null for $mediaId, skipping recent play record")
+                }
+            }
+        }
     }
 
     override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
