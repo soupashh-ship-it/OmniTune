@@ -1,4 +1,4 @@
-# OmniTune v0.8.0 Playlist & Audio RC
+# OmniTune v0.7.6
 
 ### 🚀 Features
 * **Global Track Options Menu**: "Like", "Play next", "Add to queue", and "Add to playlist" actions are now available natively on every song row throughout the app (Search, Albums, Artists, History, and Liked Songs).
