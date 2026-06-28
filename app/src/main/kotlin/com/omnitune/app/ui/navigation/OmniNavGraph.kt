@@ -1,0 +1,271 @@
+package com.omnitune.app.ui.navigation
+
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.media3.exoplayer.offline.Download
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.omnitune.app.LocalPlayerConnection
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.queues.ListQueue
+import com.omnitune.app.ui.player.MiniPlayer
+import com.omnitune.app.ui.player.PlayerScreen
+import com.omnitune.app.ui.screens.AlbumScreen
+import com.omnitune.app.ui.screens.ArtistScreen
+import com.omnitune.app.ui.screens.DownloadsScreen
+import com.omnitune.app.ui.screens.EqualizerScreen
+import com.omnitune.app.ui.screens.HistoryScreen
+import com.omnitune.app.ui.screens.HomeScreen
+import com.omnitune.app.ui.screens.LibraryAlbumsScreen
+import com.omnitune.app.ui.screens.LibraryArtistsScreen
+import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
+import com.omnitune.app.ui.screens.LibraryScreen
+import com.omnitune.app.ui.screens.LikedSongsScreen
+import com.omnitune.app.ui.screens.PlaylistDetailScreen
+import com.omnitune.app.ui.screens.QueueScreen
+import com.omnitune.app.ui.screens.RecentlyPlayedScreen
+import com.omnitune.app.ui.screens.Screens
+import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_DOWNLOADS
+import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
+import com.omnitune.app.ui.screens.search.SearchScreen
+import com.omnitune.app.ui.screens.settings.SettingsScreen
+import com.omnitune.app.ui.screens.StatsScreen
+import com.omnitune.app.ui.shell.GlassBottomDock
+import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.innertube.models.SongItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+
+
+private fun playSongFromSearch(
+    context: android.content.Context,
+    songs: List<SongItem>,
+    index: Int,
+    playerConnection: PlayerConnection?,
+    onPlayerNotReady: (List<SongItem>, Int) -> Unit,
+) {
+    val songItem = songs[index]
+    Timber.tag("OmniTunePlaybackTrace").i("Search play requested: ${songItem.title} (${songItem.id})")
+    val connection = playerConnection ?: run {
+        Timber.tag("OmniTunePlaybackTrace").w("Search play queued: player connection not ready")
+        onPlayerNotReady(songs, index)
+        Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val mediaItems = songs.map { it.toMediaItem() }
+    connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
+}
+
+@Composable
+fun OmniTuneMainScreen(database: MusicDatabase) {
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val topLevelScreens = Screens.MainScreens.map { it.route }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val localPlayerConnection = LocalPlayerConnection.current
+    val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
+        .collectAsState(initial = null)
+    var pendingSearchQueue by remember { mutableStateOf<Pair<List<SongItem>, Int>?>(null) }
+    val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
+
+    LaunchedEffect(localPlayerConnection, pendingSearchQueue) {
+        val queueData = pendingSearchQueue
+        val connection = localPlayerConnection
+        if (queueData != null && connection != null) {
+            val (songs, index) = queueData
+            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
+            pendingSearchQueue = null
+            val mediaItems = songs.map { it.toMediaItem() }
+            connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
+        }
+    }
+
+    val showMiniPlayer = currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
+    val shellBottomPadding = when {
+        currentRoute == "player" || currentRoute == "queue" -> 0.dp
+        showMiniPlayer && showBottomBar -> 196.dp
+        showBottomBar -> 112.dp
+        showMiniPlayer -> 104.dp
+        else -> 0.dp
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = Screens.Home.route,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = shellBottomPadding),
+            enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
+            exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
+            popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
+            popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) }
+        ) {
+            composable(Screens.Home.route) {
+                HomeScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
+                    onResumePlayback = { navController.navigate("player") }, onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable(Screens.Stats.route) { StatsScreen() }
+            composable(Screens.History.route) { HistoryScreen() }
+            composable(Screens.Library.route) {
+                LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
+                    onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
+                    onNavigateToRecentlyPlayed = { navController.navigate("recently_played") },
+                    onNavigateToArtists = { navController.navigate("library_artists") },
+                    onNavigateToAlbums = { navController.navigate("library_albums") },
+                    onNavigateToPlaylists = { navController.navigate("library_playlists") })
+            }
+            composable("library_artists") {
+                LibraryArtistsScreen(onBack = { navController.popBackStack() }, onNavigateToArtist = { navController.navigate("artist/$it") })
+            }
+            composable("library_albums") {
+                LibraryAlbumsScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") })
+            }
+            composable("library_playlists") {
+                LibraryPlaylistsScreen(onBack = { navController.popBackStack() }, onNavigateToPlaylist = { navController.navigate("playlist/$it") })
+            }
+            composable("playlist/{playlistId}") {
+                PlaylistDetailScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable("liked_songs") {
+                LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable("recently_played") {
+                RecentlyPlayedScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable(Screens.Search.route) {
+                SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
+                    onNavigateToArtist = { navController.navigate("artist/$it") },
+                    onPlaySong = { songs, index ->
+                        playSongFromSearch(
+                            context = context,
+                            songs = songs,
+                            index = index,
+                            playerConnection = localPlayerConnection,
+                            onPlayerNotReady = { s, i -> pendingSearchQueue = Pair(s, i) }
+                        )
+                    },
+                    onPlayNext = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.playNext(song.toMediaItem())
+                            Toast.makeText(context, "Added to play next", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onAddToQueue = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.addToQueue(song.toMediaItem())
+                            Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    })
+            }
+            composable("album/{albumId}") {
+                AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
+                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            }
+            composable("artist/{artistId}") {
+                ArtistScreen(artistId = it.arguments?.getString("artistId") ?: "", onBack = { navController.popBackStack() },
+                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
+                    onNavigateToAlbum = { navController.navigate("album/$it") })
+            }
+            composable("player") { PlayerScreen(playerConnection = localPlayerConnection, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
+            composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
+            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) }
+            composable(ROUTE_DOWNLOADS) {
+                DownloadsScreen(
+                    onBack = { navController.popBackStack() },
+                    onPlayDownload = { download ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            if (download.state != Download.STATE_COMPLETED) {
+                                Toast.makeText(context, "Download is not ready to play.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                coroutineScope.launch {
+                                    val mediaItem = withContext(Dispatchers.IO) {
+                                        database.getSongById(download.request.id)?.toMediaItem()
+                                            ?: MediaMetadata(
+                                                id = download.request.id,
+                                                title = String(download.request.data, Charsets.UTF_8)
+                                                    .ifBlank { download.request.id },
+                                                artists = emptyList(),
+                                                duration = -1,
+                                            ).toMediaItem()
+                                    }
+                                    connection.playQueue(ListQueue(title = "Downloads", items = listOf(mediaItem)))
+                                    navController.navigate("player")
+                                }
+                            }
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+            }
+            composable(ROUTE_EQUALIZER) {
+                EqualizerScreen(
+                    onBack = { navController.popBackStack() },
+                    onApplyBands = { bands ->
+                        localPlayerConnection?.applyEqualizerBands(bands)
+                    }
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
+                .padding(bottom = OmniSpacing.compact),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        ) {
+            if (showMiniPlayer) {
+                MiniPlayer(
+                    pureBlack = false,
+                    playerConnection = localPlayerConnection,
+                    onClick = { if (localPlayerConnection != null) navController.navigate("player") }
+                )
+            }
+            if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } })
+        }
+    }
+}
