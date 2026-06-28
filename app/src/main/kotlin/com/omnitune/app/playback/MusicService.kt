@@ -93,6 +93,9 @@ import timber.log.Timber
 import javax.inject.Inject
 import com.omnitune.app.playback.EqualizerBand
 
+import com.omnitune.app.utils.dataStore
+import kotlinx.coroutines.flow.first
+
 @AndroidEntryPoint
 class MusicService : MediaLibraryService(), Player.Listener {
 
@@ -105,6 +108,20 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastNetworkTransport: Int = -1
+
+    private suspend fun getPlaybackQualityMode(): com.omnitune.app.models.PlaybackQualityMode {
+        return try {
+            val prefs = this.dataStore.data.first()
+            val modeName = prefs[com.omnitune.app.constants.PlaybackQualityModeKey]
+            if (modeName != null) {
+                com.omnitune.app.models.PlaybackQualityMode.valueOf(modeName)
+            } else {
+                com.omnitune.app.models.PlaybackQualityMode.AUTO
+            }
+        } catch (e: Exception) {
+            com.omnitune.app.models.PlaybackQualityMode.AUTO
+        }
+    }
 
     inner class MusicBinder : Binder() {
         val service: MusicService get() = this@MusicService
@@ -239,7 +256,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                             if (StreamUrlResolver.isYouTubeVideoId(Uri.parse(mediaId))) {
                                 val originalItem = currentItem.buildUpon().setUri(mediaId).build()
                                 val resolved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil)
+                                    StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
                                 }
                                 if (resolved != null) {
                                     player.replaceMediaItem(currentIndex, resolved)
@@ -614,7 +631,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val currentItem = initialStatus.items[requestedIndex]
             val resolvedCurrent = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
-                    StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil)
+                    StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
                 } else {
                     currentItem
                 }
@@ -637,6 +654,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     initialStatus.items,
                     streamExtractor,
                     downloadUtil,
+                    getPlaybackQualityMode(),
                     priorityIndex = requestedIndex
                 )
             }
@@ -677,7 +695,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     if (StreamUrlResolver.isYouTubeVideoId(item1.localConfiguration?.uri)) {
-                        val resolved = StreamUrlResolver.resolveMediaItem(item1, streamExtractor, downloadUtil)
+                        val resolved = StreamUrlResolver.resolveMediaItem(item1, streamExtractor, downloadUtil, getPlaybackQualityMode())
                         if (resolved != null) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 if (StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(nextIndex1).localConfiguration?.uri)) {
@@ -758,7 +776,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             if (radioItems.isNotEmpty()) {
                 // Resolve YouTube video IDs to playable stream URLs before adding to player
                 val resolvedRadioItems = withContext(Dispatchers.IO) {
-                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor, downloadUtil)
+                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor, downloadUtil, getPlaybackQualityMode())
                 }
                 if (resolvedRadioItems.isNotEmpty()) {
                     val itemCount = player.mediaItemCount
@@ -779,7 +797,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun playNext(items: List<MediaItem>) {
         scope.launch {
             val resolvedItems = withContext(Dispatchers.IO) {
-                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
+                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil, getPlaybackQualityMode())
             }
             val insertIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
             player.addMediaItems(
@@ -794,7 +812,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun addToQueue(items: List<MediaItem>) {
         scope.launch {
             val resolvedItems = withContext(Dispatchers.IO) {
-                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil)
+                StreamUrlResolver.resolveMediaItems(items, streamExtractor, downloadUtil, getPlaybackQualityMode())
             }
             player.addMediaItems(resolvedItems)
             Timber.tag("OmniTuneQueue").i("Add to Queue: added ${resolvedItems.size} items, new queue size: ${player.mediaItemCount}")
@@ -1017,7 +1035,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     // Start from the original item, not the resolved one, so the resolver sees the yt ID
                     val originalItem = currentMediaItem.buildUpon().setUri(mediaId).build()
                     val resolved = withContext(Dispatchers.IO) {
-                        StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil)
+                        StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
                     }
                     if (resolved != null) {
                         val pos = player.currentPosition

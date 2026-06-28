@@ -73,6 +73,8 @@ import com.omnitune.app.R
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
 import com.omnitune.app.constants.AudioQuality
 import com.omnitune.app.constants.AudioQualityKey
+import com.omnitune.app.constants.PlaybackQualityModeKey
+import com.omnitune.app.models.PlaybackQualityMode
 import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import com.omnitune.app.constants.DisableBlurKey
 import com.omnitune.app.constants.EnableBetterLyricsKey
@@ -409,15 +411,25 @@ private fun SettingsSectionCard(
 
 @Composable
 private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
-    val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
+    val playbackQualityMode by rememberEnumPreference(PlaybackQualityModeKey, PlaybackQualityMode.AUTO)
 
     SettingsCategoryLabel("Audio quality")
     EnumPreferenceRow(
         label = "Stream quality",
-        description = "Current: ${audioQuality.displayName()}",
-        options = AudioQuality.entries.toList(),
-        current = audioQuality,
-        key = AudioQualityKey,
+        description = when (playbackQualityMode) {
+            PlaybackQualityMode.AUTO -> "Let OmniTune choose the best available quality."
+            PlaybackQualityMode.DATA_SAVER -> "Prefer lower data usage when possible."
+            PlaybackQualityMode.BALANCED -> "Prefer stable playback and normal quality."
+            PlaybackQualityMode.HIGH -> "Prefer higher quality streams when available."
+        },
+        options = PlaybackQualityMode.entries.toList(),
+        current = playbackQualityMode,
+        key = PlaybackQualityModeKey,
+    )
+    SettingsInfoBlock(
+        title = "Applies when multiple stream qualities are available.",
+        body = "Changes apply from the next song.",
+        accent = OmniColors.OmniAccentMuted,
     )
 
     SettingsCategoryLabel("Playback behavior")

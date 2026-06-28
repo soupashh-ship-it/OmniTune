@@ -31,6 +31,7 @@ Status: post-`v0.7.3` baseline truth audit.
 
 - Global track options menu (Like, Play next, Add to queue, Add to playlist) implemented across all screens.
 - Playlist full lifecycle (create, rename, delete, duplicate prevention) implemented.
+- Native PlaybackQualityMode implementation (Auto, Data Saver, Balanced, High) with honest real-time stream resolution mappings.
 - MiniPlayer tap targets and honest disabled previous/next controls.
 - Shuffle correctness and QueueScreen order.
 - Offline playback reliability and fallback metadata fixes.

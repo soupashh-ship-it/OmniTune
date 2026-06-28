@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.LruCache
 import androidx.media3.common.MediaItem
 import com.omnitune.app.data.StreamExtractor
+import com.omnitune.app.models.PlaybackQualityMode
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.models.StreamQuality
 import kotlinx.coroutines.coroutineScope
@@ -20,6 +21,16 @@ import timber.log.Timber
  * so ExoPlayer can play it.
  */
 object StreamUrlResolver {
+    @androidx.annotation.VisibleForTesting
+    internal fun mapQuality(qualityMode: PlaybackQualityMode): StreamQuality {
+        return when (qualityMode) {
+            PlaybackQualityMode.DATA_SAVER -> StreamQuality.LOW
+            PlaybackQualityMode.BALANCED -> StreamQuality.MEDIUM
+            PlaybackQualityMode.HIGH -> StreamQuality.BEST
+            PlaybackQualityMode.AUTO -> StreamQuality.HIGH
+        }
+    }
+
 
     data class CachedStream(val streamResult: StreamResult, val fetchedAtMs: Long)
 
@@ -53,7 +64,8 @@ object StreamUrlResolver {
     suspend fun resolveMediaItem(
         mediaItem: MediaItem,
         streamExtractor: StreamExtractor,
-        downloadUtil: DownloadUtil? = null
+        downloadUtil: DownloadUtil? = null,
+        qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO
     ): MediaItem? {
         val videoId = mediaItem.localConfiguration?.uri?.toString()?.trim() ?: return null
         if (!isYouTubeVideoId(mediaItem.localConfiguration?.uri)) return null
@@ -94,8 +106,9 @@ object StreamUrlResolver {
 
         Timber.d("StreamUrlResolver: resolving $videoId")
         StartupTracker.logResolverStart()
+        val streamQuality = mapQuality(qualityMode)
         val streamResult = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
-            streamExtractor.extract(videoId, StreamQuality.HIGH)
+            streamExtractor.extract(videoId, streamQuality)
         }
         StartupTracker.logResolverDone()
         
@@ -122,6 +135,7 @@ object StreamUrlResolver {
         items: List<MediaItem>,
         streamExtractor: StreamExtractor,
         downloadUtil: DownloadUtil? = null,
+        qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
         priorityIndex: Int? = null
     ): List<MediaItem> = coroutineScope {
         val resolved = MutableList<MediaItem?>(items.size) { null }
@@ -129,7 +143,7 @@ object StreamUrlResolver {
         if (priorityIndex != null && priorityIndex in items.indices) {
             val item = items[priorityIndex]
             if (isYouTubeVideoId(item.localConfiguration?.uri)) {
-                resolved[priorityIndex] = resolveMediaItem(item, streamExtractor, downloadUtil) ?: item
+                resolved[priorityIndex] = resolveMediaItem(item, streamExtractor, downloadUtil, qualityMode) ?: item
             } else {
                 resolved[priorityIndex] = item
             }
