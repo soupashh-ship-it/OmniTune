@@ -372,44 +372,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
 
     private fun initializePlayer() {
-        val trackSelector = DefaultTrackSelector(this).apply {
-            setParameters(buildUponParameters().apply {
-                setMaxVideoSizeSd()
-                setPreferredAudioLanguages("en")
-            })
-        }
-
-        val dataSourceFactory = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"))
-        val cacheDataSourceFactory = CacheDataSource.Factory()
-            .setCache(downloadUtil.downloadCache)
-            .setUpstreamDataSourceFactory(dataSourceFactory)
-            .setCacheWriteDataSinkFactory(null)
-
-        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000, // minBufferMs
-                50000, // maxBufferMs
-                1000,  // bufferForPlaybackMs (lowered from default 2500ms for faster startup)
-                1500   // bufferForPlaybackAfterRebufferMs
-            )
-            .build()
-
-        player = ExoPlayer.Builder(this)
-            .setWakeMode(C.WAKE_MODE_NETWORK)
-            .setTrackSelector(trackSelector)
-            .setLoadControl(loadControl)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(cacheDataSourceFactory))
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .setUsage(C.USAGE_MEDIA)
-                    .build(),
-                true
-            )
-            .setHandleAudioBecomingNoisy(true)
-            .setSeekBackIncrementMs(5_000L)
-            .setSeekForwardIncrementMs(10_000L)
-            .build()
+        player = PlayerFactory.createPlayer(this, okHttpClient, downloadUtil)
             .also { exoPlayer ->
                 exoPlayer.setOffloadEnabled(true)
                 exoPlayer.playWhenReady = false
@@ -429,23 +392,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             audioNormalizationEnabled = audioNormalizationEnabled,
             maxSafeGainFactor = 3.16f,
             overlapPlayerFactory = {
-                val overlapDataSourceFactory = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"))
-                val overlapCacheDataSourceFactory = CacheDataSource.Factory()
-                    .setCache(downloadUtil.downloadCache)
-                    .setUpstreamDataSourceFactory(overlapDataSourceFactory)
-                    .setCacheWriteDataSinkFactory(null)
-                    
-                ExoPlayer.Builder(this)
-                    .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(overlapCacheDataSourceFactory))
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                            .setUsage(C.USAGE_MEDIA)
-                            .build(),
-                        true
-                    )
-                    .setHandleAudioBecomingNoisy(true)
-                    .build()
+                PlayerFactory.createOverlapPlayer(this, okHttpClient, downloadUtil)
             }
         )
         crossfadeAudio?.start(scope)
