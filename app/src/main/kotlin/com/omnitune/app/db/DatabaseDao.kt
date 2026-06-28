@@ -7,6 +7,8 @@
 
 package com.omnitune.app.db
 
+import com.omnitune.app.db.dao.*
+
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -72,15 +74,9 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 @Dao
-interface DatabaseDao {
-    @Query("SELECT * FROM queue ORDER BY id DESC LIMIT 1")
-    suspend fun getQueue(): com.omnitune.app.db.entities.QueueEntity?
+interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventDao {
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun saveQueue(queue: com.omnitune.app.db.entities.QueueEntity)
 
-    @Query("DELETE FROM queue")
-    suspend fun clearQueue()
 
     @Transaction
     @Query("SELECT * FROM song WHERE inLibrary IS NOT NULL ORDER BY rowId")
@@ -691,13 +687,7 @@ interface DatabaseDao {
     @Query("SELECT * FROM set_video_id WHERE videoId = :videoId")
     suspend fun getSetVideoId(videoId: String): SetVideoIdEntity?
 
-    @Transaction
-    @Query("SELECT * FROM format WHERE id = :id")
-    fun format(id: String?): Flow<FormatEntity?>
 
-    @Transaction
-    @Query("SELECT * FROM lyrics WHERE id = :id")
-    fun lyrics(id: String?): Flow<LyricsEntity?>
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1150,25 +1140,10 @@ interface DatabaseDao {
         previewSize: Int = Int.MAX_VALUE,
     ): Flow<List<Playlist>>
 
-    @Transaction
-    @Query("SELECT * FROM event ORDER BY rowId DESC")
-    fun events(): Flow<List<EventWithSong>>
 
-    @Transaction
-    @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
-    fun firstEvent(): Flow<EventWithSong?>
 
-    @Transaction
-    @Query("DELETE FROM event")
-    fun clearListenHistory()
 
-    @Transaction
-    @Query("SELECT * FROM search_history WHERE `query` LIKE :query || '%' ORDER BY id DESC")
-    fun searchHistory(query: String = ""): Flow<List<SearchHistory>>
 
-    @Transaction
-    @Query("DELETE FROM search_history")
-    fun clearSearchHistory()
 
     @Query("UPDATE song SET totalPlayTime = totalPlayTime + :playTime WHERE id = :songId")
     fun incrementTotalPlayTime(songId: String, playTime: Long)
@@ -1278,20 +1253,9 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(setVideoIdEntity: SetVideoIdEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(searchHistory: SearchHistory)
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insert(event: Event)
 
-    @Query("DELETE FROM event WHERE songId = :songId")
-    fun deleteEventBySongId(songId: String)
 
-    @Transaction
-    fun insertRecentEvent(songId: String, playTime: Long) {
-        deleteEventBySongId(songId)
-        insert(Event(songId = songId, timestamp = LocalDateTime.now(), playTime = playTime))
-    }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)
@@ -1526,11 +1490,7 @@ interface DatabaseDao {
     @Upsert
     fun upsert(map: SongAlbumMap)
 
-    @Upsert
-    fun upsert(lyrics: LyricsEntity)
 
-    @Upsert
-    fun upsert(format: FormatEntity)
 
     @Upsert
     fun upsert(song: SongEntity)
@@ -1571,14 +1531,8 @@ interface DatabaseDao {
     @Query("DELETE FROM playlist WHERE browseId = :browseId")
     fun deletePlaylistById(browseId: String)
 
-    @Delete
-    fun delete(lyrics: LyricsEntity)
 
-    @Delete
-    fun delete(searchHistory: SearchHistory)
 
-    @Delete
-    fun delete(event: Event)
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")
