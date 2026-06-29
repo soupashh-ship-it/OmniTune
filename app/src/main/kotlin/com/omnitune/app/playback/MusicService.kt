@@ -115,7 +115,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val playbackFadeFactor = MutableStateFlow(1f)
     private val crossfadeDurationMs = MutableStateFlow(0)
     private val audioNormalizationEnabled = MutableStateFlow(true)
-    private var crossfadeAudio: CrossfadeAudio? = null
+    private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
     private val equalizerController by lazy { EqualizerController(this) }
 
@@ -287,20 +287,18 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         sessionCallback.onPlayerReady(player)
 
-        crossfadeAudio = CrossfadeAudio(
+        crossfadePlaybackCoordinator = CrossfadePlaybackCoordinator(
+            context = this,
             player = player,
             database = database,
+            okHttpClient = okHttpClient,
+            downloadUtil = downloadUtil,
             crossfadeDurationMs = crossfadeDurationMs,
             playbackFadeFactor = playbackFadeFactor,
             playerVolume = _playerVolume,
             audioFocusVolumeFactor = audioFocusVolumeFactor,
             audioNormalizationEnabled = audioNormalizationEnabled,
-            maxSafeGainFactor = 3.16f,
-            overlapPlayerFactory = {
-                PlayerFactory.createOverlapPlayer(this, okHttpClient, downloadUtil)
-            }
-        )
-        crossfadeAudio?.start(scope)
+        ).also { it.start(scope) }
 
         sessionManager = SessionManager(this, player, sessionCallback)
 
@@ -604,8 +602,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onDestroy() {
         Timber.tag("MusicService").i("MusicService destroyed")
         try {
-            crossfadeAudio?.release()
-            crossfadeAudio = null
+            crossfadePlaybackCoordinator?.release()
+            crossfadePlaybackCoordinator = null
         } catch (_: Exception) {}
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
@@ -630,7 +628,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
         StartupTracker.logState(state)
-        crossfadeAudio?.onPlaybackStateChanged(state)
+        crossfadePlaybackCoordinator?.onPlaybackStateChanged(state)
         updateNotification()
         logMediaControlState("state-$state")
         postMediaNotificationFallback("state-$state")
@@ -678,7 +676,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         playbackRecoveryPolicy.resetRetry(mediaItem?.mediaId ?: "")
-        crossfadeAudio?.onMediaItemTransition(mediaItem, reason)
+        crossfadePlaybackCoordinator?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
         _currentMediaMetadata.value = meta
         updateNotification()
