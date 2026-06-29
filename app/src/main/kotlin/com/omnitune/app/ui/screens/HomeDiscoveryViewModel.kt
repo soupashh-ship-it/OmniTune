@@ -5,7 +5,6 @@
 
 package com.omnitune.app.ui.screens
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
@@ -18,15 +17,12 @@ import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.ui.utils.resize
-import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.SongItem
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +57,8 @@ private val homeFallbackSearches = listOf(
     "acoustic covers",
 )
 
+private const val HOME_THUMBNAIL_WORKERS = 6
+
 private data class HomeSignalBundle(
     val events: List<EventWithSong>,
     val quickPickSongs: List<Song>,
@@ -77,7 +75,6 @@ private data class HomeThumbnailPreview(
 @UnstableApi
 @HiltViewModel
 class HomeDiscoveryViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val downloadUtil: DownloadUtil,
 ) : ViewModel() {
@@ -132,6 +129,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         downloadUtil.downloadManager.addListener(downloadListener)
         refreshDownloads()
         startThumbnailHydrationWorker()
+        prewarmCuratedThumbnails()
     }
 
     override fun onCleared() {
@@ -263,20 +261,19 @@ class HomeDiscoveryViewModel @Inject constructor(
 
     private fun startThumbnailHydrationWorker() {
         viewModelScope.launch {
-            for (request in hydrationRequests) {
-                if (thumbnailPreviews.value[request.id]?.state != HomeHydrationState.Loading) continue
-                val preview = loadThumbnailPreview(request)
-                thumbnailPreviews.update { current -> current + (request.id to preview) }
-                delay(180)
+            repeat(HOME_THUMBNAIL_WORKERS) {
+                launch {
+                    for (request in hydrationRequests) {
+                        if (thumbnailPreviews.value[request.id]?.state != HomeHydrationState.Loading) continue
+                        val preview = loadThumbnailPreview(request)
+                        thumbnailPreviews.update { current -> current + (request.id to preview) }
+                    }
+                }
             }
         }
     }
 
     private suspend fun loadThumbnailPreview(request: HomeThumbnailRequest): HomeThumbnailPreview = withContext(Dispatchers.IO) {
-        if (!isInternetAvailable(context)) {
-            return@withContext HomeThumbnailPreview(state = HomeHydrationState.Failed)
-        }
-
         runCatching {
             YouTube.search(request.query, YouTube.SearchFilter.FILTER_SONG)
                 .getOrThrow()
@@ -297,6 +294,30 @@ class HomeDiscoveryViewModel @Inject constructor(
                 HomeThumbnailPreview(state = HomeHydrationState.Failed)
             },
         )
+    }
+
+    private fun prewarmCuratedThumbnails() {
+        viewModelScope.launch {
+            val topShelfCards = HomeDefaultCatalog.shelves
+                .take(3)
+                .flatMap { it.items.take(4) }
+                .mapNotNull { item ->
+                    item.query?.let { query -> HomeThumbnailRequest(item.id, query, collage = true) }
+                }
+            val requests =
+                HomeDefaultCatalog.heroItems.take(6).mapNotNull { item ->
+                    item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
+                } +
+                    HomeDefaultCatalog.quickPicks.take(12).mapNotNull { item ->
+                        item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
+                    } +
+                    buildSearchItems(emptyList()).take(6).mapNotNull { item ->
+                        item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
+                    } +
+                    topShelfCards
+
+            requests.distinctBy { it.id }.forEach(::requestThumbnailHydration)
+        }
     }
 
     private fun HomeCarouselItem.withHydration(previews: Map<String, HomeThumbnailPreview>): HomeCarouselItem {

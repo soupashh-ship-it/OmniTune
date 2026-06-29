@@ -173,6 +173,7 @@ fun HomeDiscoveryRoute(
                     emptyLabel = "Search seeds appear here until you build history.",
                     onAction = onNavigateToSearch,
                     onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
+                    onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }
 
@@ -197,6 +198,7 @@ fun HomeDiscoveryRoute(
                         emptyLabel = "",
                         onAction = onNavigateToDownloads,
                         onItemClick = { item -> item.song?.let(onPlaySong) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
                     )
                 }
             }
@@ -208,6 +210,7 @@ fun HomeDiscoveryRoute(
                         emptyLabel = "",
                         onAction = onNavigateToLibrary,
                         onItemClick = { item -> item.song?.let(onPlaySong) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
                     )
                 }
             }
@@ -567,6 +570,7 @@ private fun DiscoveryShelf(
     emptyLabel: String,
     onAction: () -> Unit,
     onItemClick: (PlaylistShelfItem) -> Unit,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = section.title, action = section.actionLabel, onAction = section.actionLabel?.let { onAction })
@@ -574,7 +578,11 @@ private fun DiscoveryShelf(
             if (emptyLabel.isNotBlank()) EmptyDiscoveryCard(text = emptyLabel, action = "Search", onClick = onAction)
         } else {
             section.items.take(6).forEach { item ->
-                SongShelfRow(item = item, onClick = { onItemClick(item) })
+                SongShelfRow(
+                    item = item,
+                    onRequestHydration = onRequestHydration,
+                    onClick = { onItemClick(item) },
+                )
             }
         }
     }
@@ -583,8 +591,19 @@ private fun DiscoveryShelf(
 @Composable
 private fun SongShelfRow(
     item: PlaylistShelfItem,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit = {},
     onClick: () -> Unit,
 ) {
+    RequestHydrationEffect(
+        id = item.id,
+        query = item.query,
+        source = item.source,
+        thumbnailUrl = item.thumbnailUrl,
+        state = item.hydrationState,
+        collage = false,
+        onRequestHydration = onRequestHydration,
+    )
+
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
