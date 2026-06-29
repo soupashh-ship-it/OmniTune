@@ -41,7 +41,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.datastore.preferences.core.edit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,8 +76,10 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
-import com.omnitune.app.utils.rememberPreference
+import com.omnitune.app.utils.dataStore
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 
 private const val HERO_IMAGE_SIZE = 480
 private const val SHELF_IMAGE_SIZE = 160
@@ -710,40 +714,59 @@ private fun DiscoveryArtwork(
 @Composable
 private fun SupportDevelopmentDialog() {
     val context = LocalContext.current
-    val launchCount = rememberPreference(LaunchCountKey, 0)
-    val hasPressedStar = rememberPreference(HasPressedStarKey, false)
-    val dismissed = rememberPreference(SupportDialogDismissedKey, false)
-    val snoozedUntil = rememberPreference(SupportDialogSnoozedUntilKey, 0L)
-    var hiddenThisSession by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    var showDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        launchCount.value = launchCount.value + 1
+        val now = System.currentTimeMillis()
+        val prefs = context.dataStore.data.first()
+        val launchCount = (prefs[LaunchCountKey] ?: 0) + 1
+        val dismissed = prefs[SupportDialogDismissedKey] ?: false
+        val hasPressedStar = prefs[HasPressedStarKey] ?: false
+        val snoozedUntil = prefs[SupportDialogSnoozedUntilKey] ?: 0L
+
+        context.dataStore.edit { mutablePrefs ->
+            mutablePrefs[LaunchCountKey] = launchCount
+        }
+
+        showDialog = !dismissed &&
+            !hasPressedStar &&
+            launchCount >= SUPPORT_PROMPT_LAUNCH_THRESHOLD &&
+            now >= snoozedUntil
     }
 
-    val now = System.currentTimeMillis()
-    val shouldShow = !hiddenThisSession &&
-        !dismissed.value &&
-        !hasPressedStar.value &&
-        launchCount.value >= SUPPORT_PROMPT_LAUNCH_THRESHOLD &&
-        now >= snoozedUntil.value
+    if (!showDialog) return
 
-    if (!shouldShow) return
+    fun snooze() {
+        showDialog = false
+        coroutineScope.launch {
+            context.dataStore.edit { prefs ->
+                prefs[SupportDialogSnoozedUntilKey] =
+                    System.currentTimeMillis() + SUPPORT_SNOOZE_DAYS * 24L * 60L * 60L * 1000L
+            }
+        }
+    }
+
+    fun dismissAndOpen(markStarred: Boolean) {
+        showDialog = false
+        coroutineScope.launch {
+            context.dataStore.edit { prefs ->
+                prefs[SupportDialogDismissedKey] = true
+                if (markStarred) prefs[HasPressedStarKey] = true
+            }
+        }
+        openGitHub(context)
+    }
 
     AlertDialog(
-        onDismissRequest = {
-            hiddenThisSession = true
-            snoozedUntil.value = now + SUPPORT_SNOOZE_DAYS * 24L * 60L * 60L * 1000L
-        },
+        onDismissRequest = ::snooze,
         title = { Text("Support OmniTune") },
         text = {
             Text("OmniTune is an open-source music player built with care for Android. If you enjoy using it, starring the project on GitHub helps the app grow and keeps development moving.")
         },
         dismissButton = {
             TextButton(
-                onClick = {
-                    hiddenThisSession = true
-                    snoozedUntil.value = now + SUPPORT_SNOOZE_DAYS * 24L * 60L * 60L * 1000L
-                },
+                onClick = ::snooze,
             ) {
                 Text("Later")
             }
@@ -751,21 +774,12 @@ private fun SupportDevelopmentDialog() {
         confirmButton = {
             Row {
                 TextButton(
-                    onClick = {
-                        hiddenThisSession = true
-                        hasPressedStar.value = true
-                        dismissed.value = true
-                        openGitHub(context)
-                    },
+                    onClick = { dismissAndOpen(markStarred = true) },
                 ) {
                     Text("Star")
                 }
                 TextButton(
-                    onClick = {
-                        hiddenThisSession = true
-                        dismissed.value = true
-                        openGitHub(context)
-                    },
+                    onClick = { dismissAndOpen(markStarred = false) },
                 ) {
                     Text("GitHub")
                 }
@@ -779,4 +793,3 @@ private fun openGitHub(context: Context) {
     runCatching { context.startActivity(intent) }
         .onFailure { Toast.makeText(context, "Could not open GitHub", Toast.LENGTH_SHORT).show() }
 }
-
