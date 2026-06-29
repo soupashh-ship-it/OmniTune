@@ -18,12 +18,26 @@ enum class HomeCatalogSource {
     CuratedDefault,
 }
 
+enum class HomeHydrationState {
+    None,
+    Loading,
+    Loaded,
+    Failed,
+}
+
 enum class HomeSectionType {
     Hero,
     QuickPicks,
     Shelf,
     MoodGrid,
 }
+
+@Immutable
+data class HomeThumbnailRequest(
+    val id: String,
+    val query: String,
+    val collage: Boolean = false,
+)
 
 @Immutable
 data class MoodChip(
@@ -39,9 +53,11 @@ data class HomeCarouselItem(
     val title: String,
     val subtitle: String,
     val thumbnailUrl: String? = null,
+    val thumbnailUrls: List<String> = emptyList(),
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
@@ -52,9 +68,11 @@ data class QuickPickItem(
     val title: String,
     val subtitle: String,
     val thumbnailUrl: String? = null,
+    val thumbnailUrls: List<String> = emptyList(),
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
@@ -65,9 +83,11 @@ data class PlaylistShelfItem(
     val title: String,
     val subtitle: String,
     val thumbnailUrl: String? = null,
+    val thumbnailUrls: List<String> = emptyList(),
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
