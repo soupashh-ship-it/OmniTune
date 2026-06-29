@@ -30,7 +30,6 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.db.entities.LyricsEntity
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.currentMetadata
 import com.omnitune.app.extensions.metadata
@@ -122,6 +121,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val mediaSession: MediaLibrarySession?
         get() = sessionManager?.session
     private lateinit var playbackNotificationManager: PlaybackNotificationManager
+    private lateinit var lyricsPrefetcher: LyricsPrefetcher
     private var scopeJob = kotlinx.coroutines.SupervisorJob()
     private val exceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, exception ->
         timber.log.Timber.tag("MusicService").e(exception, "Uncaught exception in MusicService scope")
@@ -210,6 +210,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         super.onCreate()
         Timber.tag("MusicService").i("MusicService created")
 
+        lyricsPrefetcher = LyricsPrefetcher(database, lyricsHelper, scope)
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
         observePreferences()
@@ -842,30 +843,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueState()
         preResolveNextTracks()
 
-        // Fetch lyrics for the current song in the background
-        meta?.let { metadata ->
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val existing = database.lyrics(metadata.id).first()
-                    if (existing != null && existing.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                        Timber.tag("MusicService").d("Lyrics already cached for: ${metadata.title}")
-                        return@launch
-                    }
-
-                    val lyrics = lyricsHelper.getLyrics(metadata)
-                    if (lyrics != LyricsEntity.LYRICS_NOT_FOUND && lyrics.isNotBlank()) {
-                        database.upsert(LyricsEntity(id = metadata.id, lyrics = lyrics))
-                        Timber.tag("MusicService").d("Fetched and cached lyrics for: ${metadata.title}")
-                    } else {
-                        // Mark as not found so we don't keep retrying
-                        database.upsert(LyricsEntity(id = metadata.id, lyrics = LyricsEntity.LYRICS_NOT_FOUND))
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("MusicService").w(e, "Failed to fetch lyrics for: ${metadata.title}")
-                    reportException(e)
-                }
-            }
-        }
+        lyricsPrefetcher.prefetch(meta)
     }
 
     override fun onPlayerError(error: PlaybackException) {
