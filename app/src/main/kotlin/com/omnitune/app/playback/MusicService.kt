@@ -5,7 +5,6 @@
 
 package com.omnitune.app.playback
 
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -27,19 +26,12 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.BuildConfig
-import com.omnitune.app.MainActivity
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLike
 import com.omnitune.app.db.entities.LyricsEntity
 import com.omnitune.app.lyrics.LyricsHelper
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLibrary
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleStartRadio
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleShuffle
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleRepeatMode
 import com.omnitune.app.extensions.currentMetadata
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.extensions.setOffloadEnabled
@@ -126,7 +118,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
     }
 
-    private var mediaSession: MediaLibrarySession? = null
+    private var sessionManager: SessionManager? = null
+    private val mediaSession: MediaLibrarySession?
+        get() = sessionManager?.session
     private lateinit var playbackNotificationManager: PlaybackNotificationManager
     private var scopeJob = kotlinx.coroutines.SupervisorJob()
     private val exceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, exception ->
@@ -356,17 +350,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         )
         crossfadeAudio?.start(scope)
 
-        mediaSession = MediaLibrarySession.Builder(this, player, sessionCallback)
-            .setSessionActivity(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .setId("OmniTune")
-            .build()
+        sessionManager = SessionManager(this, player, sessionCallback)
 
         playbackNotificationManager = PlaybackNotificationManager(this, player) { mediaSession }
         playbackNotificationManager.createChannelIfNeeded()
@@ -783,11 +767,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         systemEqualizer?.release()
         systemEqualizer = null
-        mediaSession?.run {
-            sessionCallback.onDestroy()
-            release()
-            mediaSession = null
-        }
+        sessionManager?.release()
+        sessionManager = null
         if (::playbackNotificationManager.isInitialized) {
             playbackNotificationManager.release()
         }
@@ -1021,29 +1002,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Suppress("DEPRECATION")
     private fun updateNotification() {
         try {
-            val customLayout = listOf(
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleLike)
-                    .setDisplayName("Like")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_add)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleRepeatMode)
-                    .setDisplayName("Repeat")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_history)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleShuffle)
-                    .setDisplayName("Shuffle")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_sort)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleStartRadio)
-                    .setDisplayName("Radio")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_share)
-                    .build(),
-            )
-            mediaSession?.setCustomLayout(customLayout)
+            sessionManager?.updateCustomLayout()
 
             if (::player.isInitialized) {
                 playbackNotificationManager.updateWidget()
