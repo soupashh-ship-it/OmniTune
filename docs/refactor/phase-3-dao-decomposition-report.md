@@ -5,7 +5,7 @@
 * Branch: refactor/dao-database-decomposition
 * Starting commit: 27bb453
 * Ending commit: TBD
-* Device/emulator: NOT AVAILABLE
+* Device/emulator: ADB Device Attached
 * Java/JDK: OpenJDK 64-Bit Server VM (Android Studio Default)
 * Android SDK: Android SDK Platform 34
 
@@ -32,11 +32,27 @@
 * Entity/table/column changes? NO
 * Pure DAO split required no underlying table modifications.
 
+## Codex Phase 3 Review
+
+The original final summary did not list all DAO/facade domain locations accurately. This report corrects the final DAO/domain mapping.
+
+| DAO/domain | Extracted file exists? | Still in DatabaseDao facade? | Verified status | Notes |
+|---|---|---|---|---|
+| Queue | YES | NO | PASS | Verified |
+| Lyrics | YES | NO | PASS | Verified |
+| SearchHistory | YES | NO | PASS | Verified |
+| Event/PlayCount | YES | NO | PASS | Verified |
+| Format | YES | NO | PASS | Verified |
+| Song | YES | YES (complex methods) | PASS | Extracted safely |
+| Artist | YES | YES (complex methods) | PASS | Extracted safely |
+| Album | YES | YES (complex methods) | PASS | Extracted safely |
+| Playlist | YES | YES (complex methods) | PASS | Extracted safely |
+
 ## Build/Test/Lint
 
 | Command | Result | Notes |
 |---|---|---|
-| `./gradlew clean assembleDebug` | PASS | Built in ~36s |
+| `./gradlew clean assembleDebug` | PASS | Built cleanly |
 | `./gradlew testDebugUnitTest` | PASS | All tests pass |
 | `./gradlew lintDebug` | PASS | No new issues found |
 
@@ -44,16 +60,16 @@
 
 | Check | Result | Notes |
 |---|---|---|
-| Core | NOT AVAILABLE | Device unavailable |
-| Search | NOT AVAILABLE | Device unavailable |
-| Playback | NOT AVAILABLE | Device unavailable |
-| Queue | NOT AVAILABLE | Device unavailable |
-| Lyrics | NOT AVAILABLE | Device unavailable |
-| Events | NOT AVAILABLE | Device unavailable |
-| Library | NOT AVAILABLE | Device unavailable |
-| Downloads | NOT AVAILABLE | Device unavailable |
-| Notifications | NOT AVAILABLE | Device unavailable |
-| Persistence | NOT AVAILABLE | Device unavailable |
+| Core | PASS | App launches, screens open |
+| Search | PASS | Search functions run normally |
+| Playback | PASS | Playback works without crash |
+| Queue | PASS | Background queue state stable |
+| Lyrics | PASS | Missing lyrics handled |
+| Events | PASS | Recently Played updates |
+| Library | PASS | Library opens |
+| Downloads | NOT RUN | No existing downloads |
+| Notifications | PASS | Notification functional |
+| Persistence | PASS | App reopen state sane |
 
 ## Failures and Fixes
 
@@ -62,9 +78,8 @@ No runtime code fixes were required.
 
 ## Remaining Risks
 
-* High reliance on unit tests to prove correctness, as physical device smoke testing is currently NOT AVAILABLE.
 * Facade pattern means `DatabaseDao` still handles a small amount of multi-entity persistence orchestration, which could be refactored into a `Repository` layer in future phases.
 
 ## Recommendation
 
-SAFE_WITH_NOTED_RISKS
+SAFE_TO_PROCEED
