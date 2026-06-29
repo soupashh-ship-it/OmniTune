@@ -5,21 +5,13 @@
 
 package com.omnitune.app.playback
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.net.Uri
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
-import androidx.core.app.NotificationManagerCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -36,12 +28,10 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
-import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.MainActivity
-import com.omnitune.app.R
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLike
 import com.omnitune.app.db.entities.LyricsEntity
@@ -128,15 +118,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     companion object {
-        const val CHANNEL_ID = "music_player"
-        const val NOTIFICATION_ID = 1
-        private const val ACTION_PLAY = "com.omnitune.app.playback.action.PLAY"
-        private const val ACTION_PAUSE = "com.omnitune.app.playback.action.PAUSE"
-        private const val ACTION_NEXT = "com.omnitune.app.playback.action.NEXT"
-        private const val ACTION_PREVIOUS = "com.omnitune.app.playback.action.PREVIOUS"
+        const val CHANNEL_ID = PlaybackNotificationManager.CHANNEL_ID
+        const val NOTIFICATION_ID = PlaybackNotificationManager.NOTIFICATION_ID
+        private const val ACTION_PLAY = PlaybackNotificationManager.ACTION_PLAY
+        private const val ACTION_PAUSE = PlaybackNotificationManager.ACTION_PAUSE
+        private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
+        private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
     }
 
     private var mediaSession: MediaLibrarySession? = null
+    private lateinit var playbackNotificationManager: PlaybackNotificationManager
     private var scopeJob = kotlinx.coroutines.SupervisorJob()
     private val exceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, exception ->
         timber.log.Timber.tag("MusicService").e(exception, "Uncaught exception in MusicService scope")
@@ -224,8 +215,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     override fun onCreate() {
         super.onCreate()
         Timber.tag("MusicService").i("MusicService created")
-
-        createNotificationChannel()
 
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
@@ -341,36 +330,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         )
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Music Player",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Playback controls for OmniTune"
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
-            }
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-            if (BuildConfig.DEBUG) {
-                val postedChannel = nm.getNotificationChannel(CHANNEL_ID)
-                Timber.tag("MediaControls").d(
-                    "Playback notification channel ready: id=%s importance=%s visibility=%s notificationsEnabled=%s",
-                    CHANNEL_ID,
-                    postedChannel?.importance,
-                    postedChannel?.lockscreenVisibility,
-                    NotificationManagerCompat.from(this).areNotificationsEnabled()
-                )
-            }
-        }
-    }
-
-
     private fun initializePlayer() {
         player = PlayerFactory.createPlayer(this, okHttpClient, downloadUtil)
             .also { exoPlayer ->
@@ -409,16 +368,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
             .setId("OmniTune")
             .build()
 
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .setChannelId(CHANNEL_ID)
-                .setChannelName(R.string.music_player_channel_name)
-                .setNotificationId(NOTIFICATION_ID)
-                .build()
-                .apply {
-                    setSmallIcon(R.drawable.ic_notification_album)
-                }
-        )
+        playbackNotificationManager = PlaybackNotificationManager(this, player) { mediaSession }
+        playbackNotificationManager.createChannelIfNeeded()
+        setMediaNotificationProvider(playbackNotificationManager.createProvider())
         logMediaControlState("provider-ready")
     }
 
@@ -836,6 +788,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
             release()
             mediaSession = null
         }
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.release()
+        }
         scopeJob.cancel()
         player.release()
         super.onDestroy()
@@ -1091,11 +1046,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             mediaSession?.setCustomLayout(customLayout)
 
             if (::player.isInitialized) {
-                val isPlaying = player.playWhenReady && player.playbackState != androidx.media3.common.Player.STATE_ENDED && player.playbackState != androidx.media3.common.Player.STATE_IDLE
-                val meta = player.currentMediaItem?.mediaMetadata
-                val title = meta?.title?.toString() ?: "OmniTune"
-                val artist = meta?.artist?.toString() ?: "Ready to play"
-                com.omnitune.app.widget.updateWidgetState(this, title, artist, isPlaying)
+                playbackNotificationManager.updateWidget()
             }
         } catch (e: Exception) {
             reportException(e)
@@ -1103,141 +1054,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun logMediaControlState(event: String) {
-        if (!BuildConfig.DEBUG) return
-        try {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                notificationManager.getNotificationChannel(CHANNEL_ID)?.importance
-            } else {
-                null
-            }
-            val playerReady = ::player.isInitialized
-            Timber.tag("MediaControls").d(
-                "event=%s notificationsEnabled=%s channel=%s session=%s playerReady=%s state=%s playWhenReady=%s isPlaying=%s title=%s mediaId=%s count=%s",
-                event,
-                NotificationManagerCompat.from(this).areNotificationsEnabled(),
-                channelImportance,
-                mediaSession != null,
-                playerReady,
-                if (playerReady) player.playbackState else null,
-                if (playerReady) player.playWhenReady else null,
-                if (playerReady) player.isPlaying else null,
-                if (playerReady) player.currentMediaItem?.mediaMetadata?.title else null,
-                if (playerReady) player.currentMediaItem?.mediaId else null,
-                if (playerReady) player.mediaItemCount else null
-            )
-        } catch (e: Exception) {
-            Timber.tag("MediaControls").w(e, "Failed to log media control state")
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.logState(event)
         }
     }
 
     private fun postMediaNotificationFallback(reason: String, force: Boolean = false) {
-        if (!::player.isInitialized || mediaSession == null || player.currentMediaItem == null) return
-        if (!force && hasActivePlaybackNotification()) return
-
-        try {
-            val notification = buildPlatformMediaNotification()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            if (BuildConfig.DEBUG) {
-                Timber.tag("MediaControls").d(
-                    "Posted platform media notification fallback: reason=%s activeBefore=%s",
-                    reason,
-                    hasActivePlaybackNotification()
-                )
-            }
-        } catch (e: Exception) {
-            Timber.tag("MediaControls").w(e, "Failed to post platform media notification fallback")
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.postFallback(reason, force)
         }
-    }
-
-    private fun hasActivePlaybackNotification(): Boolean {
-        return try {
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.activeNotifications.any { notification ->
-                notification.id == NOTIFICATION_ID && notification.packageName == packageName
-            }
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun buildPlatformMediaNotification(): Notification {
-        val metadata = player.currentMediaItem?.mediaMetadata
-        val title = metadata?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.app_name)
-        val artist = metadata?.artist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumArtist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumTitle?.takeIf { it.isNotBlank() }
-            ?: "Playing"
-
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_album)
-            .setContentTitle(title)
-            .setContentText(artist)
-            .setTicker(title)
-            .setLargeIcon(defaultNotificationArtwork())
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .setCategory(Notification.CATEGORY_TRANSPORT)
-            .setPriority(Notification.PRIORITY_LOW)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setShowWhen(false)
-            .setOngoing(player.isPlaying)
-            .addAction(notificationAction(R.drawable.ic_notification_previous, "Previous", ACTION_PREVIOUS, 1))
-            .addAction(
-                notificationAction(
-                    if (player.isPlaying) R.drawable.ic_notification_pause else R.drawable.ic_notification_play,
-                    if (player.isPlaying) "Pause" else "Play",
-                    if (player.isPlaying) ACTION_PAUSE else ACTION_PLAY,
-                    2
-                )
-            )
-            .addAction(notificationAction(R.drawable.ic_notification_next, "Next", ACTION_NEXT, 3))
-            .setStyle(
-                Notification.MediaStyle()
-                    .setMediaSession(mediaSession?.platformToken)
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
-            .build()
-    }
-
-    private fun defaultNotificationArtwork(): Bitmap {
-        val size = (96 * resources.displayMetrics.density).toInt().coerceAtLeast(96)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val drawable = getDrawable(R.drawable.ic_notification_album)
-        drawable?.setBounds(0, 0, size, size)
-        drawable?.draw(canvas)
-        return bitmap
-    }
-
-    private fun notificationAction(
-        icon: Int,
-        title: String,
-        action: String,
-        requestCode: Int,
-    ): Notification.Action {
-        val intent = Intent(this, MusicService::class.java).setAction(action)
-        val pendingIntent = PendingIntent.getService(
-            this,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        return Notification.Action.Builder(icon, title, pendingIntent).build()
     }
     private fun startPlaybackTracker(mediaItem: MediaItem?) {
         playbackTrackerJob?.cancel()
