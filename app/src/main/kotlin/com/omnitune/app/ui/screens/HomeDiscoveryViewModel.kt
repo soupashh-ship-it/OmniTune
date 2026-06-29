@@ -31,34 +31,15 @@ data class HomeDiscoveryUiState(
     val recentSongs: List<EventWithSong> = emptyList(),
     val carouselItems: List<HomeCarouselItem> = emptyList(),
     val quickPicks: List<QuickPickItem> = emptyList(),
+    val quickPicksExploreQuery: String = HomeDefaultCatalog.quickPicks.first().query.orEmpty(),
     val searchSection: HomeSection = HomeSection(id = "searches", title = "New or Trending Searches"),
     val downloadSection: HomeSection = HomeSection(id = "downloads", title = "Offline Songs"),
     val librarySection: HomeSection = HomeSection(id = "library", title = "Library and Favorites"),
-    val moodChips: List<MoodChip> = homeMoodChips,
-    val genreChips: List<MoodChip> = homeGenreChips,
+    val shelfSections: List<HomeSection> = HomeDefaultCatalog.shelves,
+    val moodChips: List<MoodChip> = HomeDefaultCatalog.moodChips,
+    val genreChips: List<MoodChip> = HomeDefaultCatalog.genreGrid,
     val playAllSongs: List<Song> = emptyList(),
     val isLoading: Boolean = true,
-)
-
-private val homeMoodChips = listOf(
-    MoodChip("romance", "Romance", "romance songs"),
-    MoodChip("relax", "Relax", "relaxing music"),
-    MoodChip("feel_good", "Feel good", "feel good songs"),
-    MoodChip("energize", "Energize", "energizing music"),
-    MoodChip("sad", "Sad", "sad songs"),
-    MoodChip("focus", "Focus", "focus music"),
-    MoodChip("commute", "Commute", "commute playlist"),
-    MoodChip("workout", "Workout", "workout music"),
-    MoodChip("party", "Party", "party songs"),
-)
-
-private val homeGenreChips = listOf(
-    MoodChip("pop", "Pop", "pop songs"),
-    MoodChip("indie", "Indie", "indie music"),
-    MoodChip("rnb", "R&B", "r&b songs"),
-    MoodChip("electronic", "Electronic", "electronic music"),
-    MoodChip("acoustic", "Acoustic", "acoustic songs"),
-    MoodChip("lofi", "Lo-fi", "lofi beats"),
 )
 
 private val homeFallbackSearches = listOf(
@@ -168,11 +149,17 @@ class HomeDiscoveryViewModel @Inject constructor(
         val recentSongItems = recentSongs.map { it.song }.distinctBy { it.id }
         val quickSongs = mergeSongs(quickPickSongs, recentSongItems, likedSongs, offlineSongs, librarySongs).take(18)
         val searchItems = buildSearchItems(searchHistory)
+        val realQuickPicks = quickSongs.take(12).map { it.toQuickPickItem() }
+        val curatedQuickPicks = HomeDefaultCatalog.quickPicks
+            .filterNot { curated -> realQuickPicks.any { it.title.equals(curated.title, ignoreCase = true) } }
+        val playAllSongs = mergeSongs(recentSongItems, quickSongs, likedSongs, offlineSongs).take(50)
 
         return HomeDiscoveryUiState(
             recentSongs = recentSongs,
-            carouselItems = buildCarouselItems(recentSongItems, likedSongs, offlineSongs, searchItems),
-            quickPicks = quickSongs.take(12).map { it.toQuickPickItem() },
+            carouselItems = buildCarouselItems(recentSongItems, likedSongs, offlineSongs),
+            quickPicks = (realQuickPicks + curatedQuickPicks).take(12),
+            quickPicksExploreQuery = curatedQuickPicks.firstOrNull()?.query
+                ?: HomeDefaultCatalog.quickPicks.first().query.orEmpty(),
             searchSection = HomeSection(
                 id = "searches",
                 title = "New or Trending Searches",
@@ -191,7 +178,8 @@ class HomeDiscoveryViewModel @Inject constructor(
                 actionLabel = if (likedSongs.isNotEmpty() || librarySongs.isNotEmpty()) "Library" else null,
                 items = mergeSongs(likedSongs, librarySongs).take(12).map { it.toShelfItem("library") },
             ),
-            playAllSongs = mergeSongs(recentSongItems, quickSongs, likedSongs, offlineSongs).take(50),
+            shelfSections = HomeDefaultCatalog.shelves,
+            playAllSongs = playAllSongs,
             isLoading = false,
         )
     }
@@ -200,23 +188,13 @@ class HomeDiscoveryViewModel @Inject constructor(
         recentSongs: List<Song>,
         likedSongs: List<Song>,
         offlineSongs: List<Song>,
-        searchItems: List<PlaylistShelfItem>,
     ): List<HomeCarouselItem> {
         val songItems = listOfNotNull(
             recentSongs.firstOrNull()?.toCarouselItem("Pick up where you left off", "Recently played"),
             likedSongs.firstOrNull()?.toCarouselItem("From your favorites", "Saved in your library"),
             offlineSongs.firstOrNull()?.toCarouselItem("Ready offline", "Downloaded song"),
         )
-        if (songItems.isNotEmpty()) return songItems
-
-        return searchItems.take(3).map {
-            HomeCarouselItem(
-                id = "search_${it.id}",
-                title = it.title,
-                subtitle = "Start a discovery search",
-                query = it.query,
-            )
-        }
+        return (songItems + HomeDefaultCatalog.heroItems).distinctBy { it.id }.take(8)
     }
 
     private fun buildSearchItems(searchHistory: List<SearchHistory>): List<PlaylistShelfItem> {
@@ -244,6 +222,8 @@ class HomeDiscoveryViewModel @Inject constructor(
         subtitle = artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
         thumbnailUrl = song.thumbnailUrl,
         song = this,
+        artworkKey = "song_$id",
+        source = HomeCatalogSource.UserData,
     )
 
     private fun Song.toShelfItem(prefix: String) = PlaylistShelfItem(
@@ -252,6 +232,8 @@ class HomeDiscoveryViewModel @Inject constructor(
         subtitle = artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
         thumbnailUrl = song.thumbnailUrl,
         song = this,
+        artworkKey = "${prefix}_$id",
+        source = HomeCatalogSource.UserData,
     )
 
     private fun Song.toCarouselItem(titlePrefix: String, source: String) = HomeCarouselItem(
@@ -260,5 +242,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         subtitle = "$source - ${song.title.ifBlank { "Unknown track" }}",
         thumbnailUrl = song.thumbnailUrl,
         song = this,
+        artworkKey = "hero_$id",
+        source = HomeCatalogSource.UserData,
     )
 }

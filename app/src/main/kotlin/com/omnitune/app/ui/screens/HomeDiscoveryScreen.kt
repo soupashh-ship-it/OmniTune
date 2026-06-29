@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -147,17 +148,20 @@ fun HomeDiscoveryRoute(
                     canPlayAll = uiState.playAllSongs.isNotEmpty(),
                     onPlayAll = { onPlaySongs(uiState.playAllSongs) },
                     onPlaySong = onPlaySong,
-                    onSearch = onNavigateToSearch,
+                    onSearch = onNavigateToSearchQuery,
+                    exploreQuery = uiState.quickPicksExploreQuery,
                 )
             }
 
-            item(contentType = "recent") {
-                RecentlyPlayedDiscoverySection(
-                    events = uiState.recentSongs,
-                    isLoading = uiState.isLoading,
-                    onPlaySong = onPlaySong,
-                    onSearch = onNavigateToSearch,
-                )
+            if (uiState.recentSongs.isNotEmpty()) {
+                item(contentType = "recent") {
+                    RecentlyPlayedDiscoverySection(
+                        events = uiState.recentSongs,
+                        isLoading = uiState.isLoading,
+                        onPlaySong = onPlaySong,
+                        onSearch = onNavigateToSearch,
+                    )
+                }
             }
 
             item(contentType = "searches") {
@@ -167,6 +171,15 @@ fun HomeDiscoveryRoute(
                     onAction = onNavigateToSearch,
                     onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
                 )
+            }
+
+            uiState.shelfSections.forEach { section ->
+                item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
+                    HorizontalDiscoveryShelf(
+                        section = section,
+                        onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
+                    )
+                }
             }
 
             item(contentType = "mood-grid") {
@@ -192,12 +205,6 @@ fun HomeDiscoveryRoute(
                         onAction = onNavigateToLibrary,
                         onItemClick = { item -> item.song?.let(onPlaySong) },
                     )
-                }
-            }
-
-            if (!uiState.isLoading && uiState.quickPicks.isEmpty() && uiState.recentSongs.isEmpty()) {
-                item(contentType = "empty") {
-                    NewHomeState(onSearch = onNavigateToSearch, onLibrary = onNavigateToLibrary)
                 }
             }
 
@@ -323,6 +330,8 @@ private fun HeroCard(
             DiscoveryArtwork(
                 thumbnailUrl = item.thumbnailUrl,
                 contentDescription = item.title,
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
                 modifier = Modifier.fillMaxSize(),
                 imageSize = HERO_IMAGE_SIZE,
                 shape = OmniShapes.ExtraLarge,
@@ -394,6 +403,8 @@ private fun ContinueCard(
             DiscoveryArtwork(
                 thumbnailUrl = mediaMetadata.thumbnailUrl,
                 contentDescription = mediaMetadata.title,
+                title = mediaMetadata.title,
+                artworkKey = mediaMetadata.id,
                 modifier = Modifier.size(76.dp),
                 imageSize = SHELF_IMAGE_SIZE,
                 shape = OmniShapes.ArtworkMedium,
@@ -427,59 +438,67 @@ private fun QuickPicksSection(
     canPlayAll: Boolean,
     onPlayAll: () -> Unit,
     onPlaySong: (Song) -> Unit,
-    onSearch: () -> Unit,
+    onSearch: (String) -> Unit,
+    exploreQuery: String,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = "Quick Picks", action = if (canPlayAll) "Play all" else "Search", onAction = if (canPlayAll) onPlayAll else onSearch)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-            if (isLoading) {
-                items(4, contentType = { "quick-loading" }) { QuickPickSkeleton() }
-            } else {
-                items(items, key = { it.id }, contentType = { "quick-pick" }) { item ->
-                    QuickPickCard(item = item, onClick = { item.song?.let(onPlaySong) })
-                }
+        OmniSectionHeader(
+            title = "Quick Picks",
+            action = if (canPlayAll) "Play all" else "Explore",
+            onAction = if (canPlayAll) onPlayAll else { { onSearch(exploreQuery) } },
+        )
+        if (isLoading) {
+            repeat(4) { ShelfSkeletonRow() }
+        } else {
+            items.take(12).forEach { item ->
+                QuickPickRow(
+                    item = item,
+                    onClick = {
+                        item.song?.let(onPlaySong) ?: item.query?.let(onSearch)
+                    },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun QuickPickCard(
+private fun QuickPickRow(
     item: QuickPickItem,
     onClick: () -> Unit,
 ) {
     GlassCard(
-        modifier = Modifier.width(156.dp),
+        modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        cornerRadius = OmniShapes.Large,
+        cornerRadius = OmniShapes.Medium,
         tone = GlassTone.Subtle,
     ) {
-        Column(modifier = Modifier.padding(OmniSpacing.small)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(OmniSpacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             DiscoveryArtwork(
                 thumbnailUrl = item.thumbnailUrl,
                 contentDescription = item.title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
+                modifier = Modifier.size(58.dp),
                 imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkMedium,
+                shape = OmniShapes.ArtworkSmall,
             )
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
-            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(item.subtitle, style = OmniTextStyles.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
-private fun QuickPickSkeleton() {
-    GlassCard(modifier = Modifier.width(156.dp), cornerRadius = OmniShapes.Large, tone = GlassTone.Subtle) {
-        Column(modifier = Modifier.padding(OmniSpacing.small)) {
-            ShimmerBar(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(OmniShapes.ArtworkMedium))
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
-            ShimmerBar(modifier = Modifier.fillMaxWidth(0.8f).height(14.dp))
-            Spacer(modifier = Modifier.height(OmniSpacing.compact))
-            ShimmerBar(modifier = Modifier.fillMaxWidth(0.55f).height(10.dp))
+            Spacer(modifier = Modifier.width(OmniSpacing.small))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(
+                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_search),
+                contentDescription = null,
+                tint = OmniColors.TextSecondary,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
@@ -551,6 +570,8 @@ private fun SongShelfRow(
             DiscoveryArtwork(
                 thumbnailUrl = item.thumbnailUrl,
                 contentDescription = item.title,
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
                 modifier = Modifier.size(56.dp),
                 imageSize = SHELF_IMAGE_SIZE,
                 shape = OmniShapes.ArtworkSmall,
@@ -566,6 +587,51 @@ private fun SongShelfRow(
                 tint = OmniColors.TextSecondary,
                 modifier = Modifier.size(22.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun HorizontalDiscoveryShelf(
+    section: HomeSection,
+    onItemClick: (PlaylistShelfItem) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+        OmniSectionHeader(title = section.title)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+            items(section.items, key = { it.id }, contentType = { "shelf-card" }) { item ->
+                ShelfArtworkCard(item = item, onClick = { onItemClick(item) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShelfArtworkCard(
+    item: PlaylistShelfItem,
+    onClick: () -> Unit,
+) {
+    GlassCard(
+        modifier = Modifier.width(158.dp),
+        onClick = onClick,
+        cornerRadius = OmniShapes.Large,
+        tone = GlassTone.Subtle,
+    ) {
+        Column(modifier = Modifier.padding(OmniSpacing.small)) {
+            DiscoveryArtwork(
+                thumbnailUrl = item.thumbnailUrl,
+                contentDescription = item.title,
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                imageSize = SHELF_IMAGE_SIZE,
+                shape = OmniShapes.ArtworkMedium,
+            )
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, style = OmniTextStyles.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -672,6 +738,8 @@ private fun ShelfSkeletonRow() {
 private fun DiscoveryArtwork(
     thumbnailUrl: String?,
     contentDescription: String?,
+    title: String,
+    artworkKey: String,
     modifier: Modifier,
     imageSize: Int,
     shape: androidx.compose.ui.graphics.Shape,
@@ -701,13 +769,56 @@ private fun DiscoveryArtwork(
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            Icon(
-                painter = painterResource(R.drawable.ic_album),
-                contentDescription = null,
-                tint = OmniColors.TextTertiary,
-                modifier = Modifier.size(28.dp),
-            )
+            GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
         }
+    }
+}
+
+@Composable
+private fun GeneratedArtwork(
+    title: String,
+    artworkKey: String,
+    modifier: Modifier = Modifier,
+) {
+    val palettes = listOf(
+        listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
+        listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
+        listOf(Color(0xFFFFB703), Color(0xFF126782)),
+        listOf(Color(0xFF80ED99), Color(0xFF22577A)),
+        listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
+        listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
+        listOf(Color(0xFFE9C46A), Color(0xFF264653)),
+        listOf(Color(0xFFF72585), Color(0xFF4361EE)),
+    )
+    val colors = palettes[kotlin.math.abs(artworkKey.hashCode()) % palettes.size]
+    val shortTitle = title
+        .split(" ")
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString(" ") { it.take(1).uppercase() }
+        .ifBlank { "OT" }
+
+    Box(
+        modifier = modifier.background(Brush.linearGradient(colors)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_album),
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.28f),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(OmniSpacing.medium)
+                .size(42.dp),
+        )
+        Text(
+            text = shortTitle,
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
