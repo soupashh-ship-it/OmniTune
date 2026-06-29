@@ -21,10 +21,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -87,8 +83,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
 
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private var lastNetworkTransport: Int = -1
+    private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
 
     private suspend fun getPlaybackQualityMode(): com.omnitune.app.models.PlaybackQualityMode {
         return try {
@@ -216,53 +211,17 @@ class MusicService : MediaLibraryService(), Player.Listener {
         observePreferences()
         StreamUrlResolver.clearMemoryCache("service startup")
 
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-                super.onCapabilitiesChanged(network, networkCapabilities)
-                val currentTransport = when {
-                    networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
-                    networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
-                    else -> -1
-                }
-                if (lastNetworkTransport != -1 && lastNetworkTransport != currentTransport) {
-                    Timber.tag("MusicService").i("Network transport changed (\$lastNetworkTransport -> \$currentTransport)")
-                    StreamUrlResolver.clearMemoryCache("Network type changed")
-                    
-                    // Re-prepare the player seamlessly if playing
-                    scope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                        if (player.isPlaying || player.playbackState == Player.STATE_BUFFERING) {
-                            val currentPos = player.currentPosition
-                            val currentIndex = player.currentMediaItemIndex
-                            val currentItem = player.currentMediaItem ?: return@launch
-                            
-                            val mediaId = currentItem.mediaId
-                            if (StreamUrlResolver.isYouTubeVideoId(Uri.parse(mediaId))) {
-                                val originalItem = currentItem.buildUpon().setUri(mediaId).build()
-                                val resolved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                                }
-                                if (resolved != null) {
-                                    player.replaceMediaItem(currentIndex, resolved)
-                                    player.seekTo(currentIndex, currentPos)
-                                    player.prepare()
-                                    player.play()
-                                }
-                            }
-                        }
-                    }
-                }
-                lastNetworkTransport = currentTransport
-            }
-        }
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        try {
-            connectivityManager.registerNetworkCallback(request, networkCallback!!)
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to register network callback")
-        }
+        networkPlaybackMonitor = NetworkPlaybackMonitor(
+            context = this,
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            waitingForNetworkConnection = _waitingForNetworkConnection,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+            isDownloadCompleted = ::isDownloadCompleted,
+        )
+        networkPlaybackMonitor.register()
 
         // Restore persistent queue
         scope.launch(Dispatchers.IO) {
@@ -770,6 +729,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         systemEqualizer = null
         sessionManager?.release()
         sessionManager = null
+        if (::networkPlaybackMonitor.isInitialized) {
+            networkPlaybackMonitor.release()
+        }
         if (::playbackNotificationManager.isInitialized) {
             playbackNotificationManager.release()
         }
@@ -858,20 +820,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         val isUnresolved = StreamUrlResolver.isYouTubeVideoId(currentMediaItem?.localConfiguration?.uri)
 
         if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError && !isUnresolved) {
-            val hasInternet = isInternetAvailable(this)
-            if (!hasInternet) {
-                _waitingForNetworkConnection.value = true
-                val message = if (mediaId != null && !isDownloadCompleted(mediaId)) {
-                    "This song is not downloaded and cannot play offline."
-                } else {
-                    "No internet connection. Retry when online."
-                }
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            if (networkPlaybackMonitor.handleNetworkError(mediaId)) {
                 return
-            } else if (lastNetworkTransport == NetworkCapabilities.TRANSPORT_WIFI) {
-                val message = "Playback failed on this network. Try another Wi-Fi, disable VPN/Private DNS, or switch to mobile data."
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                // Do not return here, let recovery policy try if applicable, but we showed the error
             }
         }
         
