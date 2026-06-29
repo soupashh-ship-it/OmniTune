@@ -1,3 +1,13 @@
+# OmniTune v0.8.0
+
+### 🚀 Architecture & Stability (The "God-Object Cleanup" Release)
+* **DAO Database Decomposition**: Safely split the massive 1600+ line DatabaseDao into focused, fast DAOs (`SongDao`, `AlbumDao`, `PlaylistDao`, etc.) without altering your existing data or schema.
+* **MusicService De-tangled**: Extracted heavy logic out of `MusicService` into focused controllers (`PlaybackRecoveryCoordinator`, `RadioQueueManager`, `CrossfadePlaybackCoordinator`, etc.), heavily improving playback stability.
+* **Architecture Guardrails**: Implemented strict boundaries and release QA protocols to ensure future changes won't break your music playback or offline downloads.
+* **Zero Disruption Guarantee**: Fully compatible with previous v0.7.x releases. Your library, liked songs, queue, history, and downloads remain perfectly untouched.
+
+---
+
 # OmniTune v0.7.6
 
 ### 🚀 Features
