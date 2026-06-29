@@ -5,6 +5,7 @@
 
 package com.omnitune.app.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
@@ -16,13 +17,22 @@ import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.playback.DownloadUtil
+import com.omnitune.app.ui.utils.resize
+import com.omnitune.app.utils.isInternetAvailable
+import com.omnitune.app.utils.reportException
+import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.SongItem
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -59,14 +69,22 @@ private data class HomeSignalBundle(
     val searchHistory: List<SearchHistory>,
 )
 
+private data class HomeThumbnailPreview(
+    val thumbnailUrls: List<String> = emptyList(),
+    val state: HomeHydrationState = HomeHydrationState.None,
+)
+
 @UnstableApi
 @HiltViewModel
 class HomeDiscoveryViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val downloadUtil: DownloadUtil,
 ) : ViewModel() {
 
     private val downloadSongs = MutableStateFlow<List<Song>>(emptyList())
+    private val thumbnailPreviews = MutableStateFlow<Map<String, HomeThumbnailPreview>>(emptyMap())
+    private val hydrationRequests = Channel<HomeThumbnailRequest>(Channel.UNLIMITED)
 
     private val downloadListener = object : DownloadManager.Listener {
         override fun onDownloadChanged(
@@ -98,7 +116,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         )
     }
 
-    val uiState: StateFlow<HomeDiscoveryUiState> = combine(homeSignals, downloadSongs) { bundle, offlineSongs ->
+    val uiState: StateFlow<HomeDiscoveryUiState> = combine(homeSignals, downloadSongs, thumbnailPreviews) { bundle, offlineSongs, previews ->
         buildState(
             events = bundle.events,
             quickPickSongs = bundle.quickPickSongs,
@@ -106,12 +124,14 @@ class HomeDiscoveryViewModel @Inject constructor(
             librarySongs = bundle.librarySongs.reversed(),
             searchHistory = bundle.searchHistory,
             offlineSongs = offlineSongs,
+            previews = previews,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeDiscoveryUiState())
 
     init {
         downloadUtil.downloadManager.addListener(downloadListener)
         refreshDownloads()
+        startThumbnailHydrationWorker()
     }
 
     override fun onCleared() {
@@ -144,19 +164,21 @@ class HomeDiscoveryViewModel @Inject constructor(
         librarySongs: List<Song>,
         searchHistory: List<SearchHistory>,
         offlineSongs: List<Song>,
+        previews: Map<String, HomeThumbnailPreview>,
     ): HomeDiscoveryUiState {
         val recentSongs = events.take(20)
         val recentSongItems = recentSongs.map { it.song }.distinctBy { it.id }
         val quickSongs = mergeSongs(quickPickSongs, recentSongItems, likedSongs, offlineSongs, librarySongs).take(18)
-        val searchItems = buildSearchItems(searchHistory)
+        val searchItems = buildSearchItems(searchHistory).map { it.withHydration(previews) }
         val realQuickPicks = quickSongs.take(12).map { it.toQuickPickItem() }
         val curatedQuickPicks = HomeDefaultCatalog.quickPicks
             .filterNot { curated -> realQuickPicks.any { it.title.equals(curated.title, ignoreCase = true) } }
+            .map { it.withHydration(previews) }
         val playAllSongs = mergeSongs(recentSongItems, quickSongs, likedSongs, offlineSongs).take(50)
 
         return HomeDiscoveryUiState(
             recentSongs = recentSongs,
-            carouselItems = buildCarouselItems(recentSongItems, likedSongs, offlineSongs),
+            carouselItems = buildCarouselItems(recentSongItems, likedSongs, offlineSongs, previews),
             quickPicks = (realQuickPicks + curatedQuickPicks).take(12),
             quickPicksExploreQuery = curatedQuickPicks.firstOrNull()?.query
                 ?: HomeDefaultCatalog.quickPicks.first().query.orEmpty(),
@@ -178,7 +200,8 @@ class HomeDiscoveryViewModel @Inject constructor(
                 actionLabel = if (likedSongs.isNotEmpty() || librarySongs.isNotEmpty()) "Library" else null,
                 items = mergeSongs(likedSongs, librarySongs).take(12).map { it.toShelfItem("library") },
             ),
-            shelfSections = HomeDefaultCatalog.shelves,
+            shelfSections = HomeDefaultCatalog.shelves
+                .map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) },
             playAllSongs = playAllSongs,
             isLoading = false,
         )
@@ -188,13 +211,17 @@ class HomeDiscoveryViewModel @Inject constructor(
         recentSongs: List<Song>,
         likedSongs: List<Song>,
         offlineSongs: List<Song>,
+        previews: Map<String, HomeThumbnailPreview>,
     ): List<HomeCarouselItem> {
         val songItems = listOfNotNull(
             recentSongs.firstOrNull()?.toCarouselItem("Pick up where you left off", "Recently played"),
             likedSongs.firstOrNull()?.toCarouselItem("From your favorites", "Saved in your library"),
             offlineSongs.firstOrNull()?.toCarouselItem("Ready offline", "Downloaded song"),
         )
-        return (songItems + HomeDefaultCatalog.heroItems).distinctBy { it.id }.take(8)
+        return (songItems + HomeDefaultCatalog.heroItems)
+            .distinctBy { it.id }
+            .take(8)
+            .map { it.withHydration(previews) }
     }
 
     private fun buildSearchItems(searchHistory: List<SearchHistory>): List<PlaylistShelfItem> {
@@ -215,6 +242,92 @@ class HomeDiscoveryViewModel @Inject constructor(
     }
 
     private fun mergeSongs(vararg lists: List<Song>): List<Song> = lists.flatMap { it }.distinctBy { it.id }
+
+    fun requestThumbnailHydration(request: HomeThumbnailRequest) {
+        if (request.query.isBlank()) return
+        val existing = thumbnailPreviews.value[request.id]?.state
+        if (existing == HomeHydrationState.Loading ||
+            existing == HomeHydrationState.Loaded ||
+            existing == HomeHydrationState.Failed
+        ) return
+
+        thumbnailPreviews.update { current ->
+            if (current.containsKey(request.id)) {
+                current
+            } else {
+                current + (request.id to HomeThumbnailPreview(state = HomeHydrationState.Loading))
+            }
+        }
+        hydrationRequests.trySend(request)
+    }
+
+    private fun startThumbnailHydrationWorker() {
+        viewModelScope.launch {
+            for (request in hydrationRequests) {
+                if (thumbnailPreviews.value[request.id]?.state != HomeHydrationState.Loading) continue
+                val preview = loadThumbnailPreview(request)
+                thumbnailPreviews.update { current -> current + (request.id to preview) }
+                delay(180)
+            }
+        }
+    }
+
+    private suspend fun loadThumbnailPreview(request: HomeThumbnailRequest): HomeThumbnailPreview = withContext(Dispatchers.IO) {
+        if (!isInternetAvailable(context)) {
+            return@withContext HomeThumbnailPreview(state = HomeHydrationState.Failed)
+        }
+
+        runCatching {
+            YouTube.search(request.query, YouTube.SearchFilter.FILTER_SONG)
+                .getOrThrow()
+                .items
+                .filterIsInstance<SongItem>()
+                .mapNotNull { item -> item.thumbnail.takeIf { it.isNotBlank() }?.resize(544, 544) }
+                .distinct()
+                .take(if (request.collage) 4 else 1)
+        }.fold(
+            onSuccess = { thumbnails ->
+                HomeThumbnailPreview(
+                    thumbnailUrls = thumbnails,
+                    state = if (thumbnails.isEmpty()) HomeHydrationState.Failed else HomeHydrationState.Loaded,
+                )
+            },
+            onFailure = { error ->
+                reportException(error)
+                HomeThumbnailPreview(state = HomeHydrationState.Failed)
+            },
+        )
+    }
+
+    private fun HomeCarouselItem.withHydration(previews: Map<String, HomeThumbnailPreview>): HomeCarouselItem {
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
+        val preview = previews[id] ?: return this
+        return copy(
+            thumbnailUrl = preview.thumbnailUrls.firstOrNull(),
+            thumbnailUrls = preview.thumbnailUrls,
+            hydrationState = preview.state,
+        )
+    }
+
+    private fun QuickPickItem.withHydration(previews: Map<String, HomeThumbnailPreview>): QuickPickItem {
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
+        val preview = previews[id] ?: return this
+        return copy(
+            thumbnailUrl = preview.thumbnailUrls.firstOrNull(),
+            thumbnailUrls = preview.thumbnailUrls,
+            hydrationState = preview.state,
+        )
+    }
+
+    private fun PlaylistShelfItem.withHydration(previews: Map<String, HomeThumbnailPreview>): PlaylistShelfItem {
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
+        val preview = previews[id] ?: return this
+        return copy(
+            thumbnailUrl = preview.thumbnailUrls.firstOrNull(),
+            thumbnailUrls = preview.thumbnailUrls,
+            hydrationState = preview.state,
+        )
+    }
 
     private fun Song.toQuickPickItem() = QuickPickItem(
         id = id,
