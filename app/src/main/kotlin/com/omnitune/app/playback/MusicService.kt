@@ -19,7 +19,6 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
-import com.omnitune.app.extensions.currentMetadata
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.extensions.toMediaItem
@@ -117,6 +116,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val audioNormalizationEnabled = MutableStateFlow(true)
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
+    private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
 
     // OMNITUNE: Sleep timer
@@ -201,6 +201,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             audioNormalizationEnabled = audioNormalizationEnabled,
             onAutoSkipNextOnErrorChanged = { autoSkipNextOnError = it },
         ).also { it.start() }
+        radioQueueManager = RadioQueueManager(
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+            setQueueTitle = { queueTitle = it },
+            setCurrentQueue = { currentQueue = it },
+        )
         StreamUrlResolver.clearMemoryCache("service startup")
 
         networkPlaybackMonitor = NetworkPlaybackMonitor(
@@ -478,43 +487,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun startRadioSeamlessly() {
-        val currentMeta = player.currentMetadata ?: return
-        val currentIndex = player.currentMediaItemIndex
-        val currentMediaId = currentMeta.id
-
-        scope.launch {
-            val radioQueue = com.omnitune.app.playback.queues.YouTubeQueue(
-                endpoint = com.omnitune.innertube.models.WatchEndpoint(videoId = currentMediaId)
-            )
-            val initialStatus = radioQueue.getInitialStatus()
-
-            if (initialStatus.title != null) {
-                queueTitle = initialStatus.title
-            }
-
-            val radioItems = initialStatus.items.filter { item ->
-                item.mediaId != currentMediaId
-            }
-
-            if (radioItems.isNotEmpty()) {
-                // Resolve YouTube video IDs to playable stream URLs before adding to player
-                val resolvedRadioItems = withContext(Dispatchers.IO) {
-                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                }
-                if (resolvedRadioItems.isNotEmpty()) {
-                    val itemCount = player.mediaItemCount
-                    if (itemCount > currentIndex + 1) {
-                        player.removeMediaItems(currentIndex + 1, itemCount)
-                    }
-                    player.addMediaItems(currentIndex + 1, resolvedRadioItems)
-                    Timber.tag("MusicService").i("Radio: added ${resolvedRadioItems.size} resolved tracks")
-                } else {
-                    Timber.tag("MusicService").w("Radio: all stream resolutions failed")
-                }
-            }
-
-            currentQueue = radioQueue
-        }
+        radioQueueManager?.startRadioSeamlessly()
     }
 
     fun playNext(items: List<MediaItem>) {
@@ -607,6 +580,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
+        radioQueueManager = null
         equalizerController.release()
         sessionManager?.release()
         sessionManager = null
