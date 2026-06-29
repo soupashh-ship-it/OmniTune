@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +57,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
@@ -132,6 +133,7 @@ fun HomeDiscoveryRoute(
                     isLoading = uiState.isLoading,
                     onPlaySong = onPlaySong,
                     onSearch = onNavigateToSearchQuery,
+                    onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }
 
@@ -150,6 +152,7 @@ fun HomeDiscoveryRoute(
                     onPlaySong = onPlaySong,
                     onSearch = onNavigateToSearchQuery,
                     exploreQuery = uiState.quickPicksExploreQuery,
+                    onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }
 
@@ -178,6 +181,7 @@ fun HomeDiscoveryRoute(
                     HorizontalDiscoveryShelf(
                         section = section,
                         onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
                     )
                 }
             }
@@ -291,6 +295,7 @@ private fun HeroCarousel(
     isLoading: Boolean,
     onPlaySong: (Song) -> Unit,
     onSearch: (String) -> Unit,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = "Home Discovery")
@@ -301,6 +306,7 @@ private fun HeroCarousel(
                 items(items, key = { it.id }, contentType = { "hero" }) { item ->
                     HeroCard(
                         item = item,
+                        onRequestHydration = onRequestHydration,
                         onClick = {
                             item.song?.let(onPlaySong) ?: item.query?.let(onSearch)
                         },
@@ -314,8 +320,19 @@ private fun HeroCarousel(
 @Composable
 private fun HeroCard(
     item: HomeCarouselItem,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
     onClick: () -> Unit,
 ) {
+    RequestHydrationEffect(
+        id = item.id,
+        query = item.query,
+        source = item.source,
+        thumbnailUrl = item.thumbnailUrl,
+        state = item.hydrationState,
+        collage = false,
+        onRequestHydration = onRequestHydration,
+    )
+
     GlassCard(
         modifier = Modifier.width(300.dp),
         onClick = onClick,
@@ -440,6 +457,7 @@ private fun QuickPicksSection(
     onPlaySong: (Song) -> Unit,
     onSearch: (String) -> Unit,
     exploreQuery: String,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(
@@ -453,6 +471,7 @@ private fun QuickPicksSection(
             items.take(12).forEach { item ->
                 QuickPickRow(
                     item = item,
+                    onRequestHydration = onRequestHydration,
                     onClick = {
                         item.song?.let(onPlaySong) ?: item.query?.let(onSearch)
                     },
@@ -465,8 +484,19 @@ private fun QuickPicksSection(
 @Composable
 private fun QuickPickRow(
     item: QuickPickItem,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
     onClick: () -> Unit,
 ) {
+    RequestHydrationEffect(
+        id = item.id,
+        query = item.query,
+        source = item.source,
+        thumbnailUrl = item.thumbnailUrl,
+        state = item.hydrationState,
+        collage = false,
+        onRequestHydration = onRequestHydration,
+    )
+
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -595,12 +625,17 @@ private fun SongShelfRow(
 private fun HorizontalDiscoveryShelf(
     section: HomeSection,
     onItemClick: (PlaylistShelfItem) -> Unit,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = section.title)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
             items(section.items, key = { it.id }, contentType = { "shelf-card" }) { item ->
-                ShelfArtworkCard(item = item, onClick = { onItemClick(item) })
+                ShelfArtworkCard(
+                    item = item,
+                    onRequestHydration = onRequestHydration,
+                    onClick = { onItemClick(item) },
+                )
             }
         }
     }
@@ -609,8 +644,19 @@ private fun HorizontalDiscoveryShelf(
 @Composable
 private fun ShelfArtworkCard(
     item: PlaylistShelfItem,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
     onClick: () -> Unit,
 ) {
+    RequestHydrationEffect(
+        id = item.id,
+        query = item.query,
+        source = item.source,
+        thumbnailUrl = item.thumbnailUrl,
+        state = item.hydrationState,
+        collage = true,
+        onRequestHydration = onRequestHydration,
+    )
+
     GlassCard(
         modifier = Modifier.width(158.dp),
         onClick = onClick,
@@ -618,8 +664,8 @@ private fun ShelfArtworkCard(
         tone = GlassTone.Subtle,
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
-            DiscoveryArtwork(
-                thumbnailUrl = item.thumbnailUrl,
+            CollageArtwork(
+                thumbnailUrls = item.thumbnailUrls,
                 contentDescription = item.title,
                 title = item.title,
                 artworkKey = item.artworkKey ?: item.id,
@@ -735,6 +781,28 @@ private fun ShelfSkeletonRow() {
 }
 
 @Composable
+private fun RequestHydrationEffect(
+    id: String,
+    query: String?,
+    source: HomeCatalogSource,
+    thumbnailUrl: String?,
+    state: HomeHydrationState,
+    collage: Boolean,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
+) {
+    LaunchedEffect(id, query, source, thumbnailUrl, state, collage) {
+        if (
+            source == HomeCatalogSource.CuratedDefault &&
+            !query.isNullOrBlank() &&
+            thumbnailUrl.isNullOrBlank() &&
+            state == HomeHydrationState.None
+        ) {
+            onRequestHydration(HomeThumbnailRequest(id = id, query = query, collage = collage))
+        }
+    }
+}
+
+@Composable
 private fun DiscoveryArtwork(
     thumbnailUrl: String?,
     contentDescription: String?,
@@ -762,11 +830,99 @@ private fun DiscoveryArtwork(
         contentAlignment = Alignment.Center,
     ) {
         if (model != null) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = model,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
+                loading = {
+                    GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
+                },
+                error = {
+                    GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
+                },
+            )
+        } else {
+            GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+@Composable
+private fun CollageArtwork(
+    thumbnailUrls: List<String>,
+    contentDescription: String?,
+    title: String,
+    artworkKey: String,
+    modifier: Modifier,
+    imageSize: Int,
+    shape: androidx.compose.ui.graphics.Shape,
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(OmniColors.OmniGlassStrong),
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            repeat(2) { row ->
+                Row(modifier = Modifier.weight(1f)) {
+                    repeat(2) { column ->
+                        val index = row * 2 + column
+                        CollageTile(
+                            thumbnailUrl = thumbnailUrls.getOrNull(index),
+                            contentDescription = contentDescription,
+                            title = title,
+                            artworkKey = "${artworkKey}_$index",
+                            imageSize = imageSize,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        )
+                    }
+                }
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, OmniColors.OmniBackgroundBase.copy(alpha = 0.28f)),
+                    ),
+                ),
+        )
+    }
+}
+
+@Composable
+private fun CollageTile(
+    thumbnailUrl: String?,
+    contentDescription: String?,
+    title: String,
+    artworkKey: String,
+    imageSize: Int,
+    modifier: Modifier,
+) {
+    val context = LocalContext.current
+    val model = remember(thumbnailUrl, imageSize) {
+        thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
+            ImageRequest.Builder(context)
+                .data(it)
+                .size(imageSize, imageSize)
+                .memoryCacheKey(it)
+                .build()
+        }
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        if (model != null) {
+            SubcomposeAsyncImage(
+                model = model,
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                loading = { GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize()) },
+                error = { GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize()) },
             )
         } else {
             GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
@@ -791,32 +947,68 @@ private fun GeneratedArtwork(
         listOf(Color(0xFFF72585), Color(0xFF4361EE)),
     )
     val colors = palettes[kotlin.math.abs(artworkKey.hashCode()) % palettes.size]
-    val shortTitle = title
+    val initials = title
         .split(" ")
         .filter { it.isNotBlank() }
         .take(2)
         .joinToString(" ") { it.take(1).uppercase() }
         .ifBlank { "OT" }
+    val label = title
+        .split(" ")
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString(" ")
+        .ifBlank { "OmniTune" }
 
     Box(
         modifier = modifier.background(Brush.linearGradient(colors)),
-        contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_album),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.28f),
+            tint = Color.White.copy(alpha = 0.20f),
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(78.dp),
+        )
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(OmniSpacing.medium)
-                .size(42.dp),
+                .height(28.dp)
+                .padding(OmniSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            listOf(0.36f, 0.70f, 0.48f, 0.88f, 0.55f).forEachIndexed { index, height ->
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight(height)
+                        .clip(OmniShapes.Pill)
+                        .background(Color.White.copy(alpha = 0.34f + index * 0.04f)),
+                )
+            }
+        }
+        Text(
+            text = initials,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.72f),
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(OmniSpacing.small),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = shortTitle,
-            style = MaterialTheme.typography.headlineMedium,
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
             color = Color.White,
             fontWeight = FontWeight.Black,
-            maxLines = 1,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(OmniSpacing.small),
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }
