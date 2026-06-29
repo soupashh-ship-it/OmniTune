@@ -559,6 +559,8 @@ val CountryCodeToName =
 val LaunchCountKey = intPreferencesKey("launch_count")
 val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
 val RemindAfterKey = intPreferencesKey("remind_after")
+val SupportDialogDismissedKey = booleanPreferencesKey("support_dialog_dismissed")
+val SupportDialogSnoozedUntilKey = longPreferencesKey("support_dialog_snoozed_until")
 
 // Update settings
 val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")

@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.navigation
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +27,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.toMediaItem
@@ -43,7 +46,7 @@ import com.omnitune.app.ui.screens.ArtistScreen
 import com.omnitune.app.ui.screens.DownloadsScreen
 import com.omnitune.app.ui.screens.EqualizerScreen
 import com.omnitune.app.ui.screens.HistoryScreen
-import com.omnitune.app.ui.screens.HomeScreen
+import com.omnitune.app.ui.screens.HomeDiscoveryRoute
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryArtistsScreen
 import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
@@ -98,7 +101,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
     var pendingSearchQueue by remember { mutableStateOf<Pair<List<SongItem>, Int>?>(null) }
-    val showBottomBar = currentRoute in topLevelScreens && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
+    val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
+    val showBottomBar = isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
 
     LaunchedEffect(localPlayerConnection, pendingSearchQueue) {
         val queueData = pendingSearchQueue
@@ -134,8 +138,18 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) }
         ) {
             composable(Screens.Home.route) {
-                HomeScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
-                    onResumePlayback = { navController.navigate("player") }, onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                HomeDiscoveryRoute(
+                    onNavigateToSearch = { navController.navigate(Screens.Search.route) },
+                    onNavigateToSearchQuery = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
+                    onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
+                    onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
+                    onNavigateToSettings = { navController.navigate("settings") },
+                    onResumePlayback = { navController.navigate("player") },
+                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
+                    onPlaySongs = { songs ->
+                        if (songs.isNotEmpty()) localPlayerConnection?.playQueue(ListQueue(title = "Home", items = songs.map { it.toMediaItem() }))
+                    },
+                )
             }
             composable(Screens.Stats.route) { StatsScreen() }
             composable(Screens.History.route) { HistoryScreen() }
@@ -168,8 +182,11 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 RecentlyPlayedScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
                     localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
-            composable(Screens.Search.route) {
-                SearchScreen(onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
+            composable(
+                route = "${Screens.Search.route}?query={query}",
+                arguments = listOf(navArgument("query") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) {
+                SearchScreen(initialQuery = it.arguments?.getString("query"), onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
                     onNavigateToArtist = { navController.navigate("artist/$it") },
                     onPlaySong = { songs, index ->
                         playSongFromSearch(

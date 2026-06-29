@@ -85,6 +85,7 @@ import timber.log.Timber
 
 @Composable
 fun SearchScreen(
+    initialQuery: String? = null,
     onBack: () -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
@@ -95,6 +96,13 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val textFieldValue = remember { mutableStateOf(TextFieldValue(uiState.query)) }
+
+    LaunchedEffect(initialQuery) {
+        val query = initialQuery?.trim().orEmpty()
+        if (query.isNotBlank() && query != uiState.query) {
+            viewModel.onQueryChanged(query)
+        }
+    }
 
     LaunchedEffect(Unit) {
         snapshotFlow { uiState.query }.collect { query ->
@@ -197,5 +205,4 @@ fun SearchResultsContent(
         }
     }
 }
-
 
