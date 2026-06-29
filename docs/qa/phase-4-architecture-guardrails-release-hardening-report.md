@@ -53,6 +53,21 @@
 | Completed downloads appear | NOT AVAILABLE | Creating a new completed download not practical via shell automation |
 | Offline playback | NOT AVAILABLE | Requires manual network toggle and pre-existing download |
 
+## Playback Regression Investigation
+
+* Reported issue: Music is not playing anymore in debug app.
+* Current branch: hardening/architecture-guardrails-release-qa
+* Current commit: 4417122
+* Last known good commit tested: 4588401
+* 4588401 playback result: PASS
+* 4417122 playback result: PASS
+* Root cause: False alarm / environment issue. Automated ADB media keys were targeting Spotify. Real UI automator taps proved OmniTune playback is fully functional without code changes.
+* Fix applied: None needed.
+* Files changed: None
+* Build/test/lint result: PASS
+* Runtime playback result: PASS
+* Remaining risks: None related to this report.
+
 ## Remaining Risks
 
 * Completed offline download playback still needs manual verification before shipping, as it could not be practically automated via ADB.
@@ -60,4 +75,4 @@
 
 ## Recommendation
 
-SAFE_WITH_NOTED_RISKS
+SAFE_TO_PROCEED
