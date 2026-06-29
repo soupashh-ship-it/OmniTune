@@ -64,6 +64,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
 
     private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
+    private lateinit var playbackRecoveryCoordinator: PlaybackRecoveryCoordinator
 
     private suspend fun getPlaybackQualityMode(): com.omnitune.app.models.PlaybackQualityMode {
         return try {
@@ -103,9 +104,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
     var scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + scopeJob + exceptionHandler)
     private val binder = MusicBinder()
-    private val playbackRecoveryPolicy = com.omnitune.app.playback.recovery.PlaybackRecoveryPolicy()
-
-
     val exoPlayer: ExoPlayer get() = player
     internal lateinit var player: ExoPlayer
     private val _playerVolume = MutableStateFlow(1f)
@@ -191,25 +189,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         lyricsPrefetcher = LyricsPrefetcher(database, lyricsHelper, scope)
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
-        playbackPreferenceObserver = PlaybackPreferenceObserver(
-            context = this,
-            player = player,
-            scope = scope,
-            playerVolume = _playerVolume,
-            playbackFadeFactor = playbackFadeFactor,
-            crossfadeDurationMs = crossfadeDurationMs,
-            audioNormalizationEnabled = audioNormalizationEnabled,
-            onAutoSkipNextOnErrorChanged = { autoSkipNextOnError = it },
-        ).also { it.start() }
-        radioQueueManager = RadioQueueManager(
-            player = player,
-            scope = scope,
-            streamExtractor = streamExtractor,
-            downloadUtil = downloadUtil,
-            playbackQualityModeProvider = ::getPlaybackQualityMode,
-            setQueueTitle = { queueTitle = it },
-            setCurrentQueue = { currentQueue = it },
-        )
         StreamUrlResolver.clearMemoryCache("service startup")
 
         networkPlaybackMonitor = NetworkPlaybackMonitor(
@@ -223,6 +202,34 @@ class MusicService : MediaLibraryService(), Player.Listener {
             isDownloadCompleted = ::isDownloadCompleted,
         )
         networkPlaybackMonitor.register()
+        playbackRecoveryCoordinator = PlaybackRecoveryCoordinator(
+            context = this,
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            networkPlaybackMonitor = networkPlaybackMonitor,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+        )
+        playbackPreferenceObserver = PlaybackPreferenceObserver(
+            context = this,
+            player = player,
+            scope = scope,
+            playerVolume = _playerVolume,
+            playbackFadeFactor = playbackFadeFactor,
+            crossfadeDurationMs = crossfadeDurationMs,
+            audioNormalizationEnabled = audioNormalizationEnabled,
+            onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
+        ).also { it.start() }
+        radioQueueManager = RadioQueueManager(
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+            setQueueTitle = { queueTitle = it },
+            setCurrentQueue = { currentQueue = it },
+        )
 
         // Restore persistent queue
         scope.launch(Dispatchers.IO) {
@@ -320,8 +327,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
         equalizerController.applyBands(bands)
     }
-
-    private var autoSkipNextOnError = true
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
@@ -582,6 +587,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         playbackPreferenceObserver = null
         radioQueueManager = null
         equalizerController.release()
+        if (::playbackRecoveryCoordinator.isInitialized) {
+            playbackRecoveryCoordinator.release()
+        }
         sessionManager?.release()
         sessionManager = null
         if (::networkPlaybackMonitor.isInitialized) {
@@ -597,8 +605,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // --- Player.Listener ---
 
-    private var playbackWatchdogJob: kotlinx.coroutines.Job? = null
-
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
         StartupTracker.logState(state)
@@ -611,20 +617,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
-            playbackWatchdogJob?.cancel()
-        } else if (state == Player.STATE_BUFFERING && player.playWhenReady) {
-            playbackWatchdogJob?.cancel()
-            playbackWatchdogJob = scope.launch(Dispatchers.Main) {
-                kotlinx.coroutines.delay(15_000L) // 15 seconds max buffering
-                if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
-                    Timber.tag("MusicService").w("Playback watchdog timeout!")
-                    val exception = PlaybackException(
-                        "Buffering timeout", null, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-                    )
-                    onPlayerError(exception)
-                }
-            }
         }
+        playbackRecoveryCoordinator.onPlaybackStateChanged(state)
     }
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -649,7 +643,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        playbackRecoveryPolicy.resetRetry(mediaItem?.mediaId ?: "")
+        playbackRecoveryCoordinator.resetRetry(mediaItem?.mediaId ?: "")
         crossfadePlaybackCoordinator?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
         _currentMediaMetadata.value = meta
@@ -667,78 +661,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         Timber.tag("MusicService").e(error, "Player error")
         logMediaControlState("player-error")
         reportException(error)
-
-        val errorType = com.omnitune.app.playback.recovery.PlaybackErrorClassifier.classify(error)
-        val currentMediaItem = player.currentMediaItem
-        val mediaId = currentMediaItem?.mediaId
-
-        val isUnresolved = StreamUrlResolver.isYouTubeVideoId(currentMediaItem?.localConfiguration?.uri)
-
-        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError && !isUnresolved) {
-            if (networkPlaybackMonitor.handleNetworkError(mediaId)) {
-                return
-            }
-        }
-        
-        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.Forbidden403 ||
-            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NotFound404 ||
-            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.BotCheck) {
-            if (mediaId != null) {
-                StreamUrlResolver.invalidate(mediaId)
-            }
-        }
-
-        if (mediaId != null && playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
-            Timber.tag("MusicService").w("Recovering from $errorType for mediaId: $mediaId")
-            playbackRecoveryPolicy.incrementRetry(mediaId)
-            
-            // Invalidate caches
-            StreamUrlResolver.invalidate(mediaId)
-            streamExtractor.invalidate(mediaId)
-
-            scope.launch(Dispatchers.Main) {
-                try {
-                    // Start from the original item, not the resolved one, so the resolver sees the yt ID
-                    val originalItem = currentMediaItem.buildUpon().setUri(mediaId).build()
-                    val resolved = withContext(Dispatchers.IO) {
-                        StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                    }
-                    if (resolved != null) {
-                        val pos = player.currentPosition
-                        val index = player.currentMediaItemIndex
-                        player.replaceMediaItem(index, resolved)
-                        player.seekTo(index, pos)
-                        player.prepare()
-                        player.play()
-                        return@launch
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
-                }
-                fallbackSkip(errorType)
-            }
-        } else {
-            Timber.tag("MusicService").w("Recovery policy denied retry for $mediaId, error: $errorType")
-            fallbackSkip(errorType)
-        }
-    }
-
-    private fun fallbackSkip(errorType: com.omnitune.app.playback.recovery.PlaybackErrorType) {
-        if (autoSkipNextOnError && player.hasNextMediaItem()) {
-            Timber.tag("MusicService").i("Auto-skipping to next track after error")
-            player.seekToNextMediaItem()
-            player.prepare()
-            player.play()
-        } else {
-            val message = when (errorType) {
-                com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError -> "Network error during playback. Please check your connection."
-                com.omnitune.app.playback.recovery.PlaybackErrorType.Timeout -> "Playback timed out. Please try again."
-                else -> "Playback failed after retries."
-            }
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(this@MusicService, message, android.widget.Toast.LENGTH_LONG).show()
-            }
-        }
+        playbackRecoveryCoordinator.onPlayerError(error)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
