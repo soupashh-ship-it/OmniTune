@@ -3,7 +3,7 @@ package com.omnitune.app.playback
 import android.content.Context
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.Player
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
 import com.omnitune.app.db.MusicDatabase
@@ -21,7 +21,7 @@ import timber.log.Timber
 
 class PlaybackEventRecorder(
     private val context: Context,
-    private val player: ExoPlayer,
+    private val player: Player,
     private val database: MusicDatabase,
     private val scope: CoroutineScope
 ) {

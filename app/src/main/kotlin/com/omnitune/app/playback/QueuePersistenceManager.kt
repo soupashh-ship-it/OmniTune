@@ -2,7 +2,7 @@ package com.omnitune.app.playback
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.Player
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.QueueEntity
 import com.omnitune.app.playback.queues.Queue
@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class QueuePersistenceManager(
-    private val player: ExoPlayer,
+    private val player: Player,
     private val database: MusicDatabase,
     private val scope: CoroutineScope
 ) {

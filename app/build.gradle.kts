@@ -284,6 +284,7 @@ dependencies {
     implementation(project(":canvas"))
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.coroutines.test)
     testImplementation("org.mockito:mockito-core:5.12.0")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
