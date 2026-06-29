@@ -117,6 +117,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val audioNormalizationEnabled = MutableStateFlow(true)
     private var crossfadeAudio: CrossfadeAudio? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
+    private val equalizerController by lazy { EqualizerController(this) }
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -309,36 +310,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         logMediaControlState("provider-ready")
     }
 
-    // OMNITUNE: System equalizer integration
-    private var systemEqualizer: android.media.audiofx.Equalizer? = null
-
-    private fun setupEqualizer() {
-        try {
-            systemEqualizer?.release()
-            systemEqualizer = android.media.audiofx.Equalizer(0, player.audioSessionId).apply {
-                enabled = true
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to initialize equalizer")
-            // Inform user if system EQ is unavailable
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(this, "System Equalizer is unavailable on this device.", android.widget.Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
-        val eq = systemEqualizer ?: return
-        try {
-            bands.forEachIndexed { index, band ->
-                if (index < eq.numberOfBands) {
-                    val gainMillibels = (band.gainDb * 100).toInt().toShort()
-                    eq.setBandLevel(index.toShort(), gainMillibels)
-                }
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to apply EQ bands")
-        }
+        equalizerController.applyBands(bands)
     }
 
     private var autoSkipNextOnError = true
@@ -636,8 +609,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
-        systemEqualizer?.release()
-        systemEqualizer = null
+        equalizerController.release()
         sessionManager?.release()
         sessionManager = null
         if (::networkPlaybackMonitor.isInitialized) {
@@ -662,8 +634,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         updateNotification()
         logMediaControlState("state-$state")
         postMediaNotificationFallback("state-$state")
-        if (state == Player.STATE_READY && systemEqualizer == null) {
-            setupEqualizer()
+        if (state == Player.STATE_READY) {
+            equalizerController.setupIfNeeded(player.audioSessionId)
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
