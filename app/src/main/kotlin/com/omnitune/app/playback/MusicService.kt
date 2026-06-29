@@ -5,26 +5,18 @@
 
 package com.omnitune.app.playback
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.widget.Toast
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.omnitune.app.BuildConfig
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.currentMetadata
@@ -39,27 +31,17 @@ import com.omnitune.app.utils.NetworkConnectivityObserver
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
-import com.omnitune.app.constants.SkipSilenceKey
-import com.omnitune.app.constants.AudioOffload
-import com.omnitune.app.constants.PlayerVolumeKey
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.ShuffleEnabledKey
 import androidx.datastore.preferences.core.edit
-import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import com.omnitune.app.constants.AudioCrossfadeDurationKey
-import com.omnitune.app.constants.AudioNormalizationKey
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
 import kotlinx.coroutines.delay
@@ -68,7 +50,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import javax.inject.Inject
-import com.omnitune.app.playback.EqualizerBand
 
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.flow.first
@@ -135,6 +116,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val crossfadeDurationMs = MutableStateFlow(0)
     private val audioNormalizationEnabled = MutableStateFlow(true)
     private var crossfadeAudio: CrossfadeAudio? = null
+    private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -208,7 +190,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
         lyricsPrefetcher = LyricsPrefetcher(database, lyricsHelper, scope)
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
-        observePreferences()
+        playbackPreferenceObserver = PlaybackPreferenceObserver(
+            context = this,
+            player = player,
+            scope = scope,
+            playerVolume = _playerVolume,
+            playbackFadeFactor = playbackFadeFactor,
+            crossfadeDurationMs = crossfadeDurationMs,
+            audioNormalizationEnabled = audioNormalizationEnabled,
+            onAutoSkipNextOnErrorChanged = { autoSkipNextOnError = it },
+        ).also { it.start() }
         StreamUrlResolver.clearMemoryCache("service startup")
 
         networkPlaybackMonitor = NetworkPlaybackMonitor(
@@ -351,88 +342,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private var autoSkipNextOnError = true
-
-    /**
-     * Observes user preferences from DataStore and applies them to the player in real-time.
-     * This ensures Settings toggles actually affect playback behavior.
-     */
-    private fun observePreferences() {
-        val ds = applicationContext.dataStore
-
-        // Skip Silence
-        scope.launch {
-            ds.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
-                player.skipSilenceEnabled = skipSilence
-                Timber.tag("MusicService").d("Skip silence: $skipSilence")
-            }
-        }
-
-        // Audio Offload
-        scope.launch {
-            ds.data.map { it[AudioOffload] ?: true }.distinctUntilChanged().collect { offload ->
-                player.setOffloadEnabled(offload)
-                Timber.tag("MusicService").d("Audio offload: $offload")
-            }
-        }
-
-        // Player Volume
-        scope.launch {
-            ds.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
-                setPlayerVolume(volume.coerceIn(0f, 1f))
-            }
-        }
-
-        // Combine volumes for crossfade
-        scope.launch {
-            combine(_playerVolume, playbackFadeFactor) { vol, fade ->
-                (vol * fade).coerceIn(0f, 1f)
-            }.collectLatest { finalVolume ->
-                player.volume = finalVolume
-            }
-        }
-
-        // Repeat Mode
-        scope.launch {
-            ds.data.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
-                player.repeatMode = mode
-                Timber.tag("MusicService").d("Repeat mode: $mode")
-            }
-        }
-
-        // Shuffle Mode
-        scope.launch {
-            ds.data.map { it[ShuffleEnabledKey] ?: false }.distinctUntilChanged().collect { enabled ->
-                player.shuffleModeEnabled = enabled
-                Timber.tag("OmniTuneQueue").d("Shuffle restored/changed: enabled=$enabled")
-            }
-        }
-
-        // Crossfade
-        scope.launch {
-            ds.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged().collectLatest { durationMs ->
-                crossfadeDurationMs.value = durationMs
-            }
-        }
-
-        // Audio Normalization
-        scope.launch {
-            ds.data.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
-                audioNormalizationEnabled.value = enabled
-            }
-        }
-
-        // Auto skip on error
-        scope.launch {
-            ds.data.map { it[AutoSkipNextOnErrorKey] ?: true }.distinctUntilChanged().collect { autoSkip ->
-                autoSkipNextOnError = autoSkip
-            }
-        }
-    }
-
-    private fun setPlayerVolume(volume: Float) {
-        _playerVolume.value = volume
-        player.volume = volume
-    }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
@@ -725,6 +634,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             crossfadeAudio?.release()
             crossfadeAudio = null
         } catch (_: Exception) {}
+        playbackPreferenceObserver?.stop()
+        playbackPreferenceObserver = null
         systemEqualizer?.release()
         systemEqualizer = null
         sessionManager?.release()
