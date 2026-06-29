@@ -50,7 +50,7 @@ Extract the remaining internal `MusicService.kt` behavior controllers without ch
   - `.\gradlew.bat lintDebug` -> PASS
 
 ## Runtime Verification Limitation
-Runtime verification after the later slices could not be completed because ADB repeatedly lost the connected device during `installDebug`.
+Runtime verification after the later slices was delayed because ADB repeatedly lost the connected device during `installDebug`.
 
 Observed failures included:
 - `Skipping device '138898743000055' ... Device is OFFLINE.`
@@ -59,10 +59,15 @@ Observed failures included:
 - direct `adb install -r app\build\outputs\apk\debug\app-debug.apk` returning `adb.exe: device offline`
 - transient `unauthorized` state requiring device-side confirmation.
 
-The issue occurred after successful baseline install/launch and after successful install/launch for the preference and equalizer slices. It appears to be an ADB/device connectivity authorization problem, not a build or app packaging failure.
+After the device connection stabilized, direct ADB install and launch succeeded:
+- `adb install -r app\build\outputs\apk\debug\app-debug.apk` -> PASS
+- Launch `com.omnitune.app.debug/com.omnitune.app.MainActivity` -> PASS
+- Focus confirmed on `com.omnitune.app.debug/com.omnitune.app.MainActivity`
+
+The earlier issue occurred after successful baseline install/launch and after successful install/launch for the preference and equalizer slices. It appears to have been an ADB/device connectivity authorization problem, not a build or app packaging failure.
 
 ## Known Limitations
-- Full runtime smoke pass was not completed after all extractions due to ADB instability.
+- Full interactive runtime smoke pass was not completed after all extractions.
 - Edge checks were not completed:
   - Wi-Fi/mobile toggle during playback: NOT VERIFIED
   - force-stop/reopen: NOT VERIFIED
