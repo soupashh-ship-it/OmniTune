@@ -133,10 +133,12 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsCategoryLabel("Preferences")
+            SettingsCategoryLabel("Categories")
         }
 
-        SettingsSection.entries.forEach { section ->
+        SettingsSection.entries
+            .filterNot { it == SettingsSection.UPDATES || it == SettingsSection.DIAGNOSTICS }
+            .forEach { section ->
             item {
                 SettingsSectionCard(
                     section = section,
@@ -163,25 +165,25 @@ enum class SettingsSection(
 ) {
     APPEARANCE(
         "Appearance",
-        "OLED, glass, and layout preferences",
+        "Theme and layout preferences",
         com.omnitune.app.R.drawable.ic_repeat,
         com.omnitune.app.ui.theme.OmniColors.OmniAccentPrimary,
     ),
     PLAYBACK(
         "Playback",
-        "Quality, crossfade, equalizer, and playback behavior",
+        "Quality, crossfade, and equalizer",
         com.omnitune.app.R.drawable.ic_play_arrow,
         com.omnitune.app.ui.theme.OmniColors.ActivePlayback,
     ),
     STORAGE(
         "Downloads & cache",
-        "Cache policy and offline-library guidance",
+        "Storage and offline guidance",
         com.omnitune.app.R.drawable.ic_download,
         com.omnitune.app.ui.theme.OmniColors.Downloaded,
     ),
     NOTIFICATIONS(
         "Notifications & lock screen",
-        "Device-specific media control guidance",
+        "Media controls and lock screen",
         com.omnitune.app.R.drawable.ic_notification_play,
         com.omnitune.app.ui.theme.OmniColors.Warning,
     ),
@@ -199,13 +201,13 @@ enum class SettingsSection(
     ),
     CONTENT(
         "Content & history",
-        "Explicit filters, video results, and history controls",
+        "Filters and history controls",
         com.omnitune.app.R.drawable.ic_search,
         com.omnitune.app.ui.theme.OmniColors.OmniAccentMuted,
     ),
     LYRICS(
         "Lyrics providers",
-        "Provider toggles and lyric animation preference",
+        "Sources and lyric animation",
         com.omnitune.app.R.drawable.ic_list,
         com.omnitune.app.ui.theme.OmniColors.Hot,
     ),
