@@ -130,21 +130,21 @@ fun SettingsHeader(onBack: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Settings",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = OmniColors.TextPrimary,
                 )
                 Text(
-                    text = "OmniTune controls and app preferences",
+                    text = "OmniTune preferences",
                     style = MaterialTheme.typography.bodyMedium,
                     color = OmniColors.TextSecondary,
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(OmniSpacing.medium))
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
         SettingsStatusPill(
-            label = "Installed",
+            label = "OmniTune",
             value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
         )
     }
@@ -156,24 +156,26 @@ fun SettingsQuickSummary(
     onUpdates: () -> Unit,
     onDiagnostics: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium),
     ) {
         SettingsMiniCard(
             label = "Updates",
             value = "GitHub release check",
             iconRes = R.drawable.ic_download,
             accent = OmniColors.OmniAccentSecondary,
-            modifier = Modifier.weight(1f),
             onClick = onUpdates,
         )
+        Divider()
         SettingsMiniCard(
             label = "Diagnostics",
             value = "Share report",
             iconRes = R.drawable.ic_share,
             accent = OmniColors.Hot,
-            modifier = Modifier.weight(1f),
             onClick = onDiagnostics,
         )
     }
@@ -189,17 +191,27 @@ fun SettingsMiniCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    GlassCard(modifier = modifier, cornerRadius = OmniShapes.Medium, tone = GlassTone.Subtle, onClick = onClick) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(OmniSpacing.small),
-        ) {
-            SettingsIconBadge(iconRes = iconRes, accent = accent, size = 34.dp)
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 64.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = Color.White.copy(alpha = 0.08f),
+                ),
+                onClick = onClick,
+            )
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsIconBadge(iconRes = iconRes, accent = accent, size = 34.dp)
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = OmniColors.TextPrimary,
             )
@@ -207,10 +219,11 @@ fun SettingsMiniCard(
                 text = value,
                 style = MaterialTheme.typography.bodySmall,
                 color = OmniColors.TextTertiary,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        SettingsChevron(open = false, tint = OmniColors.TextTertiary)
     }
 }
 
@@ -225,73 +238,70 @@ fun SettingsSectionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium),
     ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = androidx.compose.material3.ripple(
-                            bounded = true,
-                            color = Color.White.copy(alpha = 0.08f),
-                        ),
-                        onClick = onToggle,
-                    )
-                    .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SettingsIconBadge(iconRes = section.iconRes, accent = section.accent, size = 36.dp)
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = section.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = OmniColors.TextPrimary,
-                    )
-                    Text(
-                        text = section.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OmniColors.TextTertiary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 68.dp)
+                .clip(OmniShapes.Small)
+                .background(if (isExpanded) section.accent.copy(alpha = 0.10f) else Color.Transparent)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = androidx.compose.material3.ripple(
+                        bounded = true,
+                        color = Color.White.copy(alpha = 0.08f),
+                    ),
+                    onClick = onToggle,
+                )
+                .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SettingsIconBadge(iconRes = section.iconRes, accent = section.accent, size = 36.dp)
+            Spacer(modifier = Modifier.width(OmniSpacing.medium))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isExpanded) "Hide" else "Open",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = section.label,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isExpanded) section.accent else OmniColors.TextTertiary,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    text = section.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            SettingsChevron(open = isExpanded, tint = if (isExpanded) section.accent else OmniColors.TextTertiary)
+        }
 
-            if (isExpanded) {
-                Divider()
-                Column(
-                    modifier = Modifier
-                        .background(OmniColors.OmniBackgroundBase.copy(alpha = 0.28f))
-                        .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
-                    verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
-                ) {
-                    when (section) {
-                        SettingsSection.APPEARANCE -> AppearanceSettings()
-                        SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
-                        SettingsSection.STORAGE -> StorageSettings()
-                        SettingsSection.NOTIFICATIONS -> MediaControlsHelp()
-                        SettingsSection.UPDATES -> UpdatesSettings()
-                        SettingsSection.DIAGNOSTICS -> DiagnosticsSettings()
-                        SettingsSection.CONTENT -> ContentSettings()
-                        SettingsSection.LYRICS -> LyricsSettings()
-                        SettingsSection.SCROBBLING -> ScrobblingSettings()
-                        SettingsSection.ABOUT -> AboutSettings()
-                    }
-                    Spacer(modifier = Modifier.height(OmniSpacing.compact))
+        if (isExpanded) {
+            Column(
+                modifier = Modifier
+                    .padding(top = OmniSpacing.micro, bottom = OmniSpacing.small)
+                    .clip(OmniShapes.Medium)
+                    .background(OmniColors.SurfaceQuiet)
+                    .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium)
+                    .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            ) {
+                when (section) {
+                    SettingsSection.APPEARANCE -> AppearanceSettings()
+                    SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
+                    SettingsSection.STORAGE -> StorageSettings()
+                    SettingsSection.NOTIFICATIONS -> MediaControlsHelp()
+                    SettingsSection.UPDATES -> UpdatesSettings()
+                    SettingsSection.DIAGNOSTICS -> DiagnosticsSettings()
+                    SettingsSection.CONTENT -> ContentSettings()
+                    SettingsSection.LYRICS -> LyricsSettings()
+                    SettingsSection.SCROBBLING -> ScrobblingSettings()
+                    SettingsSection.ABOUT -> AboutSettings()
                 }
+                Spacer(modifier = Modifier.height(OmniSpacing.compact))
             }
+        } else {
+            Divider()
         }
     }
 }
@@ -332,23 +342,26 @@ fun SettingsStatusPill(
     label: String,
     value: String,
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassMedium)
-            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Pill)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = OmniColors.TextTertiary,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.TextSecondary,
         )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
         Text(
             text = value,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = OmniColors.OmniAccentSecondary,
         )
     }
 }
@@ -375,6 +388,22 @@ fun SettingsIconBadge(
             modifier = Modifier.size(size * 0.46f),
         )
     }
+}
+
+
+@Composable
+fun SettingsChevron(
+    open: Boolean,
+    tint: Color,
+) {
+    Icon(
+        painter = painterResource(R.drawable.ic_arrow_back),
+        contentDescription = if (open) "Collapse" else "Open",
+        tint = tint,
+        modifier = Modifier
+            .size(18.dp)
+            .graphicsLayer { rotationZ = if (open) 90f else 180f },
+    )
 }
 
 
