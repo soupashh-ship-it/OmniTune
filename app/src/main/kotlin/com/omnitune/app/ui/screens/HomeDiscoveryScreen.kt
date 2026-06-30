@@ -387,7 +387,7 @@ private fun HeroCard(
                     .align(Alignment.BottomStart)
                     .padding(OmniSpacing.large),
             ) {
-                AccentPill(text = if (item.song != null) "Play" else "Search")
+                AccentPill(text = if (item.song != null) "Play" else "Explore")
                 Spacer(modifier = Modifier.height(OmniSpacing.small))
                 Text(
                     text = item.title,
@@ -528,13 +528,13 @@ private fun QuickPickRow(
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        cornerRadius = OmniShapes.Medium,
+        cornerRadius = OmniShapes.Small,
         tone = GlassTone.Subtle,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(OmniSpacing.small),
+                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DiscoveryArtwork(
@@ -542,7 +542,7 @@ private fun QuickPickRow(
                 contentDescription = item.title,
                 title = item.title,
                 artworkKey = item.artworkKey ?: item.id,
-                modifier = Modifier.size(58.dp),
+                modifier = Modifier.size(52.dp),
                 imageSize = SHELF_IMAGE_SIZE,
                 shape = OmniShapes.ArtworkSmall,
             )
@@ -552,10 +552,10 @@ private fun QuickPickRow(
                 Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(
-                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_search),
+                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_album),
                 contentDescription = null,
-                tint = OmniColors.TextSecondary,
-                modifier = Modifier.size(22.dp),
+                tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.78f),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -632,13 +632,13 @@ private fun SongShelfRow(
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
-        cornerRadius = OmniShapes.Medium,
+        cornerRadius = OmniShapes.Small,
         tone = GlassTone.Subtle,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(OmniSpacing.small),
+                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DiscoveryArtwork(
@@ -646,7 +646,7 @@ private fun SongShelfRow(
                 contentDescription = item.title,
                 title = item.title,
                 artworkKey = item.artworkKey ?: item.id,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(52.dp),
                 imageSize = SHELF_IMAGE_SIZE,
                 shape = OmniShapes.ArtworkSmall,
             )
@@ -656,10 +656,10 @@ private fun SongShelfRow(
                 Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(
-                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_search),
+                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_album),
                 contentDescription = null,
-                tint = OmniColors.TextSecondary,
-                modifier = Modifier.size(22.dp),
+                tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.72f),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -702,9 +702,9 @@ private fun ShelfArtworkCard(
     )
 
     GlassCard(
-        modifier = Modifier.width(158.dp),
+        modifier = Modifier.width(148.dp),
         onClick = onClick,
-        cornerRadius = OmniShapes.Large,
+        cornerRadius = OmniShapes.Medium,
         tone = GlassTone.Subtle,
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
@@ -717,7 +717,7 @@ private fun ShelfArtworkCard(
                     .fillMaxWidth()
                     .aspectRatio(1f),
                 imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkMedium,
+                shape = OmniShapes.ArtworkSmall,
             )
             Spacer(modifier = Modifier.height(OmniSpacing.small))
             Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -739,9 +739,9 @@ private fun MoodGenreGrid(
                     GlassCard(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 72.dp),
+                            .heightIn(min = 60.dp),
                         onClick = { onChipClick(chip) },
-                        cornerRadius = OmniShapes.Large,
+                        cornerRadius = OmniShapes.Medium,
                         tone = GlassTone.Subtle,
                     ) {
                         Text(
@@ -749,7 +749,7 @@ private fun MoodGenreGrid(
                             style = MaterialTheme.typography.titleMedium,
                             color = OmniColors.TextPrimary,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(OmniSpacing.large),
+                            modifier = Modifier.padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
