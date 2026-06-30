@@ -5,29 +5,34 @@
 
 package com.omnitune.app.ui.component
 
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
 
 @Composable
 fun OmniTuneLoader(
@@ -35,70 +40,108 @@ fun OmniTuneLoader(
     size: Dp = 40.dp,
     color: Color? = null,
 ) {
-    val accentColor = color ?: OmniColors.ActivePlayback
+    OmniWaveformLoader(
+        modifier = modifier,
+        size = size,
+        color = color ?: OmniColors.ActivePlayback,
+    )
+}
 
-    val infiniteTransition = rememberInfiniteTransition(label = "loader")
-
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.75f,
+@Composable
+fun OmniWaveformLoader(
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    color: Color = OmniColors.ActivePlayback,
+) {
+    val transition = rememberInfiniteTransition(label = "omni_waveform_loader")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "scale"
+        label = "omni_waveform_phase",
     )
 
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "rotation"
-    )
-
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.size(size)
+    Row(
+        modifier = modifier.size(size),
+        horizontalArrangement = Arrangement.spacedBy(size * 0.10f),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Canvas(modifier = Modifier.size(size)) {
-            val w = this.size.width
-            val h = this.size.height
-            val strokeWidth = w * 0.12f * scale
-            val pad = w * 0.15f
-            val cx = w / 2f
-            val botY = h - pad
-
-            rotate(rotation, pivot = Offset(cx, h / 2f)) {
-                val path = Path().apply {
-                    moveTo(pad, pad)
-                    lineTo(cx, botY * scale + h * (1 - scale) / 2f)
-                    moveTo(w - pad, pad)
-                    lineTo(cx, botY * scale + h * (1 - scale) / 2f)
-                }
-
-                drawPath(
-                    path = path,
-                    color = accentColor.copy(alpha = alpha),
-                    style = Stroke(
-                        width = strokeWidth,
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
-                    )
-                )
-            }
+        val levels = listOf(0.38f, 0.72f, 0.52f, 0.88f, 0.44f)
+        levels.forEachIndexed { index, base ->
+            val offset = ((phase + index * 0.17f) % 1f)
+            val height = (base * (0.72f + offset * 0.36f)).coerceIn(0.28f, 0.96f)
+            Box(
+                modifier = Modifier
+                    .width(size * 0.10f)
+                    .fillMaxHeight(height)
+                    .clip(OmniShapes.Pill)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                color.copy(alpha = 0.95f),
+                                OmniColors.OmniAccentPrimary.copy(alpha = 0.54f),
+                            ),
+                        ),
+                    ),
+            )
         }
     }
+}
+
+@Composable
+fun OmniDiscPulse(
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    color: Color = OmniColors.ActivePlayback,
+) {
+    val transition = rememberInfiniteTransition(label = "omni_disc_loader")
+    val pulse by transition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "omni_disc_pulse",
+    )
+    Box(contentAlignment = Alignment.Center, modifier = modifier.size(size)) {
+        Canvas(modifier = Modifier.size(size)) {
+            val radius = this.size.minDimension / 2f
+            drawCircle(
+                color = color.copy(alpha = 0.12f + pulse * 0.14f),
+                radius = radius * (0.74f + pulse * 0.16f),
+            )
+            drawCircle(
+                color = color.copy(alpha = 0.62f),
+                radius = radius * 0.52f,
+                style = Stroke(width = radius * 0.12f, cap = StrokeCap.Round),
+            )
+            drawCircle(
+                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.55f),
+                radius = radius * 0.16f,
+            )
+        }
+    }
+}
+
+@Composable
+fun OmniThumbnailPlaceholder(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        OmniColors.SurfaceQuiet,
+                        OmniColors.SurfacePanel,
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.16f),
+                    ),
+                ),
+            ),
+    )
 }

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -53,6 +52,7 @@ import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.AccentPill
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
+import com.omnitune.app.ui.component.OmniWaveformLoader
 import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
@@ -277,7 +277,7 @@ private fun CollectionActions(
             modifier = Modifier.weight(1f),
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                OmniWaveformLoader(modifier = Modifier.size(18.dp), size = 18.dp)
                 Spacer(modifier = Modifier.width(OmniSpacing.compact))
             } else {
                 Icon(painter = painterResource(R.drawable.ic_play_arrow), contentDescription = null)

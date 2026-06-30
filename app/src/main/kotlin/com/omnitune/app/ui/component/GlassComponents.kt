@@ -5,12 +5,6 @@
 
 package com.omnitune.app.ui.component
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -295,20 +289,16 @@ fun ShimmerBar(
     modifier: Modifier = Modifier,
     tone: GlassTone = GlassTone.Subtle,
 ) {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val alpha by transition.animateFloat(
-        initialValue = 0.12f,
-        targetValue = 0.28f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "shimmer_alpha",
-    )
-
     Box(
         modifier = modifier
             .clip(OmniShapes.Small)
-            .background(glassColorFor(tone).copy(alpha = alpha)),
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        glassColorFor(tone).copy(alpha = 0.18f),
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.08f),
+                    ),
+                ),
+            ),
     )
 }
