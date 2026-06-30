@@ -68,6 +68,7 @@ import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniSectionHeader
+import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.component.ShimmerBar
 import com.omnitune.app.ui.theme.OmniColors
@@ -164,6 +165,7 @@ fun SearchResultRow(
                 .background(OmniColors.OmniGlassStrong),
             contentAlignment = Alignment.Center,
         ) {
+            OmniThumbnailPlaceholder(modifier = Modifier.fillMaxSize())
             if (thumbnailModel != null) {
                 AsyncImage(
                     model = thumbnailModel,
@@ -271,5 +273,4 @@ fun SearchResultRow(
         }
     }
 }
-
 

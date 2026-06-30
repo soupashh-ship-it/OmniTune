@@ -115,7 +115,11 @@ fun HistoryScreen(
                 }
             }
         } else {
-            items(uiState.events) { event ->
+            items(
+                items = uiState.events,
+                key = { event -> "history_${event.event.id}_${event.song.id}" },
+                contentType = { "history-row" },
+            ) { event ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

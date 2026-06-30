@@ -196,7 +196,11 @@ fun AlbumScreen(
                             )
                         }
                     } else {
-                        itemsIndexed(songList) { index, song ->
+                        itemsIndexed(
+                            items = songList,
+                            key = { index, song -> "album_song_${song.id.ifBlank { index.toString() }}" },
+                            contentType = { _, _ -> "album-song" },
+                        ) { index, song ->
                             SongRow(
                                 index = index + 1,
                                 song = song,

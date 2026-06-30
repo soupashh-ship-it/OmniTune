@@ -173,7 +173,17 @@ fun ArtistScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
 
-                            items(section.items) { item ->
+                            items(
+                                items = section.items,
+                                key = { item -> "artist_section_${section.title}_${item.id}" },
+                                contentType = { item ->
+                                    when (item) {
+                                        is SongItem -> "artist-song"
+                                        is AlbumItem -> "artist-album"
+                                        else -> "artist-item"
+                                    }
+                                },
+                            ) { item ->
                                 when (item) {
                                     is SongItem -> ArtistSongRow(
                                         song = item,
