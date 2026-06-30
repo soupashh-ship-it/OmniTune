@@ -2,6 +2,7 @@ package com.omnitune.app.ui.screens.search
 
 import com.omnitune.app.ui.screens.SearchViewModel
 import com.omnitune.app.ui.screens.SearchStatus
+import com.omnitune.app.ui.screens.SearchFilterTab
 import com.omnitune.app.ui.screens.SearchUiState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -136,6 +138,13 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
 
+        SearchFilterChips(
+            selectedFilter = uiState.selectedFilter,
+            onFilterSelected = viewModel::onFilterSelected,
+        )
+
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
+
         when {
             uiState.isSearching -> SearchLoadingState()
             uiState.error != null -> SearchErrorState(
@@ -154,13 +163,17 @@ fun SearchScreen(
                 artists = uiState.artists,
                 albums = uiState.albums,
                 playlists = uiState.playlists,
+                selectedFilter = uiState.selectedFilter,
                 status = uiState.status,
+                continuation = uiState.continuation,
+                isLoadingMore = uiState.isLoadingMore,
                 onNavigateToAlbum = onNavigateToAlbum,
                 onNavigateToArtist = onNavigateToArtist,
                 onNavigateToPlaylist = onNavigateToPlaylist,
                 onPlaySong = onPlaySong,
                 onPlayNext = onPlayNext,
                 onAddToQueue = onAddToQueue,
+                onLoadMore = viewModel::loadMore,
             )
         }
     }
@@ -176,13 +189,17 @@ fun SearchResultsContent(
     artists: List<ArtistItem>,
     albums: List<AlbumItem>,
     playlists: List<PlaylistItem>,
+    selectedFilter: SearchFilterTab,
     status: SearchStatus,
+    continuation: String?,
+    isLoadingMore: Boolean,
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
     onNavigateToPlaylist: (PlaylistItem) -> Unit,
     onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -199,12 +216,70 @@ fun SearchResultsContent(
             }
         }
 
-        songSearchResults(songs, onPlaySong, onPlayNext, onAddToQueue)
+        songSearchResults(
+            songs = songs,
+            onPlaySong = onPlaySong,
+            onPlayNext = onPlayNext,
+            onAddToQueue = onAddToQueue,
+            sectionTitle = if (selectedFilter == SearchFilterTab.Videos) "Videos" else "Songs",
+        )
         artistSearchResults(artists, onNavigateToArtist)
         albumSearchResults(albums, onNavigateToAlbum)
         playlistSearchResults(playlists, onNavigateToPlaylist)
+        if (continuation != null && selectedFilter != SearchFilterTab.All) {
+            item(contentType = "load-more") {
+                TextButton(
+                    enabled = !isLoadingMore,
+                    onClick = onLoadMore,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (isLoadingMore) {
+                        OmniTuneLoader(size = 20.dp)
+                        Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                    }
+                    Text(if (isLoadingMore) "Loading more" else "Load more")
+                }
+            }
+        }
         item(contentType = "bottom-spacer") {
             Spacer(modifier = Modifier.height(OmniSpacing.section))
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterChips(
+    selectedFilter: SearchFilterTab,
+    onFilterSelected: (SearchFilterTab) -> Unit,
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        items(
+            items = SearchFilterTab.values().toList(),
+            key = { it.name },
+            contentType = { "search-filter" },
+        ) { filter ->
+            val selected = filter == selectedFilter
+            TextButton(
+                onClick = { onFilterSelected(filter) },
+                modifier = Modifier
+                    .clip(OmniShapes.Pill)
+                    .background(
+                        if (selected) {
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.22f)
+                        } else {
+                            OmniColors.SurfaceQuiet
+                        },
+                    ),
+            ) {
+                Text(
+                    text = filter.label,
+                    color = if (selected) OmniColors.TextPrimary else OmniColors.TextSecondary,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                )
+            }
         }
     }
 }

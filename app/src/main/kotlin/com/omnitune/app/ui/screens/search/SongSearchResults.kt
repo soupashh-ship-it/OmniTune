@@ -17,11 +17,12 @@ fun LazyListScope.songSearchResults(
     songs: List<SongItem>,
     onPlaySong: (List<SongItem>, Int) -> Unit,
     onPlayNext: (SongItem) -> Unit,
-    onAddToQueue: (SongItem) -> Unit
+    onAddToQueue: (SongItem) -> Unit,
+    sectionTitle: String = "Songs",
 ) {
     if (songs.isNotEmpty()) {
         item(contentType = "section-songs") {
-            SectionLabel(title = "Songs", count = songs.size)
+            SectionLabel(title = sectionTitle, count = songs.size)
         }
         itemsIndexed(
             items = songs,
