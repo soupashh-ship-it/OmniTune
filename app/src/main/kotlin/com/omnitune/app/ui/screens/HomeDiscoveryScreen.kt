@@ -73,7 +73,8 @@ import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.ShimmerBar
+import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
+import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -423,7 +424,7 @@ private fun HeroSkeleton() {
         cornerRadius = OmniShapes.ExtraLarge,
         tone = GlassTone.Subtle,
     ) {
-        ShimmerBar(modifier = Modifier.fillMaxSize())
+        OmniThumbnailPlaceholder(modifier = Modifier.fillMaxSize())
     }
 }
 
@@ -817,13 +818,7 @@ private fun ShelfSkeletonRow() {
                 .padding(OmniSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ShimmerBar(modifier = Modifier.size(52.dp).clip(OmniShapes.ArtworkSmall))
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(modifier = Modifier.weight(1f)) {
-                ShimmerBar(modifier = Modifier.fillMaxWidth(0.72f).height(14.dp))
-                Spacer(modifier = Modifier.height(OmniSpacing.compact))
-                ShimmerBar(modifier = Modifier.fillMaxWidth(0.44f).height(10.dp))
-            }
+            OmniTrackLoadingRow(artworkSize = 52.dp)
         }
     }
 }

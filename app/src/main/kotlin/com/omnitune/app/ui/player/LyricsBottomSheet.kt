@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +47,7 @@ import androidx.media3.common.Player
 import com.omnitune.app.R
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.ui.component.OmniLoadingPulse
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -104,7 +104,7 @@ fun LyricsBottomSheet(
                 when (state) {
                     is LyricsUiState.Idle, is LyricsUiState.Loading -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = OmniColors.OmniAccentSecondary)
+                            OmniLoadingPulse(size = 44.dp, color = OmniColors.OmniAccentSecondary)
                         }
                     }
                     is LyricsUiState.Error -> {

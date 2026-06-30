@@ -67,9 +67,9 @@ import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniLoadingPulse
 import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.component.ShimmerBar
+import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
@@ -91,7 +91,14 @@ fun SearchLoadingState() {
     ) {
         item {
             OmniSectionHeader(title = "Searching", action = "Working")
-            Spacer(modifier = Modifier.height(OmniSpacing.compact))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = OmniSpacing.medium),
+                contentAlignment = Alignment.Center,
+            ) {
+                OmniLoadingPulse(size = 42.dp)
+            }
         }
         items(5, key = { "search-loading-$it" }, contentType = { "loading" }) {
             GlassSurface(
@@ -107,23 +114,7 @@ fun SearchLoadingState() {
                         .padding(OmniSpacing.small),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ShimmerBar(
-                        modifier = Modifier.size(54.dp),
-                        tone = GlassTone.Medium,
-                    )
-                    Spacer(modifier = Modifier.width(OmniSpacing.small))
-                    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-                        ShimmerBar(
-                            modifier = Modifier
-                                .fillMaxWidth(0.66f)
-                                .height(14.dp),
-                        )
-                        ShimmerBar(
-                            modifier = Modifier
-                                .fillMaxWidth(0.42f)
-                                .height(10.dp),
-                        )
-                    }
+                    OmniTrackLoadingRow(artworkSize = 54.dp)
                 }
             }
         }
@@ -379,5 +370,3 @@ fun SearchMessageCard(
         }
     }
 }
-
-

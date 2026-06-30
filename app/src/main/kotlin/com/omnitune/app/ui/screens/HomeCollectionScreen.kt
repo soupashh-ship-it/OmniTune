@@ -55,6 +55,7 @@ import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.OmniWaveformLoader
 import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -534,29 +535,7 @@ private fun CollectionSkeletonRow() {
             modifier = Modifier.padding(OmniSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(58.dp)
-                    .clip(OmniShapes.ArtworkSmall)
-                    .background(OmniColors.OmniGlassStrong),
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.55f)
-                        .height(14.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniGlassMedium),
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.36f)
-                        .height(10.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniGlassSubtle),
-                )
-            }
+            OmniTrackLoadingRow(artworkSize = 58.dp)
         }
     }
 }

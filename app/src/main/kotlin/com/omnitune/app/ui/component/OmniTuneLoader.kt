@@ -15,8 +15,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
 
 @Composable
 fun OmniTuneLoader(
@@ -45,6 +50,22 @@ fun OmniTuneLoader(
         size = size,
         color = color ?: OmniColors.ActivePlayback,
     )
+}
+
+@Composable
+fun OmniLoadingPulse(
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+    color: Color = OmniColors.ActivePlayback,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        OmniDiscPulse(size = size, color = color)
+        OmniWaveformLoader(size = size * 0.72f, color = color)
+    }
 }
 
 @Composable
@@ -144,4 +165,49 @@ fun OmniThumbnailPlaceholder(
                 ),
             ),
     )
+}
+
+@Composable
+fun OmniSkeletonLine(
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(12.dp)
+            .clip(OmniShapes.Pill)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        OmniColors.SurfaceQuiet,
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.10f),
+                        OmniColors.SurfacePanel,
+                    ),
+                ),
+            ),
+    )
+}
+
+@Composable
+fun OmniTrackLoadingRow(
+    modifier: Modifier = Modifier,
+    artworkSize: Dp = 52.dp,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OmniThumbnailPlaceholder(modifier = Modifier.size(artworkSize))
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        ) {
+            OmniSkeletonLine(modifier = Modifier.fillMaxWidth(0.72f))
+            OmniSkeletonLine(
+                modifier = Modifier
+                    .fillMaxWidth(0.44f)
+                    .height(9.dp),
+            )
+        }
+    }
 }
