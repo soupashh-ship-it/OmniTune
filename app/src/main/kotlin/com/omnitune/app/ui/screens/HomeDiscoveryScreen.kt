@@ -57,8 +57,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
 import com.omnitune.app.constants.HasPressedStarKey
@@ -89,6 +90,18 @@ private const val SHELF_IMAGE_SIZE = 160
 private const val SUPPORT_REPO_URL = "https://github.com/soupashh-ship-it/OmniTune"
 private const val SUPPORT_PROMPT_LAUNCH_THRESHOLD = 3
 private const val SUPPORT_SNOOZE_DAYS = 5L
+private const val THUMBNAIL_CROSSFADE_MS = 180
+
+private val GeneratedArtworkPalettes = listOf(
+    listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
+    listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
+    listOf(Color(0xFFFFB703), Color(0xFF126782)),
+    listOf(Color(0xFF80ED99), Color(0xFF22577A)),
+    listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
+    listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
+    listOf(Color(0xFFE9C46A), Color(0xFF264653)),
+    listOf(Color(0xFFF72585), Color(0xFF4361EE)),
+)
 
 @Composable
 fun HomeDiscoveryRoute(
@@ -875,6 +888,8 @@ private fun DiscoveryArtwork(
                 .data(it)
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
+                .diskCacheKey(it)
+                .crossfade(THUMBNAIL_CROSSFADE_MS)
                 .build()
         }
     }
@@ -885,21 +900,14 @@ private fun DiscoveryArtwork(
             .background(OmniColors.OmniGlassStrong),
         contentAlignment = Alignment.Center,
     ) {
+        GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
         if (model != null) {
-            SubcomposeAsyncImage(
+            AsyncImage(
                 model = model,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                loading = {
-                    GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
-                },
-                error = {
-                    GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
-                },
             )
-        } else {
-            GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -966,22 +974,21 @@ private fun CollageTile(
                 .data(it)
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
+                .diskCacheKey(it)
+                .crossfade(THUMBNAIL_CROSSFADE_MS)
                 .build()
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
         if (model != null) {
-            SubcomposeAsyncImage(
+            AsyncImage(
                 model = model,
                 contentDescription = contentDescription,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                loading = { GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize()) },
-                error = { GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize()) },
             )
-        } else {
-            GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -992,29 +999,12 @@ private fun GeneratedArtwork(
     artworkKey: String,
     modifier: Modifier = Modifier,
 ) {
-    val palettes = listOf(
-        listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
-        listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
-        listOf(Color(0xFFFFB703), Color(0xFF126782)),
-        listOf(Color(0xFF80ED99), Color(0xFF22577A)),
-        listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
-        listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
-        listOf(Color(0xFFE9C46A), Color(0xFF264653)),
-        listOf(Color(0xFFF72585), Color(0xFF4361EE)),
-    )
-    val colors = palettes[kotlin.math.abs(artworkKey.hashCode()) % palettes.size]
-    val initials = title
-        .split(" ")
-        .filter { it.isNotBlank() }
-        .take(2)
-        .joinToString(" ") { it.take(1).uppercase() }
-        .ifBlank { "OT" }
-    val label = title
-        .split(" ")
-        .filter { it.isNotBlank() }
-        .take(2)
-        .joinToString(" ")
-        .ifBlank { "OmniTune" }
+    val colors = remember(artworkKey) {
+        GeneratedArtworkPalettes[kotlin.math.abs(artworkKey.hashCode()) % GeneratedArtworkPalettes.size]
+    }
+    val words = remember(title) { title.split(" ").filter { it.isNotBlank() }.take(2) }
+    val initials = remember(words) { words.joinToString(" ") { it.take(1).uppercase() }.ifBlank { "OT" } }
+    val label = remember(words) { words.joinToString(" ").ifBlank { "OmniTune" } }
 
     Box(
         modifier = modifier.background(Brush.linearGradient(colors)),

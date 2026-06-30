@@ -46,8 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.omnitune.app.R
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.AccentPill
@@ -66,6 +67,16 @@ import com.omnitune.innertube.models.SongItem
 
 private const val COLLECTION_ARTWORK_SIZE = 544
 private const val TRACK_ARTWORK_SIZE = 144
+private const val COLLECTION_THUMBNAIL_CROSSFADE_MS = 180
+
+private val CollectionArtworkPalettes = listOf(
+    listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
+    listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
+    listOf(Color(0xFFFFB703), Color(0xFF126782)),
+    listOf(Color(0xFF80ED99), Color(0xFF22577A)),
+    listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
+    listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
+)
 
 @Composable
 fun HomeCollectionRoute(
@@ -580,6 +591,8 @@ private fun CollectionArtwork(
                 .data(it)
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
+                .diskCacheKey(it)
+                .crossfade(COLLECTION_THUMBNAIL_CROSSFADE_MS)
                 .build()
         }
     }
@@ -590,17 +603,14 @@ private fun CollectionArtwork(
             .background(OmniColors.OmniGlassStrong),
         contentAlignment = Alignment.Center,
     ) {
+        CollectionFallbackArtwork(title, artworkKey, Modifier.fillMaxSize())
         if (model != null) {
-            SubcomposeAsyncImage(
+            AsyncImage(
                 model = model,
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                loading = { CollectionFallbackArtwork(title, artworkKey, Modifier.fillMaxSize()) },
-                error = { CollectionFallbackArtwork(title, artworkKey, Modifier.fillMaxSize()) },
             )
-        } else {
-            CollectionFallbackArtwork(title, artworkKey, Modifier.fillMaxSize())
         }
     }
 }
@@ -611,16 +621,12 @@ private fun CollectionFallbackArtwork(
     artworkKey: String,
     modifier: Modifier,
 ) {
-    val palettes = listOf(
-        listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
-        listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
-        listOf(Color(0xFFFFB703), Color(0xFF126782)),
-        listOf(Color(0xFF80ED99), Color(0xFF22577A)),
-        listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
-        listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
-    )
-    val colors = palettes[kotlin.math.abs(artworkKey.hashCode()) % palettes.size]
-    val label = title.split(" ").filter { it.isNotBlank() }.take(2).joinToString(" ").ifBlank { "OmniTune" }
+    val colors = remember(artworkKey) {
+        CollectionArtworkPalettes[kotlin.math.abs(artworkKey.hashCode()) % CollectionArtworkPalettes.size]
+    }
+    val label = remember(title) {
+        title.split(" ").filter { it.isNotBlank() }.take(2).joinToString(" ").ifBlank { "OmniTune" }
+    }
     Box(modifier = modifier.background(Brush.linearGradient(colors))) {
         Icon(
             painter = painterResource(R.drawable.ic_album),
