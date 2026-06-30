@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 data class HomeDiscoveryUiState(
@@ -48,7 +50,8 @@ data class HomeDiscoveryUiState(
     val isLoading: Boolean = true,
 )
 
-private const val HOME_THUMBNAIL_WORKERS = 6
+private const val HOME_THUMBNAIL_WORKERS = 2
+private const val HOME_THUMBNAIL_PREWARM_DELAY_MS = 650L
 
 private data class HomeSignalBundle(
     val events: List<EventWithSong>,
@@ -73,6 +76,7 @@ class HomeDiscoveryViewModel @Inject constructor(
     private val downloadSongs = MutableStateFlow<List<Song>>(emptyList())
     private val thumbnailPreviews = MutableStateFlow<Map<String, HomeThumbnailPreview>>(emptyMap())
     private val hydrationRequests = Channel<HomeThumbnailRequest>(Channel.UNLIMITED)
+    private val requestedThumbnailIds = ConcurrentHashMap.newKeySet<String>()
 
     private val downloadListener = object : DownloadManager.Listener {
         override fun onDownloadChanged(
@@ -120,7 +124,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         downloadUtil.downloadManager.addListener(downloadListener)
         refreshDownloads()
         startThumbnailHydrationWorker()
-        prewarmCuratedThumbnails()
+        prewarmInitialThumbnails()
     }
 
     override fun onCleared() {
@@ -244,14 +248,7 @@ class HomeDiscoveryViewModel @Inject constructor(
             existing == HomeHydrationState.Loaded ||
             existing == HomeHydrationState.Failed
         ) return
-
-        thumbnailPreviews.update { current ->
-            if (current.containsKey(request.id)) {
-                current
-            } else {
-                current + (request.id to HomeThumbnailPreview(state = HomeHydrationState.Loading))
-            }
-        }
+        if (!requestedThumbnailIds.add(request.id)) return
         hydrationRequests.trySend(request)
     }
 
@@ -260,7 +257,8 @@ class HomeDiscoveryViewModel @Inject constructor(
             repeat(HOME_THUMBNAIL_WORKERS) {
                 launch {
                     for (request in hydrationRequests) {
-                        if (thumbnailPreviews.value[request.id]?.state != HomeHydrationState.Loading) continue
+                        val existing = thumbnailPreviews.value[request.id]?.state
+                        if (existing == HomeHydrationState.Loaded || existing == HomeHydrationState.Failed) continue
                         val preview = loadThumbnailPreview(request)
                         thumbnailPreviews.update { current -> current + (request.id to preview) }
                     }
@@ -292,27 +290,24 @@ class HomeDiscoveryViewModel @Inject constructor(
         )
     }
 
-    private fun prewarmCuratedThumbnails() {
+    private fun prewarmInitialThumbnails() {
         viewModelScope.launch {
-            val topShelfCards = HomeDefaultCatalog.shelves
-                .take(3)
-                .flatMap { it.items.take(4) }
-                .mapNotNull { item ->
-                    item.query?.let { query -> HomeThumbnailRequest(item.id, query, collage = true) }
-                }
+            delay(HOME_THUMBNAIL_PREWARM_DELAY_MS)
             val requests =
-                HomeDefaultCatalog.heroItems.take(6).mapNotNull { item ->
+                HomeDefaultCatalog.heroItems.take(2).mapNotNull { item ->
                     item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
                 } +
-                    HomeDefaultCatalog.quickPicks.take(12).mapNotNull { item ->
+                    HomeDefaultCatalog.quickPicks.take(4).mapNotNull { item ->
                         item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
                     } +
-                    buildSearchItems(emptyList()).take(6).mapNotNull { item ->
+                    HomeDefaultCatalog.shelves.firstOrNull()?.items.orEmpty().take(3).mapNotNull { item ->
                         item.query?.let { query -> HomeThumbnailRequest(item.id, query) }
-                    } +
-                    topShelfCards
+                    }
 
-            requests.distinctBy { it.id }.forEach(::requestThumbnailHydration)
+            requests.distinctBy { it.id }.forEach { request ->
+                requestThumbnailHydration(request)
+                delay(90)
+            }
         }
     }
 
