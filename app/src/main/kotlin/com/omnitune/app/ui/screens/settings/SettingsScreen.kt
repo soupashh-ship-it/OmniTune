@@ -116,7 +116,7 @@ fun SettingsScreen(
             .background(OmniColors.OmniBackgroundBase)
             .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.section),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
         item {
             Spacer(modifier = Modifier.statusBarsPadding())
@@ -125,7 +125,10 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsQuickSummary()
+            SettingsQuickSummary(
+                onUpdates = { expandedSection = SettingsSection.UPDATES },
+                onDiagnostics = { expandedSection = SettingsSection.DIAGNOSTICS },
+            )
         }
 
         SettingsSection.entries.forEach { section ->

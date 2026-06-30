@@ -54,7 +54,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -97,6 +96,7 @@ import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.diagnostics.DiagnosticReportExporter
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.ui.component.GlassCard
+import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -109,27 +109,15 @@ import com.omnitune.app.utils.rememberPreference
 @Composable
 fun SettingsHeader(onBack: () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.ExtraLarge)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        OmniColors.OmniGlassPlayer,
-                        OmniColors.OmniGlassSubtle,
-                    )
-                )
-            )
-            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.ExtraLarge)
-            .padding(OmniSpacing.section),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(OmniShapes.Small)
-                    .background(OmniColors.OmniGlassMedium),
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.SurfaceQuiet),
             ) {
                 Icon(
                     painterResource(R.drawable.ic_arrow_back),
@@ -142,19 +130,19 @@ fun SettingsHeader(onBack: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Settings",
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = OmniColors.TextPrimary,
                 )
                 Text(
-                    text = "Playback, appearance, updates, and diagnostics",
+                    text = "OmniTune controls and app preferences",
                     style = MaterialTheme.typography.bodyMedium,
                     color = OmniColors.TextSecondary,
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(OmniSpacing.large))
+        Spacer(modifier = Modifier.height(OmniSpacing.medium))
         SettingsStatusPill(
             label = "Installed",
             value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
@@ -164,7 +152,10 @@ fun SettingsHeader(onBack: () -> Unit) {
 
 
 @Composable
-fun SettingsQuickSummary() {
+fun SettingsQuickSummary(
+    onUpdates: () -> Unit,
+    onDiagnostics: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
@@ -175,6 +166,7 @@ fun SettingsQuickSummary() {
             iconRes = R.drawable.ic_download,
             accent = OmniColors.OmniAccentSecondary,
             modifier = Modifier.weight(1f),
+            onClick = onUpdates,
         )
         SettingsMiniCard(
             label = "Diagnostics",
@@ -182,6 +174,7 @@ fun SettingsQuickSummary() {
             iconRes = R.drawable.ic_share,
             accent = OmniColors.Hot,
             modifier = Modifier.weight(1f),
+            onClick = onDiagnostics,
         )
     }
 }
@@ -194,15 +187,16 @@ fun SettingsMiniCard(
     iconRes: Int,
     accent: Color,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
-    GlassCard(modifier = modifier, cornerRadius = OmniShapes.Large) {
+    GlassCard(modifier = modifier, cornerRadius = OmniShapes.Medium, tone = GlassTone.Subtle, onClick = onClick) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(OmniSpacing.medium),
+                .padding(OmniSpacing.small),
         ) {
-            SettingsIconBadge(iconRes = iconRes, accent = accent, size = 40.dp)
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+            SettingsIconBadge(iconRes = iconRes, accent = accent, size = 34.dp)
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleSmall,
@@ -228,9 +222,12 @@ fun SettingsSectionCard(
     onToggle: () -> Unit,
     onNavigateToEqualizer: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.Large,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium),
     ) {
         Column {
             Row(
@@ -244,11 +241,11 @@ fun SettingsSectionCard(
                         ),
                         onClick = onToggle,
                     )
-                    .padding(OmniSpacing.medium),
+                    .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SettingsIconBadge(iconRes = section.iconRes, accent = section.accent)
-                Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                SettingsIconBadge(iconRes = section.iconRes, accent = section.accent, size = 36.dp)
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = section.label,
@@ -275,10 +272,9 @@ fun SettingsSectionCard(
             if (isExpanded) {
                 Divider()
                 Column(
-                    modifier = Modifier.padding(
-                        horizontal = OmniSpacing.medium,
-                        vertical = OmniSpacing.small,
-                    ),
+                    modifier = Modifier
+                        .background(OmniColors.OmniBackgroundBase.copy(alpha = 0.28f))
+                        .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
                     verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
                 ) {
                     when (section) {
