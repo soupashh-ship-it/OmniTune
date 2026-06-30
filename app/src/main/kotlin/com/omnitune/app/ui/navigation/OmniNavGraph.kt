@@ -63,6 +63,7 @@ import com.omnitune.app.ui.screens.search.SearchScreen
 import com.omnitune.app.ui.screens.settings.SettingsScreen
 import com.omnitune.app.ui.screens.StatsScreen
 import com.omnitune.app.ui.shell.GlassBottomDock
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
@@ -147,10 +148,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = shellBottomPadding),
-            enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
-            exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
-            popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)) },
-            popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) }
+            enterTransition = { OmniMotion.screenEnter() },
+            exitTransition = { OmniMotion.screenExit() },
+            popEnterTransition = { OmniMotion.screenPopEnter() },
+            popExitTransition = { OmniMotion.screenPopExit() },
         ) {
             composable(Screens.Home.route) {
                 HomeDiscoveryRoute(
