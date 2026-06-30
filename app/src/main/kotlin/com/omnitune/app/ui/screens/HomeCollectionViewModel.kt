@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 data class HomeCollectionUiState(
@@ -45,6 +46,15 @@ class HomeCollectionViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    private data class CachedCollection(
+        val songs: List<SongItem>,
+        val headerArtworkUrl: String?,
+    )
+
+    private companion object {
+        private val collectionCache = ConcurrentHashMap<String, CachedCollection>()
+    }
+
     private val collectionId: String = checkNotNull(savedStateHandle["collectionId"])
     private val initialArtworkUrl: String? = savedStateHandle["artworkUrl"]
     private val metadata = HomeDefaultCatalog.findCollection(collectionId)
@@ -62,15 +72,30 @@ class HomeCollectionViewModel @Inject constructor(
     }
 
     fun retry() {
-        load()
+        collectionCache.remove(collectionId)
+        load(forceRefresh = true)
     }
 
-    private fun load() {
+    private fun load(forceRefresh: Boolean = false) {
         val collection = metadata ?: run {
             _uiState.update { it.copy(error = "Collection not found.", isLoading = false) }
             return
         }
         if (_uiState.value.isLoading) return
+
+        if (!forceRefresh) {
+            collectionCache[collectionId]?.let { cached ->
+                _uiState.update { current ->
+                    current.copy(
+                        songs = cached.songs,
+                        isLoading = false,
+                        error = null,
+                        headerArtworkUrl = current.headerArtworkUrl ?: cached.headerArtworkUrl,
+                    )
+                }
+                return
+            }
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -90,13 +115,19 @@ class HomeCollectionViewModel @Inject constructor(
                         .filterIsInstance<SongItem>()
                         .distinctBy { it.id }
                         .take(collection.maxItems)
+                    val headerArtworkUrl = songs.firstOrNull()?.thumbnail?.resize(544, 544)
+                    if (songs.isNotEmpty()) {
+                        collectionCache[collectionId] = CachedCollection(
+                            songs = songs,
+                            headerArtworkUrl = headerArtworkUrl,
+                        )
+                    }
                     _uiState.update { current ->
                         current.copy(
                             songs = songs,
                             isLoading = false,
                             error = if (songs.isEmpty()) "No songs found. Try searching again." else null,
-                            headerArtworkUrl = current.headerArtworkUrl
-                                ?: songs.firstOrNull()?.thumbnail?.resize(544, 544),
+                            headerArtworkUrl = current.headerArtworkUrl ?: headerArtworkUrl,
                         )
                     }
                 }

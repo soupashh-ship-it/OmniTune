@@ -442,6 +442,7 @@ private fun CollectionTrackRow(
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
+            .height(82.dp)
             .omniPressScale(interactionSource),
         onClick = onClick,
         cornerRadius = OmniShapes.Large,
