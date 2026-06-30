@@ -89,6 +89,7 @@ fun SearchScreen(
     onBack: () -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToPlaylist: (PlaylistItem) -> Unit = {},
     onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
@@ -156,6 +157,7 @@ fun SearchScreen(
                 status = uiState.status,
                 onNavigateToAlbum = onNavigateToAlbum,
                 onNavigateToArtist = onNavigateToArtist,
+                onNavigateToPlaylist = onNavigateToPlaylist,
                 onPlaySong = onPlaySong,
                 onPlayNext = onPlayNext,
                 onAddToQueue = onAddToQueue,
@@ -177,6 +179,7 @@ fun SearchResultsContent(
     status: SearchStatus,
     onNavigateToAlbum: (String) -> Unit,
     onNavigateToArtist: (String) -> Unit,
+    onNavigateToPlaylist: (PlaylistItem) -> Unit,
     onPlaySong: (List<SongItem>, Int) -> Unit = { _, _ -> },
     onPlayNext: (SongItem) -> Unit = {},
     onAddToQueue: (SongItem) -> Unit = {},
@@ -199,10 +202,9 @@ fun SearchResultsContent(
         songSearchResults(songs, onPlaySong, onPlayNext, onAddToQueue)
         artistSearchResults(artists, onNavigateToArtist)
         albumSearchResults(albums, onNavigateToAlbum)
-        playlistSearchResults(playlists)
+        playlistSearchResults(playlists, onNavigateToPlaylist)
         item(contentType = "bottom-spacer") {
             Spacer(modifier = Modifier.height(OmniSpacing.section))
         }
     }
 }
-

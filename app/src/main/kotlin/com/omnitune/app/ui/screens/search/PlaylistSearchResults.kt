@@ -12,7 +12,8 @@ import com.omnitune.app.R
 import com.omnitune.innertube.models.PlaylistItem
 
 fun LazyListScope.playlistSearchResults(
-    playlists: List<PlaylistItem>
+    playlists: List<PlaylistItem>,
+    onNavigateToPlaylist: (PlaylistItem) -> Unit,
 ) {
     if (playlists.isNotEmpty()) {
         item(contentType = "section-playlists") {
@@ -28,8 +29,8 @@ fun LazyListScope.playlistSearchResults(
                 subtitle = playlist.author?.name ?: "Playlist",
                 thumbnailUrl = playlist.thumbnail,
                 fallbackRes = R.drawable.ic_list,
-                onClick = null,
-                statusText = "Playlist details pending",
+                onClick = { onNavigateToPlaylist(playlist) },
+                statusText = "Open collection",
             )
         }
     }

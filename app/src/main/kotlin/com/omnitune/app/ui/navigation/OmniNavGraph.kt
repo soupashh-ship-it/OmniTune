@@ -46,6 +46,7 @@ import com.omnitune.app.ui.screens.ArtistScreen
 import com.omnitune.app.ui.screens.DownloadsScreen
 import com.omnitune.app.ui.screens.EqualizerScreen
 import com.omnitune.app.ui.screens.HistoryScreen
+import com.omnitune.app.ui.screens.HomeDefaultCatalog
 import com.omnitune.app.ui.screens.HomeCollectionRoute
 import com.omnitune.app.ui.screens.HomeDiscoveryRoute
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
@@ -205,6 +206,14 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             ) {
                 SearchScreen(initialQuery = it.arguments?.getString("query"), onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
                     onNavigateToArtist = { navController.navigate("artist/$it") },
+                    onNavigateToPlaylist = { playlist ->
+                        navController.navigate(
+                            homeCollectionRoute(
+                                collectionId = HomeDefaultCatalog.queryCollectionId(playlist.title),
+                                artworkUrl = playlist.thumbnail,
+                            ),
+                        )
+                    },
                     onPlaySong = { songs, index ->
                         playSongList(
                             context = context,
