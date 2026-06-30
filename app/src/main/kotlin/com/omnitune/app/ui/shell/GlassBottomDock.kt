@@ -53,18 +53,18 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
-            .height(76.dp)
+            .height(72.dp)
             .shadow(
-                18.dp,
+                8.dp,
                 OmniShapes.Dock,
-                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.28f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.18f)
+                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f)
             )
             .clip(OmniShapes.Dock)
-            .border(1.dp, OmniColors.OmniGlassBorderStrong, OmniShapes.Dock)
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Dock)
             .background(
                 Brush.verticalGradient(
-                    listOf(OmniColors.OmniGlassDock, OmniColors.OmniBackgroundBase.copy(alpha = 0.9f))
+                    listOf(OmniColors.SurfacePanel, OmniColors.OmniBackgroundBase.copy(alpha = 0.92f))
                 )
             )
             .padding(horizontal = 10.dp, vertical = 8.dp),
@@ -100,10 +100,10 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                     ) { onNavigate(item.route) }
                     .then(
                         if (backgroundAlpha > 0f) Modifier.background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.24f * backgroundAlpha),
-                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.16f * backgroundAlpha)
+                Brush.horizontalGradient(
+                    listOf(
+                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.18f * backgroundAlpha),
+                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.12f * backgroundAlpha)
                                 )
                             )
                         ) else Modifier
