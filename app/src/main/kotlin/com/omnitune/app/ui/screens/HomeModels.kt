@@ -18,6 +18,15 @@ enum class HomeCatalogSource {
     CuratedDefault,
 }
 
+enum class HomeCollectionType {
+    ArtistMix,
+    Mood,
+    Genre,
+    Playlist,
+    TrendingSearch,
+    QuickPick,
+}
+
 enum class HomeHydrationState {
     None,
     Loading,
@@ -45,6 +54,8 @@ data class MoodChip(
     val label: String,
     val query: String,
     val artworkKey: String = id,
+    val collectionType: HomeCollectionType = HomeCollectionType.Mood,
+    val maxItems: Int = 50,
 )
 
 @Immutable
@@ -57,6 +68,8 @@ data class HomeCarouselItem(
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val collectionType: HomeCollectionType = HomeCollectionType.Playlist,
+    val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
@@ -72,6 +85,8 @@ data class QuickPickItem(
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val collectionType: HomeCollectionType = HomeCollectionType.QuickPick,
+    val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
@@ -87,6 +102,8 @@ data class PlaylistShelfItem(
     val song: Song? = null,
     val query: String? = null,
     val artworkKey: String? = null,
+    val collectionType: HomeCollectionType = HomeCollectionType.Playlist,
+    val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
     val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
@@ -99,4 +116,16 @@ data class HomeSection(
     val actionLabel: String? = null,
     val items: List<PlaylistShelfItem> = emptyList(),
     val sectionType: HomeSectionType = HomeSectionType.Shelf,
+)
+
+@Immutable
+data class HomeCollectionMetadata(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val query: String,
+    val collectionType: HomeCollectionType,
+    val artworkKey: String,
+    val maxItems: Int = 50,
+    val source: HomeCatalogSource = HomeCatalogSource.CuratedDefault,
 )

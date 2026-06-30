@@ -148,12 +148,33 @@ object HomeDefaultCatalog {
         ),
     )
 
+    fun findCollection(id: String): HomeCollectionMetadata? {
+        heroItems.firstOrNull { it.id == id }?.let { item ->
+            return item.toCollectionMetadata(item.collectionType)
+        }
+        quickPicks.firstOrNull { it.id == id }?.let { item ->
+            return item.toCollectionMetadata(item.collectionType)
+        }
+        shelves.asSequence()
+            .flatMap { it.items.asSequence() }
+            .firstOrNull { it.id == id }
+            ?.let { item -> return item.toCollectionMetadata(item.collectionType) }
+        moodChips.firstOrNull { it.id == id }?.let { chip ->
+            return chip.toCollectionMetadata()
+        }
+        genreGrid.firstOrNull { it.id == id }?.let { chip ->
+            return chip.toCollectionMetadata(HomeCollectionType.Genre)
+        }
+        return null
+    }
+
     private fun hero(id: String, title: String, subtitle: String, query: String) = HomeCarouselItem(
         id = "curated_hero_$id",
         title = title,
         subtitle = subtitle,
         query = query,
         artworkKey = id,
+        collectionType = HomeCollectionType.Playlist,
         source = HomeCatalogSource.CuratedDefault,
     )
 
@@ -163,6 +184,11 @@ object HomeDefaultCatalog {
         subtitle = subtitle,
         query = query,
         artworkKey = id,
+        collectionType = when {
+            id.contains("arijit") -> HomeCollectionType.ArtistMix
+            id.contains("lofi") || id.contains("workout") || id.contains("party") || id.contains("sad") -> HomeCollectionType.Mood
+            else -> HomeCollectionType.QuickPick
+        },
         source = HomeCatalogSource.CuratedDefault,
     )
 
@@ -179,7 +205,59 @@ object HomeDefaultCatalog {
         subtitle = subtitle,
         query = query,
         artworkKey = id,
+        collectionType = when {
+            id.contains("mood") || id.contains("romance") || id.contains("sad") || id.contains("party") ||
+                id.contains("focus") || id.contains("workout") || id.contains("rain") -> HomeCollectionType.Mood
+            id.contains("hits") || id.contains("pop") || id.contains("bollywood") || id.contains("punjabi") ||
+                id.contains("tamil") || id.contains("telugu") || id.contains("malayalam") -> HomeCollectionType.Genre
+            id.contains("new") || id.contains("viral") -> HomeCollectionType.TrendingSearch
+            else -> HomeCollectionType.Playlist
+        },
         source = HomeCatalogSource.CuratedDefault,
     )
-}
 
+    private fun HomeCarouselItem.toCollectionMetadata(type: HomeCollectionType) = HomeCollectionMetadata(
+        id = id,
+        title = title,
+        subtitle = subtitle,
+        query = query.orEmpty(),
+        collectionType = type,
+        artworkKey = artworkKey ?: id,
+        maxItems = maxItems,
+        source = source,
+    )
+
+    private fun QuickPickItem.toCollectionMetadata(type: HomeCollectionType) = HomeCollectionMetadata(
+        id = id,
+        title = title,
+        subtitle = subtitle,
+        query = query.orEmpty(),
+        collectionType = type,
+        artworkKey = artworkKey ?: id,
+        maxItems = maxItems,
+        source = source,
+    )
+
+    private fun PlaylistShelfItem.toCollectionMetadata(type: HomeCollectionType) = HomeCollectionMetadata(
+        id = id,
+        title = title,
+        subtitle = subtitle,
+        query = query.orEmpty(),
+        collectionType = type,
+        artworkKey = artworkKey ?: id,
+        maxItems = maxItems,
+        source = source,
+    )
+
+    private fun MoodChip.toCollectionMetadata(
+        type: HomeCollectionType = collectionType,
+    ) = HomeCollectionMetadata(
+        id = id,
+        title = label,
+        subtitle = "Made for exploring",
+        query = query,
+        collectionType = type,
+        artworkKey = artworkKey,
+        maxItems = maxItems,
+    )
+}
