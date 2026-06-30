@@ -8,6 +8,7 @@ package com.omnitune.app.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
@@ -40,7 +39,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
-import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -57,10 +55,8 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val realCollectionCount = uiState.likedCount +
-        uiState.recentlyPlayed.size +
-        uiState.librarySongCount +
-        uiState.playlistCount
+    val totalCount = uiState.likedCount + uiState.recentlyPlayed.size + uiState.librarySongCount + uiState.playlistCount
+    val hasQuickRows = uiState.likedCount > 0 || uiState.downloadCount > 0 || uiState.recentlyPlayed.isNotEmpty()
 
     LazyColumn(
         modifier = Modifier
@@ -70,229 +66,207 @@ fun LibraryScreen(
             .padding(horizontal = OmniSpacing.section),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
-        item {
+        item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-            LibraryHero(
-                totalCount = realCollectionCount,
+            Spacer(modifier = Modifier.height(OmniSpacing.large))
+            LibraryHeader(totalCount = totalCount, onSearch = onNavigateToSearch)
+        }
+
+        item(contentType = "tabs") {
+            LibraryCategoryTabs(
+                playlistCount = uiState.playlistCount,
+                likedCount = uiState.likedCount,
+                albumCount = uiState.librarySongCount,
+                artistCount = uiState.librarySongCount,
+                onPlaylists = onNavigateToPlaylists,
+                onSongs = onNavigateToLiked,
+                onAlbums = onNavigateToAlbums,
+                onArtists = onNavigateToArtists,
             )
         }
 
-        item {
-            Text(
-                text = "Your shelves",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
-            )
+        item(contentType = "quick-title") {
+            LibrarySectionTitle("Quick access")
         }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-            ) {
-                LibraryDestinationCard(
-                    painter = painterResource(R.drawable.ic_favorite),
-                    title = "Liked Songs",
-                    detail = countLabel(uiState.likedCount, "song"),
-                    accent = OmniColors.Hot,
-                    onClick = onNavigateToLiked,
-                    modifier = Modifier.weight(1f),
-                )
-                LibraryDestinationCard(
-                    painter = painterResource(R.drawable.ic_download),
-                    title = "Downloads",
-                    detail = countLabel(uiState.downloadCount, "song"),
-                    accent = OmniColors.Downloaded,
-                    onClick = onNavigateToDownloads,
-                    modifier = Modifier.weight(1f),
-                )
+        if (hasQuickRows) {
+            if (uiState.likedCount > 0) {
+                item(key = "liked", contentType = "route-row") {
+                    LibraryRouteRow(
+                        painter = painterResource(R.drawable.ic_favorite),
+                        title = "Liked",
+                        detail = countLabel(uiState.likedCount, "song"),
+                        accent = OmniColors.Hot,
+                        onClick = onNavigateToLiked,
+                    )
+                }
+            }
+            if (uiState.downloadCount > 0) {
+                item(key = "downloaded", contentType = "route-row") {
+                    LibraryRouteRow(
+                        painter = painterResource(R.drawable.ic_download),
+                        title = "Downloaded",
+                        detail = countLabel(uiState.downloadCount, "song"),
+                        accent = OmniColors.Downloaded,
+                        onClick = onNavigateToDownloads,
+                    )
+                }
+            }
+            if (uiState.recentlyPlayed.isNotEmpty()) {
+                item(key = "recent", contentType = "route-row") {
+                    LibraryRouteRow(
+                        painter = painterResource(R.drawable.ic_history),
+                        title = "Recently played",
+                        detail = countLabel(uiState.recentlyPlayed.size, "song"),
+                        accent = OmniColors.OmniAccentSecondary,
+                        onClick = onNavigateToRecentlyPlayed,
+                    )
+                }
+            }
+        } else {
+            item(contentType = "empty") {
+                LibraryEmptyHub(onSearch = onNavigateToSearch)
             }
         }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-            ) {
-                LibraryDestinationCard(
-                    painter = painterResource(R.drawable.ic_list),
-                    title = "Recently Played",
-                    detail = countLabel(uiState.recentlyPlayed.size, "song"),
-                    accent = OmniColors.OmniAccentPrimary,
-                    onClick = onNavigateToRecentlyPlayed,
-                    modifier = Modifier.weight(1f),
-                )
-                LibraryDestinationCard(
-                    painter = painterResource(R.drawable.ic_play_arrow),
-                    title = "Search",
-                    detail = "Find music",
-                    accent = OmniColors.OmniAccentSecondary,
-                    onClick = onNavigateToSearch,
-                    modifier = Modifier.weight(1f),
-                )
-            }
+        item(contentType = "browse-title") {
+            LibrarySectionTitle("Browse")
         }
 
-        item {
-            Text(
-                text = "Browse library",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
-            )
-        }
-
-        item {
-            LibraryRouteRow(
-                painter = painterResource(R.drawable.ic_artist),
-                title = "Artists",
-                detail = "Open saved artists",
-                accent = OmniColors.OmniAccentPrimary,
-                onClick = onNavigateToArtists,
-            )
-        }
-        item {
-            LibraryRouteRow(
-                painter = painterResource(R.drawable.ic_album),
-                title = "Albums",
-                detail = "Open saved albums",
-                accent = OmniColors.OmniAccentSecondary,
-                onClick = onNavigateToAlbums,
-            )
-        }
-        item {
+        item(key = "browse-playlists", contentType = "route-row") {
             LibraryRouteRow(
                 painter = painterResource(R.drawable.ic_list),
                 title = "Playlists",
                 detail = countLabel(uiState.playlistCount, "playlist"),
-                accent = OmniColors.Hot,
+                accent = OmniColors.OmniAccentPrimary,
                 onClick = onNavigateToPlaylists,
             )
         }
-
-        item { Spacer(modifier = Modifier.height(88.dp)) }
-    }
-}
-
-@Composable
-private fun LibraryHero(
-    totalCount: Int,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.ExtraLarge)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        OmniColors.OmniGlassPlayer,
-                        OmniColors.OmniGlassSubtle,
-                    )
-                )
-            )
-            .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
-                OmniShapes.ExtraLarge,
-            )
-            .padding(OmniSpacing.section),
-    ) {
-        Text(
-            text = "Library",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
-        )
-        Spacer(modifier = Modifier.height(OmniSpacing.compact))
-        Text(
-            text = if (totalCount == 0) {
-                "Your saved music will appear here. Downloads are one tap away."
-            } else {
-                "Saved music, listening history, and playlists."
-            },
-            style = MaterialTheme.typography.bodyLarge,
-            color = OmniColors.TextSecondary,
-        )
-        Spacer(modifier = Modifier.height(OmniSpacing.large))
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-            LibraryMetricPill(
-                label = "Library",
-                value = countLabel(totalCount, "item"),
+        item(key = "browse-artists", contentType = "route-row") {
+            LibraryRouteRow(
+                painter = painterResource(R.drawable.ic_artist),
+                title = "Artists",
+                detail = countLabel(uiState.libraryArtistCount, "artist"),
+                accent = OmniColors.OmniAccentTertiary,
+                onClick = onNavigateToArtists,
             )
         }
-    }
-}
-
-@Composable
-private fun LibraryMetricPill(
-    label: String,
-    value: String,
-) {
-    Column(
-        modifier = Modifier
-            .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassMedium)
-            .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
-                OmniShapes.Pill,
+        item(key = "browse-albums", contentType = "route-row") {
+            LibraryRouteRow(
+                painter = painterResource(R.drawable.ic_album),
+                title = "Albums",
+                detail = countLabel(uiState.libraryAlbumCount, "album"),
+                accent = OmniColors.OmniAccentWarm,
+                onClick = onNavigateToAlbums,
             )
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
+        }
+        item(key = "browse-search", contentType = "route-row") {
+            LibraryRouteRow(
+                painter = painterResource(R.drawable.ic_search),
+                title = "Find music",
+                detail = "Search OmniTune",
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = onNavigateToSearch,
+            )
+        }
+
+        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(104.dp)) }
+    }
+}
+
+@Composable
+private fun LibraryHeader(
+    totalCount: Int,
+    onSearch: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = OmniColors.TextTertiary,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Library",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = if (totalCount == 0) "Saved music will appear here" else countLabel(totalCount, "saved item"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
+            )
+        }
+        IconButtonSurface(
+            painter = painterResource(R.drawable.ic_search),
+            contentDescription = "Search",
+            onClick = onSearch,
         )
     }
 }
 
 @Composable
-private fun LibraryDestinationCard(
-    painter: Painter,
+private fun LibraryCategoryTabs(
+    playlistCount: Int,
+    likedCount: Int,
+    albumCount: Int,
+    artistCount: Int,
+    onPlaylists: () -> Unit,
+    onSongs: () -> Unit,
+    onAlbums: () -> Unit,
+    onArtists: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+    ) {
+        LibraryTabChip("Playlists", playlistCount.toString(), onPlaylists, Modifier.weight(1f))
+        LibraryTabChip("Liked", likedCount.toString(), onSongs, Modifier.weight(1f))
+        LibraryTabChip("Albums", albumCount.toString(), onAlbums, Modifier.weight(1f))
+        LibraryTabChip("Artists", artistCount.toString(), onArtists, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun LibraryTabChip(
     title: String,
-    detail: String,
-    accent: Color,
+    count: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    GlassCard(
-        modifier = modifier,
-        onClick = onClick,
+    Column(
+        modifier = modifier
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium)
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(OmniSpacing.medium),
-        ) {
-            LibraryIconOrb(
-                painter = painter,
-                accent = accent,
-            )
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            text = count,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
+            maxLines = 1,
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = OmniColors.TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
+}
+
+@Composable
+private fun LibrarySectionTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = OmniColors.TextPrimary,
+    )
 }
 
 @Composable
@@ -303,56 +277,114 @@ private fun LibraryRouteRow(
     accent: Color,
     onClick: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(OmniSpacing.medium),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LibraryIconOrb(
-                painter = painter,
-                accent = accent,
+        LibraryIconTile(painter = painter, accent = accent)
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
             )
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OmniColors.TextPrimary,
-                )
-                Text(
-                    text = detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
+        Text(
+            text = "Open",
+            style = MaterialTheme.typography.labelMedium,
+            color = OmniColors.TextTertiary,
+        )
     }
 }
 
 @Composable
-private fun LibraryIconOrb(
+private fun LibraryEmptyHub(onSearch: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .padding(OmniSpacing.large),
+    ) {
+        Text(
+            text = "Nothing saved yet",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.TextPrimary,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.micro))
+        Text(
+            text = "Like songs, download tracks, or play music to build your library.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextSecondary,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.medium))
+        LibraryRouteRow(
+            painter = painterResource(R.drawable.ic_search),
+            title = "Start with Search",
+            detail = "Find something to save",
+            accent = OmniColors.OmniAccentSecondary,
+            onClick = onSearch,
+        )
+    }
+}
+
+@Composable
+private fun LibraryIconTile(
     painter: Painter,
     accent: Color,
 ) {
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(accent.copy(alpha = 0.18f)),
+            .size(48.dp)
+            .clip(OmniShapes.Small)
+            .background(accent.copy(alpha = 0.14f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painter,
             contentDescription = null,
             tint = accent,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+@Composable
+private fun IconButtonSurface(
+    painter: Painter,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Pill)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painter,
+            contentDescription = contentDescription,
+            tint = OmniColors.TextPrimary,
             modifier = Modifier.size(22.dp),
         )
     }

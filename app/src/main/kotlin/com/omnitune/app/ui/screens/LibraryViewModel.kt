@@ -25,6 +25,8 @@ data class LibraryUiState(
     val likedSongs: List<Song> = emptyList(),
     val recentlyPlayed: List<EventWithSong> = emptyList(),
     val librarySongCount: Int = 0,
+    val libraryArtistCount: Int = 0,
+    val libraryAlbumCount: Int = 0,
     val playlistCount: Int = 0,
     val downloadCount: Int = 0,
     val isLoading: Boolean = true,
@@ -100,12 +102,24 @@ class LibraryViewModel @Inject constructor(
                     likedSongs = likedList,
                     recentlyPlayed = events,
                     librarySongCount = librarySongs.size,
+                    libraryArtistCount = _uiState.value.libraryArtistCount,
+                    libraryAlbumCount = _uiState.value.libraryAlbumCount,
                     playlistCount = _uiState.value.playlistCount,
                     downloadCount = _uiState.value.downloadCount,
                     isLoading = false,
                 )
             }.collect { state ->
                 _uiState.value = state
+            }
+        }
+        viewModelScope.launch {
+            libraryArtists.collect { list ->
+                _uiState.value = _uiState.value.copy(libraryArtistCount = list.size)
+            }
+        }
+        viewModelScope.launch {
+            libraryAlbums.collect { list ->
+                _uiState.value = _uiState.value.copy(libraryAlbumCount = list.size)
             }
         }
         viewModelScope.launch {
