@@ -16,7 +16,7 @@ sealed class Screens(
     object Search : Screens("search")
 
     companion object {
-        val MainScreens = listOf(Home, Search, Library)
+        val MainScreens = listOf(Home, Stats, History, Library)
         const val ACTION_SEARCH = "com.omnitune.app.action.SEARCH"
         const val ACTION_LIBRARY = "com.omnitune.app.action.LIBRARY"
         const val ROUTE_EQUALIZER = "equalizer"

@@ -44,9 +44,9 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
     data class NavItem(val resId: Int, val label: String, val route: String)
     val navItems = listOf(
         NavItem(R.drawable.ic_home, "Home", "home"),
-        NavItem(R.drawable.ic_search, "Search", "search"),
+        NavItem(R.drawable.ic_insights, "Stats", "stats"),
+        NavItem(R.drawable.ic_history, "History", "history"),
         NavItem(R.drawable.ic_list, "Library", "library"),
-        NavItem(R.drawable.ic_settings, "Settings", "settings")
     )
 
     Row(
