@@ -38,7 +38,7 @@ data class HomeDiscoveryUiState(
     val carouselItems: List<HomeCarouselItem> = emptyList(),
     val quickPicks: List<QuickPickItem> = emptyList(),
     val quickPicksExploreQuery: String = HomeDefaultCatalog.quickPicks.first().query.orEmpty(),
-    val searchSection: HomeSection = HomeSection(id = "searches", title = "New or Trending Searches"),
+    val searchSection: HomeSection = HomeDefaultCatalog.freshDiscovery,
     val downloadSection: HomeSection = HomeSection(id = "downloads", title = "Offline Songs"),
     val librarySection: HomeSection = HomeSection(id = "library", title = "Library and Favorites"),
     val shelfSections: List<HomeSection> = HomeDefaultCatalog.shelves,
@@ -46,15 +46,6 @@ data class HomeDiscoveryUiState(
     val genreChips: List<MoodChip> = HomeDefaultCatalog.genreGrid,
     val playAllSongs: List<Song> = emptyList(),
     val isLoading: Boolean = true,
-)
-
-private val homeFallbackSearches = listOf(
-    "new music",
-    "trending songs",
-    "fresh pop",
-    "indie hits",
-    "lofi focus",
-    "acoustic covers",
 )
 
 private const val HOME_THUMBNAIL_WORKERS = 6
@@ -167,6 +158,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         val recentSongs = events.take(20)
         val recentSongItems = recentSongs.map { it.song }.distinctBy { it.id }
         val quickSongs = mergeSongs(quickPickSongs, recentSongItems, likedSongs, offlineSongs, librarySongs).take(18)
+        val hasSearchHistory = searchHistory.any { it.query.isNotBlank() }
         val searchItems = buildSearchItems(searchHistory).map { it.withHydration(previews) }
         val realQuickPicks = quickSongs.take(12).map { it.toQuickPickItem() }
         val curatedQuickPicks = HomeDefaultCatalog.quickPicks
@@ -181,9 +173,9 @@ class HomeDiscoveryViewModel @Inject constructor(
             quickPicksExploreQuery = curatedQuickPicks.firstOrNull()?.query
                 ?: HomeDefaultCatalog.quickPicks.first().query.orEmpty(),
             searchSection = HomeSection(
-                id = "searches",
-                title = "New or Trending Searches",
-                actionLabel = "Search",
+                id = if (hasSearchHistory) "recent_searches" else HomeDefaultCatalog.freshDiscovery.id,
+                title = if (hasSearchHistory) "Recent searches" else HomeDefaultCatalog.freshDiscovery.title,
+                actionLabel = if (hasSearchHistory) "Search" else null,
                 items = searchItems,
             ),
             downloadSection = HomeSection(
@@ -228,17 +220,17 @@ class HomeDiscoveryViewModel @Inject constructor(
             .filter { it.isNotBlank() }
             .distinct()
             .take(6)
-        val queries = (history + homeFallbackSearches).distinct().take(8)
-        return queries.mapIndexed { index, query ->
-            val isHistoryItem = query in history
+        if (history.isEmpty()) return HomeDefaultCatalog.freshDiscovery.items
+
+        return history.mapIndexed { index, query ->
             PlaylistShelfItem(
                 id = "query_${query.hashCode()}_$index",
                 title = query.replaceFirstChar { it.titlecase() },
-                subtitle = if (isHistoryItem) "From search history" else "Seed search",
+                subtitle = "From search history",
                 query = query,
                 collectionType = HomeCollectionType.TrendingSearch,
                 actionType = HomeActionType.Search,
-                source = if (isHistoryItem) HomeCatalogSource.UserHistory else HomeCatalogSource.ProviderBrowse,
+                source = HomeCatalogSource.UserHistory,
             )
         }
     }

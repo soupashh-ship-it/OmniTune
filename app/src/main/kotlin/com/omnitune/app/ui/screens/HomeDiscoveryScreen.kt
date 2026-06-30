@@ -173,9 +173,15 @@ fun HomeDiscoveryRoute(
             item(contentType = "searches") {
                 DiscoveryShelf(
                     section = uiState.searchSection,
-                    emptyLabel = "Search seeds appear here until you build history.",
+                    emptyLabel = "Fresh discovery appears here while Home warms up.",
                     onAction = onNavigateToSearch,
-                    onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
+                    onItemClick = { item ->
+                        if (shouldOpenNativeCollection(item.actionType, item.id)) {
+                            onNavigateToCollection(item.id, item.thumbnailUrl)
+                        } else {
+                            item.query?.let(onNavigateToSearchQuery)
+                        }
+                    },
                     onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }

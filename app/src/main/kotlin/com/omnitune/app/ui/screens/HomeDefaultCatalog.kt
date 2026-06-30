@@ -59,6 +59,22 @@ object HomeDefaultCatalog {
         quick("road_trip", "Road Trip Songs", "Commute and travel", "road trip songs"),
     )
 
+    val freshDiscovery = shelf(
+        id = "fresh_discovery",
+        title = "Fresh discovery",
+        items = listOf(
+            card("fresh_tracks", "Fresh tracks", "New music starting point", "new songs"),
+            card("viral_music", "Viral music", "Songs people search often", "viral songs"),
+            card("indie_finds", "Indie finds", "Independent sounds to explore", "indie music"),
+            card("acoustic_covers", "Acoustic covers", "Stripped-back versions", "acoustic covers"),
+            card("late_night", "Late-night listens", "Soft after-hours search", "late night songs"),
+            card("lofi_focus", "Lo-fi focus", "Low-friction beats", "lofi focus"),
+            card("fresh_pop", "Fresh pop", "Bright recent pop searches", "new pop songs"),
+            card("new_hindi", "New Hindi", "Fresh Hindi searches", "new hindi songs"),
+        ),
+        actionLabel = null,
+    )
+
     val shelves = listOf(
         shelf(
             id = "popular_starting_points",
@@ -155,6 +171,9 @@ object HomeDefaultCatalog {
         quickPicks.firstOrNull { it.id == id }?.let { item ->
             return item.toCollectionMetadata(item.collectionType)
         }
+        freshDiscovery.items.firstOrNull { it.id == id }?.let { item ->
+            return item.toCollectionMetadata(item.collectionType)
+        }
         shelves.asSequence()
             .flatMap { it.items.asSequence() }
             .firstOrNull { it.id == id }
@@ -193,10 +212,15 @@ object HomeDefaultCatalog {
         source = HomeCatalogSource.CuratedDefault,
     )
 
-    private fun shelf(id: String, title: String, items: List<PlaylistShelfItem>) = HomeSection(
+    private fun shelf(
+        id: String,
+        title: String,
+        items: List<PlaylistShelfItem>,
+        actionLabel: String? = "Explore",
+    ) = HomeSection(
         id = id,
         title = title,
-        actionLabel = "Explore",
+        actionLabel = actionLabel,
         items = items,
     )
 
