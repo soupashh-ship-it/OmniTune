@@ -230,11 +230,15 @@ class HomeDiscoveryViewModel @Inject constructor(
             .take(6)
         val queries = (history + homeFallbackSearches).distinct().take(8)
         return queries.mapIndexed { index, query ->
+            val isHistoryItem = query in history
             PlaylistShelfItem(
                 id = "query_${query.hashCode()}_$index",
                 title = query.replaceFirstChar { it.titlecase() },
-                subtitle = if (query in history) "From search history" else "Seed search",
+                subtitle = if (isHistoryItem) "From search history" else "Seed search",
                 query = query,
+                collectionType = HomeCollectionType.TrendingSearch,
+                actionType = HomeActionType.Search,
+                source = if (isHistoryItem) HomeCatalogSource.UserHistory else HomeCatalogSource.ProviderBrowse,
             )
         }
     }

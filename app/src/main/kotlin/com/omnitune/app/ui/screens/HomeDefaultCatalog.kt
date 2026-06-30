@@ -189,6 +189,7 @@ object HomeDefaultCatalog {
             id.contains("lofi") || id.contains("workout") || id.contains("party") || id.contains("sad") -> HomeCollectionType.Mood
             else -> HomeCollectionType.QuickPick
         },
+        actionType = if (id.contains("arijit")) HomeActionType.OpenArtist else HomeActionType.OpenCollection,
         source = HomeCatalogSource.CuratedDefault,
     )
 
@@ -225,6 +226,7 @@ object HomeDefaultCatalog {
         artworkKey = artworkKey ?: id,
         maxItems = maxItems,
         source = source,
+        actionType = actionType,
     )
 
     private fun QuickPickItem.toCollectionMetadata(type: HomeCollectionType) = HomeCollectionMetadata(
@@ -236,6 +238,7 @@ object HomeDefaultCatalog {
         artworkKey = artworkKey ?: id,
         maxItems = maxItems,
         source = source,
+        actionType = actionType,
     )
 
     private fun PlaylistShelfItem.toCollectionMetadata(type: HomeCollectionType) = HomeCollectionMetadata(
@@ -247,6 +250,7 @@ object HomeDefaultCatalog {
         artworkKey = artworkKey ?: id,
         maxItems = maxItems,
         source = source,
+        actionType = actionType,
     )
 
     private fun MoodChip.toCollectionMetadata(
@@ -259,5 +263,7 @@ object HomeDefaultCatalog {
         collectionType = type,
         artworkKey = artworkKey,
         maxItems = maxItems,
+        source = source,
+        actionType = actionType,
     )
 }

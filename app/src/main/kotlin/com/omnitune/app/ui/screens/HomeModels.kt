@@ -11,11 +11,16 @@ import com.omnitune.app.db.entities.Song
 enum class HomeActionType {
     Search,
     PlaySong,
+    OpenCollection,
+    OpenArtist,
 }
 
 enum class HomeCatalogSource {
     UserData,
     CuratedDefault,
+    ProviderBrowse,
+    UserHistory,
+    Recommended,
 }
 
 enum class HomeCollectionType {
@@ -25,6 +30,9 @@ enum class HomeCollectionType {
     Playlist,
     TrendingSearch,
     QuickPick,
+    NewReleases,
+    ForYou,
+    Related,
 }
 
 enum class HomeHydrationState {
@@ -56,6 +64,8 @@ data class MoodChip(
     val artworkKey: String = id,
     val collectionType: HomeCollectionType = HomeCollectionType.Mood,
     val maxItems: Int = 50,
+    val actionType: HomeActionType = HomeActionType.OpenCollection,
+    val source: HomeCatalogSource = HomeCatalogSource.CuratedDefault,
 )
 
 @Immutable
@@ -71,7 +81,7 @@ data class HomeCarouselItem(
     val collectionType: HomeCollectionType = HomeCollectionType.Playlist,
     val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
-    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
+    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.OpenCollection,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
 
@@ -88,7 +98,7 @@ data class QuickPickItem(
     val collectionType: HomeCollectionType = HomeCollectionType.QuickPick,
     val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
-    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
+    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.OpenCollection,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
 
@@ -105,7 +115,7 @@ data class PlaylistShelfItem(
     val collectionType: HomeCollectionType = HomeCollectionType.Playlist,
     val maxItems: Int = 50,
     val hydrationState: HomeHydrationState = HomeHydrationState.None,
-    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.Search,
+    val actionType: HomeActionType = if (song != null) HomeActionType.PlaySong else HomeActionType.OpenCollection,
     val source: HomeCatalogSource = if (song != null) HomeCatalogSource.UserData else HomeCatalogSource.CuratedDefault,
 )
 
@@ -128,4 +138,5 @@ data class HomeCollectionMetadata(
     val artworkKey: String,
     val maxItems: Int = 50,
     val source: HomeCatalogSource = HomeCatalogSource.CuratedDefault,
+    val actionType: HomeActionType = HomeActionType.OpenCollection,
 )

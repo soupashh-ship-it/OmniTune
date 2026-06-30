@@ -185,7 +185,7 @@ fun HomeDiscoveryRoute(
                     HorizontalDiscoveryShelf(
                         section = section,
                         onItemClick = { item ->
-                            if (item.source == HomeCatalogSource.CuratedDefault && HomeDefaultCatalog.findCollection(item.id) != null) {
+                            if (shouldOpenNativeCollection(item.actionType, item.id)) {
                                 onNavigateToCollection(item.id, item.thumbnailUrl)
                             } else {
                                 item.query?.let(onNavigateToSearchQuery)
@@ -322,8 +322,7 @@ private fun HeroCarousel(
                         onRequestHydration = onRequestHydration,
                         onClick = {
                             item.song?.let(onPlaySong) ?: if (
-                                item.source == HomeCatalogSource.CuratedDefault &&
-                                HomeDefaultCatalog.findCollection(item.id) != null
+                                shouldOpenNativeCollection(item.actionType, item.id)
                             ) {
                                 onOpenCollection(item.id, item.thumbnailUrl)
                             } else {
@@ -495,8 +494,7 @@ private fun QuickPicksSection(
                     onRequestHydration = onRequestHydration,
                     onClick = {
                         item.song?.let(onPlaySong) ?: if (
-                            item.source == HomeCatalogSource.CuratedDefault &&
-                            HomeDefaultCatalog.findCollection(item.id) != null
+                            shouldOpenNativeCollection(item.actionType, item.id)
                         ) {
                             onOpenCollection(item.id, item.thumbnailUrl)
                         } else {
@@ -552,7 +550,7 @@ private fun QuickPickRow(
                 Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(
-                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_album),
+                painter = painterResource(actionIconFor(item.actionType)),
                 contentDescription = null,
                 tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.78f),
                 modifier = Modifier.size(20.dp),
@@ -656,7 +654,7 @@ private fun SongShelfRow(
                 Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Icon(
-                painter = painterResource(if (item.song != null) R.drawable.ic_play_arrow else R.drawable.ic_album),
+                painter = painterResource(actionIconFor(item.actionType)),
                 contentDescription = null,
                 tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.72f),
                 modifier = Modifier.size(20.dp),
@@ -836,7 +834,7 @@ private fun RequestHydrationEffect(
 ) {
     LaunchedEffect(id, query, source, thumbnailUrl, state, collage) {
         if (
-            source == HomeCatalogSource.CuratedDefault &&
+            source != HomeCatalogSource.UserData &&
             !query.isNullOrBlank() &&
             thumbnailUrl.isNullOrBlank() &&
             state == HomeHydrationState.None
@@ -844,6 +842,19 @@ private fun RequestHydrationEffect(
             onRequestHydration(HomeThumbnailRequest(id = id, query = query, collage = collage))
         }
     }
+}
+
+private fun shouldOpenNativeCollection(
+    actionType: HomeActionType,
+    id: String,
+): Boolean = (actionType == HomeActionType.OpenCollection || actionType == HomeActionType.OpenArtist) &&
+    HomeDefaultCatalog.findCollection(id) != null
+
+private fun actionIconFor(actionType: HomeActionType): Int = when (actionType) {
+    HomeActionType.PlaySong -> R.drawable.ic_play_arrow
+    HomeActionType.Search -> R.drawable.ic_search
+    HomeActionType.OpenCollection,
+    HomeActionType.OpenArtist -> R.drawable.ic_album
 }
 
 @Composable
