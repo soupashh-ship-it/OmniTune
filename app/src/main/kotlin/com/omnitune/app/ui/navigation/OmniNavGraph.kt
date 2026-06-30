@@ -53,6 +53,7 @@ import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryArtistsScreen
 import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
 import com.omnitune.app.ui.screens.LibraryScreen
+import com.omnitune.app.ui.screens.LibrarySongsScreen
 import com.omnitune.app.ui.screens.LikedSongsScreen
 import com.omnitune.app.ui.screens.PlaylistDetailScreen
 import com.omnitune.app.ui.screens.QueueScreen
@@ -170,14 +171,24 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 )
             }
             composable(Screens.Stats.route) { StatsScreen() }
-            composable(Screens.History.route) { HistoryScreen() }
+            composable(Screens.History.route) {
+                HistoryScreen(onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(title = "History", items = listOf(song.toMediaItem())))
+                })
+            }
             composable(Screens.Library.route) {
                 LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
+                    onNavigateToSongs = { navController.navigate("library_songs") },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToRecentlyPlayed = { navController.navigate("recently_played") },
                     onNavigateToArtists = { navController.navigate("library_artists") },
                     onNavigateToAlbums = { navController.navigate("library_albums") },
                     onNavigateToPlaylists = { navController.navigate("library_playlists") })
+            }
+            composable("library_songs") {
+                LibrarySongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
+                    localPlayerConnection?.playQueue(ListQueue(title = "Songs", items = listOf(song.toMediaItem())))
+                })
             }
             composable("library_artists") {
                 LibraryArtistsScreen(onBack = { navController.popBackStack() }, onNavigateToArtist = { navController.navigate("artist/$it") })
