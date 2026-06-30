@@ -6,6 +6,8 @@
 package com.omnitune.app.ui.screens
 
 object HomeDefaultCatalog {
+    private const val QUERY_COLLECTION_PREFIX = "query:"
+
     val moodChips = listOf(
         MoodChip("romance", "Romance", "romance songs hindi"),
         MoodChip("relax", "Relax", "relaxing music"),
@@ -165,6 +167,22 @@ object HomeDefaultCatalog {
     )
 
     fun findCollection(id: String): HomeCollectionMetadata? {
+        if (id.startsWith(QUERY_COLLECTION_PREFIX)) {
+            val query = id.removePrefix(QUERY_COLLECTION_PREFIX).trim()
+            if (query.isNotBlank()) {
+                return HomeCollectionMetadata(
+                    id = id,
+                    title = query.replaceFirstChar { it.titlecase() },
+                    subtitle = "From search history",
+                    query = query,
+                    collectionType = HomeCollectionType.TrendingSearch,
+                    artworkKey = "history_${query.hashCode()}",
+                    maxItems = 40,
+                    source = HomeCatalogSource.UserHistory,
+                    actionType = HomeActionType.OPEN_COLLECTION,
+                )
+            }
+        }
         heroItems.firstOrNull { it.id == id }?.let { item ->
             return item.toCollectionMetadata(item.collectionType)
         }
@@ -208,9 +226,11 @@ object HomeDefaultCatalog {
             id.contains("lofi") || id.contains("workout") || id.contains("party") || id.contains("sad") -> HomeCollectionType.Mood
             else -> HomeCollectionType.QuickPick
         },
-        actionType = if (id.contains("arijit")) HomeActionType.OpenArtist else HomeActionType.OpenCollection,
+        actionType = if (id.contains("arijit")) HomeActionType.OPEN_ARTIST else HomeActionType.OPEN_COLLECTION,
         source = HomeCatalogSource.CuratedDefault,
     )
+
+    fun queryCollectionId(query: String): String = QUERY_COLLECTION_PREFIX + query.trim()
 
     private fun shelf(
         id: String,

@@ -865,14 +865,15 @@ private fun RequestHydrationEffect(
 private fun shouldOpenNativeCollection(
     actionType: HomeActionType,
     id: String,
-): Boolean = (actionType == HomeActionType.OpenCollection || actionType == HomeActionType.OpenArtist) &&
-    HomeDefaultCatalog.findCollection(id) != null
+): Boolean = actionType != HomeActionType.OPEN_SEARCH && HomeDefaultCatalog.findCollection(id) != null
 
 private fun actionIconFor(actionType: HomeActionType): Int = when (actionType) {
-    HomeActionType.PlaySong -> R.drawable.ic_play_arrow
-    HomeActionType.Search -> R.drawable.ic_search
-    HomeActionType.OpenCollection,
-    HomeActionType.OpenArtist -> R.drawable.ic_album
+    HomeActionType.PLAY_TRACK -> R.drawable.ic_play_arrow
+    HomeActionType.OPEN_SEARCH -> R.drawable.ic_search
+    HomeActionType.OPEN_ARTIST -> R.drawable.ic_artist
+    HomeActionType.OPEN_ALBUM -> R.drawable.ic_album
+    HomeActionType.OPEN_COLLECTION,
+    HomeActionType.OPEN_PLAYLIST -> R.drawable.ic_album
 }
 
 @Composable

@@ -226,14 +226,14 @@ class HomeDiscoveryViewModel @Inject constructor(
             .take(6)
         if (history.isEmpty()) return HomeDefaultCatalog.freshDiscovery.items
 
-        return history.mapIndexed { index, query ->
+        return history.map { query ->
             PlaylistShelfItem(
-                id = "query_${query.hashCode()}_$index",
+                id = HomeDefaultCatalog.queryCollectionId(query),
                 title = query.replaceFirstChar { it.titlecase() },
                 subtitle = "From search history",
                 query = query,
                 collectionType = HomeCollectionType.TrendingSearch,
-                actionType = HomeActionType.Search,
+                actionType = HomeActionType.OPEN_COLLECTION,
                 source = HomeCatalogSource.UserHistory,
             )
         }
