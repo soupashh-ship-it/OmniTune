@@ -93,6 +93,7 @@ private const val SUPPORT_SNOOZE_DAYS = 5L
 fun HomeDiscoveryRoute(
     onNavigateToSearch: () -> Unit,
     onNavigateToSearchQuery: (String) -> Unit,
+    onNavigateToCollection: (String, String?) -> Unit,
     onNavigateToLibrary: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -124,7 +125,7 @@ fun HomeDiscoveryRoute(
             }
 
             item(contentType = "mood-chips") {
-                MoodChipRow(chips = uiState.moodChips, onChipClick = onNavigateToSearchQuery)
+                MoodChipRow(chips = uiState.moodChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) })
             }
 
             item(contentType = "hero") {
@@ -133,6 +134,7 @@ fun HomeDiscoveryRoute(
                     isLoading = uiState.isLoading,
                     onPlaySong = onPlaySong,
                     onSearch = onNavigateToSearchQuery,
+                    onOpenCollection = onNavigateToCollection,
                     onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }
@@ -151,6 +153,7 @@ fun HomeDiscoveryRoute(
                     onPlayAll = { onPlaySongs(uiState.playAllSongs) },
                     onPlaySong = onPlaySong,
                     onSearch = onNavigateToSearchQuery,
+                    onOpenCollection = onNavigateToCollection,
                     exploreQuery = uiState.quickPicksExploreQuery,
                     onRequestHydration = viewModel::requestThumbnailHydration,
                 )
@@ -181,14 +184,20 @@ fun HomeDiscoveryRoute(
                 item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
                     HorizontalDiscoveryShelf(
                         section = section,
-                        onItemClick = { item -> item.query?.let(onNavigateToSearchQuery) },
+                        onItemClick = { item ->
+                            if (item.source == HomeCatalogSource.CuratedDefault && HomeDefaultCatalog.findCollection(item.id) != null) {
+                                onNavigateToCollection(item.id, item.thumbnailUrl)
+                            } else {
+                                item.query?.let(onNavigateToSearchQuery)
+                            }
+                        },
                         onRequestHydration = viewModel::requestThumbnailHydration,
                     )
                 }
             }
 
             item(contentType = "mood-grid") {
-                MoodGenreGrid(chips = uiState.genreChips, onChipClick = onNavigateToSearchQuery)
+                MoodGenreGrid(chips = uiState.genreChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) })
             }
 
             if (uiState.downloadSection.items.isNotEmpty()) {
@@ -279,13 +288,13 @@ private fun HeaderIconButton(
 @Composable
 private fun MoodChipRow(
     chips: List<MoodChip>,
-    onChipClick: (String) -> Unit,
+    onChipClick: (MoodChip) -> Unit,
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
         items(chips, key = { it.id }, contentType = { "mood-chip" }) { chip ->
             FilterChip(
                 selected = false,
-                onClick = { onChipClick(chip.query) },
+                onClick = { onChipClick(chip) },
                 label = { Text(chip.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
@@ -298,6 +307,7 @@ private fun HeroCarousel(
     isLoading: Boolean,
     onPlaySong: (Song) -> Unit,
     onSearch: (String) -> Unit,
+    onOpenCollection: (String, String?) -> Unit,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
@@ -311,7 +321,14 @@ private fun HeroCarousel(
                         item = item,
                         onRequestHydration = onRequestHydration,
                         onClick = {
-                            item.song?.let(onPlaySong) ?: item.query?.let(onSearch)
+                            item.song?.let(onPlaySong) ?: if (
+                                item.source == HomeCatalogSource.CuratedDefault &&
+                                HomeDefaultCatalog.findCollection(item.id) != null
+                            ) {
+                                onOpenCollection(item.id, item.thumbnailUrl)
+                            } else {
+                                item.query?.let(onSearch)
+                            }
                         },
                     )
                 }
@@ -459,6 +476,7 @@ private fun QuickPicksSection(
     onPlayAll: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onSearch: (String) -> Unit,
+    onOpenCollection: (String, String?) -> Unit,
     exploreQuery: String,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
@@ -476,7 +494,14 @@ private fun QuickPicksSection(
                     item = item,
                     onRequestHydration = onRequestHydration,
                     onClick = {
-                        item.song?.let(onPlaySong) ?: item.query?.let(onSearch)
+                        item.song?.let(onPlaySong) ?: if (
+                            item.source == HomeCatalogSource.CuratedDefault &&
+                            HomeDefaultCatalog.findCollection(item.id) != null
+                        ) {
+                            onOpenCollection(item.id, item.thumbnailUrl)
+                        } else {
+                            item.query?.let(onSearch)
+                        }
                     },
                 )
             }
@@ -704,7 +729,7 @@ private fun ShelfArtworkCard(
 @Composable
 private fun MoodGenreGrid(
     chips: List<MoodChip>,
-    onChipClick: (String) -> Unit,
+    onChipClick: (MoodChip) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = "Mood and Genres")
@@ -715,7 +740,7 @@ private fun MoodGenreGrid(
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 72.dp),
-                        onClick = { onChipClick(chip.query) },
+                        onClick = { onChipClick(chip) },
                         cornerRadius = OmniShapes.Large,
                         tone = GlassTone.Subtle,
                     ) {

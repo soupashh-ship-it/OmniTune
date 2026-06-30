@@ -46,6 +46,7 @@ import com.omnitune.app.ui.screens.ArtistScreen
 import com.omnitune.app.ui.screens.DownloadsScreen
 import com.omnitune.app.ui.screens.EqualizerScreen
 import com.omnitune.app.ui.screens.HistoryScreen
+import com.omnitune.app.ui.screens.HomeCollectionRoute
 import com.omnitune.app.ui.screens.HomeDiscoveryRoute
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryArtistsScreen
@@ -69,24 +70,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
+private data class PendingSongQueue(
+    val title: String,
+    val songs: List<SongItem>,
+    val index: Int,
+)
 
-private fun playSongFromSearch(
+private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): String {
+    val base = "homeCollection/${Uri.encode(collectionId)}"
+    return artworkUrl
+        ?.takeIf { it.isNotBlank() }
+        ?.let { "$base?artworkUrl=${Uri.encode(it)}" }
+        ?: base
+}
+
+private fun playSongList(
     context: android.content.Context,
+    queueTitle: String,
     songs: List<SongItem>,
     index: Int,
     playerConnection: PlayerConnection?,
-    onPlayerNotReady: (List<SongItem>, Int) -> Unit,
+    onPlayerNotReady: (PendingSongQueue) -> Unit,
 ) {
     val songItem = songs[index]
-    Timber.tag("OmniTunePlaybackTrace").i("Search play requested: ${songItem.title} (${songItem.id})")
+    Timber.tag("OmniTunePlaybackTrace").i("$queueTitle play requested: ${songItem.title} (${songItem.id})")
     val connection = playerConnection ?: run {
-        Timber.tag("OmniTunePlaybackTrace").w("Search play queued: player connection not ready")
-        onPlayerNotReady(songs, index)
+        Timber.tag("OmniTunePlaybackTrace").w("$queueTitle play queued: player connection not ready")
+        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index))
         Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
         return
     }
     val mediaItems = songs.map { it.toMediaItem() }
-    connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
+    connection.playQueue(ListQueue(title = queueTitle, items = mediaItems, startIndex = index))
 }
 
 @Composable
@@ -100,19 +115,19 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
-    var pendingSearchQueue by remember { mutableStateOf<Pair<List<SongItem>, Int>?>(null) }
+    var pendingSongQueue by remember { mutableStateOf<PendingSongQueue?>(null) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
     val showBottomBar = isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
 
-    LaunchedEffect(localPlayerConnection, pendingSearchQueue) {
-        val queueData = pendingSearchQueue
+    LaunchedEffect(localPlayerConnection, pendingSongQueue) {
+        val queueData = pendingSongQueue
         val connection = localPlayerConnection
         if (queueData != null && connection != null) {
-            val (songs, index) = queueData
+            val (title, songs, index) = queueData
             Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
-            pendingSearchQueue = null
+            pendingSongQueue = null
             val mediaItems = songs.map { it.toMediaItem() }
-            connection.playQueue(ListQueue(title = "Search Results", items = mediaItems, startIndex = index))
+            connection.playQueue(ListQueue(title = title, items = mediaItems, startIndex = index))
         }
     }
 
@@ -141,6 +156,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 HomeDiscoveryRoute(
                     onNavigateToSearch = { navController.navigate(Screens.Search.route) },
                     onNavigateToSearchQuery = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
+                    onNavigateToCollection = { collectionId, artworkUrl -> navController.navigate(homeCollectionRoute(collectionId, artworkUrl)) },
                     onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
@@ -189,12 +205,13 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 SearchScreen(initialQuery = it.arguments?.getString("query"), onBack = { navController.popBackStack() }, onNavigateToAlbum = { navController.navigate("album/$it") },
                     onNavigateToArtist = { navController.navigate("artist/$it") },
                     onPlaySong = { songs, index ->
-                        playSongFromSearch(
+                        playSongList(
                             context = context,
+                            queueTitle = "Search Results",
                             songs = songs,
                             index = index,
                             playerConnection = localPlayerConnection,
-                            onPlayerNotReady = { s, i -> pendingSearchQueue = Pair(s, i) }
+                            onPlayerNotReady = { pendingSongQueue = it }
                         )
                     },
                     onPlayNext = { song ->
@@ -215,6 +232,46 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
                         }
                     })
+            }
+            composable(
+                route = "homeCollection/{collectionId}?artworkUrl={artworkUrl}",
+                arguments = listOf(
+                    navArgument("collectionId") { type = NavType.StringType },
+                    navArgument("artworkUrl") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) {
+                HomeCollectionRoute(
+                    onBack = { navController.popBackStack() },
+                    onSearch = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
+                    onPlaySongs = { songs, index ->
+                        playSongList(
+                            context = context,
+                            queueTitle = "Home Collection",
+                            songs = songs,
+                            index = index,
+                            playerConnection = localPlayerConnection,
+                            onPlayerNotReady = { pendingSongQueue = it },
+                        )
+                    },
+                    onPlayNext = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.playNext(song.toMediaItem())
+                            Toast.makeText(context, "Added to play next", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onAddToQueue = { song ->
+                        val connection = localPlayerConnection
+                        if (connection != null) {
+                            connection.addToQueue(song.toMediaItem())
+                            Toast.makeText(context, "Added to queue", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
             }
             composable("album/{albumId}") {
                 AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
