@@ -101,6 +101,8 @@ private fun HomeCollectionScreen(
     val subtitle = metadata?.subtitle ?: "Made for exploring"
     val query = metadata?.query.orEmpty()
     val artworkKey = metadata?.artworkKey ?: title
+    val collectionLabel = collectionKindLabel(metadata?.collectionType)
+    val trackSectionTitle = trackSectionTitle(metadata?.collectionType)
 
     LazyColumn(
         modifier = Modifier
@@ -120,6 +122,7 @@ private fun HomeCollectionScreen(
                 CollectionHeader(
                     title = title,
                     subtitle = subtitle,
+                    collectionLabel = collectionLabel,
                     countLabel = uiState.countLabel,
                     artworkUrl = uiState.headerArtworkUrl,
                     artworkKey = artworkKey,
@@ -136,6 +139,7 @@ private fun HomeCollectionScreen(
                     if (uiState.songs.isNotEmpty()) onPlaySongs(uiState.songs.shuffled(), 0)
                 },
                 onSearch = { if (query.isNotBlank()) onSearch(query) },
+                onRetry = onRetry,
             )
         }
 
@@ -159,7 +163,7 @@ private fun HomeCollectionScreen(
         if (uiState.songs.isNotEmpty()) {
             item(contentType = "tracks-label") {
                 Text(
-                    text = "Tracks",
+                    text = trackSectionTitle,
                     style = OmniTextStyles.sectionTitle,
                     color = OmniColors.TextPrimary,
                 )
@@ -203,6 +207,7 @@ private fun CollectionTopBar(
 private fun CollectionHeader(
     title: String,
     subtitle: String,
+    collectionLabel: String,
     countLabel: String,
     artworkUrl: String?,
     artworkKey: String,
@@ -236,7 +241,10 @@ private fun CollectionHeader(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
                 ) {
-                    AccentPill(text = countLabel)
+                    Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+                        AccentPill(text = collectionLabel)
+                        AccentPill(text = countLabel)
+                    }
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineMedium,
@@ -265,7 +273,9 @@ private fun CollectionActions(
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
     onSearch: () -> Unit,
+    onRetry: () -> Unit,
 ) {
+    var actionMenuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
@@ -296,6 +306,32 @@ private fun CollectionActions(
             contentDescription = "Search",
             onClick = onSearch,
         )
+        Box {
+            CollectionIconButton(
+                icon = R.drawable.ic_more_vert,
+                contentDescription = "More collection options",
+                onClick = { actionMenuExpanded = true },
+            )
+            DropdownMenu(
+                expanded = actionMenuExpanded,
+                onDismissRequest = { actionMenuExpanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Retry loading") },
+                    onClick = {
+                        actionMenuExpanded = false
+                        onRetry()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Open Search") },
+                    onClick = {
+                        actionMenuExpanded = false
+                        onSearch()
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -556,4 +592,26 @@ private fun formatDurationSeconds(durationSeconds: Int): String {
     val minutes = durationSeconds / 60
     val seconds = durationSeconds % 60
     return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+private fun collectionKindLabel(type: HomeCollectionType?): String = when (type) {
+    HomeCollectionType.ArtistMix -> "Artist mix"
+    HomeCollectionType.Mood -> "Mood"
+    HomeCollectionType.Genre -> "Genre"
+    HomeCollectionType.Playlist -> "Playlist"
+    HomeCollectionType.TrendingSearch -> "Trending"
+    HomeCollectionType.QuickPick -> "Quick pick"
+    HomeCollectionType.NewReleases -> "New music"
+    HomeCollectionType.ForYou -> "For you"
+    HomeCollectionType.Related -> "Related"
+    null -> "Collection"
+}
+
+private fun trackSectionTitle(type: HomeCollectionType?): String = when (type) {
+    HomeCollectionType.ArtistMix -> "Top songs"
+    HomeCollectionType.Mood -> "Songs for this mood"
+    HomeCollectionType.Genre -> "Songs in this genre"
+    HomeCollectionType.TrendingSearch,
+    HomeCollectionType.NewReleases -> "Fresh results"
+    else -> "Tracks"
 }
