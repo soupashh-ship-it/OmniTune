@@ -47,6 +47,7 @@ import com.omnitune.app.ui.theme.OmniSpacing
 fun LibraryScreen(
     onNavigateToSearch: () -> Unit = {},
     onNavigateToLiked: () -> Unit = {},
+    onNavigateToSongs: () -> Unit = {},
     onNavigateToDownloads: () -> Unit = {},
     onNavigateToRecentlyPlayed: () -> Unit = {},
     onNavigateToArtists: () -> Unit = {},
@@ -55,7 +56,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val totalCount = uiState.likedCount + uiState.recentlyPlayed.size + uiState.librarySongCount + uiState.playlistCount
+    val totalCount = uiState.librarySongCount + uiState.libraryAlbumCount + uiState.libraryArtistCount + uiState.playlistCount
     val hasQuickRows = uiState.likedCount > 0 || uiState.downloadCount > 0 || uiState.recentlyPlayed.isNotEmpty()
 
     LazyColumn(
@@ -75,11 +76,11 @@ fun LibraryScreen(
         item(contentType = "tabs") {
             LibraryCategoryTabs(
                 playlistCount = uiState.playlistCount,
-                likedCount = uiState.likedCount,
-                albumCount = uiState.librarySongCount,
-                artistCount = uiState.librarySongCount,
+                songCount = uiState.librarySongCount,
+                albumCount = uiState.libraryAlbumCount,
+                artistCount = uiState.libraryArtistCount,
                 onPlaylists = onNavigateToPlaylists,
-                onSongs = onNavigateToLiked,
+                onSongs = onNavigateToSongs,
                 onAlbums = onNavigateToAlbums,
                 onArtists = onNavigateToArtists,
             )
@@ -140,6 +141,15 @@ fun LibraryScreen(
                 detail = countLabel(uiState.playlistCount, "playlist"),
                 accent = OmniColors.OmniAccentPrimary,
                 onClick = onNavigateToPlaylists,
+            )
+        }
+        item(key = "browse-songs", contentType = "route-row") {
+            LibraryRouteRow(
+                painter = painterResource(R.drawable.ic_album),
+                title = "Songs",
+                detail = countLabel(uiState.librarySongCount, "song"),
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = onNavigateToSongs,
             )
         }
         item(key = "browse-artists", contentType = "route-row") {
@@ -207,7 +217,7 @@ private fun LibraryHeader(
 @Composable
 private fun LibraryCategoryTabs(
     playlistCount: Int,
-    likedCount: Int,
+    songCount: Int,
     albumCount: Int,
     artistCount: Int,
     onPlaylists: () -> Unit,
@@ -220,7 +230,7 @@ private fun LibraryCategoryTabs(
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
     ) {
         LibraryTabChip("Playlists", playlistCount.toString(), onPlaylists, Modifier.weight(1f))
-        LibraryTabChip("Liked", likedCount.toString(), onSongs, Modifier.weight(1f))
+        LibraryTabChip("Songs", songCount.toString(), onSongs, Modifier.weight(1f))
         LibraryTabChip("Albums", albumCount.toString(), onAlbums, Modifier.weight(1f))
         LibraryTabChip("Artists", artistCount.toString(), onArtists, Modifier.weight(1f))
     }
