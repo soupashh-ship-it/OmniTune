@@ -173,6 +173,24 @@ fun HomeDiscoveryRoute(
                 )
             }
 
+            uiState.personalizedSections.forEach { section ->
+                item(key = "personalized_${section.id}", contentType = "personalized-shelf") {
+                    DiscoveryShelf(
+                        section = section,
+                        emptyLabel = "",
+                        onAction = onNavigateToLibrary,
+                        onItemClick = { item ->
+                            item.song?.let(onPlaySong) ?: if (shouldOpenNativeCollection(item.actionType, item.id)) {
+                                onNavigateToCollection(item.id, item.thumbnailUrl)
+                            } else {
+                                item.query?.let(onNavigateToSearchQuery)
+                            }
+                        },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
+                    )
+                }
+            }
+
             if (uiState.recentSongs.isNotEmpty()) {
                 item(contentType = "recent") {
                     RecentlyPlayedDiscoverySection(

@@ -15,6 +15,7 @@ import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.db.entities.Song
+import com.omnitune.app.db.entities.SongSkipEntity
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.reportException
@@ -43,6 +44,7 @@ data class HomeDiscoveryUiState(
     val searchSection: HomeSection = HomeDefaultCatalog.freshDiscovery,
     val downloadSection: HomeSection = HomeSection(id = "downloads", title = "Offline Songs"),
     val librarySection: HomeSection = HomeSection(id = "library", title = "Library and Favorites"),
+    val personalizedSections: List<HomeSection> = emptyList(),
     val shelfSections: List<HomeSection> = HomeDefaultCatalog.shelves,
     val moodChips: List<MoodChip> = HomeDefaultCatalog.moodChips,
     val genreChips: List<MoodChip> = HomeDefaultCatalog.genreGrid,
@@ -59,6 +61,8 @@ private data class HomeSignalBundle(
     val likedSongs: List<Song>,
     val librarySongs: List<Song>,
     val searchHistory: List<SearchHistory>,
+    val forgottenFavorites: List<Song>,
+    val skips: List<SongSkipEntity>,
 )
 
 private data class HomeThumbnailPreview(
@@ -92,19 +96,43 @@ class HomeDiscoveryViewModel @Inject constructor(
         }
     }
 
-    private val homeSignals = combine(
+    private data class BaseHomeSignalBundle(
+        val events: List<EventWithSong>,
+        val quickPickSongs: List<Song>,
+        val likedSongs: List<Song>,
+        val librarySongs: List<Song>,
+        val searchHistory: List<SearchHistory>,
+    )
+
+    private val baseHomeSignals = combine(
         database.events(),
         database.quickPicks(),
         database.likedSongs(SongSortType.CREATE_DATE, descending = true),
         database.songsByCreateDateAsc(),
         database.searchHistory(),
     ) { events, quickPickSongs, likedSongs, librarySongs, searchHistory ->
-        HomeSignalBundle(
+        BaseHomeSignalBundle(
             events = events,
             quickPickSongs = quickPickSongs,
             likedSongs = likedSongs,
             librarySongs = librarySongs,
             searchHistory = searchHistory,
+        )
+    }
+
+    private val homeSignals = combine(
+        baseHomeSignals,
+        database.forgottenFavorites(),
+        database.getAllSkips(),
+    ) { base, forgottenFavorites, skips ->
+        HomeSignalBundle(
+            events = base.events,
+            quickPickSongs = base.quickPickSongs,
+            likedSongs = base.likedSongs,
+            librarySongs = base.librarySongs,
+            searchHistory = base.searchHistory,
+            forgottenFavorites = forgottenFavorites,
+            skips = skips,
         )
     }
 
@@ -115,6 +143,8 @@ class HomeDiscoveryViewModel @Inject constructor(
             likedSongs = bundle.likedSongs,
             librarySongs = bundle.librarySongs.reversed(),
             searchHistory = bundle.searchHistory,
+            forgottenFavorites = bundle.forgottenFavorites,
+            skips = bundle.skips,
             offlineSongs = offlineSongs,
             previews = previews,
         )
@@ -156,6 +186,8 @@ class HomeDiscoveryViewModel @Inject constructor(
         likedSongs: List<Song>,
         librarySongs: List<Song>,
         searchHistory: List<SearchHistory>,
+        forgottenFavorites: List<Song>,
+        skips: List<SongSkipEntity>,
         offlineSongs: List<Song>,
         previews: Map<String, HomeThumbnailPreview>,
     ): HomeDiscoveryUiState {
@@ -169,6 +201,17 @@ class HomeDiscoveryViewModel @Inject constructor(
             .filterNot { curated -> realQuickPicks.any { it.title.equals(curated.title, ignoreCase = true) } }
             .map { it.withHydration(previews) }
         val playAllSongs = mergeSongs(recentSongItems, quickSongs, likedSongs, offlineSongs).take(50)
+        val recommendations = HomeRecommendationEngine.build(
+            HomeRecommendationInput(
+                events = events,
+                quickPickSongs = quickPickSongs,
+                likedSongs = likedSongs,
+                librarySongs = librarySongs,
+                downloadedSongs = offlineSongs,
+                forgottenFavorites = forgottenFavorites,
+                skips = skips,
+            ),
+        )
 
         return HomeDiscoveryUiState(
             recentSongs = recentSongs,
@@ -194,6 +237,9 @@ class HomeDiscoveryViewModel @Inject constructor(
                 actionLabel = if (likedSongs.isNotEmpty() || librarySongs.isNotEmpty()) "Library" else null,
                 items = mergeSongs(likedSongs, librarySongs).take(12).map { it.toShelfItem("library") },
             ),
+            personalizedSections = recommendations.sections.map { section ->
+                section.copy(items = section.items.map { it.withHydration(previews) })
+            },
             shelfSections = HomeDefaultCatalog.shelves
                 .map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) },
             playAllSongs = playAllSongs,
