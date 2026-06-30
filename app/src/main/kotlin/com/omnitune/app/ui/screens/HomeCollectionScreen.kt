@@ -82,6 +82,7 @@ private val CollectionArtworkPalettes = listOf(
 fun HomeCollectionRoute(
     onBack: () -> Unit,
     onSearch: (String) -> Unit,
+    onOpenRelated: (SongItem) -> Unit,
     onPlaySongs: (List<SongItem>, Int) -> Unit,
     onPlayNext: (SongItem) -> Unit,
     onAddToQueue: (SongItem) -> Unit,
@@ -93,6 +94,7 @@ fun HomeCollectionRoute(
         onBack = onBack,
         onSearch = onSearch,
         onRetry = viewModel::retry,
+        onOpenRelated = onOpenRelated,
         onPlaySongs = onPlaySongs,
         onPlayNext = onPlayNext,
         onAddToQueue = onAddToQueue,
@@ -105,6 +107,7 @@ private fun HomeCollectionScreen(
     onBack: () -> Unit,
     onSearch: (String) -> Unit,
     onRetry: () -> Unit,
+    onOpenRelated: (SongItem) -> Unit,
     onPlaySongs: (List<SongItem>, Int) -> Unit,
     onPlayNext: (SongItem) -> Unit,
     onAddToQueue: (SongItem) -> Unit,
@@ -204,6 +207,7 @@ private fun HomeCollectionScreen(
                     onClick = { onPlaySongs(uiState.songs, index) },
                     onPlayNext = { onPlayNext(song) },
                     onAddToQueue = { onAddToQueue(song) },
+                    onMoreLikeThis = { onOpenRelated(song) },
                 )
             }
         }
@@ -431,6 +435,7 @@ private fun CollectionTrackRow(
     onClick: () -> Unit,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
+    onMoreLikeThis: () -> Unit,
 ) {
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -500,6 +505,10 @@ private fun CollectionTrackRow(
                     onAddToQueue = {
                         menuExpanded = false
                         onAddToQueue()
+                    },
+                    onMoreLikeThis = {
+                        menuExpanded = false
+                        onMoreLikeThis()
                     },
                 )
             }

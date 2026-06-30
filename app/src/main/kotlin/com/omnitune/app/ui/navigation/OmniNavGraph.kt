@@ -253,6 +253,18 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 HomeCollectionRoute(
                     onBack = { navController.popBackStack() },
                     onSearch = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
+                    onOpenRelated = { song ->
+                        val artist = song.artists.firstOrNull()?.name.orEmpty()
+                        val query = listOf(song.title, artist, "similar songs")
+                            .filter { it.isNotBlank() }
+                            .joinToString(" ")
+                        navController.navigate(
+                            homeCollectionRoute(
+                                collectionId = HomeDefaultCatalog.queryCollectionId(query),
+                                artworkUrl = song.thumbnail,
+                            ),
+                        )
+                    },
                     onPlaySongs = { songs, index ->
                         playSongList(
                             context = context,

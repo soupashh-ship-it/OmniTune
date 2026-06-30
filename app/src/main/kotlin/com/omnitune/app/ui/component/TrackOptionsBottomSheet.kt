@@ -34,6 +34,7 @@ fun TrackOptionsBottomSheet(
     onToggleLike: () -> Unit,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
+    onMoreLikeThis: (() -> Unit)? = null,
     onAddToPlaylist: () -> Unit,
     onRemoveFromPlaylist: (() -> Unit)? = null,
 ) {
@@ -115,6 +116,17 @@ fun TrackOptionsBottomSheet(
                     label = "Add to queue",
                     onClick = {
                         onAddToQueue()
+                        onDismissRequest()
+                    }
+                )
+            }
+
+            if (onMoreLikeThis != null) {
+                TrackOptionRow(
+                    icon = R.drawable.ic_album,
+                    label = "More like this",
+                    onClick = {
+                        onMoreLikeThis()
                         onDismissRequest()
                     }
                 )

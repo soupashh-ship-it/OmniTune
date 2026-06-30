@@ -13,6 +13,7 @@ fun TrackMenuProvider(
     mediaMetadata: MediaMetadata,
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
+    onMoreLikeThis: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryViewModel: LibraryViewModel = hiltViewModel()
 ) {
@@ -38,6 +39,7 @@ fun TrackMenuProvider(
             },
             onPlayNext = onPlayNext,
             onAddToQueue = onAddToQueue,
+            onMoreLikeThis = onMoreLikeThis,
             onRemoveFromPlaylist = onRemoveFromPlaylist,
             onAddToPlaylist = { showPlaylistDialog = true }
         )
