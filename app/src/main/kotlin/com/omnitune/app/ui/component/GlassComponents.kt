@@ -120,7 +120,7 @@ fun GlassCard(
             Brush.verticalGradient(
                 colors = listOf(
                     OmniColors.SurfacePanel.copy(alpha = 0.34f),
-                    glassColorFor(tone).copy(alpha = 0.84f),
+                    glassColorFor(tone),
                     OmniColors.OmniBackgroundBase.copy(alpha = 0.62f),
                 )
             )
