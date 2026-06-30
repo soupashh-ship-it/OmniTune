@@ -59,6 +59,7 @@ import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -67,7 +68,6 @@ import com.omnitune.innertube.models.SongItem
 
 private const val COLLECTION_ARTWORK_SIZE = 544
 private const val TRACK_ARTWORK_SIZE = 144
-private const val COLLECTION_THUMBNAIL_CROSSFADE_MS = 180
 
 private val CollectionArtworkPalettes = listOf(
     listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
@@ -593,7 +593,7 @@ private fun CollectionArtwork(
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
                 .diskCacheKey(it)
-                .crossfade(COLLECTION_THUMBNAIL_CROSSFADE_MS)
+                .crossfade(OmniMotion.ThumbnailFadeMillis)
                 .build()
         }
     }

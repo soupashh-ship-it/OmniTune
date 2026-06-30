@@ -77,6 +77,7 @@ import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
 import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -90,7 +91,6 @@ private const val SHELF_IMAGE_SIZE = 160
 private const val SUPPORT_REPO_URL = "https://github.com/soupashh-ship-it/OmniTune"
 private const val SUPPORT_PROMPT_LAUNCH_THRESHOLD = 3
 private const val SUPPORT_SNOOZE_DAYS = 5L
-private const val THUMBNAIL_CROSSFADE_MS = 180
 
 private val GeneratedArtworkPalettes = listOf(
     listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
@@ -503,7 +503,7 @@ private fun QuickPicksSection(
         OmniSectionHeader(
             title = "Quick Picks",
             action = if (canPlayAll) "Play all" else "Explore",
-            onAction = if (canPlayAll) onPlayAll else { { onSearch(exploreQuery) } },
+            onAction = if (canPlayAll) onPlayAll else ({ onSearch(exploreQuery) }),
         )
         if (isLoading) {
             repeat(4) { ShelfSkeletonRow() }
@@ -544,7 +544,9 @@ private fun QuickPickRow(
     )
 
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp),
         onClick = onClick,
         cornerRadius = OmniShapes.Small,
         tone = GlassTone.Subtle,
@@ -648,7 +650,9 @@ private fun SongShelfRow(
     )
 
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp),
         onClick = onClick,
         cornerRadius = OmniShapes.Small,
         tone = GlassTone.Subtle,
@@ -889,7 +893,7 @@ private fun DiscoveryArtwork(
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
                 .diskCacheKey(it)
-                .crossfade(THUMBNAIL_CROSSFADE_MS)
+                .crossfade(OmniMotion.ThumbnailFadeMillis)
                 .build()
         }
     }
@@ -975,7 +979,7 @@ private fun CollageTile(
                 .size(imageSize, imageSize)
                 .memoryCacheKey(it)
                 .diskCacheKey(it)
-                .crossfade(THUMBNAIL_CROSSFADE_MS)
+                .crossfade(OmniMotion.ThumbnailFadeMillis)
                 .build()
         }
     }
