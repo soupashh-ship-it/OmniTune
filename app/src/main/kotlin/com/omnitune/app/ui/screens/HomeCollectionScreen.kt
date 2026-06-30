@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -103,6 +104,7 @@ private fun HomeCollectionScreen(
     val artworkKey = metadata?.artworkKey ?: title
     val collectionLabel = collectionKindLabel(metadata?.collectionType)
     val trackSectionTitle = trackSectionTitle(metadata?.collectionType)
+    val showArtistProfileSections = metadata?.collectionType == HomeCollectionType.ArtistMix
 
     LazyColumn(
         modifier = Modifier
@@ -161,6 +163,18 @@ private fun HomeCollectionScreen(
         }
 
         if (uiState.songs.isNotEmpty()) {
+            if (showArtistProfileSections) {
+                item(contentType = "artist-featured") {
+                    ArtistFeaturedStrip(
+                        songs = uiState.songs.take(4),
+                        onSongClick = { song ->
+                            val index = uiState.songs.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+                            onPlaySongs(uiState.songs, index)
+                        },
+                    )
+                }
+            }
+
             item(contentType = "tracks-label") {
                 Text(
                     text = trackSectionTitle,
@@ -331,6 +345,70 @@ private fun CollectionActions(
                     },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ArtistFeaturedStrip(
+    songs: List<SongItem>,
+    onSongClick: (SongItem) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+        Text(
+            text = "Featured",
+            style = OmniTextStyles.sectionTitle,
+            color = OmniColors.TextPrimary,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+            itemsIndexed(
+                items = songs,
+                key = { index, song -> "artist_featured_${song.id.ifBlank { index.toString() }}" },
+                contentType = { _, _ -> "artist-featured-card" },
+            ) { _, song ->
+                ArtistFeaturedCard(
+                    song = song,
+                    onClick = { onSongClick(song) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistFeaturedCard(
+    song: SongItem,
+    onClick: () -> Unit,
+) {
+    GlassCard(
+        modifier = Modifier.width(148.dp),
+        onClick = onClick,
+        cornerRadius = OmniShapes.Medium,
+        tone = GlassTone.Subtle,
+    ) {
+        Column(modifier = Modifier.padding(OmniSpacing.small)) {
+            CollectionArtwork(
+                thumbnailUrl = song.thumbnail,
+                title = song.title,
+                artworkKey = song.id,
+                modifier = Modifier.size(124.dp),
+                imageSize = TRACK_ARTWORK_SIZE,
+                shape = OmniShapes.ArtworkSmall,
+            )
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            Text(
+                text = song.title.ifBlank { "Unknown track" },
+                style = OmniTextStyles.songTitle,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = song.artists.joinToString(", ") { it.name }.ifBlank { "Song" },
+                style = OmniTextStyles.caption,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
