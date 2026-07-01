@@ -66,8 +66,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+          NOTES_FILE=".github/release-notes-${GITHUB_REF_NAME}.md"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            exit 0
+          fi
+          if [ -f "$NOTES_FILE" ]; then
+            gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
+          else
             gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes "Signed OmniTune release build."
+          fi
 
       - name: Upload release assets
         env:
