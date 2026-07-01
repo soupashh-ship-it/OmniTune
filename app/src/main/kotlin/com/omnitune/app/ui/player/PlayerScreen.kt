@@ -130,7 +130,7 @@ fun PlayerScreen(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            OmniColors.OmniAccentGlow.copy(alpha = 0.38f),
+                            OmniColors.OmniAccentGlow.copy(alpha = 0.16f),
                             Color.Transparent,
                         )
                     )
@@ -266,15 +266,15 @@ private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
             .fillMaxWidth(0.86f)
             .height(330.dp)
             .shadow(
-                elevation = 28.dp,
+                elevation = 18.dp,
                 shape = OmniShapes.ArtworkLarge,
-                ambientColor = Color.Black.copy(alpha = 0.48f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.28f),
+                ambientColor = Color.Black.copy(alpha = 0.42f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
             )
             .clip(OmniShapes.ArtworkLarge)
             .omniSoftBorder(
                 shape = OmniShapes.ArtworkLarge,
-                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.48f),
+                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.18f),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -285,7 +285,7 @@ private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            OmniColors.OmniAccentPrimary.copy(alpha = 0.2f),
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
                             OmniColors.OmniGlassStrong,
                             OmniColors.OmniBackgroundElevated,
                         )
@@ -586,10 +586,10 @@ private fun PlayPauseButton(
         modifier = Modifier
             .size(76.dp)
             .shadow(
-                elevation = 18.dp,
+                elevation = 12.dp,
                 shape = CircleShape,
-                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.45f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.45f),
+                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.20f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.20f),
             )
             .clip(CircleShape)
             .background(Brush.linearGradient(OmniColors.PrimaryGradientColors))
@@ -698,8 +698,8 @@ private fun PlayerActionsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.OmniGlassMedium)
-            .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderSubtle)
+            .background(OmniColors.OmniGlassMedium.copy(alpha = 0.70f))
+            .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderSubtle.copy(alpha = 0.55f))
             .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,

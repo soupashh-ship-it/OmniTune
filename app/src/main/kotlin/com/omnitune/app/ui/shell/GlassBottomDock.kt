@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,13 +56,13 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
             .padding(horizontal = 18.dp)
             .height(72.dp)
             .shadow(
-                8.dp,
+                4.dp,
                 OmniShapes.Dock,
-                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f)
+                ambientColor = Color.Black.copy(alpha = 0.24f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.04f)
             )
             .clip(OmniShapes.Dock)
-            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Dock)
+            .border(1.dp, OmniColors.SurfaceHairline.copy(alpha = 0.55f), OmniShapes.Dock)
             .background(
                 Brush.verticalGradient(
                     listOf(OmniColors.SurfacePanel, OmniColors.OmniBackgroundBase.copy(alpha = 0.92f))
@@ -102,8 +103,8 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                         if (backgroundAlpha > 0f) Modifier.background(
                 Brush.horizontalGradient(
                     listOf(
-                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.18f * backgroundAlpha),
-                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.12f * backgroundAlpha)
+                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f * backgroundAlpha),
+                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.08f * backgroundAlpha)
                                 )
                             )
                         ) else Modifier

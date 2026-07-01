@@ -154,15 +154,15 @@ fun MiniPlayer(
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
             .padding(horizontal = OmniSpacing.small)
             .shadow(
-                elevation = 18.dp,
+                elevation = 10.dp,
                 shape = OmniShapes.Dock,
-                ambientColor = Color.Black.copy(alpha = 0.35f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.24f),
+                ambientColor = Color.Black.copy(alpha = 0.30f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
             )
             .clip(OmniShapes.Dock)
             .omniSoftBorder(
                 shape = OmniShapes.Dock,
-                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.58f),
+                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.22f),
             )
             .background(
                 Brush.verticalGradient(
@@ -173,8 +173,8 @@ fun MiniPlayer(
                         )
                     } else {
                         listOf(
-                            OmniColors.OmniGlassPlayer.copy(alpha = 0.96f),
-                            OmniColors.OmniBackgroundElevated.copy(alpha = 0.94f),
+                            OmniColors.OmniGlassPlayer.copy(alpha = 0.88f),
+                            OmniColors.OmniBackgroundElevated.copy(alpha = 0.90f),
                             OmniColors.OmniBackgroundBase.copy(alpha = 0.98f),
                         )
                     },
@@ -326,16 +326,16 @@ private fun MiniArtwork(
         modifier = Modifier
             .size(54.dp)
             .shadow(
-                elevation = 10.dp,
+                elevation = 6.dp,
                 shape = OmniShapes.ArtworkSmall,
-                ambientColor = Color.Black.copy(alpha = 0.4f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.18f),
+                ambientColor = Color.Black.copy(alpha = 0.32f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f),
             )
             .clip(OmniShapes.ArtworkSmall)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        OmniColors.OmniAccentPrimary.copy(alpha = 0.2f),
+                        OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
                         OmniColors.OmniGlassStrong,
                     )
                 )
