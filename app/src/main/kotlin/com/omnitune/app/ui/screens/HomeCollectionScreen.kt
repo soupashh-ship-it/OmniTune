@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -52,11 +52,7 @@ import coil3.request.crossfade
 import com.omnitune.app.R
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.AccentPill
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.OmniWaveformLoader
-import com.omnitune.app.ui.component.GlassTone
-import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniMotion
@@ -68,15 +64,6 @@ import com.omnitune.innertube.models.SongItem
 
 private const val COLLECTION_ARTWORK_SIZE = 544
 private const val TRACK_ARTWORK_SIZE = 144
-
-private val CollectionArtworkPalettes = listOf(
-    listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
-    listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
-    listOf(Color(0xFFFFB703), Color(0xFF126782)),
-    listOf(Color(0xFF80ED99), Color(0xFF22577A)),
-    listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
-    listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
-)
 
 @Composable
 fun HomeCollectionRoute(
@@ -116,7 +103,6 @@ private fun HomeCollectionScreen(
     val title = metadata?.title ?: "Collection"
     val subtitle = metadata?.subtitle ?: "Made for exploring"
     val query = metadata?.query.orEmpty()
-    val artworkKey = metadata?.artworkKey ?: title
     val collectionLabel = collectionKindLabel(metadata?.collectionType)
     val trackSectionTitle = trackSectionTitle(metadata?.collectionType)
     val showArtistProfileSections = metadata?.collectionType == HomeCollectionType.ArtistMix
@@ -142,7 +128,6 @@ private fun HomeCollectionScreen(
                     collectionLabel = collectionLabel,
                     countLabel = uiState.countLabel,
                     artworkUrl = uiState.headerArtworkUrl,
-                    artworkKey = artworkKey,
                 )
             }
         }
@@ -240,57 +225,46 @@ private fun CollectionHeader(
     collectionLabel: String,
     countLabel: String,
     artworkUrl: String?,
-    artworkKey: String,
 ) {
-    GlassSurface(
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Strong,
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.ExtraLarge)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.62f))
+            .padding(OmniSpacing.large),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(OmniColors.OmniGlassMedium, OmniColors.OmniBackgroundBase.copy(alpha = 0.90f)),
-                    ),
-                )
-                .padding(OmniSpacing.large),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CollectionArtwork(
-                    thumbnailUrl = artworkUrl,
-                    title = title,
-                    artworkKey = artworkKey,
-                    modifier = Modifier.size(128.dp),
-                    imageSize = COLLECTION_ARTWORK_SIZE,
-                    shape = OmniShapes.ArtworkMedium,
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.large))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-                        AccentPill(text = collectionLabel)
-                        AccentPill(text = countLabel)
-                    }
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = OmniColors.TextPrimary,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = subtitle,
-                        style = OmniTextStyles.metadata,
-                        color = OmniColors.TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CollectionArtwork(
+                thumbnailUrl = artworkUrl,
+                title = title,
+                modifier = Modifier.size(128.dp),
+                imageSize = COLLECTION_ARTWORK_SIZE,
+                shape = OmniShapes.ArtworkMedium,
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.large))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+                    AccentPill(text = collectionLabel)
+                    AccentPill(text = countLabel)
                 }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = OmniColors.TextPrimary,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subtitle,
+                    style = OmniTextStyles.metadata,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -396,36 +370,33 @@ private fun ArtistFeaturedCard(
     song: SongItem,
     onClick: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.width(148.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+    Column(
+        modifier = Modifier
+            .width(148.dp)
+            .clip(OmniShapes.Small)
+            .clickable(onClick = onClick),
     ) {
-        Column(modifier = Modifier.padding(OmniSpacing.small)) {
-            CollectionArtwork(
-                thumbnailUrl = song.thumbnail,
-                title = song.title,
-                artworkKey = song.id,
-                modifier = Modifier.size(124.dp),
-                imageSize = TRACK_ARTWORK_SIZE,
-                shape = OmniShapes.ArtworkSmall,
-            )
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
-            Text(
-                text = song.title.ifBlank { "Unknown track" },
-                style = OmniTextStyles.songTitle,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = song.artists.joinToString(", ") { it.name }.ifBlank { "Song" },
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        CollectionArtwork(
+            thumbnailUrl = song.thumbnail,
+            title = song.title,
+            modifier = Modifier.size(148.dp),
+            imageSize = TRACK_ARTWORK_SIZE,
+            shape = OmniShapes.ArtworkSmall,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
+        Text(
+            text = song.title.ifBlank { "Unknown track" },
+            style = OmniTextStyles.songTitle,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = song.artists.joinToString(", ") { it.name }.ifBlank { "Song" },
+            style = OmniTextStyles.caption,
+            color = OmniColors.TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -444,74 +415,72 @@ private fun CollectionTrackRow(
         song.duration?.let(::formatDurationSeconds),
     ).joinToString(" • ").ifBlank { "Song" }
 
-    GlassCard(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(82.dp)
-            .omniPressScale(interactionSource),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(OmniSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CollectionArtwork(
-                thumbnailUrl = song.thumbnail,
-                title = song.title,
-                artworkKey = song.id,
-                modifier = Modifier.size(58.dp),
-                imageSize = TRACK_ARTWORK_SIZE,
-                shape = OmniShapes.ArtworkSmall,
+            .height(72.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.40f))
+            .omniPressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
             )
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = song.title.ifBlank { "Unknown track" },
-                    style = OmniTextStyles.songTitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subtitle,
-                    style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_more_vert),
-                        contentDescription = "More options",
-                        tint = OmniColors.TextSecondary,
-                    )
-                }
-                TrackMenuProvider(
-                    showMenu = menuExpanded,
-                    onDismissMenu = { menuExpanded = false },
-                    mediaMetadata = song.toMediaMetadata(),
-                    onPlayNext = {
-                        menuExpanded = false
-                        onPlayNext()
-                    },
-                    onAddToQueue = {
-                        menuExpanded = false
-                        onAddToQueue()
-                    },
-                    onMoreLikeThis = {
-                        menuExpanded = false
-                        onMoreLikeThis()
-                    },
+            .padding(horizontal = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CollectionArtwork(
+            thumbnailUrl = song.thumbnail,
+            title = song.title,
+            modifier = Modifier.size(52.dp),
+            imageSize = TRACK_ARTWORK_SIZE,
+            shape = OmniShapes.ArtworkSmall,
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.title.ifBlank { "Unknown track" },
+                style = OmniTextStyles.songTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                style = OmniTextStyles.metadata,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier.size(44.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more_vert),
+                    contentDescription = "More options",
+                    tint = OmniColors.TextSecondary,
                 )
             }
+            TrackMenuProvider(
+                showMenu = menuExpanded,
+                onDismissMenu = { menuExpanded = false },
+                mediaMetadata = song.toMediaMetadata(),
+                onPlayNext = {
+                    menuExpanded = false
+                    onPlayNext()
+                },
+                onAddToQueue = {
+                    menuExpanded = false
+                    onAddToQueue()
+                },
+                onMoreLikeThis = {
+                    menuExpanded = false
+                    onMoreLikeThis()
+                },
+            )
         }
     }
 }
@@ -523,21 +492,19 @@ private fun CollectionErrorCard(
     onRetry: () -> Unit,
     onSearch: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Medium,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.62f))
+            .padding(OmniSpacing.large),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
-        Column(
-            modifier = Modifier.padding(OmniSpacing.large),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
-        ) {
-            Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary)
-            Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-                Button(onClick = onRetry) { Text("Retry") }
-                if (canSearch) {
-                    Button(onClick = onSearch) { Text("Open Search") }
-                }
+        Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary)
+        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+            Button(onClick = onRetry) { Text("Retry") }
+            if (canSearch) {
+                Button(onClick = onSearch) { Text("Open Search") }
             }
         }
     }
@@ -545,18 +512,37 @@ private fun CollectionErrorCard(
 
 @Composable
 private fun CollectionSkeletonRow() {
-    GlassSurface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(78.dp),
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
+            .height(72.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.44f))
+            .padding(horizontal = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(OmniSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OmniTrackLoadingRow(artworkSize = 58.dp)
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(OmniShapes.ArtworkSmall)
+                .background(OmniColors.OmniGlassStrong),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+            Box(
+                modifier = Modifier
+                    .width(164.dp)
+                    .height(12.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniGlassStrong),
+            )
+            Box(
+                modifier = Modifier
+                    .width(112.dp)
+                    .height(10.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniGlassMedium),
+            )
         }
     }
 }
@@ -572,15 +558,15 @@ private fun CollectionIconButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier
-            .size(46.dp)
+            .size(42.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassMedium),
+            .background(OmniColors.SurfaceQuiet.copy(alpha = if (enabled) 0.72f else 0.38f)),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = if (enabled) OmniColors.TextPrimary else OmniColors.TextTertiary,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -589,7 +575,6 @@ private fun CollectionIconButton(
 private fun CollectionArtwork(
     thumbnailUrl: String?,
     title: String,
-    artworkKey: String,
     modifier: Modifier,
     imageSize: Int,
     shape: androidx.compose.ui.graphics.Shape,
@@ -610,10 +595,10 @@ private fun CollectionArtwork(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(OmniColors.OmniGlassStrong),
+            .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
-        CollectionFallbackArtwork(title, artworkKey, Modifier.fillMaxSize())
+        CollectionFallbackArtwork(Modifier.fillMaxSize())
         if (model != null) {
             AsyncImage(
                 model = model,
@@ -627,35 +612,25 @@ private fun CollectionArtwork(
 
 @Composable
 private fun CollectionFallbackArtwork(
-    title: String,
-    artworkKey: String,
-    modifier: Modifier,
+    modifier: Modifier = Modifier,
 ) {
-    val colors = remember(artworkKey) {
-        CollectionArtworkPalettes[kotlin.math.abs(artworkKey.hashCode()) % CollectionArtworkPalettes.size]
-    }
-    val label = remember(title) {
-        title.split(" ").filter { it.isNotBlank() }.take(2).joinToString(" ").ifBlank { "OmniTune" }
-    }
-    Box(modifier = modifier.background(Brush.linearGradient(colors))) {
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(
+                listOf(
+                    OmniColors.SurfaceQuiet,
+                    OmniColors.OmniBackgroundElevated,
+                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f),
+                ),
+            ),
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
         Icon(
             painter = painterResource(R.drawable.ic_album),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.22f),
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(72.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(OmniSpacing.small),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            tint = OmniColors.TextSecondary.copy(alpha = 0.44f),
+            modifier = Modifier.size(42.dp),
         )
     }
 }
