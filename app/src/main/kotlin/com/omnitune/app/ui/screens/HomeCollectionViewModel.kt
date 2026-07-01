@@ -13,7 +13,11 @@ import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.models.AlbumItem
+import com.omnitune.innertube.models.ArtistItem
+import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.models.SongItem
+import com.omnitune.innertube.models.YTItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -150,14 +154,7 @@ class HomeCollectionViewModel @Inject constructor(
                 HomeActionType.OPEN_PLAYLIST -> YouTube.playlist(providerId)
                     .map { page -> page.songs.distinctBy { it.id }.take(collection.maxItems) }
 
-                HomeActionType.OPEN_BROWSE -> YouTube.browse(providerId, collection.browseParams)
-                    .map { page ->
-                        page.items
-                            .flatMap { it.items }
-                            .filterIsInstance<SongItem>()
-                            .distinctBy { it.id }
-                            .take(collection.maxItems)
-                    }
+                HomeActionType.OPEN_BROWSE -> loadBrowseSongs(collection, providerId)
 
                 HomeActionType.OPEN_ARTIST -> YouTube.artist(providerId)
                     .map { page ->
@@ -173,6 +170,57 @@ class HomeCollectionViewModel @Inject constructor(
         }
 
         return searchCollectionSongs(collection)
+    }
+
+    private suspend fun loadBrowseSongs(
+        collection: HomeCollectionMetadata,
+        providerId: String,
+    ): Result<List<SongItem>> = runCatching {
+        val browseItems = YouTube.browse(providerId, collection.browseParams)
+            .getOrThrow()
+            .items
+            .flatMap { it.items }
+            .distinctBy { item -> "${item::class.simpleName}:${item.id}" }
+
+        val songs = LinkedHashMap<String, SongItem>()
+
+        fun addSongs(items: List<SongItem>) {
+            items.forEach { song ->
+                if (songs.size < collection.maxItems) {
+                    songs.putIfAbsent(song.id, song)
+                }
+            }
+        }
+
+        addSongs(browseItems.filterIsInstance<SongItem>())
+
+        for (item in browseItems) {
+            if (songs.size >= collection.maxItems) break
+            addSongs(item.resolveBrowseSongs(collection.maxItems - songs.size))
+        }
+
+        songs.values.take(collection.maxItems)
+    }
+
+    private suspend fun YTItem.resolveBrowseSongs(limit: Int): List<SongItem> {
+        if (limit <= 0) return emptyList()
+        return when (this) {
+            is SongItem -> listOf(this)
+            is PlaylistItem -> YouTube.playlist(id)
+                .getOrNull()
+                ?.songs
+                .orEmpty()
+            is AlbumItem -> YouTube.album(browseId)
+                .getOrNull()
+                ?.songs
+                .orEmpty()
+            is ArtistItem -> YouTube.artist(id)
+                .getOrNull()
+                ?.sections
+                .orEmpty()
+                .flatMap { it.items }
+                .filterIsInstance<SongItem>()
+        }.distinctBy { it.id }.take(limit)
     }
 
     private suspend fun searchCollectionSongs(collection: HomeCollectionMetadata): Result<List<SongItem>> =
