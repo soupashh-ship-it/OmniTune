@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,8 +31,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -137,51 +140,69 @@ fun PlayerScreen(
                 ),
         )
 
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = OmniSpacing.section, vertical = OmniSpacing.medium),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .navigationBarsPadding(),
         ) {
-            PlayerTopBar(
-                onDismiss = onDismiss,
-                onOpenQueue = onOpenQueue,
-                hasQueue = playerConnection != null,
-            )
+            val compactPlayer = maxHeight < 900.dp
+            val verticalPadding = if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
+            val mediumGap = if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
+            val largeGap = if (compactPlayer) OmniSpacing.small else OmniSpacing.large
+            val artworkHeight = if (compactPlayer) 305.dp else 330.dp
+            val artworkWidthFraction = if (compactPlayer) 0.84f else 0.86f
 
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = OmniSpacing.section, vertical = verticalPadding)
+                    .padding(bottom = OmniSpacing.medium),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                PlayerTopBar(
+                    onDismiss = onDismiss,
+                    onOpenQueue = onOpenQueue,
+                    hasQueue = playerConnection != null,
+                )
 
-            ArtworkHero(mediaMetadata = mediaMetadata)
+                Spacer(modifier = Modifier.height(mediumGap))
 
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
+                ArtworkHero(
+                    mediaMetadata = mediaMetadata,
+                    height = artworkHeight,
+                    widthFraction = artworkWidthFraction,
+                )
 
-            MetadataBlock(mediaMetadata = mediaMetadata)
+                Spacer(modifier = Modifier.height(largeGap))
 
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
+                MetadataBlock(mediaMetadata = mediaMetadata)
 
-            PlayerSeekBar(
-                playerConnection = playerConnection,
-                isSeeking = isSeeking,
-            )
+                Spacer(modifier = Modifier.height(largeGap))
 
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
+                PlayerSeekBar(
+                    playerConnection = playerConnection,
+                    isSeeking = isSeeking,
+                )
 
-            PlayerControlRow(
-                isPlaying = isPlaying,
-                playbackState = playbackState,
-                shuffleEnabled = shuffleEnabled,
-                repeatMode = repeatMode,
-                playerConnection = playerConnection,
-            )
+                Spacer(modifier = Modifier.height(largeGap))
 
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+                PlayerControlRow(
+                    isPlaying = isPlaying,
+                    playbackState = playbackState,
+                    shuffleEnabled = shuffleEnabled,
+                    repeatMode = repeatMode,
+                    playerConnection = playerConnection,
+                )
 
-            PlayerActionsRow(
-                playerConnection = playerConnection,
-                onOpenQueue = onOpenQueue,
-            )
+                Spacer(modifier = Modifier.height(mediumGap))
+
+                PlayerActionsRow(
+                    playerConnection = playerConnection,
+                    onOpenQueue = onOpenQueue,
+                )
+            }
         }
     }
 }
@@ -240,7 +261,11 @@ private fun buildArtworkCandidates(videoId: String?, thumbnailUrl: String?): Lis
 }
 
 @Composable
-private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
+private fun ArtworkHero(
+    mediaMetadata: MediaMetadata?,
+    height: Dp,
+    widthFraction: Float,
+) {
     val context = LocalContext.current
     val videoId = mediaMetadata?.id
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
@@ -263,8 +288,8 @@ private fun ArtworkHero(mediaMetadata: MediaMetadata?) {
     }
     Box(
         modifier = Modifier
-            .fillMaxWidth(0.86f)
-            .height(330.dp)
+            .fillMaxWidth(widthFraction)
+            .height(height)
             .shadow(
                 elevation = 18.dp,
                 shape = OmniShapes.ArtworkLarge,
@@ -698,8 +723,8 @@ private fun PlayerActionsRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.OmniGlassMedium.copy(alpha = 0.70f))
-            .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderSubtle.copy(alpha = 0.55f))
+            .background(OmniColors.OmniGlassPlayer.copy(alpha = 0.92f))
+            .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderSubtle.copy(alpha = 0.36f))
             .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -798,12 +823,18 @@ private fun ActionButton(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
-            .background(if (active) activeTint.copy(alpha = 0.16f) else OmniColors.OmniGlassSubtle),
+            .background(
+                if (active) {
+                    activeTint.copy(alpha = 0.18f)
+                } else {
+                    OmniColors.OmniBackgroundElevated.copy(alpha = 0.88f)
+                }
+            ),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = if (active) activeTint else OmniColors.TextSecondary,
+            tint = if (active) activeTint else OmniColors.TextSecondary.copy(alpha = 0.92f),
             modifier = Modifier.size(22.dp),
         )
     }

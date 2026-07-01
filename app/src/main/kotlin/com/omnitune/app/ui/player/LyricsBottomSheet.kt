@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -80,9 +81,11 @@ fun LyricsBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
+        modifier = Modifier.fillMaxHeight(0.88f),
         containerColor = OmniColors.OmniBackgroundElevated,
         shape = OmniShapes.ExtraLarge,
     ) {
+        val trackTitle = mediaMetadata?.title?.takeIf { it.isNotBlank() }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -103,9 +106,7 @@ fun LyricsBottomSheet(
             ) { state ->
                 when (state) {
                     is LyricsUiState.Idle, is LyricsUiState.Loading -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            OmniLoadingPulse(size = 44.dp, color = OmniColors.OmniAccentSecondary)
-                        }
+                        LyricsLoadingState(trackTitle = trackTitle)
                     }
                     is LyricsUiState.Error -> {
                         ErrorState(
@@ -135,6 +136,32 @@ fun LyricsBottomSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LyricsLoadingState(trackTitle: String?) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        OmniLoadingPulse(size = 44.dp, color = OmniColors.OmniAccentSecondary)
+        Spacer(modifier = Modifier.height(OmniSpacing.large))
+        Text(
+            text = "Finding lyrics",
+            style = OmniTextStyles.sectionTitle,
+            color = OmniColors.TextPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.compact))
+        Text(
+            text = trackTitle ?: "Checking available lyrics providers",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextTertiary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = OmniSpacing.section),
+        )
     }
 }
 
