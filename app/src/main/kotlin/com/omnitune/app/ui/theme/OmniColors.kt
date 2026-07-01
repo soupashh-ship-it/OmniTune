@@ -19,19 +19,19 @@ object OmniColors {
     val BackgroundAlt = Color(0xFF070A12)
     val Surface = Color(0xFF0A0D14)
     val SurfaceElevated = OmniBackgroundElevated
-    val SurfaceHairline = Color.White.copy(alpha = 0.075f)
-    val SurfacePressed = Color.White.copy(alpha = 0.10f)
-    val SurfaceQuiet = Color(0xFF0D111B).copy(alpha = 0.72f)
-    val SurfacePanel = Color(0xFF101624).copy(alpha = 0.82f)
+    val SurfaceHairline = Color.White.copy(alpha = 0.055f)
+    val SurfacePressed = Color.White.copy(alpha = 0.08f)
+    val SurfaceQuiet = Color(0xFF0A0E17).copy(alpha = 0.68f)
+    val SurfacePanel = Color(0xFF0E1420).copy(alpha = 0.78f)
 
     // Glass surfaces
-    val OmniGlassSubtle = Color.White.copy(alpha = 0.05f)
-    val OmniGlassMedium = Color.White.copy(alpha = 0.08f)
-    val OmniGlassStrong = Color.White.copy(alpha = 0.12f)
-    val OmniGlassDock = Color(0xFF11182A).copy(alpha = 0.84f)
-    val OmniGlassPlayer = Color(0xFF121A2E).copy(alpha = 0.88f)
-    val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.09f)
-    val OmniGlassBorderStrong = Color.White.copy(alpha = 0.18f)
+    val OmniGlassSubtle = Color.White.copy(alpha = 0.035f)
+    val OmniGlassMedium = Color.White.copy(alpha = 0.055f)
+    val OmniGlassStrong = Color.White.copy(alpha = 0.085f)
+    val OmniGlassDock = Color(0xFF0E1524).copy(alpha = 0.86f)
+    val OmniGlassPlayer = Color(0xFF101827).copy(alpha = 0.90f)
+    val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.055f)
+    val OmniGlassBorderStrong = Color.White.copy(alpha = 0.115f)
 
     val GlassSurface = OmniGlassMedium
     val GlassSurfaceStrong = OmniGlassStrong
@@ -39,12 +39,12 @@ object OmniColors {
     val GlassBorderLight = OmniGlassBorderSubtle
 
     // Accents
-    val OmniAccentPrimary = Color(0xFF8E7CFF)
-    val OmniAccentSecondary = Color(0xFF5DD9FF)
-    val OmniAccentTertiary = Color(0xFF7EF7D4)
+    val OmniAccentPrimary = Color(0xFF7F8CFF)
+    val OmniAccentSecondary = Color(0xFF55D0F5)
+    val OmniAccentTertiary = Color(0xFF6EE7CF)
     val OmniAccentWarm = Color(0xFFFFC46B)
     val OmniAccentMuted = Color(0xFF756AC4)
-    val OmniAccentGlow = Color(0x668E7CFF)
+    val OmniAccentGlow = Color(0x4D7F8CFF)
     val OmniAccentOnPrimary = Color(0xFF05060A)
 
     val Primary = OmniAccentPrimary

@@ -75,18 +75,18 @@ private fun glassBorderFor(tone: GlassTone): Color =
 fun GlassSurface(
     modifier: Modifier = Modifier,
     cornerRadius: RoundedCornerShape = OmniShapes.Medium,
-    backgroundAlpha: Float = 0.08f,
-    borderAlpha: Float = 0.18f,
+    backgroundAlpha: Float = 0.06f,
+    borderAlpha: Float = 0.10f,
     tone: GlassTone = GlassTone.Medium,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
         modifier = modifier
             .shadow(
-                elevation = 3.dp,
+                elevation = 1.dp,
                 shape = cornerRadius,
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f),
+                ambientColor = Color.Black.copy(alpha = 0.16f),
+                spotColor = Color.Black.copy(alpha = 0.10f),
             )
             .clip(cornerRadius)
             .omniSoftBorder(
@@ -109,22 +109,14 @@ fun GlassCard(
     val interactionSource = remember { MutableInteractionSource() }
     val baseModifier = modifier
         .shadow(
-            elevation = 3.dp,
+            elevation = 1.dp,
             shape = cornerRadius,
-            ambientColor = Color.Black.copy(alpha = 0.18f),
-            spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.07f),
+            ambientColor = Color.Black.copy(alpha = 0.16f),
+            spotColor = Color.Black.copy(alpha = 0.10f),
         )
         .clip(cornerRadius)
-        .omniSoftBorder(cornerRadius, glassBorderFor(tone).copy(alpha = 0.70f))
-        .background(
-            Brush.verticalGradient(
-                colors = listOf(
-                    OmniColors.SurfacePanel.copy(alpha = 0.34f),
-                    glassColorFor(tone),
-                    OmniColors.OmniBackgroundBase.copy(alpha = 0.62f),
-                )
-            )
-        )
+        .omniSoftBorder(cornerRadius, glassBorderFor(tone).copy(alpha = 0.42f))
+        .background(OmniColors.SurfaceQuiet)
 
     Column(
         modifier = if (onClick != null) {
@@ -154,8 +146,8 @@ fun GlassRow(
     Row(
         modifier = modifier
             .clip(OmniShapes.Medium)
-            .omniSoftBorder(OmniShapes.Medium, glassBorderFor(tone))
-            .background(glassColorFor(tone)),
+            .omniSoftBorder(OmniShapes.Medium, glassBorderFor(tone).copy(alpha = 0.48f))
+            .background(glassColorFor(tone).copy(alpha = 0.72f)),
         content = content,
     )
 }
@@ -178,8 +170,8 @@ fun GlassIconButton(
         modifier = modifier
             .size(size)
             .clip(OmniShapes.Small)
-            .omniSoftBorder(OmniShapes.Small, glassBorderFor(tone))
-            .background(glassColorFor(tone))
+            .omniSoftBorder(OmniShapes.Small, glassBorderFor(tone).copy(alpha = 0.46f))
+            .background(glassColorFor(tone).copy(alpha = 0.78f))
             .omniPressScale(interactionSource),
         interactionSource = interactionSource,
     ) {
