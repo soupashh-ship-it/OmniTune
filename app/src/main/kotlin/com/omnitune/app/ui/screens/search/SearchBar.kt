@@ -125,9 +125,9 @@ fun SearchTopBar(
 
         GlassSurface(
             cornerRadius = OmniShapes.Large,
-            tone = GlassTone.Strong,
-            backgroundAlpha = 0.14f,
-            borderAlpha = 0.28f,
+            tone = GlassTone.Medium,
+            backgroundAlpha = 0.08f,
+            borderAlpha = 0.10f,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
@@ -209,7 +209,7 @@ fun SearchIconButton(
         modifier = Modifier
             .size(44.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.OmniGlassMedium)
+            .background(OmniColors.SurfaceQuiet)
             .omniPressScale(interactionSource),
         interactionSource = interactionSource,
     ) {
@@ -221,4 +221,3 @@ fun SearchIconButton(
         )
     }
 }
-

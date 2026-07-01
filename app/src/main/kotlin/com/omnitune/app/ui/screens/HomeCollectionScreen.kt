@@ -51,7 +51,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.omnitune.app.R
 import com.omnitune.app.models.toMediaMetadata
-import com.omnitune.app.ui.component.AccentPill
 import com.omnitune.app.ui.component.OmniWaveformLoader
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
@@ -230,7 +229,7 @@ private fun CollectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.62f))
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
             .padding(OmniSpacing.large),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -247,8 +246,8 @@ private fun CollectionHeader(
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-                    AccentPill(text = collectionLabel)
-                    AccentPill(text = countLabel)
+                    CollectionMetaPill(text = collectionLabel)
+                    CollectionMetaPill(text = countLabel)
                 }
                 Text(
                     text = title,
@@ -267,6 +266,26 @@ private fun CollectionHeader(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CollectionMetaPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = OmniColors.TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -420,7 +439,7 @@ private fun CollectionTrackRow(
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.40f))
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.28f))
             .omniPressScale(interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -496,7 +515,7 @@ private fun CollectionErrorCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.62f))
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
             .padding(OmniSpacing.large),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -517,7 +536,7 @@ private fun CollectionSkeletonRow() {
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.44f))
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.32f))
             .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -560,7 +579,7 @@ private fun CollectionIconButton(
         modifier = Modifier
             .size(42.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = if (enabled) 0.72f else 0.38f)),
+            .background(OmniColors.SurfaceQuiet.copy(alpha = if (enabled) 0.54f else 0.30f)),
     ) {
         Icon(
             painter = painterResource(icon),
@@ -620,7 +639,7 @@ private fun CollectionFallbackArtwork(
                 listOf(
                     OmniColors.SurfaceQuiet,
                     OmniColors.OmniBackgroundElevated,
-                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f),
+                    OmniColors.OmniAccentSecondary.copy(alpha = 0.06f),
                 ),
             ),
         ),

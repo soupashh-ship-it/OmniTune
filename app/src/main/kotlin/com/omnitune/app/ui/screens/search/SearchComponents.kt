@@ -128,15 +128,9 @@ fun SearchResultRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        OmniColors.OmniGlassMedium,
-                        OmniColors.OmniGlassSubtle,
-                    )
-                )
-            )
+            .height(74.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .then(
                 if (onClick != null) {
                     Modifier
@@ -155,7 +149,7 @@ fun SearchResultRow(
                     Modifier
                 }
             )
-            .padding(OmniSpacing.small),
+            .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -273,4 +267,3 @@ fun SearchResultRow(
         }
     }
 }
-
