@@ -8,6 +8,7 @@ This release focuses on Home feed polish, native navigation, and settings reliab
 - Kept Quick Picks honest: playable local/provider tracks only, with a compact start-exploring fallback when no playable history exists.
 - Improved native collection pages with lighter presentation, compact track rows, stable artwork sizing, and smoother fallback artwork.
 - Fixed Explore moods and Mood and Genres pages so provider browse results resolve playlists, albums, and artists into playable tracks instead of opening empty collections.
+- Fixed Explore moods artwork hydration so mood cards can show real thumbnails when the provider browse response does not include artwork directly.
 - Fixed Settings quick actions so Updates and Diagnostics panels open correctly in the debug and release app.
 - Verified update checks and diagnostic report export on-device.
 

@@ -250,9 +250,9 @@ class HomeDiscoveryViewModel @Inject constructor(
             personalizedSections = recommendations.sections.map { section ->
                 section.copy(items = section.items.map { it.withHydration(previews) })
             },
-            providerSections = providerFeed.providerSections,
-            communitySections = providerFeed.communitySections,
-            exploreSections = providerFeed.exploreSections,
+            providerSections = providerFeed.providerSections.withHydration(previews),
+            communitySections = providerFeed.communitySections.withHydration(previews),
+            exploreSections = providerFeed.exploreSections.withHydration(previews),
             shelfSections = HomeDefaultCatalog.shelves
                 .map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) },
             moodChips = (providerFeed.chips + HomeDefaultCatalog.moodChips).distinctBy { it.id },
@@ -274,6 +274,9 @@ class HomeDiscoveryViewModel @Inject constructor(
             isProviderLoading = isProviderLoading,
         )
     }
+
+    private fun List<HomeSection>.withHydration(previews: Map<String, HomeThumbnailPreview>): List<HomeSection> =
+        map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) }
 
     private fun buildCarouselItems(
         quickSongs: List<Song>,
@@ -395,7 +398,7 @@ class HomeDiscoveryViewModel @Inject constructor(
     }
 
     private fun HomeCarouselItem.withHydration(previews: Map<String, HomeThumbnailPreview>): HomeCarouselItem {
-        if (source == HomeCatalogSource.UserData || source == HomeCatalogSource.ProviderBrowse || !thumbnailUrl.isNullOrBlank()) return this
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
         val preview = previews[id] ?: return this
         return copy(
             thumbnailUrl = preview.thumbnailUrls.firstOrNull(),
@@ -405,7 +408,7 @@ class HomeDiscoveryViewModel @Inject constructor(
     }
 
     private fun QuickPickItem.withHydration(previews: Map<String, HomeThumbnailPreview>): QuickPickItem {
-        if (source == HomeCatalogSource.UserData || source == HomeCatalogSource.ProviderBrowse || !thumbnailUrl.isNullOrBlank()) return this
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
         val preview = previews[id] ?: return this
         return copy(
             thumbnailUrl = preview.thumbnailUrls.firstOrNull(),
@@ -415,7 +418,7 @@ class HomeDiscoveryViewModel @Inject constructor(
     }
 
     private fun PlaylistShelfItem.withHydration(previews: Map<String, HomeThumbnailPreview>): PlaylistShelfItem {
-        if (source == HomeCatalogSource.UserData || source == HomeCatalogSource.ProviderBrowse || !thumbnailUrl.isNullOrBlank()) return this
+        if (source == HomeCatalogSource.UserData || !thumbnailUrl.isNullOrBlank()) return this
         val preview = previews[id] ?: return this
         return copy(
             thumbnailUrl = preview.thumbnailUrls.firstOrNull(),

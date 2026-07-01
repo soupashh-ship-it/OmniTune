@@ -960,7 +960,7 @@ private fun RequestHydrationEffect(
 ) {
     LaunchedEffect(id, query, source, thumbnailUrl, state, collage) {
         if (
-            source == HomeCatalogSource.Recommended &&
+            (source == HomeCatalogSource.Recommended || source == HomeCatalogSource.ProviderBrowse) &&
             !query.isNullOrBlank() &&
             thumbnailUrl.isNullOrBlank() &&
             state == HomeHydrationState.None
