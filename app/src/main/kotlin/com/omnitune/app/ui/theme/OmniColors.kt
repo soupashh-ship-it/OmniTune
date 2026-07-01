@@ -12,7 +12,7 @@ object OmniColors {
     // Backgrounds
     val OmniBackgroundBase = Color(0xFF040508)
     val OmniBackgroundElevated = Color(0xFF0B0E16)
-    val OmniBackgroundGradientTop = Color(0xFF10172A)
+    val OmniBackgroundGradientTop = Color(0xFF070A11)
     val OmniBackgroundGradientBottom = OmniBackgroundBase
 
     val Background = OmniBackgroundBase
@@ -25,13 +25,13 @@ object OmniColors {
     val SurfacePanel = Color(0xFF0E1420).copy(alpha = 0.78f)
 
     // Glass surfaces
-    val OmniGlassSubtle = Color.White.copy(alpha = 0.035f)
-    val OmniGlassMedium = Color.White.copy(alpha = 0.055f)
-    val OmniGlassStrong = Color.White.copy(alpha = 0.085f)
-    val OmniGlassDock = Color(0xFF0E1524).copy(alpha = 0.86f)
-    val OmniGlassPlayer = Color(0xFF101827).copy(alpha = 0.90f)
-    val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.055f)
-    val OmniGlassBorderStrong = Color.White.copy(alpha = 0.115f)
+    val OmniGlassSubtle = Color.White.copy(alpha = 0.01f)
+    val OmniGlassMedium = Color.White.copy(alpha = 0.02f)
+    val OmniGlassStrong = Color.White.copy(alpha = 0.04f)
+    val OmniGlassDock = Color(0xFF080B12).copy(alpha = 0.94f)
+    val OmniGlassPlayer = Color(0xFF06090E).copy(alpha = 0.96f)
+    val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.01f)
+    val OmniGlassBorderStrong = Color.White.copy(alpha = 0.02f)
 
     val GlassSurface = OmniGlassMedium
     val GlassSurfaceStrong = OmniGlassStrong

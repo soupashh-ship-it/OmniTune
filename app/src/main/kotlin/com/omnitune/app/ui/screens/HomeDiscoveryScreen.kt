@@ -372,9 +372,9 @@ private fun FeedChip(
 ) {
     Box(
         modifier = Modifier
-            .height(42.dp)
+            .height(36.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet)
+            .background(OmniColors.OmniGlassSubtle)
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.large),
         contentAlignment = Alignment.Center,
@@ -440,7 +440,6 @@ private fun HeroCard(
             .width(286.dp)
             .aspectRatio(1f)
             .clip(OmniShapes.ArtworkLarge)
-            .background(OmniColors.SurfaceQuiet)
             .clickable(onClick = onClick),
     ) {
         DiscoveryArtwork(
@@ -505,9 +504,8 @@ private fun ContinueCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.72f))
+            .height(64.dp)
+            .clip(OmniShapes.Small)
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
@@ -773,9 +771,8 @@ private fun TextDiscoveryShelf(
                 Column(
                     modifier = Modifier
                         .width(176.dp)
-                        .height(86.dp)
-                        .clip(OmniShapes.Medium)
-                        .background(OmniColors.SurfaceQuiet.copy(alpha = 0.72f))
+                        .height(72.dp)
+                        .clip(OmniShapes.Small)
                         .clickable { onItemClick(item) }
                         .padding(OmniSpacing.small),
                     verticalArrangement = Arrangement.Center,
@@ -1061,7 +1058,7 @@ private fun CollageArtwork(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(OmniColors.OmniGlassStrong),
+            .background(OmniColors.SurfaceQuiet),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             repeat(2) { row ->

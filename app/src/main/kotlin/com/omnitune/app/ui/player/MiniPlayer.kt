@@ -160,10 +160,6 @@ fun MiniPlayer(
                 spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
             )
             .clip(OmniShapes.Dock)
-            .omniSoftBorder(
-                shape = OmniShapes.Dock,
-                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.22f),
-            )
             .background(
                 Brush.verticalGradient(
                     colors = if (pureBlack) {

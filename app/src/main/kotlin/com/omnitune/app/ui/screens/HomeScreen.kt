@@ -456,23 +456,28 @@ private fun DiscoverySkeletonCard() {
         tone = GlassTone.Subtle,
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
-            ShimmerBar(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .clip(OmniShapes.ArtworkMedium),
+                    .clip(OmniShapes.ArtworkMedium)
+                    .background(OmniColors.SurfaceQuiet),
             )
             Spacer(modifier = Modifier.height(OmniSpacing.small))
-            ShimmerBar(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth(0.82f)
-                    .height(14.dp),
+                    .height(14.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniGlassStrong),
             )
             Spacer(modifier = Modifier.height(OmniSpacing.compact))
-            ShimmerBar(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth(0.56f)
-                    .height(10.dp),
+                    .height(10.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniGlassMedium),
             )
         }
     }
@@ -559,23 +564,28 @@ private fun RecentSkeletonRow() {
                 .padding(OmniSpacing.small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ShimmerBar(
+            Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(OmniShapes.ArtworkSmall),
+                    .clip(OmniShapes.ArtworkSmall)
+                    .background(OmniColors.SurfaceQuiet),
             )
             Spacer(modifier = Modifier.width(OmniSpacing.small))
             Column(modifier = Modifier.weight(1f)) {
-                ShimmerBar(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth(0.72f)
-                        .height(14.dp),
+                        .height(14.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.OmniGlassStrong),
                 )
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
-                ShimmerBar(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth(0.44f)
-                        .height(10.dp),
+                        .height(10.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.OmniGlassMedium),
                 )
             }
         }

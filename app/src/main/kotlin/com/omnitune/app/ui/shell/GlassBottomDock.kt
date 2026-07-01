@@ -62,12 +62,7 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                 spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.04f)
             )
             .clip(OmniShapes.Dock)
-            .border(1.dp, OmniColors.SurfaceHairline.copy(alpha = 0.55f), OmniShapes.Dock)
-            .background(
-                Brush.verticalGradient(
-                    listOf(OmniColors.SurfacePanel, OmniColors.OmniBackgroundBase.copy(alpha = 0.92f))
-                )
-            )
+            .background(OmniColors.OmniGlassDock)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

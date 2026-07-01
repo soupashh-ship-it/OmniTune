@@ -130,7 +130,6 @@ fun SearchResultRow(
             .fillMaxWidth()
             .height(74.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .then(
                 if (onClick != null) {
                     Modifier
@@ -156,7 +155,7 @@ fun SearchResultRow(
             modifier = Modifier
                 .size(62.dp)
                 .clip(artworkShape)
-                .background(OmniColors.OmniGlassStrong),
+                .background(OmniColors.SurfaceQuiet),
             contentAlignment = Alignment.Center,
         ) {
             OmniThumbnailPlaceholder(modifier = Modifier.fillMaxSize())

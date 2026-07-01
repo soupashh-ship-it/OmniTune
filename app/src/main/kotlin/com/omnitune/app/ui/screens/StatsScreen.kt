@@ -176,8 +176,8 @@ private fun StatChip(
 ) {
     Row(
         modifier = Modifier
-            .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.OmniGlassSubtle)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -225,7 +225,6 @@ private fun TopSongRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -266,7 +265,6 @@ private fun TopArtistRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -309,7 +307,7 @@ private fun ArtworkBox(thumbnailUrl: String?) {
         modifier = Modifier
             .size(56.dp)
             .clip(OmniShapes.ArtworkSmall)
-            .background(OmniColors.OmniGlassStrong),
+            .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
         if (thumbnailUrl.isNullOrBlank()) {
@@ -340,7 +338,6 @@ private fun StatsEmptyState(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.48f))
             .padding(OmniSpacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

@@ -143,7 +143,6 @@ private fun HistoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.34f))
             .clickable(onClick = onPlaySong)
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
@@ -196,7 +195,7 @@ private fun ArtworkBox(thumbnailUrl: String?) {
         modifier = Modifier
             .size(56.dp)
             .clip(OmniShapes.ArtworkSmall)
-            .background(OmniColors.OmniGlassStrong),
+            .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
         if (thumbnailUrl.isNullOrBlank()) {
@@ -223,7 +222,6 @@ private fun HistoryEmptyState() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.48f))
             .padding(OmniSpacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

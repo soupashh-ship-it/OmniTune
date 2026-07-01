@@ -479,7 +479,6 @@ private fun PlayerSeekBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .background(OmniColors.OmniGlassSubtle)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small)
             .semantics { contentDescription = "Playback progress" },
     ) {
@@ -722,9 +721,6 @@ private fun PlayerActionsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.OmniGlassPlayer.copy(alpha = 0.92f))
-            .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderSubtle.copy(alpha = 0.36f))
             .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,

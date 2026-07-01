@@ -243,7 +243,7 @@ private fun LibraryTabChip(
     Column(
         modifier = modifier
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.58f))
+            .background(OmniColors.OmniGlassSubtle)
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -287,7 +287,6 @@ private fun LibraryRouteRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.42f))
             .clickable(onClick = onClick)
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
@@ -322,8 +321,6 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.48f))
             .padding(OmniSpacing.large),
     ) {
         Text(

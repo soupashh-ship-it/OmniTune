@@ -229,7 +229,6 @@ private fun CollectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
             .padding(OmniSpacing.large),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -439,7 +438,6 @@ private fun CollectionTrackRow(
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.28f))
             .omniPressScale(interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -515,7 +513,6 @@ private fun CollectionErrorCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
             .padding(OmniSpacing.large),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -536,7 +533,6 @@ private fun CollectionSkeletonRow() {
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.32f))
             .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {

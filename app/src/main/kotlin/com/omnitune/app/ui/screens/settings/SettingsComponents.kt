@@ -116,8 +116,7 @@ fun SettingsHeader(onBack: () -> Unit) {
                 onClick = onBack,
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(OmniColors.SurfaceQuiet),
+                    .clip(OmniShapes.Pill),
             ) {
                 Icon(
                     painterResource(R.drawable.ic_arrow_back),
@@ -158,10 +157,7 @@ fun SettingsQuickSummary(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium),
+            .fillMaxWidth(),
     ) {
         SettingsMiniCard(
             label = "Updates",
@@ -244,7 +240,6 @@ fun SettingsSectionCard(
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 68.dp)
                 .clip(OmniShapes.Small)
-                .background(if (isExpanded) section.accent.copy(alpha = 0.10f) else Color.Transparent)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = androidx.compose.material3.ripple(
@@ -280,9 +275,6 @@ fun SettingsSectionCard(
             Column(
                 modifier = Modifier
                     .padding(top = OmniSpacing.micro, bottom = OmniSpacing.small)
-                    .clip(OmniShapes.Medium)
-                    .background(OmniColors.SurfaceQuiet)
-                    .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium)
                     .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
             ) {
@@ -376,9 +368,7 @@ fun SettingsIconBadge(
     Box(
         modifier = Modifier
             .size(size)
-            .clip(OmniShapes.Small)
-            .background(accent.copy(alpha = 0.16f))
-            .border(BorderStroke(1.dp, accent.copy(alpha = 0.34f)), OmniShapes.Small),
+            .clip(OmniShapes.Small),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
