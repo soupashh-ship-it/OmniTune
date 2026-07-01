@@ -187,7 +187,6 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.section),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
@@ -232,7 +231,7 @@ private fun SettingsHeader(onBack: () -> Unit) {
                 modifier = Modifier
                     .size(44.dp)
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.SurfaceQuiet),
+                    .background(OmniColors.SurfaceQuiet.copy(alpha = 0.58f)),
             ) {
                 Icon(
                     painterResource(R.drawable.ic_arrow_back),
@@ -338,8 +337,7 @@ private fun SettingsSectionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium),
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f)),
     ) {
         Column {
             Row(

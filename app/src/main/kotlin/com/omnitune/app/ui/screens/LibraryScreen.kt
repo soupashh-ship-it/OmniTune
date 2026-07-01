@@ -5,9 +5,7 @@
 
 package com.omnitune.app.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,7 +61,6 @@ fun LibraryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.section),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -246,8 +243,7 @@ private fun LibraryTabChip(
     Column(
         modifier = modifier
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.58f))
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -290,9 +286,8 @@ private fun LibraryRouteRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.42f))
             .clickable(onClick = onClick)
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
@@ -328,8 +323,7 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.48f))
             .padding(OmniSpacing.large),
     ) {
         Text(
@@ -386,8 +380,7 @@ private fun IconButtonSurface(
         modifier = Modifier
             .size(48.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.58f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

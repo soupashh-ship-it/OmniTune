@@ -1,8 +1,6 @@
 package com.omnitune.app.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,7 +52,6 @@ fun StatsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.section),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -180,8 +177,7 @@ private fun StatChip(
     Row(
         modifier = Modifier
             .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.46f))
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -228,9 +224,8 @@ private fun TopSongRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -270,9 +265,8 @@ private fun TopArtistRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Large)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.36f))
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -346,8 +340,7 @@ private fun StatsEmptyState(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.ExtraLarge)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.ExtraLarge)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.48f))
             .padding(OmniSpacing.screen),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
