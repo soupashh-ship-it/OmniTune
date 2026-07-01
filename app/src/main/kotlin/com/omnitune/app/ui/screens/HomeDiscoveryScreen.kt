@@ -103,6 +103,9 @@ fun HomeDiscoveryRoute(
     val uiState by viewModel.uiState.collectAsState()
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val hasProviderFeed = uiState.providerSections.isNotEmpty() ||
+        uiState.communitySections.isNotEmpty() ||
+        uiState.exploreSections.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -181,7 +184,7 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.quickPicks.isEmpty() && uiState.providerSections.isEmpty() && !uiState.isProviderLoading) {
+            if (uiState.quickPicks.isEmpty() && !hasProviderFeed && !uiState.isProviderLoading) {
                 item(contentType = "browse-start") {
                     HorizontalDiscoveryShelf(
                         section = uiState.searchSection,
@@ -223,7 +226,7 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.providerSections.isEmpty() && uiState.communitySections.isEmpty() && !uiState.isProviderLoading) {
+            if (!hasProviderFeed && !uiState.isProviderLoading) {
                 item(contentType = "fallback-discovery") {
                     HorizontalDiscoveryShelf(
                         section = uiState.searchSection,
@@ -233,7 +236,7 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.providerSections.isEmpty() && !uiState.isProviderLoading) {
+            if (!hasProviderFeed && !uiState.isProviderLoading) {
                 uiState.shelfSections.forEach { section ->
                     item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
                         HorizontalDiscoveryShelf(

@@ -288,11 +288,22 @@ class HomeDiscoveryViewModel @Inject constructor(
             likedSongs.firstOrNull()?.toCarouselItem("From your favorites", "Saved in your library"),
             offlineSongs.firstOrNull()?.toCarouselItem("Ready offline", "Downloaded song"),
         )
-        val providerHeroItems = providerFeed.providerSections
+        val providerHeroItems = listOf(
+            providerFeed.providerSections,
+            providerFeed.communitySections,
+            providerFeed.exploreSections,
+            providerFeed.moodSections,
+        )
             .asSequence()
-            .flatMap { it.items.asSequence() }
-            .mapNotNull { it.providerSong }
-            .take(4)
+            .flatMap { sections -> sections.asSequence() }
+            .flatMap { section -> section.items.asSequence() }
+            .filter { item ->
+                item.providerSong != null ||
+                    !item.thumbnailUrl.isNullOrBlank() ||
+                    item.thumbnailUrls.isNotEmpty()
+            }
+            .distinctBy { it.id }
+            .take(6)
             .map { it.toCarouselItem() }
             .toList()
         return (songItems + providerHeroItems + HomeDefaultCatalog.heroItems)
@@ -452,5 +463,24 @@ class HomeDiscoveryViewModel @Inject constructor(
         artworkKey = "provider_hero_$id",
         source = HomeCatalogSource.ProviderBrowse,
         actionType = HomeActionType.PLAY_TRACK,
+    )
+
+    private fun PlaylistShelfItem.toCarouselItem() = HomeCarouselItem(
+        id = id,
+        title = title.ifBlank { "Featured pick" },
+        subtitle = subtitle.ifBlank {
+            if (providerSong != null || song != null) "Ready to play" else "Open in OmniTune"
+        },
+        thumbnailUrl = thumbnailUrl,
+        thumbnailUrls = thumbnailUrls,
+        song = song,
+        providerSong = providerSong,
+        query = query,
+        artworkKey = artworkKey ?: id,
+        collectionType = collectionType,
+        maxItems = maxItems,
+        hydrationState = hydrationState,
+        actionType = actionType,
+        source = source,
     )
 }
