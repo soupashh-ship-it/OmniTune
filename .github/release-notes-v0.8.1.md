@@ -9,6 +9,7 @@ This release focuses on Home feed polish, native navigation, and settings reliab
 - Improved native collection pages with lighter presentation, compact track rows, stable artwork sizing, and smoother fallback artwork.
 - Fixed Explore moods and Mood and Genres pages so provider browse results resolve playlists, albums, and artists into playable tracks instead of opening empty collections.
 - Fixed Explore moods artwork hydration so mood cards can show real thumbnails when the provider browse response does not include artwork directly.
+- Fixed Search text entry so typed queries keep the cursor at the end instead of inserting new characters at the start.
 - Fixed Settings quick actions so Updates and Diagnostics panels open correctly in the debug and release app.
 - Verified update checks and diagnostic report export on-device.
 

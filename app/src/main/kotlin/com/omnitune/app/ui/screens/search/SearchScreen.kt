@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +99,7 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val textFieldValue = remember { mutableStateOf(TextFieldValue(uiState.query)) }
+    val textFieldValue = remember { mutableStateOf(searchTextFieldValue(uiState.query)) }
 
     LaunchedEffect(initialQuery) {
         val query = initialQuery?.trim().orEmpty()
@@ -110,7 +111,7 @@ fun SearchScreen(
     LaunchedEffect(Unit) {
         snapshotFlow { uiState.query }.collect { query ->
             if (query != textFieldValue.value.text) {
-                textFieldValue.value = TextFieldValue(query)
+                textFieldValue.value = searchTextFieldValue(query)
             }
         }
     }
@@ -130,7 +131,7 @@ fun SearchScreen(
                 viewModel.onQueryChanged(it.text)
             },
             onClear = {
-                textFieldValue.value = TextFieldValue("")
+                textFieldValue.value = searchTextFieldValue("")
                 viewModel.clearQuery()
             },
             onBack = onBack,
@@ -178,6 +179,12 @@ fun SearchScreen(
         }
     }
 }
+
+private fun searchTextFieldValue(query: String): TextFieldValue =
+    TextFieldValue(
+        text = query,
+        selection = TextRange(query.length),
+    )
 
 private val SearchUiState.hasNoResults: Boolean
     get() = songs.isEmpty() && artists.isEmpty() && albums.isEmpty() && playlists.isEmpty()
