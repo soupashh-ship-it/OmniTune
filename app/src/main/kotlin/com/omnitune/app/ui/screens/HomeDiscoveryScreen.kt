@@ -10,9 +10,11 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -29,10 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,12 +69,7 @@ import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.ui.component.AccentPill
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
-import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
-import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
@@ -92,17 +86,6 @@ private const val SHELF_IMAGE_SIZE = 160
 private const val SUPPORT_REPO_URL = "https://github.com/soupashh-ship-it/OmniTune"
 private const val SUPPORT_PROMPT_LAUNCH_THRESHOLD = 3
 private const val SUPPORT_SNOOZE_DAYS = 5L
-
-private val GeneratedArtworkPalettes = listOf(
-    listOf(Color(0xFF15B8A6), Color(0xFF234E70)),
-    listOf(Color(0xFFEF476F), Color(0xFF5B2A86)),
-    listOf(Color(0xFFFFB703), Color(0xFF126782)),
-    listOf(Color(0xFF80ED99), Color(0xFF22577A)),
-    listOf(Color(0xFFF77F00), Color(0xFF6A040F)),
-    listOf(Color(0xFF48CAE4), Color(0xFF3A0CA3)),
-    listOf(Color(0xFFE9C46A), Color(0xFF264653)),
-    listOf(Color(0xFFF72585), Color(0xFF4361EE)),
-)
 
 @Composable
 fun HomeDiscoveryRoute(
@@ -126,12 +109,12 @@ fun HomeDiscoveryRoute(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = OmniSpacing.large),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.section),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.large),
         ) {
             item(contentType = "header") {
                 Column {
                     Spacer(modifier = Modifier.statusBarsPadding())
-                    Spacer(modifier = Modifier.height(OmniSpacing.medium))
+                    Spacer(modifier = Modifier.height(OmniSpacing.small))
                     HomeTopHeader(
                         onSearch = onNavigateToSearch,
                         onSettings = onNavigateToSettings,
@@ -144,14 +127,17 @@ fun HomeDiscoveryRoute(
             }
 
             item(contentType = "hero") {
-                HeroCarousel(
-                    items = uiState.carouselItems,
-                    isLoading = uiState.isLoading,
-                    onPlaySong = onPlaySong,
-                    onPlayProviderSong = onPlayProviderSong,
-                    onOpenCollection = onNavigateToCollection,
-                    onRequestHydration = viewModel::requestThumbnailHydration,
-                )
+                val heroItems = uiState.carouselItems.filter { it.canLeadHero() }
+                if (heroItems.isNotEmpty() || uiState.isLoading || uiState.isProviderLoading) {
+                    HeroCarousel(
+                        items = heroItems,
+                        isLoading = uiState.isLoading || (uiState.isProviderLoading && heroItems.isEmpty()),
+                        onPlaySong = onPlaySong,
+                        onPlayProviderSong = onPlayProviderSong,
+                        onOpenCollection = onNavigateToCollection,
+                        onRequestHydration = viewModel::requestThumbnailHydration,
+                    )
+                }
             }
 
             mediaMetadata?.let { currentTrack ->
@@ -175,10 +161,8 @@ fun HomeDiscoveryRoute(
 
             uiState.personalizedSections.forEach { section ->
                 item(key = "personalized_${section.id}", contentType = "personalized-shelf") {
-                    DiscoveryShelf(
+                    HorizontalDiscoveryShelf(
                         section = section,
-                        emptyLabel = "",
-                        onAction = onNavigateToLibrary,
                         onItemClick = { item ->
                             handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection)
                         },
@@ -197,12 +181,10 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.quickPicks.isEmpty() && uiState.providerSections.isEmpty()) {
+            if (uiState.quickPicks.isEmpty() && uiState.providerSections.isEmpty() && !uiState.isProviderLoading) {
                 item(contentType = "browse-start") {
-                    DiscoveryShelf(
+                    HorizontalDiscoveryShelf(
                         section = uiState.searchSection,
-                        emptyLabel = "Start exploring music and Home will fill with real listening signals.",
-                        onAction = { onNavigateToCollection(uiState.searchSection.items.firstOrNull()?.id ?: HomeDefaultCatalog.freshDiscovery.id, null) },
                         onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
                         onRequestHydration = viewModel::requestThumbnailHydration,
                     )
@@ -241,19 +223,17 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.providerSections.isEmpty() && uiState.communitySections.isEmpty()) {
+            if (uiState.providerSections.isEmpty() && uiState.communitySections.isEmpty() && !uiState.isProviderLoading) {
                 item(contentType = "fallback-discovery") {
-                    DiscoveryShelf(
+                    HorizontalDiscoveryShelf(
                         section = uiState.searchSection,
-                        emptyLabel = "Fresh discovery appears here while Home warms up.",
-                        onAction = { onNavigateToCollection(uiState.searchSection.items.firstOrNull()?.id ?: HomeDefaultCatalog.freshDiscovery.id, null) },
                         onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
                         onRequestHydration = viewModel::requestThumbnailHydration,
                     )
                 }
             }
 
-            if (uiState.providerSections.isEmpty()) {
+            if (uiState.providerSections.isEmpty() && !uiState.isProviderLoading) {
                 uiState.shelfSections.forEach { section ->
                     item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
                         HorizontalDiscoveryShelf(
@@ -311,17 +291,30 @@ private fun HomeTopHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(OmniShapes.Small)
+                    .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_home),
+                    contentDescription = null,
+                    tint = OmniColors.OmniAccentSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(OmniSpacing.small))
             Text(
                 text = "OmniTune",
-                style = OmniTextStyles.heroTitle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "Your music, ready when you are",
-                style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -338,18 +331,18 @@ private fun HeaderIconButton(
     contentDescription: String,
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
+    Box(
         modifier = Modifier
-            .size(46.dp)
+            .size(40.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassMedium),
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = OmniColors.TextPrimary,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -361,12 +354,35 @@ private fun MoodChipRow(
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
         items(chips, key = { it.id }, contentType = { "mood-chip" }) { chip ->
-            FilterChip(
-                selected = false,
+            FeedChip(
+                label = chip.label,
                 onClick = { onChipClick(chip) },
-                label = { Text(chip.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
+    }
+}
+
+@Composable
+private fun FeedChip(
+    label: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .height(42.dp)
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet)
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.large),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -379,7 +395,7 @@ private fun HeroCarousel(
     onOpenCollection: (String, String?) -> Unit,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
             if (isLoading) {
                 items(3, contentType = { "hero-loading" }) { HeroSkeleton() }
@@ -416,73 +432,66 @@ private fun HeroCard(
         onRequestHydration = onRequestHydration,
     )
 
-    GlassCard(
-        modifier = Modifier.width(300.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Strong,
+    Box(
+        modifier = Modifier
+            .width(286.dp)
+            .aspectRatio(1f)
+            .clip(OmniShapes.ArtworkLarge)
+            .background(OmniColors.SurfaceQuiet)
+            .clickable(onClick = onClick),
     ) {
+        DiscoveryArtwork(
+            thumbnailUrl = item.thumbnailUrl,
+            contentDescription = item.title,
+            title = item.title,
+            artworkKey = item.artworkKey ?: item.id,
+            modifier = Modifier.fillMaxSize(),
+            imageSize = HERO_IMAGE_SIZE,
+            shape = OmniShapes.ArtworkLarge,
+        )
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(176.dp),
-        ) {
-            DiscoveryArtwork(
-                thumbnailUrl = item.thumbnailUrl,
-                contentDescription = item.title,
-                title = item.title,
-                artworkKey = item.artworkKey ?: item.id,
-                modifier = Modifier.fillMaxSize(),
-                imageSize = HERO_IMAGE_SIZE,
-                shape = OmniShapes.ExtraLarge,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(androidx.compose.ui.graphics.Color.Transparent, OmniColors.OmniBackgroundBase.copy(alpha = 0.86f)),
-                        ),
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, OmniColors.OmniBackgroundBase.copy(alpha = 0.88f)),
                     ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(OmniSpacing.large),
+        ) {
+            AccentPill(text = if (item.song != null || item.providerSong != null) "Play" else "Open")
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(OmniSpacing.large),
-            ) {
-                AccentPill(text = if (item.song != null) "Play" else "Explore")
-                Spacer(modifier = Modifier.height(OmniSpacing.small))
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = OmniColors.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = item.subtitle,
-                    style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = item.subtitle,
+                style = OmniTextStyles.metadata,
+                color = OmniColors.TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
 
 @Composable
 private fun HeroSkeleton() {
-    GlassSurface(
+    StaticArtworkPlaceholder(
         modifier = Modifier
-            .width(300.dp)
-            .height(176.dp),
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Subtle,
-    ) {
-        OmniThumbnailPlaceholder(modifier = Modifier.fillMaxSize())
-    }
+            .width(286.dp)
+            .aspectRatio(1f)
+            .clip(OmniShapes.ArtworkLarge),
+    )
 }
 
 @Composable
@@ -490,43 +499,46 @@ private fun ContinueCard(
     mediaMetadata: MediaMetadata,
     onClick: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Player,
-        tone = GlassTone.Player,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(68.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.72f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(OmniSpacing.large),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DiscoveryArtwork(
-                thumbnailUrl = mediaMetadata.thumbnailUrl,
-                contentDescription = mediaMetadata.title,
-                title = mediaMetadata.title,
-                artworkKey = mediaMetadata.id,
-                modifier = Modifier.size(76.dp),
-                imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkMedium,
+        DiscoveryArtwork(
+            thumbnailUrl = mediaMetadata.thumbnailUrl,
+            contentDescription = mediaMetadata.title,
+            title = mediaMetadata.title,
+            artworkKey = mediaMetadata.id,
+            modifier = Modifier.size(52.dp),
+            imageSize = SHELF_IMAGE_SIZE,
+            shape = OmniShapes.ArtworkSmall,
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Keep listening",
+                style = MaterialTheme.typography.labelMedium,
+                color = OmniColors.OmniAccentSecondary,
+                maxLines = 1,
             )
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(modifier = Modifier.weight(1f)) {
-                AccentPill(text = "Continue")
-                Spacer(modifier = Modifier.height(OmniSpacing.small))
-                Text(
-                    text = mediaMetadata.title.ifBlank { "Unknown track" },
-                    style = OmniTextStyles.sectionTitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                    style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = mediaMetadata.title.ifBlank { "Unknown track" },
+                style = OmniTextStyles.songTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                style = OmniTextStyles.caption,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -551,13 +563,9 @@ private fun QuickPicksSection(
         if (isLoading) {
             repeat(4) { ShelfSkeletonRow() }
         } else if (items.isEmpty()) {
-            EmptyDiscoveryCard(
-                text = "Browse music to build real playable Quick Picks.",
-                action = "Browse",
-                onClick = { onOpenCollection(HomeDefaultCatalog.freshDiscovery.items.first().id, null) },
-            )
+            StartExploringRow(onClick = { onOpenCollection(HomeDefaultCatalog.freshDiscovery.items.first().id, null) })
         } else {
-            items.take(12).forEach { item ->
+            items.take(5).forEach { item ->
                 QuickPickRow(
                     item = item,
                     onRequestHydration = onRequestHydration,
@@ -588,41 +596,35 @@ private fun QuickPickRow(
         onRequestHydration = onRequestHydration,
     )
 
-    GlassCard(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Small,
-        tone = GlassTone.Subtle,
+            .height(64.dp)
+            .clip(OmniShapes.Small)
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DiscoveryArtwork(
-                thumbnailUrl = item.thumbnailUrl,
-                contentDescription = item.title,
-                title = item.title,
-                artworkKey = item.artworkKey ?: item.id,
-                modifier = Modifier.size(52.dp),
-                imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkSmall,
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(
-                painter = painterResource(actionIconFor(item.actionType)),
-                contentDescription = null,
-                tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.78f),
-                modifier = Modifier.size(20.dp),
-            )
+        DiscoveryArtwork(
+            thumbnailUrl = item.thumbnailUrl,
+            contentDescription = item.title,
+            title = item.title,
+            artworkKey = item.artworkKey ?: item.id,
+            modifier = Modifier.size(54.dp),
+            imageSize = SHELF_IMAGE_SIZE,
+            shape = OmniShapes.ArtworkSmall,
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Icon(
+            painter = painterResource(R.drawable.ic_more_vert),
+            contentDescription = null,
+            tint = OmniColors.TextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -693,41 +695,35 @@ private fun SongShelfRow(
         onRequestHydration = onRequestHydration,
     )
 
-    GlassCard(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Small,
-        tone = GlassTone.Subtle,
+            .height(64.dp)
+            .clip(OmniShapes.Small)
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DiscoveryArtwork(
-                thumbnailUrl = item.thumbnailUrl,
-                contentDescription = item.title,
-                title = item.title,
-                artworkKey = item.artworkKey ?: item.id,
-                modifier = Modifier.size(52.dp),
-                imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkSmall,
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Icon(
-                painter = painterResource(actionIconFor(item.actionType)),
-                contentDescription = null,
-                tint = OmniColors.OmniAccentSecondary.copy(alpha = 0.72f),
-                modifier = Modifier.size(20.dp),
-            )
+        DiscoveryArtwork(
+            thumbnailUrl = item.thumbnailUrl,
+            contentDescription = item.title,
+            title = item.title,
+            artworkKey = item.artworkKey ?: item.id,
+            modifier = Modifier.size(54.dp),
+            imageSize = SHELF_IMAGE_SIZE,
+            shape = OmniShapes.ArtworkSmall,
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Icon(
+            painter = painterResource(actionIconFor(item.actionType)),
+            contentDescription = null,
+            tint = OmniColors.TextSecondary,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
@@ -737,15 +733,54 @@ private fun HorizontalDiscoveryShelf(
     onItemClick: (PlaylistShelfItem) -> Unit,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
+    if (!section.hasImageFeedContent()) {
+        TextDiscoveryShelf(section = section, onItemClick = onItemClick)
+        return
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = section.title)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+        FeedSectionHeader(title = section.title, action = section.actionLabel)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.large),
+            contentPadding = PaddingValues(end = OmniSpacing.large),
+        ) {
             items(section.items, key = { it.id }, contentType = { "shelf-card" }) { item ->
                 ShelfArtworkCard(
                     item = item,
                     onRequestHydration = onRequestHydration,
                     onClick = { onItemClick(item) },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextDiscoveryShelf(
+    section: HomeSection,
+    onItemClick: (PlaylistShelfItem) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+        FeedSectionHeader(title = section.title, action = section.actionLabel)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            contentPadding = PaddingValues(end = OmniSpacing.large),
+        ) {
+            items(section.items.take(8), key = { it.id }, contentType = { "text-shelf-card" }) { item ->
+                Column(
+                    modifier = Modifier
+                        .width(176.dp)
+                        .height(86.dp)
+                        .clip(OmniShapes.Medium)
+                        .background(OmniColors.SurfaceQuiet.copy(alpha = 0.72f))
+                        .clickable { onItemClick(item) }
+                        .padding(OmniSpacing.small),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(item.title, style = OmniTextStyles.songTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(modifier = Modifier.height(OmniSpacing.micro))
+                    Text(item.subtitle, style = OmniTextStyles.caption, color = OmniColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
@@ -767,13 +802,13 @@ private fun ShelfArtworkCard(
         onRequestHydration = onRequestHydration,
     )
 
-    GlassCard(
-        modifier = Modifier.width(148.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+    Column(
+        modifier = Modifier
+            .width(144.dp)
+            .clip(OmniShapes.Small)
+            .clickable(onClick = onClick),
     ) {
-        Column(modifier = Modifier.padding(OmniSpacing.small)) {
+        if (item.thumbnailUrls.size >= 2) {
             CollageArtwork(
                 thumbnailUrls = item.thumbnailUrls.ifEmpty { listOfNotNull(item.thumbnailUrl) },
                 contentDescription = item.title,
@@ -785,10 +820,22 @@ private fun ShelfArtworkCard(
                 imageSize = SHELF_IMAGE_SIZE,
                 shape = OmniShapes.ArtworkSmall,
             )
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
-            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(item.subtitle, style = OmniTextStyles.caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        } else {
+            DiscoveryArtwork(
+                thumbnailUrl = item.thumbnailUrl,
+                contentDescription = item.title,
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                imageSize = SHELF_IMAGE_SIZE,
+                shape = OmniShapes.ArtworkSmall,
+            )
         }
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
+        Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -802,22 +849,25 @@ private fun MoodGenreGrid(
         chips.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
                 row.forEach { chip ->
-                    GlassCard(
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 60.dp),
-                        onClick = { onChipClick(chip) },
-                        cornerRadius = OmniShapes.Medium,
-                        tone = GlassTone.Subtle,
+                        contentAlignment = Alignment.CenterStart,
                     ) {
                         Text(
                             text = chip.label,
                             style = MaterialTheme.typography.titleMedium,
                             color = OmniColors.TextPrimary,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(OmniShapes.Medium)
+                                .background(OmniColors.SurfaceQuiet)
+                                .clickable { onChipClick(chip) }
+                                .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
                         )
                     }
                 }
@@ -833,53 +883,64 @@ private fun EmptyDiscoveryCard(
     action: String,
     onClick: () -> Unit,
 ) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), onClick = onClick, cornerRadius = OmniShapes.Large, tone = GlassTone.Subtle) {
-        Row(modifier = Modifier.padding(OmniSpacing.large), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, modifier = Modifier.weight(1f))
-            Text(action, style = MaterialTheme.typography.labelLarge, color = OmniColors.OmniAccentSecondary)
-        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet)
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, modifier = Modifier.weight(1f))
+        Text(action, style = MaterialTheme.typography.labelLarge, color = OmniColors.OmniAccentSecondary)
     }
 }
 
 @Composable
-private fun NewHomeState(
-    onSearch: () -> Unit,
-    onLibrary: () -> Unit,
-) {
-    GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = OmniShapes.ExtraLarge, tone = GlassTone.Medium) {
-        Column(modifier = Modifier.padding(OmniSpacing.section), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Start with your music", style = OmniTextStyles.sectionTitle)
-            Spacer(modifier = Modifier.height(OmniSpacing.compact))
-            Text(
-                text = "Search for a song or add favorites. Home will fill with real listening signals.",
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
-            )
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
-            Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = onSearch, modifier = Modifier.weight(1f)) { Text("Search") }
-                TextButton(onClick = onLibrary, modifier = Modifier.weight(1f)) { Text("Library") }
-            }
-        }
+private fun StartExploringRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.62f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Start exploring to build real playable Quick Picks.",
+            style = OmniTextStyles.metadata,
+            color = OmniColors.TextSecondary,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = "Browse",
+            style = MaterialTheme.typography.labelLarge,
+            color = OmniColors.OmniAccentSecondary,
+        )
     }
 }
 
 @Composable
 private fun ShelfSkeletonRow() {
-    GlassSurface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(76.dp),
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+            .height(64.dp)
+            .clip(OmniShapes.Small)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.54f))
+            .padding(horizontal = OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(OmniSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OmniTrackLoadingRow(artworkSize = 52.dp)
+        StaticArtworkPlaceholder(modifier = Modifier.size(52.dp).clip(OmniShapes.ArtworkSmall))
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+            Box(modifier = Modifier.width(160.dp).height(12.dp).clip(OmniShapes.Pill).background(OmniColors.OmniGlassStrong))
+            Box(modifier = Modifier.width(108.dp).height(10.dp).clip(OmniShapes.Pill).background(OmniColors.OmniGlassMedium))
         }
     }
 }
@@ -896,8 +957,7 @@ private fun RequestHydrationEffect(
 ) {
     LaunchedEffect(id, query, source, thumbnailUrl, state, collage) {
         if (
-            source != HomeCatalogSource.UserData &&
-            source != HomeCatalogSource.ProviderBrowse &&
+            source == HomeCatalogSource.Recommended &&
             !query.isNullOrBlank() &&
             thumbnailUrl.isNullOrBlank() &&
             state == HomeHydrationState.None
@@ -928,6 +988,22 @@ private fun actionIconFor(actionType: HomeActionType): Int = when (actionType) {
     HomeActionType.OPEN_PLAYLIST -> R.drawable.ic_album
 }
 
+private fun HomeCarouselItem.canLeadHero(): Boolean =
+    song != null ||
+        providerSong != null ||
+        source == HomeCatalogSource.ProviderBrowse ||
+        !thumbnailUrl.isNullOrBlank() ||
+        thumbnailUrls.isNotEmpty()
+
+private fun HomeSection.hasImageFeedContent(): Boolean =
+    items.any { item ->
+        item.song != null ||
+            item.providerSong != null ||
+            item.source == HomeCatalogSource.ProviderBrowse ||
+            !item.thumbnailUrl.isNullOrBlank() ||
+            item.thumbnailUrls.isNotEmpty()
+    }
+
 @Composable
 private fun DiscoveryArtwork(
     thumbnailUrl: String?,
@@ -954,10 +1030,10 @@ private fun DiscoveryArtwork(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(OmniColors.OmniGlassStrong),
+            .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
-        GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
+        StaticArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         if (model != null) {
             AsyncImage(
                 model = model,
@@ -1038,7 +1114,7 @@ private fun CollageTile(
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        GeneratedArtwork(title = title, artworkKey = artworkKey, modifier = Modifier.fillMaxSize())
+        StaticArtworkPlaceholder(modifier = Modifier.fillMaxSize())
         if (model != null) {
             AsyncImage(
                 model = model,
@@ -1051,69 +1127,55 @@ private fun CollageTile(
 }
 
 @Composable
-private fun GeneratedArtwork(
-    title: String,
-    artworkKey: String,
+private fun StaticArtworkPlaceholder(
     modifier: Modifier = Modifier,
 ) {
-    val colors = remember(artworkKey) {
-        GeneratedArtworkPalettes[kotlin.math.abs(artworkKey.hashCode()) % GeneratedArtworkPalettes.size]
-    }
-    val words = remember(title) { title.split(" ").filter { it.isNotBlank() }.take(2) }
-    val initials = remember(words) { words.joinToString(" ") { it.take(1).uppercase() }.ifBlank { "OT" } }
-    val label = remember(words) { words.joinToString(" ").ifBlank { "OmniTune" } }
-
     Box(
-        modifier = modifier.background(Brush.linearGradient(colors)),
+        modifier = modifier.background(
+            Brush.linearGradient(
+                listOf(
+                    OmniColors.SurfaceQuiet,
+                    OmniColors.OmniBackgroundElevated,
+                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f),
+                ),
+            ),
+        ),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_album),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.20f),
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(78.dp),
+            tint = OmniColors.TextSecondary.copy(alpha = 0.44f),
+            modifier = Modifier.size(42.dp),
         )
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .height(28.dp)
-                .padding(OmniSpacing.small),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            listOf(0.36f, 0.70f, 0.48f, 0.88f, 0.55f).forEachIndexed { index, height ->
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight(height)
-                        .clip(OmniShapes.Pill)
-                        .background(Color.White.copy(alpha = 0.34f + index * 0.04f)),
-                )
-            }
-        }
+    }
+}
+
+@Composable
+private fun FeedSectionHeader(
+    title: String,
+    action: String? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
-            text = initials,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.72f),
-            fontWeight = FontWeight.Black,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(OmniSpacing.small),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = Color.White,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(OmniSpacing.small),
+            text = title,
+            style = OmniTextStyles.sectionTitle,
+            color = OmniColors.TextPrimary,
+            modifier = Modifier.weight(1f),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
+        if (action != null) {
+            Icon(
+                painter = painterResource(R.drawable.ic_more_vert),
+                contentDescription = null,
+                tint = OmniColors.TextSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 

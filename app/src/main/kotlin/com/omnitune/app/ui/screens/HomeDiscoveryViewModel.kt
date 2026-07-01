@@ -51,6 +51,7 @@ data class HomeDiscoveryUiState(
     val genreChips: List<MoodChip> = HomeDefaultCatalog.genreGrid,
     val playAllSongs: List<Song> = emptyList(),
     val isLoading: Boolean = true,
+    val isProviderLoading: Boolean = true,
 )
 
 private const val HOME_THUMBNAIL_WORKERS = 2
@@ -81,6 +82,7 @@ class HomeDiscoveryViewModel @Inject constructor(
 
     private val downloadSongs = MutableStateFlow<List<Song>>(emptyList())
     private val providerFeed = MutableStateFlow(HomeProviderFeed())
+    private val isProviderLoading = MutableStateFlow(true)
     private val thumbnailPreviews = MutableStateFlow<Map<String, HomeThumbnailPreview>>(emptyMap())
     private val hydrationRequests = Channel<HomeThumbnailRequest>(Channel.UNLIMITED)
     private val requestedThumbnailIds = ConcurrentHashMap.newKeySet<String>()
@@ -143,7 +145,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         )
     }
 
-    val uiState: StateFlow<HomeDiscoveryUiState> = combine(homeSignals, downloadSongs, providerFeed, thumbnailPreviews) { bundle, offlineSongs, providerFeed, previews ->
+    val uiState: StateFlow<HomeDiscoveryUiState> = combine(homeSignals, downloadSongs, providerFeed, isProviderLoading, thumbnailPreviews) { bundle, offlineSongs, providerFeed, providerLoading, previews ->
         buildState(
             events = bundle.events,
             quickPickSongs = bundle.quickPickSongs,
@@ -155,6 +157,7 @@ class HomeDiscoveryViewModel @Inject constructor(
             skips = bundle.skips,
             offlineSongs = offlineSongs,
             providerFeed = providerFeed,
+            isProviderLoading = providerLoading,
             previews = previews,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeDiscoveryUiState())
@@ -200,6 +203,7 @@ class HomeDiscoveryViewModel @Inject constructor(
         skips: List<SongSkipEntity>,
         offlineSongs: List<Song>,
         providerFeed: HomeProviderFeed,
+        isProviderLoading: Boolean,
         previews: Map<String, HomeThumbnailPreview>,
     ): HomeDiscoveryUiState {
         val recentSongs = events.take(20)
@@ -267,6 +271,7 @@ class HomeDiscoveryViewModel @Inject constructor(
             } + HomeDefaultCatalog.genreGrid).distinctBy { it.id },
             playAllSongs = playAllSongs,
             isLoading = false,
+            isProviderLoading = isProviderLoading,
         )
     }
 
@@ -347,9 +352,11 @@ class HomeDiscoveryViewModel @Inject constructor(
 
     private fun loadProviderFeed() {
         viewModelScope.launch {
+            isProviderLoading.value = true
             providerFeed.value = runCatching { homeFeedRepository.loadProviderFeed() }
                 .onFailure(::reportException)
                 .getOrDefault(HomeProviderFeed())
+            isProviderLoading.value = false
         }
     }
 
