@@ -127,9 +127,27 @@ fun SettingsScreen(
         item {
             SettingsCategoryLabel("Quick actions")
             SettingsQuickSummary(
-                onUpdates = { expandedSection = SettingsSection.UPDATES },
-                onDiagnostics = { expandedSection = SettingsSection.DIAGNOSTICS },
+                onUpdates = {
+                    expandedSection = if (expandedSection == SettingsSection.UPDATES) {
+                        null
+                    } else {
+                        SettingsSection.UPDATES
+                    }
+                },
+                onDiagnostics = {
+                    expandedSection = if (expandedSection == SettingsSection.DIAGNOSTICS) {
+                        null
+                    } else {
+                        SettingsSection.DIAGNOSTICS
+                    }
+                },
             )
+        }
+
+        if (expandedSection == SettingsSection.UPDATES || expandedSection == SettingsSection.DIAGNOSTICS) {
+            item(key = "quick-action-detail-${expandedSection?.name}") {
+                QuickActionSectionDetail(section = expandedSection!!)
+            }
         }
 
         item {
@@ -152,6 +170,26 @@ fun SettingsScreen(
         }
 
         item { Spacer(modifier = Modifier.height(104.dp)) }
+    }
+}
+
+@Composable
+private fun QuickActionSectionDetail(section: SettingsSection) {
+    Column(
+        modifier = Modifier
+            .padding(top = OmniSpacing.micro, bottom = OmniSpacing.small)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceQuiet)
+            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Medium)
+            .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+    ) {
+        when (section) {
+            SettingsSection.UPDATES -> UpdatesSettings()
+            SettingsSection.DIAGNOSTICS -> DiagnosticsSettings()
+            else -> Unit
+        }
+        Spacer(modifier = Modifier.height(OmniSpacing.compact))
     }
 }
 
