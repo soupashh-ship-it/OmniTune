@@ -7,6 +7,8 @@ package com.omnitune.app.ui.screens
 
 object HomeDefaultCatalog {
     private const val QUERY_COLLECTION_PREFIX = "query:"
+    private const val PROVIDER_COLLECTION_PREFIX = "provider:"
+    private const val PROVIDER_SEPARATOR = "||"
 
     val moodChips = listOf(
         MoodChip("romance", "Romance", "romance songs hindi"),
@@ -167,6 +169,29 @@ object HomeDefaultCatalog {
     )
 
     fun findCollection(id: String): HomeCollectionMetadata? {
+        if (id.startsWith(PROVIDER_COLLECTION_PREFIX)) {
+            val parts = id.removePrefix(PROVIDER_COLLECTION_PREFIX).split(PROVIDER_SEPARATOR)
+            val kind = parts.getOrNull(0).orEmpty()
+            val providerId = parts.getOrNull(1).orEmpty()
+            val title = parts.getOrNull(2).orEmpty().ifBlank { "Collection" }
+            val subtitle = parts.getOrNull(3).orEmpty().ifBlank { providerSubtitle(kind) }
+            val params = parts.getOrNull(4).orEmpty().ifBlank { null }
+            if (providerId.isNotBlank()) {
+                return HomeCollectionMetadata(
+                    id = id,
+                    title = title,
+                    subtitle = subtitle,
+                    query = title,
+                    collectionType = providerCollectionType(kind),
+                    artworkKey = "${kind}_$providerId",
+                    maxItems = 60,
+                    source = HomeCatalogSource.ProviderBrowse,
+                    actionType = providerAction(kind),
+                    providerId = providerId,
+                    browseParams = params,
+                )
+            }
+        }
         if (id.startsWith(QUERY_COLLECTION_PREFIX)) {
             val query = id.removePrefix(QUERY_COLLECTION_PREFIX).trim()
             if (query.isNotBlank()) {
@@ -231,6 +256,50 @@ object HomeDefaultCatalog {
     )
 
     fun queryCollectionId(query: String): String = QUERY_COLLECTION_PREFIX + query.trim()
+
+    fun providerCollectionId(
+        kind: String,
+        providerId: String,
+        title: String,
+        subtitle: String = providerSubtitle(kind),
+        params: String? = null,
+    ): String = buildString {
+        append(PROVIDER_COLLECTION_PREFIX)
+        append(kind)
+        append(PROVIDER_SEPARATOR)
+        append(providerId)
+        append(PROVIDER_SEPARATOR)
+        append(title)
+        append(PROVIDER_SEPARATOR)
+        append(subtitle)
+        if (!params.isNullOrBlank()) {
+            append(PROVIDER_SEPARATOR)
+            append(params)
+        }
+    }
+
+    private fun providerSubtitle(kind: String): String = when (kind) {
+        "artist" -> "Artist"
+        "album" -> "Album"
+        "playlist" -> "Playlist"
+        "browse" -> "Browse"
+        else -> "From provider"
+    }
+
+    private fun providerCollectionType(kind: String): HomeCollectionType = when (kind) {
+        "artist" -> HomeCollectionType.ArtistMix
+        "album" -> HomeCollectionType.NewReleases
+        "browse" -> HomeCollectionType.Mood
+        else -> HomeCollectionType.Playlist
+    }
+
+    private fun providerAction(kind: String): HomeActionType = when (kind) {
+        "artist" -> HomeActionType.OPEN_ARTIST
+        "album" -> HomeActionType.OPEN_ALBUM
+        "playlist" -> HomeActionType.OPEN_PLAYLIST
+        "browse" -> HomeActionType.OPEN_BROWSE
+        else -> HomeActionType.OPEN_COLLECTION
+    }
 
     private fun shelf(
         id: String,
