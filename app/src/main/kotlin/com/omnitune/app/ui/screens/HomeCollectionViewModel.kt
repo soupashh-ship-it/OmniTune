@@ -109,12 +109,9 @@ class HomeCollectionViewModel @Inject constructor(
                 return@launch
             }
 
-            YouTube.search(collection.query, YouTube.SearchFilter.FILTER_SONG)
+            loadCollectionSongs(collection)
                 .onSuccess { result ->
-                    val songs = result.items
-                        .filterIsInstance<SongItem>()
-                        .distinctBy { it.id }
-                        .take(collection.maxItems)
+                    val songs = result
                     val headerArtworkUrl = songs.firstOrNull()?.thumbnail?.resize(544, 544)
                     if (songs.isNotEmpty()) {
                         collectionCache[collectionId] = CachedCollection(
@@ -142,4 +139,48 @@ class HomeCollectionViewModel @Inject constructor(
                 }
         }
     }
+
+    private suspend fun loadCollectionSongs(collection: HomeCollectionMetadata): Result<List<SongItem>> {
+        val providerId = collection.providerId
+        if (!providerId.isNullOrBlank()) {
+            return when (collection.actionType) {
+                HomeActionType.OPEN_ALBUM -> YouTube.album(providerId)
+                    .map { page -> page.songs.distinctBy { it.id }.take(collection.maxItems) }
+
+                HomeActionType.OPEN_PLAYLIST -> YouTube.playlist(providerId)
+                    .map { page -> page.songs.distinctBy { it.id }.take(collection.maxItems) }
+
+                HomeActionType.OPEN_BROWSE -> YouTube.browse(providerId, collection.browseParams)
+                    .map { page ->
+                        page.items
+                            .flatMap { it.items }
+                            .filterIsInstance<SongItem>()
+                            .distinctBy { it.id }
+                            .take(collection.maxItems)
+                    }
+
+                HomeActionType.OPEN_ARTIST -> YouTube.artist(providerId)
+                    .map { page ->
+                        page.sections
+                            .flatMap { it.items }
+                            .filterIsInstance<SongItem>()
+                            .distinctBy { it.id }
+                            .take(collection.maxItems)
+                    }
+
+                else -> searchCollectionSongs(collection)
+            }
+        }
+
+        return searchCollectionSongs(collection)
+    }
+
+    private suspend fun searchCollectionSongs(collection: HomeCollectionMetadata): Result<List<SongItem>> =
+        YouTube.search(collection.query, YouTube.SearchFilter.FILTER_SONG)
+            .map { result ->
+                result.items
+                    .filterIsInstance<SongItem>()
+                    .distinctBy { it.id }
+                    .take(collection.maxItems)
+            }
 }

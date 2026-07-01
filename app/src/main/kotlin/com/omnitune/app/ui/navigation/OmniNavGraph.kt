@@ -158,13 +158,22 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable(Screens.Home.route) {
                 HomeDiscoveryRoute(
                     onNavigateToSearch = { navController.navigate(Screens.Search.route) },
-                    onNavigateToSearchQuery = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
                     onNavigateToCollection = { collectionId, artworkUrl -> navController.navigate(homeCollectionRoute(collectionId, artworkUrl)) },
                     onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
                     onResumePlayback = { navController.navigate("player") },
                     onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
+                    onPlayProviderSong = { song ->
+                        playSongList(
+                            context = context,
+                            queueTitle = "Home",
+                            songs = listOf(song),
+                            index = 0,
+                            playerConnection = localPlayerConnection,
+                            onPlayerNotReady = { pendingSongQueue = it },
+                        )
+                    },
                     onPlaySongs = { songs ->
                         if (songs.isNotEmpty()) localPlayerConnection?.playQueue(ListQueue(title = "Home", items = songs.map { it.toMediaItem() }))
                     },

@@ -82,6 +82,7 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.utils.dataStore
+import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -106,13 +107,13 @@ private val GeneratedArtworkPalettes = listOf(
 @Composable
 fun HomeDiscoveryRoute(
     onNavigateToSearch: () -> Unit,
-    onNavigateToSearchQuery: (String) -> Unit,
     onNavigateToCollection: (String, String?) -> Unit,
     onNavigateToLibrary: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onResumePlayback: () -> Unit,
     onPlaySong: (Song) -> Unit,
+    onPlayProviderSong: (SongItem) -> Unit,
     onPlaySongs: (List<Song>) -> Unit,
     viewModel: HomeDiscoveryViewModel = hiltViewModel(),
 ) {
@@ -147,7 +148,7 @@ fun HomeDiscoveryRoute(
                     items = uiState.carouselItems,
                     isLoading = uiState.isLoading,
                     onPlaySong = onPlaySong,
-                    onSearch = onNavigateToSearchQuery,
+                    onPlayProviderSong = onPlayProviderSong,
                     onOpenCollection = onNavigateToCollection,
                     onRequestHydration = viewModel::requestThumbnailHydration,
                 )
@@ -166,9 +167,8 @@ fun HomeDiscoveryRoute(
                     canPlayAll = uiState.playAllSongs.isNotEmpty(),
                     onPlayAll = { onPlaySongs(uiState.playAllSongs) },
                     onPlaySong = onPlaySong,
-                    onSearch = onNavigateToSearchQuery,
+                    onPlayProviderSong = onPlayProviderSong,
                     onOpenCollection = onNavigateToCollection,
-                    exploreQuery = uiState.quickPicksExploreQuery,
                     onRequestHydration = viewModel::requestThumbnailHydration,
                 )
             }
@@ -180,11 +180,7 @@ fun HomeDiscoveryRoute(
                         emptyLabel = "",
                         onAction = onNavigateToLibrary,
                         onItemClick = { item ->
-                            item.song?.let(onPlaySong) ?: if (shouldOpenNativeCollection(item.actionType, item.id)) {
-                                onNavigateToCollection(item.id, item.thumbnailUrl)
-                            } else {
-                                item.query?.let(onNavigateToSearchQuery)
-                            }
+                            handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection)
                         },
                         onRequestHydration = viewModel::requestThumbnailHydration,
                     )
@@ -197,40 +193,75 @@ fun HomeDiscoveryRoute(
                         events = uiState.recentSongs,
                         isLoading = uiState.isLoading,
                         onPlaySong = onPlaySong,
-                        onSearch = onNavigateToSearch,
                     )
                 }
             }
 
-            item(contentType = "searches") {
-                DiscoveryShelf(
-                    section = uiState.searchSection,
-                    emptyLabel = "Fresh discovery appears here while Home warms up.",
-                    onAction = onNavigateToSearch,
-                    onItemClick = { item ->
-                        if (shouldOpenNativeCollection(item.actionType, item.id)) {
-                            onNavigateToCollection(item.id, item.thumbnailUrl)
-                        } else {
-                            item.query?.let(onNavigateToSearchQuery)
-                        }
-                    },
-                    onRequestHydration = viewModel::requestThumbnailHydration,
-                )
-            }
-
-            uiState.shelfSections.forEach { section ->
-                item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
-                    HorizontalDiscoveryShelf(
-                        section = section,
-                        onItemClick = { item ->
-                            if (shouldOpenNativeCollection(item.actionType, item.id)) {
-                                onNavigateToCollection(item.id, item.thumbnailUrl)
-                            } else {
-                                item.query?.let(onNavigateToSearchQuery)
-                            }
-                        },
+            if (uiState.quickPicks.isEmpty() && uiState.providerSections.isEmpty()) {
+                item(contentType = "browse-start") {
+                    DiscoveryShelf(
+                        section = uiState.searchSection,
+                        emptyLabel = "Start exploring music and Home will fill with real listening signals.",
+                        onAction = { onNavigateToCollection(uiState.searchSection.items.firstOrNull()?.id ?: HomeDefaultCatalog.freshDiscovery.id, null) },
+                        onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
                         onRequestHydration = viewModel::requestThumbnailHydration,
                     )
+                }
+            }
+
+            uiState.providerSections.forEach { section ->
+                item(key = "provider_${section.id}", contentType = "provider-shelf") {
+                    HorizontalDiscoveryShelf(
+                        section = section,
+                        onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
+                    )
+                }
+            }
+
+            if (uiState.communitySections.isNotEmpty()) {
+                uiState.communitySections.forEach { section ->
+                    item(key = "community_${section.id}", contentType = "community-shelf") {
+                        HorizontalDiscoveryShelf(
+                            section = section,
+                            onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
+                            onRequestHydration = viewModel::requestThumbnailHydration,
+                        )
+                    }
+                }
+            }
+
+            uiState.exploreSections.forEach { section ->
+                item(key = "explore_${section.id}", contentType = "explore-shelf") {
+                    HorizontalDiscoveryShelf(
+                        section = section,
+                        onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
+                    )
+                }
+            }
+
+            if (uiState.providerSections.isEmpty() && uiState.communitySections.isEmpty()) {
+                item(contentType = "fallback-discovery") {
+                    DiscoveryShelf(
+                        section = uiState.searchSection,
+                        emptyLabel = "Fresh discovery appears here while Home warms up.",
+                        onAction = { onNavigateToCollection(uiState.searchSection.items.firstOrNull()?.id ?: HomeDefaultCatalog.freshDiscovery.id, null) },
+                        onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
+                        onRequestHydration = viewModel::requestThumbnailHydration,
+                    )
+                }
+            }
+
+            if (uiState.providerSections.isEmpty()) {
+                uiState.shelfSections.forEach { section ->
+                    item(key = "shelf_${section.id}", contentType = "horizontal-shelf") {
+                        HorizontalDiscoveryShelf(
+                            section = section,
+                            onItemClick = { item -> handleShelfItemClick(item, onPlaySong, onPlayProviderSong, onNavigateToCollection) },
+                            onRequestHydration = viewModel::requestThumbnailHydration,
+                        )
+                    }
                 }
             }
 
@@ -344,12 +375,11 @@ private fun HeroCarousel(
     items: List<HomeCarouselItem>,
     isLoading: Boolean,
     onPlaySong: (Song) -> Unit,
-    onSearch: (String) -> Unit,
+    onPlayProviderSong: (SongItem) -> Unit,
     onOpenCollection: (String, String?) -> Unit,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = "Home Discovery")
         LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
             if (isLoading) {
                 items(3, contentType = { "hero-loading" }) { HeroSkeleton() }
@@ -359,13 +389,9 @@ private fun HeroCarousel(
                         item = item,
                         onRequestHydration = onRequestHydration,
                         onClick = {
-                            item.song?.let(onPlaySong) ?: if (
-                                shouldOpenNativeCollection(item.actionType, item.id)
-                            ) {
-                                onOpenCollection(item.id, item.thumbnailUrl)
-                            } else {
-                                item.query?.let(onSearch)
-                            }
+                            item.song?.let(onPlaySong)
+                                ?: item.providerSong?.let(onPlayProviderSong)
+                                ?: onOpenCollection(item.id, item.thumbnailUrl)
                         },
                     )
                 }
@@ -512,32 +538,33 @@ private fun QuickPicksSection(
     canPlayAll: Boolean,
     onPlayAll: () -> Unit,
     onPlaySong: (Song) -> Unit,
-    onSearch: (String) -> Unit,
+    onPlayProviderSong: (SongItem) -> Unit,
     onOpenCollection: (String, String?) -> Unit,
-    exploreQuery: String,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(
             title = "Quick Picks",
-            action = if (canPlayAll) "Play all" else "Explore",
-            onAction = if (canPlayAll) onPlayAll else ({ onSearch(exploreQuery) }),
+            action = if (canPlayAll) "Play all" else null,
+            onAction = if (canPlayAll) onPlayAll else null,
         )
         if (isLoading) {
             repeat(4) { ShelfSkeletonRow() }
+        } else if (items.isEmpty()) {
+            EmptyDiscoveryCard(
+                text = "Browse music to build real playable Quick Picks.",
+                action = "Browse",
+                onClick = { onOpenCollection(HomeDefaultCatalog.freshDiscovery.items.first().id, null) },
+            )
         } else {
             items.take(12).forEach { item ->
                 QuickPickRow(
                     item = item,
                     onRequestHydration = onRequestHydration,
                     onClick = {
-                        item.song?.let(onPlaySong) ?: if (
-                            shouldOpenNativeCollection(item.actionType, item.id)
-                        ) {
-                            onOpenCollection(item.id, item.thumbnailUrl)
-                        } else {
-                            item.query?.let(onSearch)
-                        }
+                        item.song?.let(onPlaySong)
+                            ?: item.providerSong?.let(onPlayProviderSong)
+                            ?: onOpenCollection(item.id, item.thumbnailUrl)
                     },
                 )
             }
@@ -604,13 +631,12 @@ private fun RecentlyPlayedDiscoverySection(
     events: List<EventWithSong>,
     isLoading: Boolean,
     onPlaySong: (Song) -> Unit,
-    onSearch: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = "Continue Listening")
         when {
             isLoading -> repeat(3) { ShelfSkeletonRow() }
-            events.isEmpty() -> EmptyDiscoveryCard(text = "No recent plays yet", action = "Search", onClick = onSearch)
+            events.isEmpty() -> EmptyDiscoveryCard(text = "No recent plays yet", action = "Browse", onClick = {})
             else -> events.take(5).forEach { event ->
                 SongShelfRow(
                     item = PlaylistShelfItem(
@@ -749,7 +775,7 @@ private fun ShelfArtworkCard(
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
             CollageArtwork(
-                thumbnailUrls = item.thumbnailUrls,
+                thumbnailUrls = item.thumbnailUrls.ifEmpty { listOfNotNull(item.thumbnailUrl) },
                 contentDescription = item.title,
                 title = item.title,
                 artworkKey = item.artworkKey ?: item.id,
@@ -871,6 +897,7 @@ private fun RequestHydrationEffect(
     LaunchedEffect(id, query, source, thumbnailUrl, state, collage) {
         if (
             source != HomeCatalogSource.UserData &&
+            source != HomeCatalogSource.ProviderBrowse &&
             !query.isNullOrBlank() &&
             thumbnailUrl.isNullOrBlank() &&
             state == HomeHydrationState.None
@@ -880,16 +907,23 @@ private fun RequestHydrationEffect(
     }
 }
 
-private fun shouldOpenNativeCollection(
-    actionType: HomeActionType,
-    id: String,
-): Boolean = actionType != HomeActionType.OPEN_SEARCH && HomeDefaultCatalog.findCollection(id) != null
+private fun handleShelfItemClick(
+    item: PlaylistShelfItem,
+    onPlaySong: (Song) -> Unit,
+    onPlayProviderSong: (SongItem) -> Unit,
+    onOpenCollection: (String, String?) -> Unit,
+) {
+    item.song?.let(onPlaySong)
+        ?: item.providerSong?.let(onPlayProviderSong)
+        ?: onOpenCollection(item.id, item.thumbnailUrl)
+}
 
 private fun actionIconFor(actionType: HomeActionType): Int = when (actionType) {
     HomeActionType.PLAY_TRACK -> R.drawable.ic_play_arrow
-    HomeActionType.OPEN_SEARCH -> R.drawable.ic_search
+    HomeActionType.OPEN_SEARCH_ONLY_WHEN_EXPLICIT -> R.drawable.ic_search
     HomeActionType.OPEN_ARTIST -> R.drawable.ic_artist
     HomeActionType.OPEN_ALBUM -> R.drawable.ic_album
+    HomeActionType.OPEN_BROWSE,
     HomeActionType.OPEN_COLLECTION,
     HomeActionType.OPEN_PLAYLIST -> R.drawable.ic_album
 }
