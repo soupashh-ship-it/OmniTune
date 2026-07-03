@@ -93,6 +93,7 @@ import com.omnitune.app.constants.SkipSilenceKey
 import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.diagnostics.DiagnosticReportExporter
 import com.omnitune.app.playback.MusicService
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -119,8 +120,6 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
     ) {
         item {
-            Spacer(modifier = Modifier.statusBarsPadding())
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
             SettingsHeader(onBack = onBack)
         }
 
@@ -155,7 +154,11 @@ fun SettingsScreen(
         }
 
         SettingsSection.entries
-            .filterNot { it == SettingsSection.UPDATES || it == SettingsSection.DIAGNOSTICS }
+            .filterNot {
+                it == SettingsSection.UPDATES ||
+                    it == SettingsSection.DIAGNOSTICS ||
+                    it == SettingsSection.SCROBBLING
+            }
             .forEach { section ->
             item {
                 SettingsSectionCard(
@@ -169,7 +172,7 @@ fun SettingsScreen(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(104.dp)) }
+        item { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
 }
 

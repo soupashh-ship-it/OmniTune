@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -177,7 +180,7 @@ fun LibraryScreen(
             )
         }
 
-        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(104.dp)) }
+        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
 }
 
@@ -243,7 +246,12 @@ private fun LibraryTabChip(
     Column(
         modifier = modifier
             .clip(OmniShapes.Medium)
-            .background(OmniColors.OmniGlassSubtle)
+            .background(OmniColors.SurfaceRaised)
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Medium,
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -251,13 +259,14 @@ private fun LibraryTabChip(
         Text(
             text = count,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
+            fontWeight = FontWeight.ExtraBold,
+            color = OmniColors.OmniAccentSecondary,
             maxLines = 1,
         )
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
             color = OmniColors.TextSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -269,8 +278,8 @@ private fun LibraryTabChip(
 private fun LibrarySectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
         color = OmniColors.TextPrimary,
     )
 }
@@ -287,6 +296,7 @@ private fun LibraryRouteRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.46f))
             .clickable(onClick = onClick)
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
@@ -308,10 +318,13 @@ private fun LibraryRouteRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(
-            text = "Open",
-            style = MaterialTheme.typography.labelMedium,
-            color = OmniColors.TextTertiary,
+        Icon(
+            painter = painterResource(R.drawable.ic_arrow_back),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary,
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer(rotationZ = 180f),
         )
     }
 }

@@ -6,6 +6,8 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,11 +26,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,26 +52,21 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
+import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.AccentPill
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.ShimmerBar
+import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import kotlinx.coroutines.flow.flowOf
-
-import com.omnitune.app.LocalPlayerConnection
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.material3.IconButton
-import com.omnitune.app.extensions.toMediaItem
-import com.omnitune.app.models.toMediaMetadata
-import com.omnitune.app.ui.component.TrackMenuProvider
 
 @Composable
 fun HomeScreen(
@@ -95,13 +96,9 @@ fun HomeScreen(
         item {
             Column {
                 Spacer(modifier = Modifier.statusBarsPadding())
-                Spacer(modifier = Modifier.height(OmniSpacing.medium))
-                PremiumHomeHeader()
+                Spacer(modifier = Modifier.height(OmniSpacing.small))
+                PremiumHomeHeader(onNavigateToSearch = onNavigateToSearch)
             }
-        }
-
-        item {
-            SearchEntryCard(onClick = onNavigateToSearch)
         }
 
         mediaMetadata?.let { currentTrack ->
@@ -156,42 +153,59 @@ fun HomeScreen(
 }
 
 @Composable
-private fun PremiumHomeHeader() {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Strong,
+private fun PremiumHomeHeader(onNavigateToSearch: () -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        // Left: Logo mark + app name
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(OmniSpacing.section),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "OmniGlass home",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = OmniColors.OmniAccentSecondary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(OmniSpacing.compact))
+            // Signal bars logo mark
+            SignalMark()
+            Column {
                 Text(
                     text = "OmniTune",
-                    style = OmniTextStyles.heroTitle,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = OmniColors.TextPrimary,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(OmniSpacing.compact))
-                Text(
-                    text = "Your music, downloads, and recent plays in one place.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OmniColors.TextSecondary,
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            SignalMark()
+        // Right: action buttons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.SurfaceSubtle)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = androidx.compose.material3.ripple(
+                            bounded = true,
+                            color = OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                        ),
+                        onClick = onNavigateToSearch,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_search),
+                    contentDescription = "Search",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }
@@ -200,26 +214,28 @@ private fun PremiumHomeHeader() {
 private fun SignalMark() {
     Row(
         modifier = Modifier
-            .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassSubtle)
-            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.medium),
-        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
+            .clip(OmniShapes.Small)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.18f),
+                        OmniColors.OmniAccentPrimary.copy(alpha = 0.14f),
+                    )
+                )
+            )
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
-        val heights = listOf(18.dp, 34.dp, 24.dp, 44.dp)
+        val heights = listOf(8.dp, 14.dp, 10.dp, 18.dp)
         heights.forEachIndexed { index, height ->
             Box(
                 modifier = Modifier
-                    .width(5.dp)
+                    .width(4.dp)
                     .height(height)
                     .clip(OmniShapes.Pill)
                     .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                if (index == 3) OmniColors.OmniAccentSecondary else OmniColors.OmniAccentPrimary,
-                                OmniColors.OmniAccentMuted,
-                            )
-                        )
+                        if (index == 3) OmniColors.OmniAccentSecondary else OmniColors.OmniAccentPrimary
                     )
             )
         }

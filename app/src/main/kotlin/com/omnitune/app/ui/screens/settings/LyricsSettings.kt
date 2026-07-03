@@ -132,12 +132,6 @@ fun LyricsSettings() {
         defaultValue = true,
     )
 
-    SettingsCategoryLabel("Animation")
-    SettingsInfoBlock(
-        title = "Lyrics animation",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
 }
 
 

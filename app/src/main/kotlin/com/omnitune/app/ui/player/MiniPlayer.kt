@@ -72,12 +72,15 @@ import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
+import com.omnitune.app.ui.theme.omniPressScaleBounce
 import com.omnitune.app.ui.theme.omniSoftBorder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
@@ -85,7 +88,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
-private const val MINI_PLAYER_HEIGHT = 80
 private const val ARTWORK_REQUEST_SIZE = 112
 
 @Composable
@@ -150,7 +152,7 @@ fun MiniPlayer(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(MINI_PLAYER_HEIGHT.dp)
+            .height(OmniChrome.MiniPlayerHeight)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
             .padding(horizontal = OmniSpacing.small)
             .shadow(
@@ -231,14 +233,14 @@ fun MiniPlayer(
                     ),
                     onClick = onClick,
                 )
-                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
+                .padding(horizontal = OmniSpacing.compact, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .height(64.dp)
-                    .padding(horizontal = OmniSpacing.compact),
+                    .height(56.dp)
+                    .padding(horizontal = OmniSpacing.micro),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 MiniArtwork(mediaMetadata = mediaMetadata, isPlaying = isPlaying)
@@ -311,16 +313,13 @@ private fun MiniArtwork(
     }
     val artworkScale by animateFloatAsState(
         targetValue = if (isPlaying) 1f else 0.96f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessLow,
-        ),
+        animationSpec = OmniMotion.gentleSpring(),
         label = "mini_artwork_scale",
     )
 
     Box(
         modifier = Modifier
-            .size(54.dp)
+            .size(OmniChrome.MiniPlayerArtwork)
             .shadow(
                 elevation = 6.dp,
                 shape = OmniShapes.ArtworkSmall,
@@ -414,12 +413,15 @@ private fun MiniPlayPauseButton(
     playbackState: Int,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     IconButton(
         onClick = onClick,
+        interactionSource = interactionSource,
         modifier = Modifier
-            .size(48.dp)
+            .size(OmniChrome.MiniPlayerButton)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.18f)),
+            .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.18f))
+            .omniPressScaleBounce(interactionSource),
     ) {
         if (isLoading) {
             OmniTuneLoader(
@@ -452,7 +454,7 @@ private fun MiniControlButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(44.dp),
+        modifier = Modifier.size(38.dp),
     ) {
         Icon(
             painter = painterResource(icon),

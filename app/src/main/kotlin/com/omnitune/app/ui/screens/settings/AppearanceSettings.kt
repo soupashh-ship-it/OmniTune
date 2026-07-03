@@ -108,20 +108,15 @@ fun AppearanceSettings() {
 
     SettingsCategoryLabel("Display")
     SettingsInfoBlock(
-        title = "Pure black mode",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Disable blur effects",
-        body = "Not yet implemented",
+        title = "OmniTune dark theme",
+        body = "The app uses the current dark, music-first visual system across Home, Library, Stats, History, Search, Player, and Settings.",
         accent = OmniColors.OmniAccentMuted,
     )
 
     SettingsCategoryLabel("Library layout")
     SettingsInfoBlock(
-        title = "Grid item size",
-        body = "Not yet implemented",
+        title = "Compact library browsing",
+        body = "Library pages use fixed artwork sizes, readable rows, and the existing saved-content counts.",
         accent = OmniColors.OmniAccentMuted,
     )
 }

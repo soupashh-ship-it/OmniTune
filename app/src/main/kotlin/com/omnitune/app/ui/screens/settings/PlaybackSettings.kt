@@ -155,11 +155,6 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         key = AutoSkipNextOnErrorKey,
         defaultValue = true,
     )
-    SettingsInfoBlock(
-        title = "Pause on device mute",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
 }
 
 

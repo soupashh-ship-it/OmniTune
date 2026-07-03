@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 35
-        versionName = "0.8.2"
+        versionCode = 36
+        versionName = "0.8.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

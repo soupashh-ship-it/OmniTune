@@ -130,6 +130,7 @@ fun SearchResultRow(
             .fillMaxWidth()
             .height(74.dp)
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
             .then(
                 if (onClick != null) {
                     Modifier

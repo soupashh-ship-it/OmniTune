@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -86,6 +87,7 @@ import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.screens.DownloadsViewModel
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -153,55 +155,52 @@ fun PlayerScreen(
             val artworkHeight = if (compactPlayer) 305.dp else 330.dp
             val artworkWidthFraction = if (compactPlayer) 0.84f else 0.86f
 
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = OmniSpacing.section, vertical = verticalPadding)
-                    .padding(bottom = OmniSpacing.medium),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .verticalScroll(rememberScrollState()),
+                contentAlignment = Alignment.Center,
             ) {
-                PlayerTopBar(
-                    onDismiss = onDismiss,
-                    onOpenQueue = onOpenQueue,
-                    hasQueue = playerConnection != null,
-                )
-
-                Spacer(modifier = Modifier.height(mediumGap))
-
-                ArtworkHero(
-                    mediaMetadata = mediaMetadata,
-                    height = artworkHeight,
-                    widthFraction = artworkWidthFraction,
-                )
-
-                Spacer(modifier = Modifier.height(largeGap))
-
-                MetadataBlock(mediaMetadata = mediaMetadata)
-
-                Spacer(modifier = Modifier.height(largeGap))
-
-                PlayerSeekBar(
-                    playerConnection = playerConnection,
-                    isSeeking = isSeeking,
-                )
-
-                Spacer(modifier = Modifier.height(largeGap))
-
-                PlayerControlRow(
-                    isPlaying = isPlaying,
-                    playbackState = playbackState,
-                    shuffleEnabled = shuffleEnabled,
-                    repeatMode = repeatMode,
-                    playerConnection = playerConnection,
-                )
-
-                Spacer(modifier = Modifier.height(mediumGap))
-
-                PlayerActionsRow(
-                    playerConnection = playerConnection,
-                    onOpenQueue = onOpenQueue,
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = OmniSpacing.section)
+                        .padding(top = verticalPadding, bottom = verticalPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    PlayerTopBar(
+                        onDismiss = onDismiss,
+                        onOpenQueue = onOpenQueue,
+                        hasQueue = playerConnection != null,
+                    )
+                    Spacer(modifier = Modifier.height(mediumGap))
+                    ArtworkHero(
+                        mediaMetadata = mediaMetadata,
+                        isPlaying = isPlaying,
+                        height = artworkHeight,
+                        widthFraction = artworkWidthFraction,
+                    )
+                    Spacer(modifier = Modifier.height(largeGap))
+                    MetadataBlock(mediaMetadata = mediaMetadata)
+                    Spacer(modifier = Modifier.height(largeGap))
+                    PlayerSeekBar(
+                        playerConnection = playerConnection,
+                        isSeeking = isSeeking,
+                    )
+                    Spacer(modifier = Modifier.height(largeGap))
+                    PlayerControlRow(
+                        isPlaying = isPlaying,
+                        playbackState = playbackState,
+                        shuffleEnabled = shuffleEnabled,
+                        repeatMode = repeatMode,
+                        playerConnection = playerConnection,
+                    )
+                    Spacer(modifier = Modifier.height(mediumGap))
+                    PlayerActionsRow(
+                        playerConnection = playerConnection,
+                        onOpenQueue = onOpenQueue,
+                    )
+                }
             }
         }
     }
@@ -263,6 +262,7 @@ private fun buildArtworkCandidates(videoId: String?, thumbnailUrl: String?): Lis
 @Composable
 private fun ArtworkHero(
     mediaMetadata: MediaMetadata?,
+    isPlaying: Boolean,
     height: Dp,
     widthFraction: Float,
 ) {
@@ -286,15 +286,22 @@ private fun ArtworkHero(
                 .build()
         }
     }
+
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isPlaying) 0.22f else 0.10f,
+        animationSpec = OmniMotion.gentleSpring(),
+        label = "artwork_glow",
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth(widthFraction)
             .height(height)
             .shadow(
-                elevation = 18.dp,
+                elevation = if (isPlaying) 26.dp else 18.dp,
                 shape = OmniShapes.ArtworkLarge,
                 ambientColor = Color.Black.copy(alpha = 0.42f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = glowAlpha),
             )
             .clip(OmniShapes.ArtworkLarge)
             .omniSoftBorder(
@@ -685,14 +692,17 @@ private fun GlassIconButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     IconButton(
         onClick = onClick,
         enabled = enabled,
+        interactionSource = interactionSource,
         modifier = Modifier
             .size(46.dp)
             .clip(OmniShapes.Medium)
             .background(OmniColors.OmniGlassMedium)
-            .omniSoftBorder(OmniShapes.Medium, OmniColors.OmniGlassBorderSubtle),
+            .omniSoftBorder(OmniShapes.Medium, OmniColors.OmniGlassBorderSubtle)
+            .omniPressScale(interactionSource),
     ) {
         Icon(
             painter = painterResource(icon),

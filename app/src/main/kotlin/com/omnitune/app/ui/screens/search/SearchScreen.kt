@@ -70,6 +70,7 @@ import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.ui.component.GlassCard
 import com.omnitune.app.ui.component.GlassSurface
 import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.component.ShimmerBar
@@ -249,7 +250,7 @@ fun SearchResultsContent(
             }
         }
         item(contentType = "bottom-spacer") {
-            Spacer(modifier = Modifier.height(OmniSpacing.section))
+            Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer))
         }
     }
 }
@@ -277,7 +278,7 @@ private fun SearchFilterChips(
                         if (selected) {
                             OmniColors.OmniAccentPrimary.copy(alpha = 0.22f)
                         } else {
-                            OmniColors.SurfaceQuiet
+                            OmniColors.SurfaceSubtle.copy(alpha = 0.70f)
                         },
                     ),
             ) {

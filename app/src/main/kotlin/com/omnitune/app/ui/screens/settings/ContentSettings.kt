@@ -163,29 +163,7 @@ fun ContentSettings(
             textContentColor = OmniColors.TextSecondary
         )
     }
-    SettingsCategoryLabel("Search and content")
-    SettingsInfoBlock(
-        title = "Hide explicit content",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Hide video results",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-
     SettingsCategoryLabel("History")
-    SettingsInfoBlock(
-        title = "Pause search history",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Pause listen history",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
     SettingsActionRow(
         iconRes = R.drawable.ic_history,
         label = "Clear search history",

@@ -1,6 +1,7 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Song
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -58,7 +60,10 @@ fun StatsScreen(
         item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
             Spacer(modifier = Modifier.height(OmniSpacing.large))
-            StatsHeader()
+            StatsHeader(
+                minutesListened = uiState.minutesListened,
+                totalPlayed = uiState.totalPlayed,
+            )
         }
 
         when {
@@ -147,17 +152,17 @@ fun StatsScreen(
             }
         }
 
-        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(104.dp)) }
+        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
 }
 
 @Composable
-private fun StatsHeader() {
-    Column {
+private fun StatsHeader(minutesListened: Long, totalPlayed: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
         Text(
             text = "Stats",
             style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = OmniColors.TextPrimary,
         )
         Text(
@@ -165,6 +170,76 @@ private fun StatsHeader() {
             style = MaterialTheme.typography.bodyMedium,
             color = OmniColors.TextSecondary,
         )
+        if (totalPlayed > 0 || minutesListened > 0) {
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                if (totalPlayed > 0) {
+                    StatsHeroPill(
+                        value = totalPlayed.toString(),
+                        label = "total plays",
+                        icon = R.drawable.ic_play_arrow,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (minutesListened > 0) {
+                    StatsHeroPill(
+                        value = if (minutesListened >= 60) "${minutesListened / 60}h ${minutesListened % 60}m"
+                               else "${minutesListened}m",
+                        label = "listened",
+                        icon = R.drawable.ic_history,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsHeroPill(
+    value: String,
+    label: String,
+    icon: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(OmniShapes.Medium)
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                        OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
+                    )
+                )
+            )
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+        Column {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = OmniColors.TextSecondary,
+            )
+        }
     }
 }
 
@@ -177,27 +252,28 @@ private fun StatChip(
     Row(
         modifier = Modifier
             .clip(OmniShapes.Medium)
-            .background(OmniColors.OmniGlassSubtle)
+            .background(OmniColors.SurfaceRaised)
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = OmniColors.OmniAccentPrimary,
-            modifier = Modifier.size(20.dp),
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Column {
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.ExtraBold,
+                color = OmniColors.OmniAccentSecondary,
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -210,9 +286,10 @@ private fun StatChip(
 private fun StatsSectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
         color = OmniColors.TextPrimary,
+        modifier = Modifier.padding(top = OmniSpacing.small),
     )
 }
 
@@ -225,6 +302,7 @@ private fun TopSongRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceRaised)
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -250,8 +328,8 @@ private fun TopSongRow(
         Text(
             text = countLabel(plays, "play"),
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = OmniColors.OmniAccentPrimary,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.OmniAccentSecondary,
         )
     }
 }
@@ -265,6 +343,7 @@ private fun TopArtistRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.44f))
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {

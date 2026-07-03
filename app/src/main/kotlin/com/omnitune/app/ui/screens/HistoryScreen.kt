@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +44,7 @@ import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
@@ -110,17 +112,17 @@ fun HistoryScreen(
             }
         }
 
-        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(104.dp)) }
+        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
 }
 
 @Composable
 private fun HistoryHeader() {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
         Text(
             text = "History",
             style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             color = OmniColors.TextPrimary,
         )
         Text(
@@ -143,12 +145,13 @@ private fun HistoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceRaised)
             .clickable(onClick = onPlaySong)
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtworkBox(thumbnailUrl = event.song.thumbnailUrl)
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = event.song.title,
@@ -193,8 +196,8 @@ private fun HistoryRow(
 private fun ArtworkBox(thumbnailUrl: String?) {
     Box(
         modifier = Modifier
-            .size(56.dp)
-            .clip(OmniShapes.ArtworkSmall)
+            .size(64.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
@@ -203,7 +206,7 @@ private fun ArtworkBox(thumbnailUrl: String?) {
                 painterResource(R.drawable.ic_album),
                 contentDescription = null,
                 tint = OmniColors.TextTertiary,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(28.dp),
             )
         } else {
             AsyncImage(

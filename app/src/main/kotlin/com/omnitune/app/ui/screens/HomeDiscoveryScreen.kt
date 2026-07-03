@@ -10,6 +10,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,6 +70,7 @@ import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.ui.component.AccentPill
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniMotion
@@ -277,7 +279,7 @@ fun HomeDiscoveryRoute(
             }
 
             item(contentType = "bottom-spacer") {
-                Spacer(modifier = Modifier.height(OmniSpacing.screen))
+                Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer))
             }
         }
 
@@ -291,40 +293,63 @@ private fun HomeTopHeader(
     onSettings: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        // Left: compact logo mark + OmniTune title
         Row(
-            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
-            Box(
+            // Signal bars logo mark
+            Row(
                 modifier = Modifier
-                    .size(34.dp)
                     .clip(OmniShapes.Small)
-                    .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center,
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                OmniColors.OmniAccentSecondary.copy(alpha = 0.18f),
+                                OmniColors.OmniAccentPrimary.copy(alpha = 0.14f),
+                            )
+                        )
+                    )
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.Bottom,
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_home),
-                    contentDescription = null,
-                    tint = OmniColors.OmniAccentSecondary,
-                    modifier = Modifier.size(20.dp),
-                )
+                val heights = listOf(8.dp, 14.dp, 10.dp, 18.dp)
+                heights.forEachIndexed { index, height ->
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .height(height)
+                            .clip(OmniShapes.Pill)
+                            .background(
+                                if (index == 3) OmniColors.OmniAccentSecondary else OmniColors.OmniAccentPrimary
+                            )
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
             Text(
                 text = "OmniTune",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
                 color = OmniColors.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
-        Spacer(modifier = Modifier.width(OmniSpacing.compact))
-        HeaderIconButton(icon = R.drawable.ic_settings, contentDescription = "Settings", onClick = onSettings)
+        // Right: action buttons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
+            HeaderIconButton(icon = R.drawable.ic_settings, contentDescription = "Settings", onClick = onSettings)
+        }
     }
 }
 
@@ -338,13 +363,14 @@ private fun HeaderIconButton(
         modifier = Modifier
             .size(40.dp)
             .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceSubtle)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = OmniColors.TextPrimary,
+            tint = OmniColors.TextSecondary,
             modifier = Modifier.size(20.dp),
         )
     }
@@ -374,15 +400,20 @@ private fun FeedChip(
         modifier = Modifier
             .height(36.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniGlassSubtle)
+            .background(OmniColors.SurfaceRaised)
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Pill,
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.large),
+            .padding(horizontal = OmniSpacing.medium),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
+            color = OmniColors.TextPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -846,33 +877,95 @@ private fun MoodGenreGrid(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = "Mood and Genres")
-        chips.chunked(2).forEach { row ->
+        chips.chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { chip ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 60.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        Text(
-                            text = chip.label,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = OmniColors.TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(OmniShapes.Medium)
-                                .background(OmniColors.SurfaceQuiet)
-                                .clickable { onChipClick(chip) }
-                                .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
-                        )
-                    }
+                row.forEachIndexed { columnIndex, chip ->
+                    MoodGenreCard(
+                        chip = chip,
+                        index = rowIndex * 2 + columnIndex,
+                        onClick = { onChipClick(chip) },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun MoodGenreCard(
+    chip: MoodChip,
+    index: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accents = listOf(
+        OmniColors.OmniAccentSecondary,
+        OmniColors.OmniAccentPrimary,
+        OmniColors.OmniAccentTertiary,
+        OmniColors.Hot,
+        OmniColors.Warning,
+    )
+    val accent = accents[index % accents.size]
+    val icons = listOf(
+        R.drawable.ic_play_arrow,
+        R.drawable.ic_album,
+        R.drawable.ic_history,
+        R.drawable.ic_search,
+        R.drawable.ic_list,
+    )
+    val icon = icons[index % icons.size]
+
+    Row(
+        modifier = modifier
+            .heightIn(min = 62.dp)
+            .clip(OmniShapes.Medium)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        OmniColors.SurfaceSubtle.copy(alpha = 0.80f),
+                        accent.copy(alpha = 0.08f),
+                    ),
+                ),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(OmniShapes.Pill)
+                .background(accent.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = chip.label,
+                style = MaterialTheme.typography.titleMedium,
+                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Browse",
+                style = OmniTextStyles.caption,
+                color = OmniColors.TextTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

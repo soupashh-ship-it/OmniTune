@@ -23,6 +23,9 @@ object OmniColors {
     val SurfacePressed = Color.White.copy(alpha = 0.08f)
     val SurfaceQuiet = Color(0xFF0A0E17).copy(alpha = 0.68f)
     val SurfacePanel = Color(0xFF0E1420).copy(alpha = 0.78f)
+    val SurfaceSubtle = Color(0xFF0C1019).copy(alpha = 0.74f)
+    val SurfaceRaised = Color(0xFF101623).copy(alpha = 0.92f)
+    val SurfaceFloating = Color(0xFF080C14).copy(alpha = 0.96f)
 
     // Glass surfaces
     val OmniGlassSubtle = Color.White.copy(alpha = 0.01f)
@@ -44,6 +47,7 @@ object OmniColors {
     val OmniAccentTertiary = Color(0xFF6EE7CF)
     val OmniAccentWarm = Color(0xFFFFC46B)
     val OmniAccentMuted = Color(0xFF756AC4)
+    val OmniAccentSoft = Color(0xFF45C7F0).copy(alpha = 0.16f)
     val OmniAccentGlow = Color(0x4D7F8CFF)
     val OmniAccentOnPrimary = Color(0xFF05060A)
 
@@ -69,6 +73,7 @@ object OmniColors {
     val TextDisabled = Color(0xFF4C5361)
     val TextOnAccent = OmniAccentOnPrimary
     val TextMuted = TextTertiary
+    val BorderSubtle = Color.White.copy(alpha = 0.075f)
 
     // Gradients
     val PrimaryGradient = Brush.horizontalGradient(

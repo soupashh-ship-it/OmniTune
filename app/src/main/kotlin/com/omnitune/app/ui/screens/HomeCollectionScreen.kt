@@ -51,6 +51,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.omnitune.app.R
 import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniWaveformLoader
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
@@ -197,7 +198,7 @@ private fun HomeCollectionScreen(
         }
 
         item(contentType = "collection-bottom-spacer") {
-            Spacer(modifier = Modifier.height(OmniSpacing.screen))
+            Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer))
         }
     }
 }
@@ -438,6 +439,7 @@ private fun CollectionTrackRow(
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
             .omniPressScale(interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -533,6 +535,7 @@ private fun CollectionSkeletonRow() {
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.36f))
             .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -575,7 +578,7 @@ private fun CollectionIconButton(
         modifier = Modifier
             .size(42.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = if (enabled) 0.54f else 0.30f)),
+            .background(OmniColors.SurfaceSubtle.copy(alpha = if (enabled) 0.78f else 0.38f)),
     ) {
         Icon(
             painter = painterResource(icon),

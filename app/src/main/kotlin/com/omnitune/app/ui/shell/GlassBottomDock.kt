@@ -4,10 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,8 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omnitune.app.R
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniPressScaleBounce
 
 @Composable
 fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
@@ -53,63 +52,68 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-            .height(72.dp)
+            .padding(horizontal = OmniChrome.BottomDockHorizontalPadding)
+            .height(OmniChrome.BottomDockHeight)
             .shadow(
-                4.dp,
+                6.dp,
                 OmniShapes.Dock,
-                ambientColor = Color.Black.copy(alpha = 0.24f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.04f)
+                ambientColor = Color.Black.copy(alpha = 0.32f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.06f)
             )
             .clip(OmniShapes.Dock)
             .background(OmniColors.OmniGlassDock)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         navItems.forEach { item ->
             val selected = currentRoute == item.route
-            
+
             val tint by animateColorAsState(
                 targetValue = if (selected) OmniColors.Secondary else OmniColors.TextMuted,
-                animationSpec = tween(durationMillis = 250),
-                label = "color"
+                animationSpec = OmniMotion.gentleSpring(),
+                label = "nav_color_${item.route}"
             )
             val iconSize by animateDpAsState(
-                targetValue = if (selected) 24.dp else 22.dp,
-                animationSpec = tween(durationMillis = 250),
-                label = "size"
+                targetValue = if (selected) 23.dp else 20.dp,
+                animationSpec = OmniMotion.pressSpring(),
+                label = "nav_icon_${item.route}"
             )
-            val backgroundAlpha by animateFloatAsState(
+            val pillAlpha by animateFloatAsState(
                 targetValue = if (selected) 1f else 0f,
-                animationSpec = tween(durationMillis = 250),
-                label = "bg_alpha"
+                animationSpec = OmniMotion.gentleSpring(),
+                label = "nav_pill_${item.route}"
             )
-            
+            val navItemInteraction = remember { MutableInteractionSource() }
+
             Box(
                 modifier = Modifier
-                    .weight(if (selected) 1.2f else 1f)
-                    .clip(RoundedCornerShape(18.dp))
+                    .weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .omniPressScaleBounce(navItemInteraction)
                     .clickable(
-                        remember { MutableInteractionSource() },
-                        indication = androidx.compose.material3.ripple(bounded = true, color = OmniColors.OmniAccentSecondary.copy(alpha = 0.15f))
+                        navItemInteraction,
+                        indication = androidx.compose.material3.ripple(
+                            bounded = true,
+                            color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f)
+                        )
                     ) { onNavigate(item.route) }
                     .then(
-                        if (backgroundAlpha > 0f) Modifier.background(
-                Brush.horizontalGradient(
-                    listOf(
-                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f * backgroundAlpha),
-                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.08f * backgroundAlpha)
+                        if (pillAlpha > 0f) Modifier.background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.18f * pillAlpha),
+                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.12f * pillAlpha)
                                 )
                             )
                         ) else Modifier
                     )
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 6.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Icon(
                         painterResource(item.resId),
@@ -117,19 +121,12 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                         tint = tint,
                         modifier = Modifier.size(iconSize)
                     )
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = selected,
-                        enter = expandVertically(animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
-                        exit = shrinkVertically(animationSpec = tween(250)) + fadeOut(animationSpec = tween(250))
-                    ) {
-                        Text(
-                            item.label,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = tint,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = item.label,
+                        fontSize = 10.sp,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = tint.copy(alpha = if (selected) 1f else 0.60f),
+                    )
                 }
             }
         }

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.ui.theme.OmniColors
@@ -54,7 +56,7 @@ fun ListItem(
     subtitle: (@Composable RowScope.() -> Unit)? = null,
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
-    isActive: Boolean = false
+    isActive: Boolean = false,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -66,7 +68,7 @@ fun ListItem(
                     .clip(OmniShapes.Small)
                     .background(OmniColors.OmniGlassMedium)
                 else Modifier
-            )
+            ),
     ) {
         Box(Modifier.padding(6.dp), contentAlignment = Alignment.Center) { thumbnailContent() }
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
@@ -76,7 +78,8 @@ fun ListItem(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = OmniColors.TextPrimary,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) { subtitle() }
         }
@@ -91,7 +94,7 @@ fun ListItem(
     subtitle: String?,
     thumbnailContent: @Composable () -> Unit,
     trailingContent: @Composable RowScope.() -> Unit = {},
-    isActive: Boolean = false
+    isActive: Boolean = false,
 ) = ListItem(
     title = title,
     modifier = modifier,
@@ -103,12 +106,12 @@ fun ListItem(
                 color = OmniColors.TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
         }
     },
     thumbnailContent = thumbnailContent,
-    trailingContent = trailingContent
+    trailingContent = trailingContent,
 )
 
 @Composable
@@ -129,12 +132,12 @@ fun GridItem(
             modifier
                 .padding(OmniSpacing.small)
                 .width(180.dp)
-        }
+        },
     ) {
         BoxWithConstraints(
             contentAlignment = Alignment.Center,
             modifier = (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.height(180.dp))
-                .aspectRatio(thumbnailRatio)
+                .aspectRatio(thumbnailRatio),
         ) {
             thumbnailContent()
         }
@@ -166,7 +169,7 @@ fun GridItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     },
     subtitle = {
@@ -180,7 +183,7 @@ fun GridItem(
     },
     thumbnailContent = thumbnailContent,
     thumbnailRatio = thumbnailRatio,
-    fillMaxWidth = fillMaxWidth
+    fillMaxWidth = fillMaxWidth,
 )
 
 @Composable
@@ -204,12 +207,12 @@ fun MediaMetadataListItem(
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
                 shape = OmniShapes.ArtworkSmall,
-                modifier = Modifier.size(LIST_THUMBNAIL_SIZE)
+                modifier = Modifier.size(LIST_THUMBNAIL_SIZE),
             )
         },
         trailingContent = trailingContent,
         modifier = modifier,
-        isActive = isActive
+        isActive = isActive,
     )
 }
 
@@ -223,18 +226,22 @@ fun ItemThumbnail(
     isSelected: Boolean = false,
     shouldLoadImage: Boolean = true,
 ) {
+    val context = LocalContext.current
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
             .aspectRatio(1f)
-            .clip(shape)
+            .clip(shape),
     ) {
         AsyncImage(
-            model = if (shouldLoadImage) thumbnailUrl else null,
+            model = ImageRequest.Builder(context)
+                .data(if (shouldLoadImage) thumbnailUrl else null)
+                .memoryCacheKey(thumbnailUrl)
+                .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
 
         if (isSelected) {
@@ -242,12 +249,12 @@ fun ItemThumbnail(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(OmniColors.Background.copy(alpha = 0.58f), shape)
+                    .background(OmniColors.Background.copy(alpha = 0.58f), shape),
             ) {
                 Icon(
                     painter = painterResource(com.omnitune.app.R.drawable.ic_add),
                     contentDescription = null,
-                    tint = OmniColors.TextPrimary
+                    tint = OmniColors.TextPrimary,
                 )
             }
         }
@@ -260,8 +267,8 @@ fun ItemThumbnail(
                 .fillMaxSize()
                 .background(
                     color = Color.Black.copy(alpha = ACTIVE_BOX_ALPHA),
-                    shape = shape
-                )
+                    shape = shape,
+                ),
         )
     }
 }
@@ -285,11 +292,11 @@ fun SongListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shape = OmniShapes.ArtworkSmall,
-                modifier = Modifier.size(LIST_THUMBNAIL_SIZE)
+                modifier = Modifier.size(LIST_THUMBNAIL_SIZE),
             )
         },
         trailingContent = trailingContent,
         modifier = modifier,
-        isActive = isActive
+        isActive = isActive,
     )
 }

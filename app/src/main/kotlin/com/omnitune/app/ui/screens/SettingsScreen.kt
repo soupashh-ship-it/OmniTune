@@ -203,7 +203,9 @@ fun SettingsScreen(
             )
         }
 
-        SettingsSection.entries.forEach { section ->
+        SettingsSection.entries
+            .filterNot { it == SettingsSection.SCROBBLING }
+            .forEach { section ->
             item {
                 SettingsSectionCard(
                     section = section,
@@ -371,11 +373,18 @@ private fun SettingsSectionCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    text = if (isExpanded) "Hide" else "Open",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isExpanded) section.accent else OmniColors.TextTertiary,
+                val chevronAngle by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isExpanded) 90f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
+                    label = "chevron_${section.name}",
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = if (isExpanded) section.accent else OmniColors.TextTertiary,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer(rotationZ = chevronAngle + 180f),
                 )
             }
 
@@ -458,11 +467,6 @@ private fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         key = AutoSkipNextOnErrorKey,
         defaultValue = true,
     )
-    SettingsInfoBlock(
-        title = "Pause on device mute",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
 }
 
 @Composable
@@ -470,20 +474,15 @@ private fun AppearanceSettings() {
 
     SettingsCategoryLabel("Display")
     SettingsInfoBlock(
-        title = "Pure black mode",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Disable blur effects",
-        body = "Not yet implemented",
+        title = "OmniTune dark theme",
+        body = "The app uses the current dark, music-first visual system across Home, Library, Stats, History, Search, Player, and Settings.",
         accent = OmniColors.OmniAccentMuted,
     )
 
     SettingsCategoryLabel("Library layout")
     SettingsInfoBlock(
-        title = "Grid item size",
-        body = "Not yet implemented",
+        title = "Compact library browsing",
+        body = "Library pages use fixed artwork sizes, readable rows, and the existing saved-content counts.",
         accent = OmniColors.OmniAccentMuted,
     )
 }
@@ -576,12 +575,6 @@ private fun LyricsSettings() {
         defaultValue = true,
     )
 
-    SettingsCategoryLabel("Animation")
-    SettingsInfoBlock(
-        title = "Lyrics animation",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
 }
 
 @Composable
@@ -641,29 +634,7 @@ private fun ContentSettings(
             textContentColor = OmniColors.TextSecondary
         )
     }
-    SettingsCategoryLabel("Search and content")
-    SettingsInfoBlock(
-        title = "Hide explicit content",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Hide video results",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-
     SettingsCategoryLabel("History")
-    SettingsInfoBlock(
-        title = "Pause search history",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsInfoBlock(
-        title = "Pause listen history",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
     SettingsActionRow(
         iconRes = R.drawable.ic_history,
         label = "Clear search history",
@@ -861,15 +832,8 @@ private fun MediaControlsHelp() {
 private fun ScrobblingSettings() {
     SettingsCategoryLabel("Last.fm")
     SettingsInfoBlock(
-        title = "Enable scrobbling",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-
-    SettingsCategoryLabel("ListenBrainz")
-    SettingsInfoBlock(
-        title = "Enable scrobbling",
-        body = "Not yet implemented",
+        title = "Scrobbling controls are hidden from release settings",
+        body = "This section is intentionally not linked from Settings until account and submission controls are fully wired.",
         accent = OmniColors.OmniAccentMuted,
     )
 }

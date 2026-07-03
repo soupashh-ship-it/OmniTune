@@ -107,15 +107,8 @@ import com.omnitune.app.utils.rememberPreference
 fun ScrobblingSettings() {
     SettingsCategoryLabel("Last.fm")
     SettingsInfoBlock(
-        title = "Enable scrobbling",
-        body = "Not yet implemented",
-        accent = OmniColors.OmniAccentMuted,
-    )
-
-    SettingsCategoryLabel("ListenBrainz")
-    SettingsInfoBlock(
-        title = "Enable scrobbling",
-        body = "Not yet implemented",
+        title = "Scrobbling controls are hidden from release settings",
+        body = "This section is intentionally not linked from Settings until account and submission controls are fully wired.",
         accent = OmniColors.OmniAccentMuted,
     )
 }

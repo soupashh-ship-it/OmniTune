@@ -2,6 +2,8 @@ package com.omnitune.app.ui.navigation
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,13 +137,19 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     }
 
     val showMiniPlayer = currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
-    val shellBottomPadding = when {
+    val shellBottomPaddingTarget = when {
         currentRoute == "player" || currentRoute == "queue" -> 0.dp
         showMiniPlayer && showBottomBar -> 196.dp
         showBottomBar -> 112.dp
         showMiniPlayer -> 104.dp
         else -> 0.dp
     }
+    val isPlayerRoute = currentRoute == "player" || currentRoute == "queue"
+    val shellBottomPadding by animateDpAsState(
+        targetValue = shellBottomPaddingTarget,
+        animationSpec = if (isPlayerRoute) androidx.compose.animation.core.snap() else OmniMotion.gentleSpring(),
+        label = "shell_bottom_padding",
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -375,11 +383,17 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
         ) {
             if (showMiniPlayer) {
-                MiniPlayer(
-                    pureBlack = false,
-                    playerConnection = localPlayerConnection,
-                    onClick = { if (localPlayerConnection != null) navController.navigate("player") }
-                )
+                AnimatedVisibility(
+                    visible = showMiniPlayer,
+                    enter = OmniMotion.miniPlayerEnter(),
+                    exit = OmniMotion.miniPlayerExit(),
+                ) {
+                    MiniPlayer(
+                        pureBlack = false,
+                        playerConnection = localPlayerConnection,
+                        onClick = { if (localPlayerConnection != null) navController.navigate("player") }
+                    )
+                }
             }
             if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } })
         }

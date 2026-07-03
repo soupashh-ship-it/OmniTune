@@ -109,7 +109,10 @@ import com.omnitune.app.utils.rememberPreference
 @Composable
 fun SettingsHeader(onBack: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(top = OmniSpacing.small),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(

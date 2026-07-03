@@ -5,6 +5,8 @@
 
 package com.omnitune.app.ui.component
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -121,6 +124,7 @@ fun GlassCard(
     Column(
         modifier = if (onClick != null) {
             baseModifier
+                .animateContentSize(animationSpec = tween(220))
                 .omniPressScale(interactionSource)
                 .clickable(
                     interactionSource = interactionSource,
@@ -131,7 +135,7 @@ fun GlassCard(
                     onClick = onClick,
                 )
         } else {
-            baseModifier
+            baseModifier.animateContentSize(animationSpec = tween(220))
         },
         content = content,
     )
@@ -255,13 +259,17 @@ fun OmniSectionHeader(
     ) {
         Text(
             text = title,
-            style = OmniTextStyles.sectionTitle,
+            style = OmniTextStyles.sectionTitle.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+            ),
             modifier = Modifier.weight(1f),
         )
         if (action != null && onAction != null) {
             Text(
-                text = action,
+                text = "$action →",
                 style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
                 color = OmniColors.OmniAccentSecondary,
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
