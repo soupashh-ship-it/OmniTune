@@ -67,6 +67,7 @@ import com.omnitune.app.ui.screens.search.SearchScreen
 import com.omnitune.app.ui.screens.settings.SettingsScreen
 import com.omnitune.app.ui.screens.StatsScreen
 import com.omnitune.app.ui.shell.GlassBottomDock
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.innertube.models.SongItem
@@ -137,11 +138,17 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     }
 
     val showMiniPlayer = currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
+
+    val mpHeight = OmniChrome.MiniPlayerHeight
+    val dockHeight = OmniChrome.BottomDockHeight
+    val chromeSpacing = OmniSpacing.compact
+    val chromeBottomMargin = OmniChrome.BottomDockBottomMargin
+
     val shellBottomPaddingTarget = when {
         currentRoute == "player" || currentRoute == "queue" -> 0.dp
-        showMiniPlayer && showBottomBar -> 196.dp
-        showBottomBar -> 112.dp
-        showMiniPlayer -> 104.dp
+        showMiniPlayer && showBottomBar -> mpHeight + chromeSpacing + dockHeight + chromeBottomMargin
+        showBottomBar -> dockHeight + chromeBottomMargin
+        showMiniPlayer -> mpHeight + chromeSpacing
         else -> 0.dp
     }
     val isPlayerRoute = currentRoute == "player" || currentRoute == "queue"
