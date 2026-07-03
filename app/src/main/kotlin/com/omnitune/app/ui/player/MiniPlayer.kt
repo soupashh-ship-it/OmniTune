@@ -239,7 +239,7 @@ fun MiniPlayer(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .height(56.dp)
+                    .height(OmniChrome.MiniPlayerContentHeight)
                     .padding(horizontal = OmniSpacing.micro),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -454,13 +454,13 @@ private fun MiniControlButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(38.dp),
+        modifier = Modifier.size(OmniChrome.MiniPlayerButton),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = OmniColors.TextSecondary,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }

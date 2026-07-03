@@ -69,7 +69,6 @@ import com.omnitune.app.constants.SupportDialogSnoozedUntilKey
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
-import com.omnitune.app.ui.component.AccentPill
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.theme.OmniColors
@@ -96,6 +95,7 @@ fun HomeDiscoveryRoute(
     onNavigateToLibrary: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToAllGenres: (() -> Unit)? = null,
     onResumePlayback: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onPlayProviderSong: (SongItem) -> Unit,
@@ -108,6 +108,14 @@ fun HomeDiscoveryRoute(
     val hasProviderFeed = uiState.providerSections.isNotEmpty() ||
         uiState.communitySections.isNotEmpty() ||
         uiState.exploreSections.isNotEmpty()
+    val onShowAllGenres = remember(uiState.genreChips, onNavigateToAllGenres) {
+        if (onNavigateToAllGenres != null) {
+            {
+                GenreChipsHolder.chips = uiState.genreChips
+                onNavigateToAllGenres()
+            }
+        } else null
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -251,7 +259,7 @@ fun HomeDiscoveryRoute(
             }
 
             item(contentType = "mood-grid") {
-                MoodGenreGrid(chips = uiState.genreChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) })
+                MoodGenreGrid(chips = uiState.genreChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) }, onShowAll = onShowAllGenres)
             }
 
             if (uiState.downloadSection.items.isNotEmpty()) {
@@ -496,7 +504,16 @@ private fun HeroCard(
                 .align(Alignment.BottomStart)
                 .padding(OmniSpacing.large),
         ) {
-            AccentPill(text = if (item.song != null || item.providerSong != null) "Play" else "Open")
+            Text(
+                text = if (item.song != null || item.providerSong != null) "Play" else "Open",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.OmniAccentSecondary,
+                modifier = Modifier
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+                    .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
+            )
             Spacer(modifier = Modifier.height(OmniSpacing.small))
             Text(
                 text = item.title,
@@ -874,10 +891,15 @@ private fun ShelfArtworkCard(
 private fun MoodGenreGrid(
     chips: List<MoodChip>,
     onChipClick: (MoodChip) -> Unit,
+    onShowAll: (() -> Unit)? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = "Mood and Genres")
-        chips.chunked(2).forEachIndexed { rowIndex, row ->
+        OmniSectionHeader(
+            title = "Mood and Genres",
+            action = if (chips.size > 6 && onShowAll != null) "Show all" else null,
+            onAction = { onShowAll?.invoke() },
+        )
+        chips.take(6).chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
                 row.forEachIndexed { columnIndex, chip ->
                     MoodGenreCard(

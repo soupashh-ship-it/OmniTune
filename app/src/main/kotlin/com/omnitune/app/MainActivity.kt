@@ -70,7 +70,6 @@ import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.constants.DynamicThemeKey
 import com.omnitune.app.utils.dataStore
 import androidx.compose.runtime.collectAsState
-import com.omnitune.app.ui.screens.SettingsScreen
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes

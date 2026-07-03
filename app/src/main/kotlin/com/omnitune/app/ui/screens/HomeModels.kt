@@ -6,6 +6,9 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.omnitune.app.db.entities.Song
 import com.omnitune.innertube.models.SongItem
 
@@ -73,6 +76,10 @@ data class MoodChip(
     val actionType: HomeActionType = HomeActionType.OPEN_COLLECTION,
     val source: HomeCatalogSource = HomeCatalogSource.CuratedDefault,
 )
+
+object GenreChipsHolder {
+    var chips: List<MoodChip> by mutableStateOf(emptyList())
+}
 
 @Immutable
 data class HomeCarouselItem(

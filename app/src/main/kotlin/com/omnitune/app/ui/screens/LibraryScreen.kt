@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.OmniChrome
+import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -87,7 +88,7 @@ fun LibraryScreen(
         }
 
         item(contentType = "quick-title") {
-            LibrarySectionTitle("Quick access")
+            OmniSectionHeader(title = "Quick access")
         }
 
         if (hasQuickRows) {
@@ -131,7 +132,7 @@ fun LibraryScreen(
         }
 
         item(contentType = "browse-title") {
-            LibrarySectionTitle("Browse")
+            OmniSectionHeader(title = "Browse")
         }
 
         item(key = "browse-playlists", contentType = "route-row") {
@@ -272,16 +273,6 @@ private fun LibraryTabChip(
             overflow = TextOverflow.Ellipsis,
         )
     }
-}
-
-@Composable
-private fun LibrarySectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = OmniColors.TextPrimary,
-    )
 }
 
 @Composable

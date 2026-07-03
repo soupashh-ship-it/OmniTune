@@ -38,6 +38,7 @@ import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.OmniChrome
+import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -129,7 +130,7 @@ fun StatsScreen(
                 }
 
                 if (uiState.topSongs.isNotEmpty()) {
-                    item(contentType = "section-title") { StatsSectionTitle("Top songs") }
+                    item(contentType = "section-title") { OmniSectionHeader(title = "Top songs") }
                     items(
                         items = uiState.topSongs,
                         key = { (song, _) -> "top_song_${song.id}" },
@@ -140,7 +141,7 @@ fun StatsScreen(
                 }
 
                 if (uiState.topArtists.isNotEmpty()) {
-                    item(contentType = "section-title") { StatsSectionTitle("Top artists") }
+                    item(contentType = "section-title") { OmniSectionHeader(title = "Top artists") }
                     items(
                         items = uiState.topArtists,
                         key = { (artist, _) -> "top_artist_$artist" },
@@ -280,17 +281,6 @@ private fun StatChip(
             )
         }
     }
-}
-
-@Composable
-private fun StatsSectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = OmniColors.TextPrimary,
-        modifier = Modifier.padding(top = OmniSpacing.small),
-    )
 }
 
 @Composable

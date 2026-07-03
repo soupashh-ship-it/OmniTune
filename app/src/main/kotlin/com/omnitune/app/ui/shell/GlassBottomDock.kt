@@ -75,7 +75,7 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                 label = "nav_color_${item.route}"
             )
             val iconSize by animateDpAsState(
-                targetValue = if (selected) 23.dp else 20.dp,
+                targetValue = if (selected) 26.dp else 23.dp,
                 animationSpec = OmniMotion.pressSpring(),
                 label = "nav_icon_${item.route}"
             )
@@ -108,12 +108,12 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                             )
                         ) else Modifier
                     )
-                    .padding(vertical = 6.dp, horizontal = 4.dp),
+                    .padding(vertical = 7.dp, horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Icon(
                         painterResource(item.resId),
@@ -123,7 +123,7 @@ fun GlassBottomDock(currentRoute: String?, onNavigate: (String) -> Unit) {
                     )
                     Text(
                         text = item.label,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         color = tint.copy(alpha = if (selected) 1f else 0.60f),
                     )

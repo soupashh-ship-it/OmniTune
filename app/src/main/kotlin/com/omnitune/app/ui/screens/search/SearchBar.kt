@@ -64,12 +64,9 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
-import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniFloatingSurface
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.component.ShimmerBar
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
@@ -123,14 +120,11 @@ fun SearchTopBar(
             }
         }
 
-        GlassSurface(
-            cornerRadius = OmniShapes.Large,
-            tone = GlassTone.Medium,
-            backgroundAlpha = 0.08f,
-            borderAlpha = 0.10f,
+        OmniFloatingSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
+            shape = OmniShapes.Large,
         ) {
             TextField(
                 value = query,

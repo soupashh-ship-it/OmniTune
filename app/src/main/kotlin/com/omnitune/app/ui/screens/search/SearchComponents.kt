@@ -64,13 +64,9 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
-import com.omnitune.app.ui.component.GlassTone
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.component.ShimmerBar
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider

@@ -64,9 +64,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
-import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniFloatingSurface
 import com.omnitune.app.ui.component.OmniLoadingPulse
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTrackLoadingRow
@@ -101,12 +99,11 @@ fun SearchLoadingState() {
             }
         }
         items(5, key = { "search-loading-$it" }, contentType = { "loading" }) {
-            GlassSurface(
-                cornerRadius = OmniShapes.Large,
-                tone = GlassTone.Subtle,
+            OmniFloatingSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(76.dp),
+                shape = OmniShapes.Large,
             ) {
                 Row(
                     modifier = Modifier
@@ -133,10 +130,9 @@ fun SearchStartState(
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
         item {
-            GlassCard(
+            OmniFloatingSurface(
                 modifier = Modifier.fillMaxWidth(),
-                cornerRadius = OmniShapes.ExtraLarge,
-                tone = GlassTone.Medium,
+                shape = OmniShapes.ExtraLarge,
             ) {
                 Box(
                     modifier = Modifier
@@ -287,10 +283,9 @@ fun SearchHistoryRow(
 
 @Composable
 fun SearchStatusPill(message: String) {
-    GlassSurface(
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+    OmniFloatingSurface(
         modifier = Modifier.fillMaxWidth(),
+        shape = OmniShapes.Medium,
     ) {
         Row(
             modifier = Modifier.padding(OmniSpacing.medium),
@@ -321,10 +316,9 @@ fun SearchMessageCard(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
 ) {
-    GlassCard(
+    OmniFloatingSurface(
         modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Medium,
+        shape = OmniShapes.ExtraLarge,
     ) {
         Column(
             modifier = Modifier

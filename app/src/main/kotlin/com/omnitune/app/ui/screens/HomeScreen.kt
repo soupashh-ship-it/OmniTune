@@ -55,12 +55,8 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.models.toMediaMetadata
-import com.omnitune.app.ui.component.AccentPill
-import com.omnitune.app.ui.component.GlassCard
-import com.omnitune.app.ui.component.GlassSurface
-import com.omnitune.app.ui.component.GlassTone
+import com.omnitune.app.ui.component.OmniFloatingSurface
 import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.ShimmerBar
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -244,11 +240,9 @@ private fun SignalMark() {
 
 @Composable
 private fun SearchEntryCard(onClick: () -> Unit) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Medium,
+    OmniFloatingSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = OmniShapes.Large,
     ) {
         Row(
             modifier = Modifier
@@ -297,11 +291,9 @@ private fun ContinueListeningCard(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = "Continue Listening")
-        GlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onClick,
-            cornerRadius = OmniShapes.Player,
-            tone = GlassTone.Player,
+        OmniFloatingSurface(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+            shape = OmniShapes.Player,
         ) {
             Row(
                 modifier = Modifier
@@ -317,7 +309,16 @@ private fun ContinueListeningCard(
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.medium))
                 Column(modifier = Modifier.weight(1f)) {
-                    AccentPill(text = "Now playing")
+                    Text(
+                        text = "Now playing",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = OmniColors.OmniAccentSecondary,
+                        modifier = Modifier
+                            .clip(OmniShapes.Pill)
+                            .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+                            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
+                    )
                     Spacer(modifier = Modifier.height(OmniSpacing.small))
                     Text(
                         text = mediaMetadata.title.ifBlank { "Unknown track" },
@@ -394,11 +395,9 @@ private fun HomeActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    GlassCard(
-        modifier = modifier.heightIn(min = 132.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
+    OmniFloatingSurface(
+        modifier = modifier.heightIn(min = 132.dp).clickable(onClick = onClick),
+        shape = OmniShapes.Large,
     ) {
         Column(
             modifier = Modifier
@@ -466,10 +465,9 @@ private fun DiscoveryFeedSection(
 
 @Composable
 private fun DiscoverySkeletonCard() {
-    GlassCard(
+    OmniFloatingSurface(
         modifier = Modifier.width(168.dp),
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
+        shape = OmniShapes.Large,
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
             Box(
@@ -504,11 +502,9 @@ private fun DiscoverySongCard(
     song: Song,
     onClick: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.width(168.dp),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
+    OmniFloatingSurface(
+        modifier = Modifier.width(168.dp).clickable(onClick = onClick),
+        shape = OmniShapes.Large,
     ) {
         Column(modifier = Modifier.padding(OmniSpacing.small)) {
             MediaArtwork(
@@ -567,12 +563,11 @@ private fun RecentlyPlayedSection(
 
 @Composable
 private fun RecentSkeletonRow() {
-    GlassSurface(
+    OmniFloatingSurface(
         modifier = Modifier
             .fillMaxWidth()
             .height(76.dp),
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+        shape = OmniShapes.Medium,
     ) {
         Row(
             modifier = Modifier
@@ -613,11 +608,9 @@ private fun RecentSongRow(
     event: EventWithSong,
     onClick: () -> Unit,
 ) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        cornerRadius = OmniShapes.Medium,
-        tone = GlassTone.Subtle,
+    OmniFloatingSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = OmniShapes.Medium,
     ) {
         Row(
             modifier = Modifier
@@ -676,11 +669,9 @@ private fun RecentSongRow(
 
 @Composable
 private fun RecentEmptyCard(onNavigateToSearch: () -> Unit) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onNavigateToSearch,
-        cornerRadius = OmniShapes.Large,
-        tone = GlassTone.Subtle,
+    OmniFloatingSurface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToSearch),
+        shape = OmniShapes.Large,
     ) {
         Column(
             modifier = Modifier
@@ -717,10 +708,9 @@ private fun EmptyHomeState(
     onNavigateToSearch: () -> Unit,
     onNavigateToLibrary: () -> Unit,
 ) {
-    GlassCard(
+    OmniFloatingSurface(
         modifier = Modifier.fillMaxWidth(),
-        cornerRadius = OmniShapes.ExtraLarge,
-        tone = GlassTone.Medium,
+        shape = OmniShapes.ExtraLarge,
     ) {
         Column(
             modifier = Modifier

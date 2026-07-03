@@ -45,6 +45,7 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.OmniChrome
+import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
@@ -91,13 +92,7 @@ fun HistoryScreen(
 
             else -> groupedEvents.forEach { section ->
                 item(key = "header_${section.title}", contentType = "history-section") {
-                    Text(
-                        text = section.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = OmniColors.TextSecondary,
-                        modifier = Modifier.padding(top = OmniSpacing.medium),
-                    )
+                    OmniSectionHeader(title = section.title)
                 }
                 items(
                     items = section.events,

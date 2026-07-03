@@ -49,6 +49,7 @@ import com.omnitune.app.ui.screens.DownloadsScreen
 import com.omnitune.app.ui.screens.EqualizerScreen
 import com.omnitune.app.ui.screens.HistoryScreen
 import com.omnitune.app.ui.screens.HomeDefaultCatalog
+import com.omnitune.app.ui.screens.HomeAllGenresScreen
 import com.omnitune.app.ui.screens.HomeCollectionRoute
 import com.omnitune.app.ui.screens.HomeDiscoveryRoute
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
@@ -177,6 +178,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
+                    onNavigateToAllGenres = { navController.navigate("all_genres") },
                     onResumePlayback = { navController.navigate("player") },
                     onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
                     onPlayProviderSong = { song ->
@@ -328,6 +330,17 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
                         }
                     },
+                )
+            }
+            composable("all_genres",
+                enterTransition = { OmniMotion.screenEnter() },
+                exitTransition = { OmniMotion.screenExit() },
+                popEnterTransition = { OmniMotion.screenPopEnter() },
+                popExitTransition = { OmniMotion.screenPopExit() },
+            ) {
+                HomeAllGenresScreen(
+                    onBack = { navController.popBackStack() },
+                    onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) },
                 )
             }
             composable("album/{albumId}") {

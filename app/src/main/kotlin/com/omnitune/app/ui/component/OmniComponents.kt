@@ -57,15 +57,15 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 
 object OmniChrome {
-    val MiniPlayerHeight = 60.dp
-    val MiniPlayerArtwork = 44.dp
-    val MiniPlayerButton = 38.dp
-    val BottomDockHeight = 56.dp
+    val MiniPlayerHeight = 66.dp
+    val MiniPlayerContentHeight = 60.dp
+    val MiniPlayerArtwork = 50.dp
+    val MiniPlayerButton = 42.dp
+    val BottomDockHeight = 72.dp
     val BottomDockHorizontalPadding = 16.dp
-    val BottomContentPadding = 148.dp
-    val BottomContentPaddingWithPlayer = 164.dp
+    val BottomContentPadding = 164.dp
+    val BottomContentPaddingWithPlayer = 188.dp
     val BottomDockBottomMargin = 8.dp
-    val MiniPlayerBottomMargin = 4.dp
 }
 
 @Composable
