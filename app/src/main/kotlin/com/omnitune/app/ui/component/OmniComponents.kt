@@ -57,19 +57,23 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 
 object OmniChrome {
-    val MiniPlayerHeight = 68.dp
-    val MiniPlayerArtwork = 48.dp
-    val MiniPlayerButton = 42.dp
-    val BottomDockHeight = 60.dp
-    val BottomDockHorizontalPadding = 18.dp
-    val BottomContentPadding = 156.dp
-    val BottomContentPaddingWithPlayer = 172.dp
+    val MiniPlayerHeight = 60.dp
+    val MiniPlayerArtwork = 44.dp
+    val MiniPlayerButton = 38.dp
+    val BottomDockHeight = 56.dp
+    val BottomDockHorizontalPadding = 16.dp
+    val BottomContentPadding = 148.dp
+    val BottomContentPaddingWithPlayer = 164.dp
+    val BottomDockBottomMargin = 8.dp
+    val MiniPlayerBottomMargin = 4.dp
 }
 
 @Composable
 fun OmniScreen(
     modifier: Modifier = Modifier,
     horizontalPadding: Dp = OmniSpacing.section,
+    topContentPadding: Boolean = true,
+    bottomContentPadding: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
@@ -77,7 +81,10 @@ fun OmniScreen(
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
             .background(OmniColors.BackgroundGradient)
-            .padding(horizontal = horizontalPadding),
+            .padding(horizontal = horizontalPadding)
+            .then(
+                if (topContentPadding) Modifier.statusBarsPadding() else Modifier
+            ),
         content = content,
     )
 }
@@ -87,6 +94,66 @@ fun OmniNavigationSpacer(height: Dp = OmniChrome.BottomContentPadding) {
     Column {
         Spacer(modifier = Modifier.height(height))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)))
+    }
+}
+
+@Composable
+fun OmniPlaceholder(
+    modifier: Modifier = Modifier,
+    @DrawableRes iconRes: Int = R.drawable.ic_album,
+    size: Dp = 48.dp,
+    shape: Shape = OmniShapes.ArtworkSmall,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(OmniColors.SurfaceRaised),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary.copy(alpha = 0.4f),
+            modifier = Modifier.size(size * 0.4f),
+        )
+    }
+}
+
+@Composable
+fun OmniSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        if (action != null && onAction != null) {
+            Text(
+                text = "$action \u2192",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = OmniColors.OmniAccentSecondary,
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = androidx.compose.material3.ripple(
+                        bounded = false,
+                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.2f),
+                    ),
+                    onClick = onAction,
+                ),
+            )
+        }
     }
 }
 
@@ -152,6 +219,28 @@ fun OmniTopHeader(
 }
 
 @Composable
+fun OmniCircularPlaceholder(
+    modifier: Modifier = Modifier,
+    @DrawableRes iconRes: Int = R.drawable.ic_album,
+    size: Dp = 48.dp,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(OmniShapes.Circle)
+            .background(OmniColors.SurfaceRaised),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary.copy(alpha = 0.4f),
+            modifier = Modifier.size(size * 0.44f),
+        )
+    }
+}
+
+@Composable
 fun OmniIconButton(
     @DrawableRes iconRes: Int,
     contentDescription: String,
@@ -159,13 +248,14 @@ fun OmniIconButton(
     modifier: Modifier = Modifier,
     tint: Color = OmniColors.TextPrimary,
     size: Dp = 40.dp,
+    background: Color = OmniColors.SurfaceSubtle.copy(alpha = 0.46f),
 ) {
     IconButton(
         onClick = onClick,
         modifier = modifier
             .size(size)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceSubtle),
+            .background(background),
     ) {
         Icon(
             painter = painterResource(iconRes),
@@ -185,15 +275,16 @@ fun OmniMusicRow(
     @DrawableRes placeholderIcon: Int = R.drawable.ic_album,
     @DrawableRes trailingIcon: Int? = null,
     trailingText: String? = null,
+    trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 64.dp)
+            .defaultMinSize(minHeight = 60.dp)
             .clip(OmniShapes.Small)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.52f))
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.38f))
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -208,10 +299,10 @@ fun OmniMusicRow(
                     Modifier
                 },
             )
-            .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.compact),
+            .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OmniThumbnail(thumbnailUrl = thumbnailUrl, placeholderIcon = placeholderIcon, size = 48.dp)
+        OmniThumbnail(thumbnailUrl = thumbnailUrl, placeholderIcon = placeholderIcon, size = 44.dp)
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -229,22 +320,26 @@ fun OmniMusicRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (trailingText != null) {
-            Text(
-                text = trailingText,
-                style = MaterialTheme.typography.labelMedium,
-                color = OmniColors.OmniAccentSecondary,
-                maxLines = 1,
-            )
-        }
-        if (trailingIcon != null) {
-            Spacer(modifier = Modifier.width(OmniSpacing.compact))
-            Icon(
-                painter = painterResource(trailingIcon),
-                contentDescription = null,
-                tint = OmniColors.TextSecondary,
-                modifier = Modifier.size(18.dp),
-            )
+        if (trailing != null) {
+            trailing()
+        } else {
+            if (trailingText != null) {
+                Text(
+                    text = trailingText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = OmniColors.OmniAccentSecondary,
+                    maxLines = 1,
+                )
+            }
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                Icon(
+                    painter = painterResource(trailingIcon),
+                    contentDescription = null,
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
@@ -353,36 +448,28 @@ fun OmniThumbnail(
     modifier: Modifier = Modifier,
     shape: Shape = OmniShapes.ArtworkSmall,
 ) {
-    Box(
-        modifier = modifier
-            .size(size)
-            .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        OmniColors.SurfaceRaised,
-                        OmniColors.OmniBackgroundElevated,
-                        OmniColors.OmniAccentSecondary.copy(alpha = 0.08f),
-                    ),
-                ),
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!thumbnailUrl.isNullOrBlank()) {
+    if (!thumbnailUrl.isNullOrBlank()) {
+        Box(
+            modifier = modifier
+                .size(size)
+                .clip(shape)
+                .background(OmniColors.SurfaceRaised),
+            contentAlignment = Alignment.Center,
+        ) {
             AsyncImage(
                 model = thumbnailUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            Icon(
-                painter = painterResource(placeholderIcon),
-                contentDescription = null,
-                tint = OmniColors.TextTertiary.copy(alpha = 0.56f),
-                modifier = Modifier.size(size * 0.44f),
-            )
         }
+    } else {
+        OmniPlaceholder(
+            iconRes = placeholderIcon,
+            size = size,
+            shape = shape,
+            modifier = modifier,
+        )
     }
 }
 
@@ -390,18 +477,20 @@ fun OmniThumbnail(
 fun OmniFloatingSurface(
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = OmniShapes.Dock,
+    background: Color = OmniColors.SurfaceFloating,
+    elevation: Dp = 6.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     Box(
         modifier = modifier
             .shadow(
-                elevation = 8.dp,
+                elevation = elevation,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.28f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f),
+                ambientColor = Color.Black.copy(alpha = 0.24f),
+                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.06f),
             )
             .clip(shape)
-            .background(OmniColors.SurfaceFloating),
+            .background(background),
         content = content,
     )
 }
