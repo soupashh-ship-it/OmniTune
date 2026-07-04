@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -99,6 +101,7 @@ fun HomeDiscoveryRoute(
     onResumePlayback: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onPlayProviderSong: (SongItem) -> Unit,
+    onPlayProviderSongs: (List<SongItem>) -> Unit = {},
     onPlaySongs: (List<Song>) -> Unit,
     viewModel: HomeDiscoveryViewModel = hiltViewModel(),
 ) {
@@ -153,18 +156,20 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            mediaMetadata?.let { currentTrack ->
-                item(key = "continue_${currentTrack.id}", contentType = "continue") {
-                    ContinueCard(mediaMetadata = currentTrack, onClick = onResumePlayback)
-                }
-            }
 
             item(contentType = "quick-picks") {
+                val localSongs = uiState.quickPicks.mapNotNull { it.song }
+                val providerSongs = uiState.quickPicks.mapNotNull { it.providerSong }
                 QuickPicksSection(
                     items = uiState.quickPicks,
                     isLoading = uiState.isLoading,
-                    canPlayAll = uiState.playAllSongs.isNotEmpty(),
-                    onPlayAll = { onPlaySongs(uiState.playAllSongs) },
+                    onPlayAll = {
+                        if (localSongs.isNotEmpty()) {
+                            onPlaySongs(localSongs)
+                        } else if (providerSongs.isNotEmpty()) {
+                            onPlayProviderSongs(providerSongs)
+                        }
+                    },
                     onPlaySong = onPlaySong,
                     onPlayProviderSong = onPlayProviderSong,
                     onOpenCollection = onNavigateToCollection,
@@ -184,15 +189,6 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            if (uiState.recentSongs.isNotEmpty()) {
-                item(contentType = "recent") {
-                    RecentlyPlayedDiscoverySection(
-                        events = uiState.recentSongs,
-                        isLoading = uiState.isLoading,
-                        onPlaySong = onPlaySong,
-                    )
-                }
-            }
 
             if (uiState.quickPicks.isEmpty() && !hasProviderFeed && !uiState.isProviderLoading) {
                 item(contentType = "browse-start") {
@@ -544,59 +540,11 @@ private fun HeroSkeleton() {
     )
 }
 
-@Composable
-private fun ContinueCard(
-    mediaMetadata: MediaMetadata,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .clip(OmniShapes.Small)
-            .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        DiscoveryArtwork(
-            thumbnailUrl = mediaMetadata.thumbnailUrl,
-            contentDescription = mediaMetadata.title,
-            title = mediaMetadata.title,
-            artworkKey = mediaMetadata.id,
-            modifier = Modifier.size(52.dp),
-            imageSize = SHELF_IMAGE_SIZE,
-            shape = OmniShapes.ArtworkSmall,
-        )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Keep listening",
-                style = MaterialTheme.typography.labelMedium,
-                color = OmniColors.OmniAccentSecondary,
-                maxLines = 1,
-            )
-            Text(
-                text = mediaMetadata.title.ifBlank { "Unknown track" },
-                style = OmniTextStyles.songTitle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
 
 @Composable
 private fun QuickPicksSection(
     items: List<QuickPickItem>,
     isLoading: Boolean,
-    canPlayAll: Boolean,
     onPlayAll: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onPlayProviderSong: (SongItem) -> Unit,
@@ -604,26 +552,85 @@ private fun QuickPicksSection(
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(
-            title = "Quick Picks",
-            action = if (canPlayAll) "Play all" else null,
-            onAction = if (canPlayAll) onPlayAll else null,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Quick Picks",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            if (items.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+                        .clickable(onClick = onPlayAll),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_arrow),
+                        contentDescription = "Play all",
+                        tint = OmniColors.OmniAccentSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
         if (isLoading) {
             repeat(4) { ShelfSkeletonRow() }
         } else if (items.isEmpty()) {
             StartExploringRow(onClick = { onOpenCollection(HomeDefaultCatalog.freshDiscovery.items.first().id, null) })
         } else {
-            items.take(5).forEach { item ->
-                QuickPickRow(
-                    item = item,
-                    onRequestHydration = onRequestHydration,
-                    onClick = {
-                        item.song?.let(onPlaySong)
-                            ?: item.providerSong?.let(onPlayProviderSong)
-                            ?: onOpenCollection(item.id, item.thumbnailUrl)
-                    },
-                )
+            val pageCount = (items.size + 4) / 5
+            val pagerState = rememberPagerState(pageCount = { pageCount })
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) { page ->
+                val fromIndex = page * 5
+                val toIndex = minOf(fromIndex + 5, items.size)
+                Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+                    items.subList(fromIndex, toIndex).forEach { item ->
+                        QuickPickRow(
+                            item = item,
+                            onRequestHydration = onRequestHydration,
+                            onClick = {
+                                item.song?.let(onPlaySong)
+                                    ?: item.providerSong?.let(onPlayProviderSong)
+                                    ?: onOpenCollection(item.id, item.thumbnailUrl)
+                            },
+                        )
+                    }
+                }
+            }
+
+            if (pageCount > 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    repeat(pageCount) { index ->
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .size(if (pagerState.currentPage == index) 8.dp else 6.dp)
+                                .clip(OmniShapes.Pill)
+                                .background(
+                                    if (pagerState.currentPage == index)
+                                        OmniColors.OmniAccentSecondary
+                                    else
+                                        OmniColors.TextTertiary.copy(alpha = 0.4f)
+                                ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -677,32 +684,6 @@ private fun QuickPickRow(
     }
 }
 
-@Composable
-private fun RecentlyPlayedDiscoverySection(
-    events: List<EventWithSong>,
-    isLoading: Boolean,
-    onPlaySong: (Song) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = "Continue Listening")
-        when {
-            isLoading -> repeat(3) { ShelfSkeletonRow() }
-            events.isEmpty() -> EmptyDiscoveryCard(text = "No recent plays yet", action = "Browse", onClick = {})
-            else -> events.take(5).forEach { event ->
-                SongShelfRow(
-                    item = PlaylistShelfItem(
-                        id = "recent_${event.song.id}",
-                        title = event.song.song.title.ifBlank { "Unknown track" },
-                        subtitle = event.song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                        thumbnailUrl = event.song.song.thumbnailUrl,
-                        song = event.song,
-                    ),
-                    onClick = { onPlaySong(event.song) },
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun DiscoveryShelf(

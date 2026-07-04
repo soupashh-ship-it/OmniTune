@@ -1,3 +1,23 @@
+# OmniTune v0.8.4
+
+**Quick Picks Overhaul — Swipeable Pages, Smarter Recommendations, Dead Code Removal**
+
+### 🚀 Features
+* **Swipeable Quick Picks**: Browse up to 4 pages of Quick Picks by swiping horizontally. Each page shows 5 song rows with dot indicators for navigation.
+* **Play All Button**: A dedicated ▶ icon button on the Quick Picks header plays every song in the section sequentially — supports both local and provider-sourced tracks.
+* **Expanded Song Pool**: Quick Picks now draws from up to 80 songs (up from 20), ensuring richer variety across all pages.
+* **Quick Picks Mode Setting**: Choose between "Related to your listening" and "Related to last listen" modes in Content Settings.
+* **Provider Hydration Fallback**: When local quick picks are unavailable, the app hydrates recommendations from YouTube Music collections to keep the feed fresh.
+
+### 🧹 Code Cleanup
+* **Removed Dead UI**: Stripped deprecated `ContinueCard` and `ContinueListeningCard` composables from both Home and Discovery screens, reducing visual clutter.
+* **Removed Legacy QA Artifacts**: Cleaned up hundreds of outdated QA documentation and screenshot files.
+
+### 🛠️ Fixes
+* **Play All Reliability**: Fixed play-all for provider-sourced Quick Picks — previously only played the first song; now queues and plays all tracks sequentially.
+
+---
+
 # OmniTune v0.8.0
 
 **Architecture & Stability Updates**

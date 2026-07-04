@@ -97,15 +97,6 @@ fun HomeScreen(
             }
         }
 
-        mediaMetadata?.let { currentTrack ->
-            item(key = "continue_listening_${currentTrack.id}") {
-                ContinueListeningCard(
-                    mediaMetadata = currentTrack,
-                    onClick = onResumePlayback,
-                )
-            }
-        }
-
         item {
             QuickAccessSection(
                 hasCurrentTrack = mediaMetadata != null,
@@ -284,68 +275,6 @@ private fun SearchEntryCard(onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun ContinueListeningCard(
-    mediaMetadata: MediaMetadata,
-    onClick: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = "Continue Listening")
-        OmniFloatingSurface(
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-            shape = OmniShapes.Player,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(OmniSpacing.large),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                MediaArtwork(
-                    thumbnailUrl = mediaMetadata.thumbnailUrl,
-                    contentDescription = "Current track artwork",
-                    modifier = Modifier.size(92.dp),
-                    shape = OmniShapes.ArtworkMedium,
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.medium))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Now playing",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = OmniColors.OmniAccentSecondary,
-                        modifier = Modifier
-                            .clip(OmniShapes.Pill)
-                            .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
-                            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
-                    )
-                    Spacer(modifier = Modifier.height(OmniSpacing.small))
-                    Text(
-                        text = mediaMetadata.title.ifBlank { "Unknown track" },
-                        style = MaterialTheme.typography.titleLarge,
-                        color = OmniColors.TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(modifier = Modifier.height(OmniSpacing.micro))
-                    Text(
-                        text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                        style = OmniTextStyles.metadata,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(modifier = Modifier.height(OmniSpacing.small))
-                    Text(
-                        text = "Tap to open the full player",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = OmniColors.OmniAccentSecondary,
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun QuickAccessSection(

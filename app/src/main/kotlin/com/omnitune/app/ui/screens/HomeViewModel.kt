@@ -59,7 +59,7 @@ class HomeViewModel @Inject constructor(
                 val songs = result?.sections
                     ?.flatMap { section -> section.items }
                     ?.filterIsInstance<com.omnitune.innertube.models.SongItem>()
-                    ?.take(20)
+                    ?.take(80)
                     ?.map { item ->
                         com.omnitune.app.db.entities.Song(
                             song = com.omnitune.app.db.entities.SongEntity(

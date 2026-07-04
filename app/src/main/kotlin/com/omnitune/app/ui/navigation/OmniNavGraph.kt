@@ -191,6 +191,18 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             onPlayerNotReady = { pendingSongQueue = it },
                         )
                     },
+                    onPlayProviderSongs = { songs ->
+                        if (songs.isNotEmpty()) {
+                            playSongList(
+                                context = context,
+                                queueTitle = "Quick Picks",
+                                songs = songs,
+                                index = 0,
+                                playerConnection = localPlayerConnection,
+                                onPlayerNotReady = { pendingSongQueue = it },
+                            )
+                        }
+                    },
                     onPlaySongs = { songs ->
                         if (songs.isNotEmpty()) localPlayerConnection?.playQueue(ListQueue(title = "Home", items = songs.map { it.toMediaItem() }))
                     },
