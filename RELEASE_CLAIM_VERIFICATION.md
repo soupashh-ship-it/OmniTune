@@ -1,6 +1,6 @@
 # Release Claim Verification
 
-Status: post-`v0.7.3` baseline truth audit.
+Status: post-`v0.9.1` Discord Rich Presence release.
 
 This file tracks public-facing claims that must be verified or downgraded before `1.0.0`.
 
@@ -59,10 +59,10 @@ This file tracks public-facing claims that must be verified or downgraded before
 
 ### Discord Rich Presence
 
-- Status: Not fully verified.
-- Evidence: Kizzy integration module exists.
-- Risk: Medium.
-- Next action: Verify login/session behavior, privacy wording, and failure states before continuing to advertise the feature.
+- Status: **Verified in v0.9.1.**
+- Evidence: Full kizzy module (gateway entities, WebSocket client, KizzyRPC, KizzyRepository, ApiService) with app-level integration: DiscordSettingsScreen (OmniGlass design), DiscordLoginScreen (WebView token extraction, thread-safe), DiscordPresenceManager (lifecycle-aware, auto-reconnect after 5 failures), DiscordRPC (video-ID button URLs, template resolution), injected via KizzyModule Hilt module. Live connection status indicator in settings. Auto-start on login, start/stop with playback lifecycle.
+- Risk: Low.
+- Next action: Device QA on real Discord account with active playback.
 
 ### Last.fm Scrobbling
 

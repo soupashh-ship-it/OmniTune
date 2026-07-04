@@ -184,58 +184,12 @@ dependencies {
     coreLibraryDesugaring(libs.desugaring)
 
     implementation(libs.hilt)
-    // Hilt KSP scoped to main source set only (tests don't use Hilt)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation)
 
     implementation(libs.activity)
     implementation(libs.core)
     implementation(libs.navigation)
-
-    implementation(libs.compose.runtime)
-    implementation(libs.compose.foundation)
-    implementation(libs.compose.ui)
-    implementation(libs.compose.ui.util)
-    implementation(libs.compose.ui.text.googlefonts)
-    implementation(libs.compose.animation)
-    debugImplementation(libs.compose.ui.tooling)
-
-    implementation(libs.viewmodel)
-    implementation(libs.viewmodel.compose)
-
-    implementation(libs.material3)
-
-    implementation(libs.coil)
-    implementation(libs.coil.network.okhttp)
-
-    implementation(libs.shimmer)
-
-    implementation(libs.media3)
-    implementation(libs.media3.okhttp)
-    implementation(libs.media3.session)
-    implementation(libs.media3.exoplayer.workmanager)
-    implementation(libs.work.runtime)
-
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-
-    implementation(libs.room.runtime)
-    ksp(libs.room.compiler)
-    implementation(libs.room.ktx)
-
-    implementation(libs.timber)
-    implementation(libs.guava)
-    implementation(libs.coroutines.guava)
-    implementation(libs.concurrent.futures)
-    implementation(libs.datastore)
-    implementation(libs.annotation)
-    implementation(libs.apache.lang3)
-    implementation(libs.kuromoji.ipadic)
-
-    implementation(project(":innertube"))
-    implementation(project(":simpmusic"))
-    implementation(project(":betterlyrics"))
-    implementation(project(":lrclib"))
 
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)

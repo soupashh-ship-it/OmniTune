@@ -1,6 +1,6 @@
 # Known Issues
 
-Status: post-`v0.7.3` baseline truth audit.
+Status: post-`v0.9.1` Discord Rich Presence release.
 
 ## Current Known Issues
 
@@ -45,4 +45,11 @@ Status: post-`v0.7.3` baseline truth audit.
 - Graceful suppression of false "No Network" errors on track transitions.
 - Intelligent HTTP 403/404/429 cache invalidations.
 - Signed release APK generation via verified GitHub Actions.
+- Discord Rich Presence integration: kizzy module, settings UI, login screen, lifecycle wiring, auto-reconnect.
+- Live Discord connection status indicator in settings.
+- `resolveButtonUrl` now uses video IDs for accurate song links.
+- Thread-safe Discord login screen (Handler.getMainLooper).
+- javax.inject annotations removed from kizzy module (resolved Hilt cyclic inheritance).
+- HttpClient (Ktor) binding added to NetworkModule for DI completeness.
+- v0.9.1 version bump (code 38).
 

@@ -26,9 +26,9 @@
 
 OmniTune is a modern, lightweight music player for Android that streams music directly from YouTube. Built with Jetpack Compose and Material 3, it delivers a dark-first OmniGlass interface with playback, queue, downloads, update checking, and diagnostics.
 
-Current public release: `v0.7.0 - OmniGlass UI Overhaul`.
+Current public release: `v0.9.1 - Discord Rich Presence Integration`.
 
-The `0.7.x` line ships the OmniGlass UI overhaul and the completed-download playback fix. Work toward `1.0.0` is focused on reliability, claim verification, download/search hardening, and device-specific QA. OmniTune is not claiming universal lock-screen or OEM media-control behavior.
+The `0.9.x` line ships the OmniGlass UI overhaul, Quick Picks personalization, and Discord Rich Presence integration. Work toward `1.0.0` is focused on reliability, claim verification, download/search hardening, and device-specific QA. OmniTune is not claiming universal lock-screen or OEM media-control behavior.
 
 ## Features
 
@@ -44,7 +44,7 @@ The `0.7.x` line ships the OmniGlass UI overhaul and the completed-download play
 - **Media Controls Help** - Settings guidance for notification and lock-screen controls on restrictive OEM Android skins
 - **Manual Updates** - Settings-based GitHub release checker with user-confirmed APK install
 - **Diagnostics Export** - Share a diagnostic report for playback, downloads, update checks, and device-specific issues
-- **Discord Rich Presence** - Present in code and settings; needs final claim verification before 1.0
+- **Discord Rich Presence** - Full Discord integration: account login, activity customization, live connection status, auto-reconnect, and automatic start/stop with playback
 - **Last.fm Scrobbling** - Present in code and settings; needs final claim verification before 1.0
 - **Dark Theme** - OmniGlass dark-first theme with controlled glass surfaces
 
@@ -85,7 +85,7 @@ Firebase/Crashlytics is optional for local builds and is only enabled with `-Pen
 
 Grab the latest signed APK from the [Releases](https://github.com/soupashh-ship-it/OmniTune/releases) page. Public release assets are named `OmniTune-vX.Y.Z-release.apk` with a matching `.sha256` checksum.
 
-> **Note:** v0.7.0 is the OmniGlass UI overhaul release. Device-specific notification UI, lock-screen controls, active/failed download states, and provider failure edge cases remain under active pre-1.0 QA.
+> **Note:** v0.9.1 ships the OmniGlass UI overhaul, Quick Picks personalization, and Discord Rich Presence integration. Device-specific notification UI, lock-screen controls, active/failed download states, and provider failure edge cases remain under active pre-1.0 QA.
 
 If notification shade or lock-screen controls do not appear, see [Notification and Lock-Screen Controls](docs/troubleshooting/notification-controls.md). Some OEM Android skins can hide media controls until notification, lock-screen, or battery settings are allowed by the user.
 

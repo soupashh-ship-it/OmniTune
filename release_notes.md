@@ -1,3 +1,27 @@
+# OmniTune v0.9.1
+
+**Discord Rich Presence Integration**
+
+### 🚀 Features
+* **Discord Rich Presence**: Full Discord integration showing your currently playing song on your Discord profile. Includes account login via WebView, activity customization (name/type/status), image selection (large/small), action buttons with custom labels/URLs, and configurable update interval.
+* **Discord Settings Screen**: OmniGlass-styled settings with account connect/disconnect, live connection status indicator (green/yellow dot), and full activity/display/button configuration.
+* **Auto-Start on Login**: Discord RPC starts immediately after login without requiring a service restart.
+* **Lifecycle Wiring**: Presence starts/stops with playback and responds to lifecycle events via `DiscordPresenceManager`.
+* **Auto-Reconnect**: Automatic reconnection with exponential backoff (up to 5 failures, 60s wait, then retry).
+
+### 🛠️ Fixes & Improvements
+* **Video ID Button URLs**: `resolveButtonUrl` now uses actual YouTube video IDs for accurate song links instead of display names.
+* **Thread-Safe Login**: Discord login screen now uses `Handler(Looper.getMainLooper())` for all Compose state writes from WebView callbacks.
+* **Hilt Cyclic Inheritance Resolved**: Removed `javax.inject` annotations from kizzy module (JVM-only) which was causing Hilt annotation processing errors.
+* **HttpClient DI Binding**: Added Ktor `HttpClient` provider to `NetworkModule` for proper dependency injection.
+* **Live Toggle**: Enable/disable Discord RPC and logout now live-start/stop the presence via `restartDiscordPresence()`.
+
+### 📦 Build
+* Version: **0.9.1** (code 38)
+* APK is automatically signed via GitHub Actions Secrets when the `v0.9.1` tag is pushed.
+
+---
+
 # OmniTune v0.9.0
 
 **OmniGlass UI Overhaul — Lyrics Display, Card-Group Polish, Dead Code Removal**
