@@ -30,9 +30,11 @@ fun ContentSettings(
     var showClearListenHistoryDialog by remember { mutableStateOf(false) }
     var showQuickPicksDialog by remember { mutableStateOf(false) }
 
-    val quickPicksMode by context.dataStore.data.map { prefs ->
-        val value = prefs[QuickPicksKey] ?: QuickPicks.QUICK_PICKS.name
-        try { QuickPicks.valueOf(value) } catch (_: Exception) { QuickPicks.QUICK_PICKS }
+    val quickPicksMode by remember {
+        context.dataStore.data.map { prefs ->
+            val value = prefs[QuickPicksKey] ?: QuickPicks.QUICK_PICKS.name
+            try { QuickPicks.valueOf(value) } catch (_: Exception) { QuickPicks.QUICK_PICKS }
+        }
     }.collectAsState(QuickPicks.QUICK_PICKS)
 
     if (showClearSearchHistoryDialog) {

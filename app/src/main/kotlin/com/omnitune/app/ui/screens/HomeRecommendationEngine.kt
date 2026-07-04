@@ -11,8 +11,8 @@ import java.time.Duration
 import java.time.LocalDateTime
 
 object HomeRecommendationEngine {
-    private const val MIN_HISTORY_EVENTS = 3
-    private const val MIN_LIBRARY_SIGNAL = 4
+    private const val MIN_HISTORY_EVENTS = 1
+    private const val MIN_LIBRARY_SIGNAL = 2
 
     fun build(input: HomeRecommendationInput, now: LocalDateTime = LocalDateTime.now()): HomeRecommendationResult {
         val distinctRecentSongs = input.events.map { it.song }.distinctBy { it.id }

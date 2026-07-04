@@ -151,8 +151,26 @@ class HomeCollectionViewModel @Inject constructor(
                 HomeActionType.OPEN_ALBUM -> YouTube.album(providerId)
                     .map { page -> page.songs.distinctBy { it.id }.take(collection.maxItems) }
 
-                HomeActionType.OPEN_PLAYLIST -> YouTube.playlist(providerId)
-                    .map { page -> page.songs.distinctBy { it.id }.take(collection.maxItems) }
+                HomeActionType.OPEN_PLAYLIST -> runCatching {
+                    val firstPage = YouTube.playlist(providerId).getOrThrow()
+                    val allSongs = firstPage.songs.toMutableList()
+                    var continuation = firstPage.songsContinuation
+                    val seenContinuations = mutableSetOf<String>()
+                    var requestCount = 0
+                    val maxRequests = 50
+
+                    while (continuation != null && allSongs.size < collection.maxItems && requestCount < maxRequests) {
+                        if (continuation in seenContinuations) break
+                        seenContinuations.add(continuation)
+                        requestCount++
+                        val nextPage = YouTube.playlistContinuation(continuation).getOrNull() ?: break
+                        if (nextPage.songs.isEmpty()) break
+                        allSongs.addAll(nextPage.songs)
+                        continuation = nextPage.continuation
+                    }
+
+                    allSongs.distinctBy { it.id }.take(collection.maxItems)
+                }
 
                 HomeActionType.OPEN_BROWSE -> loadBrowseSongs(collection, providerId)
 
@@ -206,10 +224,26 @@ class HomeCollectionViewModel @Inject constructor(
         if (limit <= 0) return emptyList()
         return when (this) {
             is SongItem -> listOf(this)
-            is PlaylistItem -> YouTube.playlist(id)
-                .getOrNull()
-                ?.songs
-                .orEmpty()
+            is PlaylistItem -> {
+                val firstPage = YouTube.playlist(id).getOrNull() ?: return emptyList()
+                val allSongs = firstPage.songs.toMutableList()
+                var continuation = firstPage.songsContinuation
+                val seenContinuations = mutableSetOf<String>()
+                var requestCount = 0
+                val maxRequests = 50
+
+                while (continuation != null && allSongs.size < limit && requestCount < maxRequests) {
+                    if (continuation in seenContinuations) break
+                    seenContinuations.add(continuation)
+                    requestCount++
+                    val nextPage = YouTube.playlistContinuation(continuation).getOrNull() ?: break
+                    if (nextPage.songs.isEmpty()) break
+                    allSongs.addAll(nextPage.songs)
+                    continuation = nextPage.continuation
+                }
+
+                allSongs.distinctBy { it.id }.take(limit)
+            }
             is AlbumItem -> YouTube.album(browseId)
                 .getOrNull()
                 ?.songs
@@ -224,11 +258,28 @@ class HomeCollectionViewModel @Inject constructor(
     }
 
     private suspend fun searchCollectionSongs(collection: HomeCollectionMetadata): Result<List<SongItem>> =
-        YouTube.search(collection.query, YouTube.SearchFilter.FILTER_SONG)
-            .map { result ->
-                result.items
-                    .filterIsInstance<SongItem>()
-                    .distinctBy { it.id }
-                    .take(collection.maxItems)
+        runCatching {
+            val allSongs = mutableListOf<SongItem>()
+            val seenContinuations = mutableSetOf<String>()
+
+            val firstResult = YouTube.search(collection.query, YouTube.SearchFilter.FILTER_SONG).getOrThrow()
+            allSongs.addAll(firstResult.items.filterIsInstance<SongItem>())
+            var continuation = firstResult.continuation
+
+            var requestCount = 0
+            val maxRequests = 50
+
+            while (continuation != null && allSongs.size < collection.maxItems && requestCount < maxRequests) {
+                if (continuation in seenContinuations) break
+                seenContinuations.add(continuation)
+                requestCount++
+                val nextResult = YouTube.searchContinuation(continuation).getOrNull() ?: break
+                val newSongs = nextResult.items.filterIsInstance<SongItem>()
+                if (newSongs.isEmpty()) break
+                allSongs.addAll(newSongs)
+                continuation = nextResult.continuation
             }
+
+            allSongs.distinctBy { it.id }.take(collection.maxItems)
+        }
 }

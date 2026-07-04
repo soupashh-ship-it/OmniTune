@@ -184,7 +184,7 @@ object HomeDefaultCatalog {
                     query = title,
                     collectionType = providerCollectionType(kind),
                     artworkKey = "${kind}_$providerId",
-                    maxItems = 60,
+                    maxItems = 100,
                     source = HomeCatalogSource.ProviderBrowse,
                     actionType = providerAction(kind),
                     providerId = providerId,
@@ -202,7 +202,7 @@ object HomeDefaultCatalog {
                     query = query,
                     collectionType = HomeCollectionType.TrendingSearch,
                     artworkKey = "history_${query.hashCode()}",
-                    maxItems = 40,
+                    maxItems = 100,
                     source = HomeCatalogSource.UserHistory,
                     actionType = HomeActionType.OPEN_COLLECTION,
                 )
