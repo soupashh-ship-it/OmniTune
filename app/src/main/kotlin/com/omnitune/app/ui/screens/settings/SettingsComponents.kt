@@ -289,6 +289,7 @@ fun Divider() {
 }
 
 
+@Suppress("UNCHECKED_CAST")
 @Composable
 fun IntPreferenceSliderRow(
     label: String,
@@ -299,7 +300,7 @@ fun IntPreferenceSliderRow(
     steps: Int = 0,
     valueFormat: (Int) -> String = { it.toString() },
 ) {
-    var value by rememberPreference(key, defaultValue)
+    var value by rememberPreference(key as Preferences.Key<Int>, defaultValue)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -343,6 +344,58 @@ fun IntPreferenceSliderRow(
     }
 }
 
+@Composable
+fun FloatPreferenceSliderRow(
+    label: String,
+    description: String,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+    valueFormat: (Float) -> String = { it.toString() },
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 64.dp)
+            .clip(OmniShapes.Medium)
+            .padding(OmniSpacing.medium),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextTertiary,
+                )
+            }
+            Text(
+                text = valueFormat(value),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.OmniAccentSecondary,
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            colors = SliderDefaults.colors(
+                thumbColor = OmniColors.OmniAccentPrimary,
+                activeTrackColor = OmniColors.OmniAccentPrimary,
+                inactiveTrackColor = OmniColors.OmniGlassMedium,
+            ),
+            modifier = Modifier.padding(top = OmniSpacing.compact),
+        )
+    }
+}
 
 
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.R
 import com.omnitune.app.constants.DiscordActivityNameKey
@@ -125,11 +126,25 @@ fun DiscordSettingsScreen(
     var showLargeImageDialog by remember { mutableStateOf(false) }
     var showLargeTextDialog by remember { mutableStateOf(false) }
     var showSmallImageDialog by remember { mutableStateOf(false) }
+    var showLargeTextCustomDialog by remember { mutableStateOf(false) }
+    var showLargeImageCustomUrlDialog by remember { mutableStateOf(false) }
+    var showSmallImageCustomUrlDialog by remember { mutableStateOf(false) }
+
+    // Button dialog state
+    var showBtn1LabelDialog by remember { mutableStateOf(false) }
+    var showBtn1UrlSourceDialog by remember { mutableStateOf(false) }
+    var showBtn1CustomUrlDialog by remember { mutableStateOf(false) }
+    var showBtn2LabelDialog by remember { mutableStateOf(false) }
+    var showBtn2UrlSourceDialog by remember { mutableStateOf(false) }
+    var showBtn2CustomUrlDialog by remember { mutableStateOf(false) }
+
+    // Interval dialog state
+    var showIntervalValueDialog by remember { mutableStateOf(false) }
+    var showIntervalUnitDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp),
     ) {
         Spacer(Modifier.height(8.dp))
@@ -268,28 +283,110 @@ fun DiscordSettingsScreen(
                 accent = OmniColors.OmniAccentPrimary,
                 onClick = { showSmallImageDialog = true },
             )
+            if (largeTextSource == "custom") {
+                OmniPreferenceEntry(
+                    title = "Large text (custom)",
+                    description = largeTextCustom.ifBlank { "(empty)" },
+                    iconRes = R.drawable.ic_artist,
+                    accent = OmniColors.TextSecondary,
+                    onClick = { showLargeTextCustomDialog = true },
+                )
+            }
+            if (largeImageType == "custom") {
+                OmniPreferenceEntry(
+                    title = "Large image URL",
+                    description = largeImageCustomUrl.ifBlank { "(not set)" },
+                    iconRes = R.drawable.ic_album,
+                    accent = OmniColors.TextSecondary,
+                    onClick = { showLargeImageCustomUrlDialog = true },
+                )
+            }
+            if (smallImageType == "custom") {
+                OmniPreferenceEntry(
+                    title = "Small image URL",
+                    description = smallImageCustomUrl.ifBlank { "(not set)" },
+                    iconRes = R.drawable.ic_album,
+                    accent = OmniColors.TextSecondary,
+                    onClick = { showSmallImageCustomUrlDialog = true },
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))
 
         // Buttons
-        OmniPreferenceCard(title = "Action buttons") {
+        OmniPreferenceCard(title = "Button 1") {
             OmniSwitchPreference(
-                title = "Button 1",
-                description = btn1Label.take(40),
+                title = "Enabled",
+                description = btn1Label,
                 iconRes = R.drawable.ic_play_arrow,
                 accent = OmniColors.Hot,
                 checked = btn1Enabled,
                 onCheckedChange = { btn1Enabled = it },
             )
+            if (btn1Enabled) {
+                OmniPreferenceEntry(
+                    title = "Label",
+                    description = btn1Label,
+                    iconRes = R.drawable.ic_play_arrow,
+                    accent = OmniColors.OmniAccentSecondary,
+                    onClick = { showBtn1LabelDialog = true },
+                )
+                OmniPreferenceEntry(
+                    title = "URL source",
+                    description = btn1UrlSource.replaceFirstChar { it.uppercase() },
+                    iconRes = R.drawable.ic_share,
+                    accent = OmniColors.OmniAccentSecondary,
+                    onClick = { showBtn1UrlSourceDialog = true },
+                )
+                if (btn1UrlSource == "custom") {
+                    OmniPreferenceEntry(
+                        title = "Custom URL",
+                        description = btn1CustomUrl.ifBlank { "(not set)" },
+                        iconRes = R.drawable.ic_share,
+                        accent = OmniColors.TextSecondary,
+                        onClick = { showBtn1CustomUrlDialog = true },
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OmniPreferenceCard(title = "Button 2") {
             OmniSwitchPreference(
-                title = "Button 2",
-                description = btn2Label.take(40),
+                title = "Enabled",
+                description = btn2Label,
                 iconRes = R.drawable.ic_play_arrow,
                 accent = OmniColors.Hot,
                 checked = btn2Enabled,
                 onCheckedChange = { btn2Enabled = it },
             )
+            if (btn2Enabled) {
+                OmniPreferenceEntry(
+                    title = "Label",
+                    description = btn2Label,
+                    iconRes = R.drawable.ic_play_arrow,
+                    accent = OmniColors.OmniAccentSecondary,
+                    onClick = { showBtn2LabelDialog = true },
+                )
+                OmniPreferenceEntry(
+                    title = "URL source",
+                    description = btn2UrlSource.replaceFirstChar { it.uppercase() },
+                    iconRes = R.drawable.ic_share,
+                    accent = OmniColors.OmniAccentSecondary,
+                    onClick = { showBtn2UrlSourceDialog = true },
+                )
+                if (btn2UrlSource == "custom") {
+                    OmniPreferenceEntry(
+                        title = "Custom URL",
+                        description = btn2CustomUrl.ifBlank { "(not set)" },
+                        iconRes = R.drawable.ic_share,
+                        accent = OmniColors.TextSecondary,
+                        onClick = { showBtn2CustomUrlDialog = true },
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -297,15 +394,23 @@ fun DiscordSettingsScreen(
         // Update interval
         OmniPreferenceCard(title = "Update interval") {
             OmniPreferenceEntry(
-                title = "Update frequency",
+                title = "Interval value",
+                description = intervalValue.toString(),
+                iconRes = R.drawable.ic_settings,
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = { showIntervalValueDialog = true },
+            )
+            OmniPreferenceEntry(
+                title = "Interval unit",
                 description = when (intervalUnit) {
-                    "S" -> "Every ${intervalValue}s"
-                    "M" -> "Every ${intervalValue}m"
-                    "H" -> "Every ${intervalValue}h"
-                    else -> "Every ${intervalValue}s"
+                    "S" -> "Seconds"
+                    "M" -> "Minutes"
+                    "H" -> "Hours"
+                    else -> "Seconds"
                 },
                 iconRes = R.drawable.ic_settings,
-                accent = OmniColors.TextSecondary,
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = { showIntervalUnitDialog = true },
             )
         }
 
@@ -409,6 +514,185 @@ fun DiscordSettingsScreen(
             },
         )
     }
+
+    // ── Display custom dialogs ───────────────────────────────────────
+
+    if (showLargeTextCustomDialog) {
+        TextInputDialog(
+            title = "Large text (custom)",
+            currentValue = largeTextCustom,
+            placeholder = "Custom text",
+            onDismiss = { showLargeTextCustomDialog = false },
+            onConfirm = { newVal ->
+                largeTextCustom = newVal
+                showLargeTextCustomDialog = false
+            },
+        )
+    }
+
+    if (showLargeImageCustomUrlDialog) {
+        TextInputDialog(
+            title = "Large image URL",
+            currentValue = largeImageCustomUrl,
+            placeholder = "https://example.com/image.png",
+            onDismiss = { showLargeImageCustomUrlDialog = false },
+            onConfirm = { newVal ->
+                largeImageCustomUrl = newVal
+                showLargeImageCustomUrlDialog = false
+            },
+        )
+    }
+
+    if (showSmallImageCustomUrlDialog) {
+        TextInputDialog(
+            title = "Small image URL",
+            currentValue = smallImageCustomUrl,
+            placeholder = "https://example.com/image.png",
+            onDismiss = { showSmallImageCustomUrlDialog = false },
+            onConfirm = { newVal ->
+                smallImageCustomUrl = newVal
+                showSmallImageCustomUrlDialog = false
+            },
+        )
+    }
+
+    // ── Button 1 dialogs ─────────────────────────────────────────────
+
+    if (showBtn1LabelDialog) {
+        TextInputDialog(
+            title = "Button 1 label",
+            currentValue = btn1Label,
+            placeholder = "Listen on OmniTune",
+            onDismiss = { showBtn1LabelDialog = false },
+            onConfirm = { newVal ->
+                btn1Label = newVal
+                showBtn1LabelDialog = false
+            },
+        )
+    }
+
+    if (showBtn1UrlSourceDialog) {
+        EnumSelectionDialog(
+            title = "Button 1 URL source",
+            options = DiscordButtonUrlSource.values().toList(),
+            current = DiscordButtonUrlSource.fromKey(btn1UrlSource),
+            onDismiss = { showBtn1UrlSourceDialog = false },
+            onSelected = { selected ->
+                btn1UrlSource = selected.key
+                showBtn1UrlSourceDialog = false
+            },
+        )
+    }
+
+    if (showBtn1CustomUrlDialog) {
+        TextInputDialog(
+            title = "Button 1 custom URL",
+            currentValue = btn1CustomUrl,
+            placeholder = "https://example.com",
+            onDismiss = { showBtn1CustomUrlDialog = false },
+            onConfirm = { newVal ->
+                btn1CustomUrl = newVal
+                showBtn1CustomUrlDialog = false
+            },
+        )
+    }
+
+    // ── Button 2 dialogs ─────────────────────────────────────────────
+
+    if (showBtn2LabelDialog) {
+        TextInputDialog(
+            title = "Button 2 label",
+            currentValue = btn2Label,
+            placeholder = "View on YouTube",
+            onDismiss = { showBtn2LabelDialog = false },
+            onConfirm = { newVal ->
+                btn2Label = newVal
+                showBtn2LabelDialog = false
+            },
+        )
+    }
+
+    if (showBtn2UrlSourceDialog) {
+        EnumSelectionDialog(
+            title = "Button 2 URL source",
+            options = DiscordButtonUrlSource.values().toList(),
+            current = DiscordButtonUrlSource.fromKey(btn2UrlSource),
+            onDismiss = { showBtn2UrlSourceDialog = false },
+            onSelected = { selected ->
+                btn2UrlSource = selected.key
+                showBtn2UrlSourceDialog = false
+            },
+        )
+    }
+
+    if (showBtn2CustomUrlDialog) {
+        TextInputDialog(
+            title = "Button 2 custom URL",
+            currentValue = btn2CustomUrl,
+            placeholder = "https://example.com",
+            onDismiss = { showBtn2CustomUrlDialog = false },
+            onConfirm = { newVal ->
+                btn2CustomUrl = newVal
+                showBtn2CustomUrlDialog = false
+            },
+        )
+    }
+
+    // ── Interval dialogs ───────────────────────────────────────────────
+
+    if (showIntervalValueDialog) {
+        var intervalText by remember(intervalValue) { mutableStateOf(intervalValue.toString()) }
+        AlertDialog(
+            onDismissRequest = { showIntervalValueDialog = false },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
+            title = { Text("Interval value (seconds)", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = intervalText,
+                    onValueChange = { intervalText = it.filter { c -> c.isDigit() } },
+                    placeholder = { Text("30", color = OmniColors.TextTertiary) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = OmniColors.TextPrimary,
+                        unfocusedTextColor = OmniColors.TextPrimary,
+                        cursorColor = OmniColors.OmniAccentSecondary,
+                        focusedBorderColor = OmniColors.OmniAccentSecondary,
+                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    intervalValue = intervalText.toIntOrNull() ?: intervalValue
+                    showIntervalValueDialog = false
+                }) {
+                    Text("Save", fontWeight = FontWeight.Bold, color = OmniColors.OmniAccentSecondary)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIntervalValueDialog = false }) {
+                    Text("Cancel", color = OmniColors.TextSecondary)
+                }
+            },
+        )
+    }
+
+    if (showIntervalUnitDialog) {
+        EnumSelectionDialog(
+            title = "Interval unit",
+            options = DiscordIntervalUnit.values().toList(),
+            current = DiscordIntervalUnit.fromKey(intervalUnit),
+            onDismiss = { showIntervalUnitDialog = false },
+            onSelected = { selected ->
+                intervalUnit = selected.key
+                showIntervalUnitDialog = false
+            },
+        )
+    }
 }
 
 // ── Supporting types ─────────────────────────────────────────────────
@@ -469,6 +753,33 @@ private enum class DiscordSmallImageType(val key: String) {
     companion object {
         fun fromKey(key: String): DiscordSmallImageType =
             entries.find { it.key == key } ?: None
+    }
+}
+
+/** Values for [DiscordActivityButtonUrlSourceKey] */
+private enum class DiscordButtonUrlSource(val key: String) {
+    Song("song"),
+    Artist("artist"),
+    Album("album"),
+    Custom("custom"),
+    ;
+
+    companion object {
+        fun fromKey(key: String): DiscordButtonUrlSource =
+            entries.find { it.key == key } ?: Custom
+    }
+}
+
+/** Values for [DiscordPresenceIntervalUnitKey] */
+private enum class DiscordIntervalUnit(val key: String) {
+    Seconds("S"),
+    Minutes("M"),
+    Hours("H"),
+    ;
+
+    companion object {
+        fun fromKey(key: String): DiscordIntervalUnit =
+            entries.find { it.key == key } ?: Seconds
     }
 }
 

@@ -1,3 +1,26 @@
+# OmniTune v0.9.2
+
+**Last.fm Scrobbling, Recently Played Chronological History, Discord Settings Polish**
+
+### 🚀 Features
+* **Last.fm Scrobbling**: Full scrobbling support with login dialog (username/password), now-playing updates, and automatic scrobble submission when the listening threshold is reached. Configurable via Settings → Integrations → Scrobbling.
+* **Recently Played Chronological History**: Removed song-level dedup — each play now creates a separate entry, showing a full chronological log instead of just the latest play per song.
+* **Discord Settings Polish**: Added editing UIs for all remaining Discord settings — button labels, URL sources, custom URLs, display custom entries (large text custom, large image/small image URLs), update interval value and unit.
+* **Discord & Backup Screens Crash Fix**: Fixed nested `verticalScroll` crash that caused both screens to close immediately on open.
+
+### 🧹 Code Cleanup
+* **Removed Dead Preferences**: `PureBlackKey` removed. `DisableBlurKey`, `GridItemsSizeKey`, `HideExplicitKey`, `HideVideoKey`, `PauseListenHistoryKey`, and `PauseSearchHistoryKey` all cleaned up in previous sessions.
+
+### 🛠️ Fixes
+* **Search/Provider Error Hardening**: Added `ProviderError.kt` — classifies 403/404/429/timeout/network/parser errors with user-visible messages across Search, Home Discovery, and Home Collection screens.
+* **HttpClient Cleanup**: Added tracked singleton + `shutdown()` method to `NetworkModule` for resource cleanup.
+* **Dialogs Added to Discord Settings**: Activity name (text input), activity type (enum), status (enum), large image type (enum), large text source (enum), small image type (enum) — all added with proper dialogs.
+
+### 📦 Build
+* Version: **0.9.2** (code 39)
+
+---
+
 # OmniTune v0.9.1
 
 **Discord Rich Presence Integration**

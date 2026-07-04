@@ -53,6 +53,10 @@ class LibraryViewModel @Inject constructor(
 
     fun song(songId: String): kotlinx.coroutines.flow.Flow<com.omnitune.app.db.entities.Song?> = database.song(songId)
 
+    // Saved-artists and saved-albums flows (bookmarked only)
+    val savedArtists: StateFlow<List<com.omnitune.app.db.entities.Artist>>
+    val savedAlbums: StateFlow<List<com.omnitune.app.db.entities.Album>>
+
     private val downloadListener = object : androidx.media3.exoplayer.offline.DownloadManager.Listener {
         override fun onDownloadChanged(manager: androidx.media3.exoplayer.offline.DownloadManager, download: androidx.media3.exoplayer.offline.Download, finalException: Exception?) {
             refreshDownloadCount()
@@ -91,6 +95,12 @@ class LibraryViewModel @Inject constructor(
         playlists = database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+        savedArtists = database.artistsBookmarkedByNameAsc()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        savedAlbums = database.albumsLikedByNameAsc()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
         viewModelScope.launch {
             combine(
                 likedSongs,
@@ -102,29 +112,14 @@ class LibraryViewModel @Inject constructor(
                     likedSongs = likedList,
                     recentlyPlayed = events,
                     librarySongCount = librarySongs.size,
-                    libraryArtistCount = _uiState.value.libraryArtistCount,
-                    libraryAlbumCount = _uiState.value.libraryAlbumCount,
-                    playlistCount = _uiState.value.playlistCount,
+                    libraryArtistCount = libraryArtists.value.size,
+                    libraryAlbumCount = libraryAlbums.value.size,
+                    playlistCount = playlists.value.size,
                     downloadCount = _uiState.value.downloadCount,
                     isLoading = false,
                 )
             }.collect { state ->
                 _uiState.value = state
-            }
-        }
-        viewModelScope.launch {
-            libraryArtists.collect { list ->
-                _uiState.value = _uiState.value.copy(libraryArtistCount = list.size)
-            }
-        }
-        viewModelScope.launch {
-            libraryAlbums.collect { list ->
-                _uiState.value = _uiState.value.copy(libraryAlbumCount = list.size)
-            }
-        }
-        viewModelScope.launch {
-            playlists.collect { list ->
-                _uiState.value = _uiState.value.copy(playlistCount = list.size)
             }
         }
     }
@@ -177,6 +172,45 @@ class LibraryViewModel @Inject constructor(
             if (song == null) {
                 database.upsert(metadata.toSongEntity())
             }
+        }
+    }
+
+    // ── Playlist folders / tag management ───────────────────────────
+
+    val allTags: kotlinx.coroutines.flow.Flow<List<com.omnitune.app.db.entities.TagEntity>> = database.allTags()
+
+    fun playlistTags(playlistId: String): kotlinx.coroutines.flow.Flow<List<com.omnitune.app.db.entities.TagEntity>> =
+        database.playlistTags(playlistId)
+
+    fun createTag(name: String, color: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val tag = com.omnitune.app.db.entities.TagEntity(name = name, color = color)
+            database.insert(tag)
+        }
+    }
+
+    fun updateTag(tag: com.omnitune.app.db.entities.TagEntity) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.update(tag)
+        }
+    }
+
+    fun deleteTag(tag: com.omnitune.app.db.entities.TagEntity) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.removeAllTagPlaylists(tag.id)
+            database.delete(tag)
+        }
+    }
+
+    fun assignPlaylistTag(playlistId: String, tagId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.addTagToPlaylist(playlistId, tagId)
+        }
+    }
+
+    fun removePlaylistTag(playlistId: String, tagId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.removePlaylistTag(playlistId, tagId)
         }
     }
 }

@@ -55,6 +55,7 @@ import com.omnitune.app.constants.EnableDiscordRPCKey
 import com.omnitune.app.discord.DiscordPresenceManager
 import com.omnitune.app.discord.SongPresenceData
 import com.omnitune.app.discord.getPresenceIntervalMillis
+import com.omnitune.app.playback.ScrobblingManager
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.flow.first
 
@@ -68,6 +69,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
     @Inject lateinit var discordPresenceManager: DiscordPresenceManager
+
+    private lateinit var scrobblingManager: ScrobblingManager
 
     private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
     private lateinit var playbackRecoveryCoordinator: PlaybackRecoveryCoordinator
@@ -267,6 +270,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         connectivityObserver = NetworkConnectivityObserver(this)
+
+        scrobblingManager = ScrobblingManager(this, scope)
 
         sessionCallback.onToggleLike = { toggleLike() }
         sessionCallback.onToggleLibrary = { toggleLibrary() }
@@ -741,6 +746,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueState()
         preResolveNextTracks()
 
+        // Send now-playing update to Last.fm
+        meta?.let { m ->
+            scrobblingManager.onTrackChanged(
+                title = m.title,
+                artist = m.artists.firstOrNull()?.name ?: "",
+                album = m.album?.title,
+            )
+        }
+
         lyricsPrefetcher.prefetch(meta)
     }
 
@@ -848,6 +862,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     if (currentPos >= thresholdMs) {
                         Timber.tag("MusicService").d("Recording play count for $mediaId")
                         database.incrementPlayCount(mediaId)
+                        // Submit scrobble
+                        val scrobbleMeta = _currentMediaMetadata.value
+                        if (scrobbleMeta != null) {
+                            scrobblingManager.onScrobbleThreshold(
+                                title = scrobbleMeta.title,
+                                artist = scrobbleMeta.artists.firstOrNull()?.name ?: "",
+                                album = scrobbleMeta.album?.title,
+                                durationMs = durationMs,
+                            )
+                        }
                         lastRecordedMediaId = mediaId
                         break
                     }

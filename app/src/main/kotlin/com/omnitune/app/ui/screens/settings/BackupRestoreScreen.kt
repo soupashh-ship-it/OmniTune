@@ -96,7 +96,6 @@ fun BackupRestoreScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp),
     ) {
         Spacer(Modifier.height(8.dp))

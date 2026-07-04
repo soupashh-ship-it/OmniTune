@@ -22,21 +22,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Playlist
+import com.omnitune.app.db.entities.TagEntity
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -55,7 +64,13 @@ fun LibraryPlaylistsScreen(
     onNavigateToPlaylist: (String) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val playlists by viewModel.playlists.collectAsState()
+    val allPlaylists by viewModel.playlists.collectAsState()
+    val allTags by viewModel.allTags.collectAsState(initial = emptyList())
+
+    var selectedTagId by remember { mutableStateOf<String?>(null) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var showManageFolders by remember { mutableStateOf(false) }
+    var showFolderPickerFor by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -65,19 +80,19 @@ fun LibraryPlaylistsScreen(
             .statusBarsPadding()
             .padding(horizontal = OmniSpacing.section),
     ) {
-        var showCreateDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+        // ── Create playlist dialog ──────────────────────────────────
         if (showCreateDialog) {
-            var playlistName by remember { androidx.compose.runtime.mutableStateOf("") }
-            androidx.compose.material3.AlertDialog(
+            var playlistName by remember { mutableStateOf("") }
+            AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
                 title = { Text("New Playlist", fontWeight = FontWeight.Bold) },
                 text = {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = playlistName,
                         onValueChange = { playlistName = it },
                         singleLine = true,
                         placeholder = { Text("Playlist name") },
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OmniColors.OmniAccentPrimary,
                             unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
                             focusedTextColor = OmniColors.TextPrimary,
@@ -86,7 +101,7 @@ fun LibraryPlaylistsScreen(
                     )
                 },
                 confirmButton = {
-                    androidx.compose.material3.TextButton(
+                    TextButton(
                         onClick = {
                             if (playlistName.isNotBlank()) {
                                 viewModel.createPlaylist(playlistName.trim())
@@ -99,7 +114,7 @@ fun LibraryPlaylistsScreen(
                     }
                 },
                 dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { showCreateDialog = false }) {
+                    TextButton(onClick = { showCreateDialog = false }) {
                         Text("Cancel", color = OmniColors.TextPrimary)
                     }
                 },
@@ -108,9 +123,28 @@ fun LibraryPlaylistsScreen(
             )
         }
 
+        // ── Manage folders dialog ───────────────────────────────────
+        if (showManageFolders) {
+            ManageFoldersDialog(
+                tags = allTags,
+                onDismiss = { showManageFolders = false },
+                viewModel = viewModel,
+            )
+        }
+
+        // ── Folder picker dialog ────────────────────────────────────
+        showFolderPickerFor?.let { playlistId ->
+            FolderPickerDialog(
+                tags = allTags,
+                playlistId = playlistId,
+                onDismiss = { showFolderPickerFor = null },
+                viewModel = viewModel,
+            )
+        }
+
         LibraryListHeader(
             title = "Playlists",
-            subtitle = countLabel(playlists.size, "playlist"),
+            subtitle = countLabel(allPlaylists.size, "playlist"),
             icon = R.drawable.ic_list,
             accent = OmniColors.Hot,
             actionIcon = R.drawable.ic_add,
@@ -118,19 +152,92 @@ fun LibraryPlaylistsScreen(
             onBack = onBack,
         )
 
-        if (playlists.isEmpty()) {
+        // ── Folder chips + manage button ────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            ) {
+                item {
+                    AssistChip(
+                        onClick = { selectedTagId = null },
+                        label = { Text("All") },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = if (selectedTagId == null)
+                                OmniColors.OmniAccentPrimary.copy(alpha = 0.2f)
+                            else OmniColors.OmniGlassSubtle,
+                            labelColor = if (selectedTagId == null)
+                                OmniColors.OmniAccentPrimary
+                            else OmniColors.TextSecondary,
+                        ),
+                    )
+                }
+                items(allTags, key = { it.id }) { tag ->
+                    val tagColor = parseColor(tag.color)
+                    AssistChip(
+                        onClick = { selectedTagId = if (selectedTagId == tag.id) null else tag.id },
+                        label = { Text(tag.name) },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(tagColor)
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = if (selectedTagId == tag.id)
+                                tagColor.copy(alpha = 0.2f)
+                            else OmniColors.OmniGlassSubtle,
+                            labelColor = if (selectedTagId == tag.id)
+                                tagColor
+                            else OmniColors.TextSecondary,
+                        ),
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            IconButton(
+                onClick = { showManageFolders = true },
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(OmniColors.OmniGlassMedium)
+                    .border(1.dp, OmniColors.OmniGlassBorderSubtle, CircleShape),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_settings),
+                    contentDescription = "Manage folders",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
+
+        // ── Playlist list ───────────────────────────────────────────
+        if (allPlaylists.isEmpty()) {
             LibraryEmptyState(icon = R.drawable.ic_list, text = "No playlists in your library yet")
         } else {
+            // Show all playlists with the folder picker available per row
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
             ) {
                 items(
-                    items = playlists,
+                    items = allPlaylists,
                     key = { it.id },
                     contentType = { "playlist" },
                 ) { playlist ->
-                    PlaylistRow(playlist = playlist, onClick = { onNavigateToPlaylist(playlist.id) })
+                    PlaylistRow(
+                        playlist = playlist,
+                        onClick = { onNavigateToPlaylist(playlist.id) },
+                        onAssignFolder = { showFolderPickerFor = playlist.id },
+                    )
                 }
                 item { Spacer(modifier = Modifier.height(88.dp)) }
             }
@@ -139,7 +246,232 @@ fun LibraryPlaylistsScreen(
 }
 
 @Composable
-private fun PlaylistRow(playlist: Playlist, onClick: () -> Unit) {
+private fun ManageFoldersDialog(
+    tags: List<TagEntity>,
+    onDismiss: () -> Unit,
+    viewModel: LibraryViewModel,
+) {
+    var newFolderName by remember { mutableStateOf("") }
+    var editingTag by remember { mutableStateOf<TagEntity?>(null) }
+    var editingName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage Folders", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                if (editingTag == null) {
+                    // Create new folder
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        OutlinedTextField(
+                            value = newFolderName,
+                            onValueChange = { newFolderName = it },
+                            singleLine = true,
+                            placeholder = { Text("Folder name") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = OmniColors.OmniAccentPrimary,
+                                unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                                focusedTextColor = OmniColors.TextPrimary,
+                                unfocusedTextColor = OmniColors.TextPrimary,
+                            ),
+                        )
+                        Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                        TextButton(
+                            onClick = {
+                                if (newFolderName.isNotBlank()) {
+                                    val color = TagEntity.DEFAULT_COLORS[tags.size % TagEntity.DEFAULT_COLORS.size]
+                                    viewModel.createTag(newFolderName.trim(), color)
+                                    newFolderName = ""
+                                }
+                            },
+                            enabled = newFolderName.isNotBlank(),
+                        ) {
+                            Text("Add", color = if (newFolderName.isNotBlank()) OmniColors.Hot else OmniColors.TextSecondary)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(OmniSpacing.medium))
+                } else {
+                    // Edit folder
+                    OutlinedTextField(
+                        value = editingName,
+                        onValueChange = { editingName = it },
+                        singleLine = true,
+                        label = { Text("Folder name") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OmniColors.OmniAccentPrimary,
+                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                            focusedTextColor = OmniColors.TextPrimary,
+                            unfocusedTextColor = OmniColors.TextPrimary,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(OmniSpacing.medium))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+                    ) {
+                        TextButton(onClick = {
+                            viewModel.updateTag(editingTag!!.copy(name = editingName.trim()))
+                            editingTag = null
+                        }) {
+                            Text("Save", color = OmniColors.OmniAccentPrimary)
+                        }
+                        TextButton(onClick = {
+                            viewModel.deleteTag(editingTag!!)
+                            editingTag = null
+                        }) {
+                            Text("Delete", color = OmniColors.Error)
+                        }
+                        TextButton(onClick = { editingTag = null }) {
+                            Text("Cancel", color = OmniColors.TextSecondary)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(OmniSpacing.small))
+                }
+
+                // Existing folders list
+                if (tags.isEmpty() && editingTag == null) {
+                    Text(
+                        text = "No folders yet. Create one above to organize your playlists.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OmniColors.TextSecondary,
+                    )
+                } else {
+                    tags.forEach { tag ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    editingTag = tag
+                                    editingName = tag.name
+                                }
+                                .padding(vertical = OmniSpacing.small),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(parseColor(tag.color))
+                            )
+                            Spacer(modifier = Modifier.width(OmniSpacing.small))
+                            Text(
+                                text = tag.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = OmniColors.TextPrimary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                painterResource(R.drawable.ic_more_vert),
+                                contentDescription = "Edit",
+                                tint = OmniColors.TextTertiary,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done", color = OmniColors.TextPrimary)
+            }
+        },
+        containerColor = OmniColors.OmniBackgroundElevated,
+        titleContentColor = OmniColors.TextPrimary,
+    )
+}
+
+@Composable
+private fun FolderPickerDialog(
+    tags: List<TagEntity>,
+    playlistId: String,
+    onDismiss: () -> Unit,
+    viewModel: LibraryViewModel,
+) {
+    var selectedTagIds by remember { mutableStateOf(setOf<String>()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Assign Folder", fontWeight = FontWeight.Bold) },
+        text = {
+            if (tags.isEmpty()) {
+                Text(
+                    text = "No folders yet. Create one in playlist settings first.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextSecondary,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+                    tags.forEach { tag ->
+                        val isSelected = tag.id in selectedTagIds
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedTagIds = if (isSelected) {
+                                        selectedTagIds - tag.id
+                                    } else {
+                                        selectedTagIds + tag.id
+                                    }
+                                }
+                                .clip(OmniShapes.Medium)
+                                .background(if (isSelected) parseColor(tag.color).copy(alpha = 0.12f) else Color.Transparent)
+                                .padding(OmniSpacing.small),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(parseColor(tag.color))
+                            )
+                            Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                            Text(
+                                text = tag.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = OmniColors.TextPrimary,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                tags.forEach { tag ->
+                    if (tag.id in selectedTagIds) {
+                        viewModel.assignPlaylistTag(playlistId, tag.id)
+                    } else {
+                        viewModel.removePlaylistTag(playlistId, tag.id)
+                    }
+                }
+                onDismiss()
+            }) {
+                Text("Save", color = OmniColors.Hot)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = OmniColors.TextPrimary)
+            }
+        },
+        containerColor = OmniColors.OmniBackgroundElevated,
+        titleContentColor = OmniColors.TextPrimary,
+    )
+}
+
+@Composable
+private fun PlaylistRow(
+    playlist: Playlist,
+    onClick: () -> Unit,
+    onAssignFolder: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -182,6 +514,21 @@ private fun PlaylistRow(playlist: Playlist, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        Spacer(modifier = Modifier.width(OmniSpacing.compact))
+        IconButton(
+            onClick = onAssignFolder,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(OmniColors.OmniGlassMedium),
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_more_vert),
+                contentDescription = "Assign folder",
+                tint = OmniColors.TextTertiary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -190,36 +537,74 @@ private fun LibraryListHeader(
     title: String,
     subtitle: String,
     icon: Int,
-    accent: androidx.compose.ui.graphics.Color,
+    accent: Color,
     actionIcon: Int? = null,
     onAction: (() -> Unit)? = null,
     onBack: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = OmniSpacing.medium, bottom = OmniSpacing.large),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = OmniSpacing.medium, bottom = OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
             onClick = onBack,
-            modifier = Modifier.size(48.dp).clip(CircleShape).background(OmniColors.OmniGlassMedium).border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(OmniColors.OmniGlassMedium)
+                .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
         ) {
-            Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back", tint = OmniColors.TextPrimary)
+            Icon(
+                painterResource(R.drawable.ic_arrow_back),
+                contentDescription = "Back",
+                tint = OmniColors.TextPrimary,
+            )
         }
         Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = OmniColors.TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = OmniColors.TextSecondary)
+            Text(
+                title,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
+            )
         }
         if (actionIcon != null && onAction != null) {
             IconButton(
                 onClick = onAction,
-                modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f))
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.16f)),
             ) {
-                Icon(painterResource(actionIcon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+                Icon(
+                    painterResource(actionIcon),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         } else {
-            Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(accent.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-                Icon(painterResource(icon), contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(accent.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painterResource(icon),
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
@@ -228,10 +613,26 @@ private fun LibraryListHeader(
 @Composable
 private fun LibraryEmptyState(icon: Int, text: String) {
     Box(
-        modifier = Modifier.fillMaxWidth().clip(OmniShapes.ExtraLarge).background(OmniColors.OmniGlassSubtle).border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.ExtraLarge).padding(OmniSpacing.screen),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.ExtraLarge)
+            .background(OmniColors.OmniGlassSubtle)
+            .border(
+                BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
+                OmniShapes.ExtraLarge,
+            )
+            .padding(OmniSpacing.screen),
         contentAlignment = Alignment.Center,
     ) {
         EmptyPlaceholder(icon = icon, text = text)
+    }
+}
+
+private fun parseColor(hex: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor(hex))
+    } catch (_: Exception) {
+        Color(0xFF6B6B)
     }
 }
 

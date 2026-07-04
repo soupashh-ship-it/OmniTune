@@ -26,6 +26,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,8 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.omnitune.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,14 +60,17 @@ fun AlbumScreen(
     albumId: String,
     onBack: () -> Unit = {},
     onPlaySong: (SongItem) -> Unit = {},
+    viewModel: AlbumDetailViewModel = hiltViewModel(),
 ) {
     var albumPage by remember { mutableStateOf<AlbumPage?>(null) }
     var songs by remember { mutableStateOf<List<SongItem>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
 
     LaunchedEffect(albumId) {
         isLoading = true
+        viewModel.loadAlbum(albumId)
         val pageResult = YouTube.album(albumId)
         pageResult.fold(
             onSuccess = { page ->
@@ -88,6 +94,19 @@ fun AlbumScreen(
                     Icon(
                         painter = painterResource(com.omnitune.app.R.drawable.ic_arrow_back),
                         contentDescription = "Back",
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = { viewModel.toggleBookmark(albumId) }) {
+                    Icon(
+                        painter = painterResource(
+                            if (isBookmarked) R.drawable.ic_favorite
+                            else R.drawable.ic_favorite_border
+                        ),
+                        contentDescription = if (isBookmarked) "Unlike album" else "Like album",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },

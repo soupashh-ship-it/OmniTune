@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,13 +53,22 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 
+private enum class ArtistFilterMode { ALL, SAVED }
+
 @Composable
 fun LibraryArtistsScreen(
     onBack: () -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val artists by viewModel.libraryArtists.collectAsState()
+    val allArtists by viewModel.libraryArtists.collectAsState()
+    val savedArtists by viewModel.savedArtists.collectAsState()
+    var filterMode by remember { mutableStateOf(ArtistFilterMode.ALL) }
+
+    val artists = when (filterMode) {
+        ArtistFilterMode.ALL -> allArtists
+        ArtistFilterMode.SAVED -> savedArtists
+    }
 
     Column(
         modifier = Modifier
@@ -72,8 +86,37 @@ fun LibraryArtistsScreen(
             onBack = onBack,
         )
 
+        // All / Saved toggle
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = OmniSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        ) {
+            FilterChip(
+                selected = filterMode == ArtistFilterMode.ALL,
+                onClick = { filterMode = ArtistFilterMode.ALL },
+                label = { Text("All (${allArtists.size})") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.2f),
+                    selectedLabelColor = OmniColors.OmniAccentPrimary,
+                ),
+            )
+            FilterChip(
+                selected = filterMode == ArtistFilterMode.SAVED,
+                onClick = { filterMode = ArtistFilterMode.SAVED },
+                label = { Text("Saved (${savedArtists.size})") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = OmniColors.Hot.copy(alpha = 0.2f),
+                    selectedLabelColor = OmniColors.Hot,
+                ),
+            )
+        }
+
         if (artists.isEmpty()) {
-            LibraryEmptyState(icon = R.drawable.ic_artist, text = "No artists in your library yet")
+            val emptyText = when (filterMode) {
+                ArtistFilterMode.ALL -> "No artists in your library yet"
+                ArtistFilterMode.SAVED -> "No saved artists — follow an artist to save them here"
+            }
+            LibraryEmptyState(icon = R.drawable.ic_artist, text = emptyText)
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

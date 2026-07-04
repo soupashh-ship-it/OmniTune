@@ -75,12 +75,13 @@ private val navItems = listOf(
 fun GlassBottomDock(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
+    pureBlack: Boolean = false,
 ) {
     val selectedIndex = navItems.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
 
     OmniGlassSurface(
         shape = OmniShapes.Dock,
-        style = OmniGlassDefaults.NavigationBarDark,
+        style = OmniGlassDefaults.navigationBarStyle(isPureBlack = pureBlack),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = OmniChrome.BottomDockHorizontalPadding)

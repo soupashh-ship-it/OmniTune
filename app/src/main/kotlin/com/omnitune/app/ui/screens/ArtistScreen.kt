@@ -26,6 +26,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,8 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.omnitune.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,13 +62,16 @@ fun ArtistScreen(
     onBack: () -> Unit = {},
     onPlaySong: (SongItem) -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
+    viewModel: ArtistDetailViewModel = hiltViewModel(),
 ) {
     var artistPage by remember { mutableStateOf<ArtistPage?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
 
     LaunchedEffect(artistId) {
         isLoading = true
+        viewModel.loadArtist(artistId)
         YouTube.artist(artistId).fold(
             onSuccess = { page -> artistPage = page },
             onFailure = { e -> error = e.message }
@@ -81,6 +87,19 @@ fun ArtistScreen(
                     Icon(
                         painter = painterResource(com.omnitune.app.R.drawable.ic_arrow_back),
                         contentDescription = "Back",
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = { viewModel.toggleBookmark(artistId) }) {
+                    Icon(
+                        painter = painterResource(
+                            if (isBookmarked) R.drawable.ic_favorite
+                            else R.drawable.ic_favorite_border
+                        ),
+                        contentDescription = if (isBookmarked) "Unfollow artist" else "Follow artist",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },

@@ -20,12 +20,8 @@ interface EventDao {
     @Query("DELETE FROM event")
     fun clearListenHistory()
 
-    @Query("DELETE FROM event WHERE songId = :songId")
-    fun deleteEventBySongId(songId: String)
-
     @Transaction
     fun insertRecentEvent(songId: String, playTime: Long) {
-        deleteEventBySongId(songId)
         insert(Event(songId = songId, timestamp = LocalDateTime.now(), playTime = playTime))
     }
 

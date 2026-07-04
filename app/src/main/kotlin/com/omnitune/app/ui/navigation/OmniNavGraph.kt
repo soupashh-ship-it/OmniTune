@@ -85,6 +85,8 @@ import com.omnitune.app.ui.shell.GlassBottomDock
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.constants.PureBlackKey
+import com.omnitune.app.utils.rememberPreference
 import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -172,6 +174,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         animationSpec = if (isPlayerRoute) androidx.compose.animation.core.snap() else OmniMotion.gentleSpring(),
         label = "shell_bottom_padding",
     )
+
+    val pureBlack by rememberPreference(PureBlackKey, false)
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -448,13 +452,13 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     exit = OmniMotion.miniPlayerExit(),
                 ) {
                     MiniPlayer(
-                        pureBlack = false,
+                        pureBlack = pureBlack,
                         playerConnection = localPlayerConnection,
                         onClick = { if (localPlayerConnection != null) navController.navigate("player") }
                     )
                 }
             }
-            if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } })
+            if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }, pureBlack = pureBlack)
         }
     }
 }

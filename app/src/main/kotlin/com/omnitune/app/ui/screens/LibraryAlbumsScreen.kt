@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,13 +53,22 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 
+private enum class AlbumFilterMode { ALL, SAVED }
+
 @Composable
 fun LibraryAlbumsScreen(
     onBack: () -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val albums by viewModel.libraryAlbums.collectAsState()
+    val allAlbums by viewModel.libraryAlbums.collectAsState()
+    val savedAlbums by viewModel.savedAlbums.collectAsState()
+    var filterMode by remember { mutableStateOf(AlbumFilterMode.ALL) }
+
+    val albums = when (filterMode) {
+        AlbumFilterMode.ALL -> allAlbums
+        AlbumFilterMode.SAVED -> savedAlbums
+    }
 
     Column(
         modifier = Modifier
@@ -72,8 +86,37 @@ fun LibraryAlbumsScreen(
             onBack = onBack,
         )
 
+        // All / Saved toggle
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = OmniSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        ) {
+            FilterChip(
+                selected = filterMode == AlbumFilterMode.ALL,
+                onClick = { filterMode = AlbumFilterMode.ALL },
+                label = { Text("All (${allAlbums.size})") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = OmniColors.OmniAccentSecondary.copy(alpha = 0.2f),
+                    selectedLabelColor = OmniColors.OmniAccentSecondary,
+                ),
+            )
+            FilterChip(
+                selected = filterMode == AlbumFilterMode.SAVED,
+                onClick = { filterMode = AlbumFilterMode.SAVED },
+                label = { Text("Saved (${savedAlbums.size})") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = OmniColors.Hot.copy(alpha = 0.2f),
+                    selectedLabelColor = OmniColors.Hot,
+                ),
+            )
+        }
+
         if (albums.isEmpty()) {
-            LibraryEmptyState(icon = R.drawable.ic_album, text = "No albums in your library yet")
+            val emptyText = when (filterMode) {
+                AlbumFilterMode.ALL -> "No albums in your library yet"
+                AlbumFilterMode.SAVED -> "No saved albums — like an album to save it here"
+            }
+            LibraryEmptyState(icon = R.drawable.ic_album, text = emptyText)
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
