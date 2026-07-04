@@ -73,6 +73,9 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
+import com.omnitune.app.ui.component.shimmer.ShimmerHost
+import com.omnitune.app.ui.component.shimmer.ShimmerHeroBanner
+import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
@@ -164,10 +167,10 @@ fun HomeDiscoveryRoute(
                     items = uiState.quickPicks,
                     isLoading = uiState.isLoading,
                     onPlayAll = {
-                        if (localSongs.isNotEmpty()) {
-                            onPlaySongs(localSongs)
-                        } else if (providerSongs.isNotEmpty()) {
+                        if (providerSongs.isNotEmpty()) {
                             onPlayProviderSongs(providerSongs)
+                        } else if (localSongs.isNotEmpty()) {
+                            onPlaySongs(localSongs)
                         }
                     },
                     onPlaySong = onPlaySong,
@@ -532,11 +535,8 @@ private fun HeroCard(
 
 @Composable
 private fun HeroSkeleton() {
-    StaticArtworkPlaceholder(
-        modifier = Modifier
-            .width(286.dp)
-            .aspectRatio(1f)
-            .clip(OmniShapes.ArtworkLarge),
+    ShimmerHeroBanner(
+        modifier = Modifier.width(286.dp),
     )
 }
 
@@ -1023,22 +1023,7 @@ private fun StartExploringRow(onClick: () -> Unit) {
 
 @Composable
 private fun ShelfSkeletonRow() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .clip(OmniShapes.Small)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.54f))
-            .padding(horizontal = OmniSpacing.compact),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        StaticArtworkPlaceholder(modifier = Modifier.size(52.dp).clip(OmniShapes.ArtworkSmall))
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
-        Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-            Box(modifier = Modifier.width(160.dp).height(12.dp).clip(OmniShapes.Pill).background(OmniColors.OmniGlassStrong))
-            Box(modifier = Modifier.width(108.dp).height(10.dp).clip(OmniShapes.Pill).background(OmniColors.OmniGlassMedium))
-        }
-    }
+    ShimmerTrackRow()
 }
 
 @Composable

@@ -15,6 +15,7 @@ import com.omnitune.app.R
 import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.ui.screens.SettingsViewModel
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.utils.rememberPreference
 
 @Composable
 fun StorageSettings(
@@ -22,10 +23,14 @@ fun StorageSettings(
 ) {
     val context = LocalContext.current
     var showClearCacheDialog by remember { mutableStateOf(false) }
+    var smartTrimmer by rememberPreference(SmartTrimmerKey, true)
 
     if (showClearCacheDialog) {
         AlertDialog(
             onDismissRequest = { showClearCacheDialog = false },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
             title = { Text("Clear cache?", fontWeight = FontWeight.Bold) },
             text = { Text("This clears stream cache, image cache, and temporary resolver cache. It does NOT delete completed downloads.") },
             confirmButton = {
@@ -38,35 +43,42 @@ fun StorageSettings(
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) { Text("Cancel") }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
         )
     }
 
-    SettingsCategoryLabel("Cache")
-    TogglePreferenceRow(
-        label = "Smart cache trimmer",
-        description = "Automatically clear old cache",
-        key = SmartTrimmerKey,
-        defaultValue = true,
-    )
+    OmniPreferenceCard(title = "Cache management") {
+        OmniSwitchPreference(
+            title = "Smart cache trimmer",
+            description = "Automatically clear old cache",
+            iconRes = R.drawable.ic_download,
+            accent = OmniColors.OmniAccentSecondary,
+            checked = smartTrimmer,
+            onCheckedChange = { smartTrimmer = it },
+        )
+        OmniPreferenceEntry(
+            title = "Clear cache",
+            description = "Free up space used by temporary files",
+            iconRes = R.drawable.ic_settings,
+            accent = OmniColors.Warning,
+            onClick = { showClearCacheDialog = true },
+        )
+    }
 
-    SettingsInfoBlock(
-        title = "Downloads are managed by the offline library",
-        body = "This section does not change completed-download playback or storage paths. Completed downloads remain playable from Downloads when the existing download state marks them ready.",
-        accent = OmniColors.Downloaded,
-    )
-    SettingsInfoBlock(
-        title = "Current cache limits",
-        body = "Image cache: 128 MB max\nSong cache: 2 GB max",
-        accent = OmniColors.OmniAccentMuted,
-    )
-    SettingsActionRow(
-        iconRes = R.drawable.ic_settings,
-        label = "Clear cache",
-        description = "Free up space used by temporary files",
-        accent = OmniColors.Warning,
-        onClick = { showClearCacheDialog = true },
-    )
+    OmniPreferenceCard(title = "Downloads") {
+        OmniPreferenceEntry(
+            title = "Downloads are managed by the offline library",
+            description = "Completed downloads remain playable from Downloads when the download state marks them ready.",
+            iconRes = R.drawable.ic_download,
+            accent = OmniColors.Downloaded,
+        )
+    }
+
+    OmniPreferenceCard(title = "Limits") {
+        OmniPreferenceEntry(
+            title = "Current cache limits",
+            description = "Image cache: 128 MB max\nSong cache: 2 GB max",
+            iconRes = R.drawable.ic_download,
+            accent = OmniColors.OmniAccentMuted,
+        )
+    }
 }

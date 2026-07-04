@@ -40,6 +40,9 @@ fun ContentSettings(
     if (showClearSearchHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showClearSearchHistoryDialog = false },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
             title = { Text("Clear search history?", fontWeight = FontWeight.Bold) },
             text = { Text("This cannot be undone.") },
             confirmButton = {
@@ -52,15 +55,15 @@ fun ContentSettings(
             dismissButton = {
                 TextButton(onClick = { showClearSearchHistoryDialog = false }) { Text("Cancel") }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
         )
     }
 
     if (showClearListenHistoryDialog) {
         AlertDialog(
             onDismissRequest = { showClearListenHistoryDialog = false },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
             title = { Text("Clear listen history?", fontWeight = FontWeight.Bold) },
             text = { Text("This cannot be undone.") },
             confirmButton = {
@@ -73,19 +76,17 @@ fun ContentSettings(
             dismissButton = {
                 TextButton(onClick = { showClearListenHistoryDialog = false }) { Text("Cancel") }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
         )
     }
 
     if (showQuickPicksDialog) {
         AlertDialog(
             onDismissRequest = { showQuickPicksDialog = false },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
             title = { Text("Quick Picks mode", fontWeight = FontWeight.Bold) },
-            text = {
-                Text("Choose how Quick Picks are generated on the Home screen.")
-            },
+            text = { Text("Choose how Quick Picks are generated on the Home screen.") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.updatePreference(context, QuickPicksKey, QuickPicks.QUICK_PICKS.name)
@@ -98,37 +99,36 @@ fun ContentSettings(
                     showQuickPicksDialog = false
                 }) { Text("Related to last listen") }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
         )
     }
 
-    SettingsCategoryLabel("Discovery")
-    SettingsActionRow(
-        iconRes = R.drawable.ic_insights,
-        label = "Quick Picks mode",
-        description = when (quickPicksMode) {
-            QuickPicks.QUICK_PICKS -> "Related songs from your listening"
-            QuickPicks.LAST_LISTEN -> "Songs related to your last listen"
-        },
-        accent = OmniColors.OmniAccentSecondary,
-        onClick = { showQuickPicksDialog = true },
-    )
+    OmniPreferenceCard(title = "Discovery") {
+        OmniPreferenceEntry(
+            title = "Quick Picks mode",
+            description = when (quickPicksMode) {
+                QuickPicks.QUICK_PICKS -> "Related songs from your listening"
+                QuickPicks.LAST_LISTEN -> "Songs related to your last listen"
+            },
+            iconRes = R.drawable.ic_insights,
+            accent = OmniColors.OmniAccentSecondary,
+            onClick = { showQuickPicksDialog = true },
+        )
+    }
 
-    SettingsCategoryLabel("History")
-    SettingsActionRow(
-        iconRes = R.drawable.ic_history,
-        label = "Clear search history",
-        description = "Remove all past searches",
-        accent = OmniColors.Warning,
-        onClick = { showClearSearchHistoryDialog = true },
-    )
-    SettingsActionRow(
-        iconRes = R.drawable.ic_history,
-        label = "Clear listen history",
-        description = "Remove all past listens",
-        accent = OmniColors.Warning,
-        onClick = { showClearListenHistoryDialog = true },
-    )
+    OmniPreferenceCard(title = "History") {
+        OmniPreferenceEntry(
+            title = "Clear search history",
+            description = "Remove all past searches",
+            iconRes = R.drawable.ic_history,
+            accent = OmniColors.Warning,
+            onClick = { showClearSearchHistoryDialog = true },
+        )
+        OmniPreferenceEntry(
+            title = "Clear listen history",
+            description = "Remove all past listens",
+            iconRes = R.drawable.ic_history,
+            accent = OmniColors.Warning,
+            onClick = { showClearListenHistoryDialog = true },
+        )
+    }
 }

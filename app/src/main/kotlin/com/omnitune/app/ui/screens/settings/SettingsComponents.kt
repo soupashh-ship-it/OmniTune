@@ -8,12 +8,17 @@ import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +31,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -60,361 +72,8 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.utils.rememberPreference
 
-@Composable
-fun SettingsHeader(onBack: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(top = OmniSpacing.small),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(OmniShapes.Pill),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_arrow_back),
-                    contentDescription = "Back",
-                    tint = OmniColors.TextPrimary,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = OmniColors.TextPrimary,
-                )
-                Text(
-                    text = "OmniTune preferences",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OmniColors.TextSecondary,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(OmniSpacing.small))
-        SettingsStatusPill(
-            label = "OmniTune",
-            value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-        )
-    }
-}
 
 
-@Composable
-fun SettingsQuickSummary(
-    onUpdates: () -> Unit,
-    onDiagnostics: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-    ) {
-        SettingsMiniCard(
-            label = "Updates",
-            value = "GitHub release check",
-            iconRes = R.drawable.ic_download,
-            accent = OmniColors.OmniAccentSecondary,
-            onClick = onUpdates,
-        )
-        Divider()
-        SettingsMiniCard(
-            label = "Diagnostics",
-            value = "Share report",
-            iconRes = R.drawable.ic_share,
-            accent = OmniColors.Hot,
-            onClick = onDiagnostics,
-        )
-    }
-}
-
-
-@Composable
-fun SettingsMiniCard(
-    label: String,
-    value: String,
-    iconRes: Int,
-    accent: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 64.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = androidx.compose.material3.ripple(
-                    bounded = true,
-                    color = Color.White.copy(alpha = 0.08f),
-                ),
-                onClick = onClick,
-            )
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsIconBadge(iconRes = iconRes, accent = accent, size = 34.dp)
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        SettingsChevron(open = false, tint = OmniColors.TextTertiary)
-    }
-}
-
-
-@Composable
-fun SettingsSectionCard(
-    section: SettingsSection,
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
-    onNavigateToEqualizer: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = 68.dp)
-                .clip(OmniShapes.Small)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = androidx.compose.material3.ripple(
-                        bounded = true,
-                        color = Color.White.copy(alpha = 0.08f),
-                    ),
-                    onClick = onToggle,
-                )
-                .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SettingsIconBadge(iconRes = section.iconRes, accent = section.accent, size = 36.dp)
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = section.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OmniColors.TextPrimary,
-                )
-                Text(
-                    text = section.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OmniColors.TextTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            SettingsChevron(open = isExpanded, tint = if (isExpanded) section.accent else OmniColors.TextTertiary)
-        }
-
-        if (isExpanded) {
-            Column(
-                modifier = Modifier
-                    .padding(top = OmniSpacing.micro, bottom = OmniSpacing.small)
-                    .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
-                verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
-            ) {
-                when (section) {
-                    SettingsSection.APPEARANCE -> AppearanceSettings()
-                    SettingsSection.PLAYBACK -> PlaybackSettings(onNavigateToEqualizer)
-                    SettingsSection.STORAGE -> StorageSettings()
-                    SettingsSection.NOTIFICATIONS -> MediaControlsHelp()
-                    SettingsSection.UPDATES -> UpdatesSettings()
-                    SettingsSection.DIAGNOSTICS -> DiagnosticsSettings()
-                    SettingsSection.CONTENT -> ContentSettings()
-                    SettingsSection.LYRICS -> LyricsSettings()
-                    SettingsSection.SCROBBLING -> ScrobblingSettings()
-                    SettingsSection.ABOUT -> AboutSettings()
-                }
-                Spacer(modifier = Modifier.height(OmniSpacing.compact))
-            }
-        } else {
-            Divider()
-        }
-    }
-}
-
-
-@Composable
-fun SettingsInfoBlock(
-    title: String,
-    body: String,
-    accent: Color,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.OmniGlassSubtle)
-            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Medium)
-            .padding(OmniSpacing.medium),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = accent,
-        )
-        Spacer(modifier = Modifier.height(OmniSpacing.micro))
-        Text(
-            text = body,
-            style = MaterialTheme.typography.bodySmall,
-            color = OmniColors.TextSecondary,
-        )
-    }
-}
-
-
-@Composable
-fun SettingsStatusPill(
-    label: String,
-    value: String,
-) {
-    Row(
-        modifier = Modifier
-            .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet)
-            .border(BorderStroke(1.dp, OmniColors.SurfaceHairline), OmniShapes.Pill)
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextSecondary,
-        )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = OmniColors.OmniAccentSecondary,
-        )
-    }
-}
-
-
-@Composable
-fun SettingsIconBadge(
-    iconRes: Int,
-    accent: Color,
-    size: androidx.compose.ui.unit.Dp = 44.dp,
-) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(OmniShapes.Small),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = accent,
-            modifier = Modifier.size(size * 0.46f),
-        )
-    }
-}
-
-
-@Composable
-fun SettingsChevron(
-    open: Boolean,
-    tint: Color,
-) {
-    Icon(
-        painter = painterResource(R.drawable.ic_arrow_back),
-        contentDescription = if (open) "Collapse" else "Open",
-        tint = tint,
-        modifier = Modifier
-            .size(18.dp)
-            .graphicsLayer { rotationZ = if (open) 90f else 180f },
-    )
-}
-
-
-@Composable
-fun SettingsCategoryLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = OmniColors.OmniAccentSecondary,
-        modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
-    )
-}
-
-
-@Composable
-fun SettingsActionRow(
-    iconRes: Int,
-    label: String,
-    description: String,
-    accent: Color,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 64.dp)
-            .clip(OmniShapes.Medium)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = androidx.compose.material3.ripple(
-                    bounded = true,
-                    color = Color.White.copy(alpha = 0.08f),
-                ),
-                onClick = onClick,
-            )
-            .padding(OmniSpacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SettingsIconBadge(iconRes = iconRes, accent = accent, size = 38.dp)
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = OmniColors.TextPrimary,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextTertiary,
-            )
-        }
-        Icon(
-            painter = painterResource(R.drawable.ic_arrow_back),
-            contentDescription = "Open $label",
-            tint = OmniColors.TextTertiary,
-            modifier = Modifier
-                .size(18.dp)
-                .graphicsLayer { rotationZ = 180f },
-        )
-    }
-}
 
 
 @Composable
@@ -725,5 +384,259 @@ fun Enum<*>.displayName(): String {
         .replace("_", " ")
         .lowercase()
         .replaceFirstChar { it.uppercase() }
+}
+
+// ─── Velune-style preference components ──────────────────────────────
+
+@Composable
+fun OmniPreferenceIcon(
+    iconRes: Int,
+    accent: Color,
+    size: Dp = 42.dp,
+    iconSize: Dp = 22.dp,
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(accent.copy(alpha = 0.22f), accent.copy(alpha = 0.08f))
+                )
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(iconSize),
+        )
+    }
+}
+
+@Composable
+fun OmniPreferenceEntry(
+    title: String,
+    description: String? = null,
+    iconRes: Int? = null,
+    accent: Color = OmniColors.TextPrimary,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Small)
+            .then(
+                if (onClick != null)
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = androidx.compose.material3.ripple(
+                            bounded = true,
+                            color = Color.White.copy(alpha = 0.08f),
+                        ),
+                        onClick = onClick,
+                    )
+                else Modifier
+            )
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (iconRes != null) {
+            OmniPreferenceIcon(iconRes = iconRes, accent = accent)
+            Spacer(Modifier.width(12.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = OmniColors.TextPrimary,
+            )
+            if (description != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextTertiary,
+                )
+            }
+        }
+        trailing()
+    }
+}
+
+@Composable
+fun OmniSwitchPreference(
+    title: String,
+    description: String? = null,
+    iconRes: Int? = null,
+    accent: Color = OmniColors.TextPrimary,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    OmniPreferenceEntry(
+        title = title,
+        description = description,
+        iconRes = iconRes,
+        accent = accent,
+        onClick = { onCheckedChange(!checked) },
+        trailing = {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = OmniColors.OmniAccentPrimary,
+                    uncheckedThumbColor = OmniColors.TextTertiary,
+                    uncheckedTrackColor = OmniColors.OmniGlassMedium,
+                    uncheckedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                ),
+            )
+        },
+    )
+}
+
+@Composable
+fun <T : Enum<T>> OmniEnumPreference(
+    title: String,
+    description: String? = null,
+    iconRes: Int? = null,
+    accent: Color = OmniColors.TextPrimary,
+    selectedValue: T,
+    values: List<T>,
+    valueText: (T) -> String = { it.displayName() },
+    onValueSelected: (T) -> Unit,
+) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    OmniPreferenceEntry(
+        title = title,
+        description = description,
+        iconRes = iconRes,
+        accent = accent,
+        onClick = { showDialog = true },
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = valueText(selectedValue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OmniColors.OmniAccentSecondary,
+                )
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = null,
+                    tint = OmniColors.TextTertiary.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = 180f },
+                )
+            }
+        },
+    )
+
+    if (showDialog) {
+        EnumSelectionDialog(
+            title = title,
+            options = values,
+            current = selectedValue,
+            onDismiss = { showDialog = false },
+            onSelected = { selected ->
+                showDialog = false
+                onValueSelected(selected)
+            },
+        )
+    }
+}
+
+@Composable
+fun OmniPreferenceGroupTitle(
+    title: String,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = OmniColors.OmniAccentSecondary,
+        modifier = Modifier
+            .padding(top = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+fun OmniPreferenceCard(
+    title: String? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        title?.let {
+            OmniPreferenceGroupTitle(it)
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = OmniColors.SurfaceQuiet),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        ) {
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+// ─── Sub-screen scaffold ─────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsSubScreenScaffold(
+    title: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.Bold,
+                        color = OmniColors.TextPrimary,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = "Back",
+                            tint = OmniColors.TextPrimary,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = OmniColors.TextPrimary,
+                    navigationIconContentColor = OmniColors.TextPrimary,
+                ),
+            )
+        },
+        containerColor = OmniColors.OmniBackgroundBase,
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(padding)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            content()
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
 }
 

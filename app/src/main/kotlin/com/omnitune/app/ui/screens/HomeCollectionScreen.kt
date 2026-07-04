@@ -60,6 +60,7 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
+import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
 import com.omnitune.innertube.models.SongItem
 
 private const val COLLECTION_ARTWORK_SIZE = 544
@@ -530,39 +531,7 @@ private fun CollectionErrorCard(
 
 @Composable
 private fun CollectionSkeletonRow() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.36f))
-            .padding(horizontal = OmniSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(OmniShapes.ArtworkSmall)
-                .background(OmniColors.OmniGlassStrong),
-        )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
-        Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-            Box(
-                modifier = Modifier
-                    .width(164.dp)
-                    .height(12.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniGlassStrong),
-            )
-            Box(
-                modifier = Modifier
-                    .width(112.dp)
-                    .height(10.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniGlassMedium),
-            )
-        }
-    }
+    ShimmerTrackRow(artworkSize = 52.dp)
 }
 
 @Composable

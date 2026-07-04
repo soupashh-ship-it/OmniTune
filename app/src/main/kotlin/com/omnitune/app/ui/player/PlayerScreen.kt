@@ -114,18 +114,15 @@ fun PlayerScreen(
     val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsState(initial = REPEAT_MODE_OFF)
     val isSeeking = remember { mutableFloatStateOf(-1f) }
 
+    val gradientState = rememberPlayerGradient(
+        thumbnailUrl = mediaMetadata?.thumbnailUrl,
+        videoId = mediaMetadata?.id,
+    )
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.82f),
-                        OmniColors.OmniBackgroundElevated,
-                        OmniColors.OmniBackgroundBase,
-                    )
-                )
-            ),
+            .background(gradientState.backgroundBrush),
     ) {
         Box(
             modifier = Modifier
@@ -135,7 +132,7 @@ fun PlayerScreen(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            OmniColors.OmniAccentGlow.copy(alpha = 0.16f),
+                            gradientState.accentGlow,
                             Color.Transparent,
                         )
                     )
@@ -771,7 +768,7 @@ private fun PlayerActionsRow(
             onClick = { showEffectsDialog = true },
         )
         ActionButton(
-            icon = R.drawable.ic_sort,
+            icon = R.drawable.ic_lyrics,
             contentDescription = "Lyrics",
             onClick = { showLyricsSheet = true },
         )

@@ -79,9 +79,10 @@ import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.OmniGlassDefaults
+import com.omnitune.app.ui.theme.OmniGlassSurface
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniPressScaleBounce
-import com.omnitune.app.ui.theme.omniSoftBorder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -149,149 +150,151 @@ fun MiniPlayer(
     val autoSwipeThreshold = (600 / (1f + exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
     val bodyInteraction = remember { MutableInteractionSource() }
 
-    Box(
+    val miniGradient = rememberPlayerGradient(
+        thumbnailUrl = mediaMetadata?.thumbnailUrl,
+        videoId = mediaMetadata?.id,
+    )
+
+    OmniGlassSurface(
+        shape = OmniShapes.Dock,
+        style = OmniGlassDefaults.miniPlayerStyle(
+            isDark = true,
+            isPureBlack = pureBlack,
+        ),
         modifier = modifier
             .fillMaxWidth()
             .height(OmniChrome.MiniPlayerHeight)
+            .then(
+                if (miniGradient.isFromArtwork) {
+                    Modifier.background(
+                        miniGradient.dominantColor.copy(alpha = 0.06f),
+                        OmniShapes.Dock,
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-            .padding(horizontal = OmniSpacing.small)
-            .shadow(
-                elevation = 10.dp,
-                shape = OmniShapes.Dock,
-                ambientColor = Color.Black.copy(alpha = 0.30f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
-            )
-            .clip(OmniShapes.Dock)
-            .background(
-                Brush.verticalGradient(
-                    colors = if (pureBlack) {
-                        listOf(
-                            Color.Black.copy(alpha = 0.92f),
-                            Color.Black.copy(alpha = 0.96f),
-                        )
-                    } else {
-                        listOf(
-                            OmniColors.OmniGlassPlayer.copy(alpha = 0.88f),
-                            OmniColors.OmniBackgroundElevated.copy(alpha = 0.90f),
-                            OmniColors.OmniBackgroundBase.copy(alpha = 0.98f),
-                        )
-                    },
-                )
-            )
-            .pointerInput(playerConnection, canSkipNext, canSkipPrevious, layoutDirection) {
-                detectHorizontalDragGestures(
-                    onDragStart = {
-                        dragStartTime = System.currentTimeMillis()
-                        totalDragDistance = 0f
-                    },
-                    onDragCancel = {
-                        coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
-                    },
-                    onHorizontalDrag = { _, dragAmount ->
-                        val adjustedDrag = if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
-                        val canSwipe = (adjustedDrag < 0 && canSkipNext) || (adjustedDrag > 0 && canSkipPrevious)
-                        if (canSwipe) {
-                            totalDragDistance += kotlin.math.abs(adjustedDrag)
-                            coroutineScope.launch {
-                                offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDrag)
-                            }
-                        }
-                    },
-                    onDragEnd = {
-                        val pc = playerConnection ?: return@detectHorizontalDragGestures
-                        val dragDuration = System.currentTimeMillis() - dragStartTime
-                        val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
-                        val offset = offsetXAnimatable.value
-                        val shouldSkip = (
-                            kotlin.math.abs(offset) > 50f &&
-                                velocity > (swipeSensitivity * -8.25f + 8.5f)
-                            ) || kotlin.math.abs(offset) > autoSwipeThreshold
-
-                        if (shouldSkip) {
-                            if (offset > 0 && canSkipPrevious) {
-                                pc.seekToPrevious()
-                            } else if (offset < 0 && canSkipNext) {
-                                pc.seekToNext()
-                            }
-                        }
-                        coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
-                    },
-                )
-            },
+            .padding(horizontal = OmniSpacing.small),
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                .clip(OmniShapes.Dock)
-                .omniPressScale(bodyInteraction)
-                .clickable(
-                    interactionSource = bodyInteraction,
-                    indication = androidx.compose.material3.ripple(
-                        bounded = true,
-                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
-                    ),
-                    onClick = onClick,
-                )
-                .padding(horizontal = OmniSpacing.compact, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .pointerInput(playerConnection, canSkipNext, canSkipPrevious, layoutDirection) {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            dragStartTime = System.currentTimeMillis()
+                            totalDragDistance = 0f
+                        },
+                        onDragCancel = {
+                            coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            val adjustedDrag = if (layoutDirection == LayoutDirection.Rtl) -dragAmount else dragAmount
+                            val canSwipe = (adjustedDrag < 0 && canSkipNext) || (adjustedDrag > 0 && canSkipPrevious)
+                            if (canSwipe) {
+                                totalDragDistance += kotlin.math.abs(adjustedDrag)
+                                coroutineScope.launch {
+                                    offsetXAnimatable.snapTo(offsetXAnimatable.value + adjustedDrag)
+                                }
+                            }
+                        },
+                        onDragEnd = {
+                            val pc = playerConnection ?: return@detectHorizontalDragGestures
+                            val dragDuration = System.currentTimeMillis() - dragStartTime
+                            val velocity = if (dragDuration > 0) totalDragDistance / dragDuration else 0f
+                            val offset = offsetXAnimatable.value
+                            val shouldSkip = (
+                                kotlin.math.abs(offset) > 50f &&
+                                    velocity > (swipeSensitivity * -8.25f + 8.5f)
+                                ) || kotlin.math.abs(offset) > autoSwipeThreshold
+
+                            if (shouldSkip) {
+                                if (offset > 0 && canSkipPrevious) {
+                                    pc.seekToPrevious()
+                                } else if (offset < 0 && canSkipNext) {
+                                    pc.seekToNext()
+                                }
+                            }
+                            coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
+                        },
+                    )
+                },
         ) {
             Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .height(OmniChrome.MiniPlayerContentHeight)
-                    .padding(horizontal = OmniSpacing.micro),
+                    .fillMaxSize()
+                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                    .clip(OmniShapes.Dock)
+                    .omniPressScale(bodyInteraction)
+                    .clickable(
+                        interactionSource = bodyInteraction,
+                        indication = androidx.compose.material3.ripple(
+                            bounded = true,
+                            color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
+                        ),
+                        onClick = onClick,
+                    )
+                    .padding(horizontal = OmniSpacing.compact, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                MiniArtwork(mediaMetadata = mediaMetadata, isPlaying = isPlaying)
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                MiniMediaInfo(
-                    mediaMetadata = mediaMetadata,
-                    modifier = Modifier.weight(1f),
-                )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(OmniChrome.MiniPlayerContentHeight)
+                        .padding(horizontal = OmniSpacing.micro),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    MiniArtwork(mediaMetadata = mediaMetadata, isPlaying = isPlaying)
+                    Spacer(modifier = Modifier.width(OmniSpacing.small))
+                    MiniMediaInfo(
+                        mediaMetadata = mediaMetadata,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                playerConnection?.let { pc ->
+                    Spacer(modifier = Modifier.width(OmniSpacing.micro))
+                    if (canSkipPrevious) {
+                        MiniControlButton(
+                            icon = R.drawable.ic_skip_previous,
+                            contentDescription = "Previous",
+                            onClick = { pc.seekToPrevious() },
+                        )
+                    }
+                    MiniPlayPauseButton(
+                        isPlaying = isPlaying,
+                        isLoading = isLoading,
+                        playbackState = playbackState,
+                        onClick = {
+                            if (playbackState == Player.STATE_ENDED || !isPlaying) {
+                                pc.playOrResolveCurrent()
+                            } else {
+                                pc.pause()
+                            }
+                        },
+                    )
+                    if (canSkipNext) {
+                        MiniControlButton(
+                            icon = R.drawable.ic_skip_next,
+                            contentDescription = "Next",
+                            onClick = { pc.seekToNext() },
+                        )
+                    }
+                }
             }
 
-            playerConnection?.let { pc ->
-                Spacer(modifier = Modifier.width(OmniSpacing.micro))
-                if (canSkipPrevious) {
-                    MiniControlButton(
-                        icon = R.drawable.ic_skip_previous,
-                        contentDescription = "Previous",
-                        onClick = { pc.seekToPrevious() },
-                    )
-                }
-                MiniPlayPauseButton(
-                    isPlaying = isPlaying,
-                    isLoading = isLoading,
-                    playbackState = playbackState,
-                    onClick = {
-                        if (playbackState == Player.STATE_ENDED || !isPlaying) {
-                            pc.playOrResolveCurrent()
-                        } else {
-                            pc.pause()
-                        }
-                    },
-                )
-                if (canSkipNext) {
-                    MiniControlButton(
-                        icon = R.drawable.ic_skip_next,
-                        contentDescription = "Next",
-                        onClick = { pc.seekToNext() },
-                    )
-                }
-            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .align(Alignment.BottomCenter),
+                color = OmniColors.ActivePlayback,
+                trackColor = OmniColors.OmniGlassStrong.copy(alpha = 0.45f),
+                strokeCap = StrokeCap.Square,
+            )
         }
-
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .align(Alignment.BottomCenter),
-            color = OmniColors.ActivePlayback,
-            trackColor = OmniColors.OmniGlassStrong.copy(alpha = 0.45f),
-            strokeCap = StrokeCap.Square,
-        )
     }
 }
 

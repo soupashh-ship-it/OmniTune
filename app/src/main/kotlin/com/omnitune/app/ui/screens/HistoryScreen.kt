@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,9 +44,9 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.OmniChrome
-import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.screens.settings.OmniPreferenceCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -76,14 +75,7 @@ fun HistoryScreen(
 
         when {
             uiState.isLoading -> item(contentType = "loading") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    OmniTuneLoader(size = 42.dp)
-                }
+                ShimmerTrackList(rowCount = 5)
             }
 
             uiState.events.isEmpty() -> item(contentType = "empty") {
@@ -92,17 +84,16 @@ fun HistoryScreen(
 
             else -> groupedEvents.forEach { section ->
                 item(key = "header_${section.title}", contentType = "history-section") {
-                    OmniSectionHeader(title = section.title)
-                }
-                items(
-                    items = section.events,
-                    key = { event -> "history_${event.event.id}_${event.song.id}" },
-                    contentType = { "history-row" },
-                ) { event ->
-                    HistoryRow(
-                        event = event,
-                        onPlaySong = { onPlaySong(event.song) },
-                    )
+                    OmniPreferenceCard(title = section.title) {
+                        Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
+                            section.events.forEach { event ->
+                                HistoryRow(
+                                    event = event,
+                                    onPlaySong = { onPlaySong(event.song) },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

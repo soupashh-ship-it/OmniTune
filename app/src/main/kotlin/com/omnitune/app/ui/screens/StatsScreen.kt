@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,8 +37,8 @@ import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.OmniChrome
-import com.omnitune.app.ui.component.OmniSectionHeader
-import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
+import com.omnitune.app.ui.screens.settings.OmniPreferenceCard
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -69,14 +68,7 @@ fun StatsScreen(
 
         when {
             uiState.isLoading -> item(contentType = "loading") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    OmniTuneLoader(size = 42.dp)
-                }
+                ShimmerTrackList(rowCount = 5)
             }
 
             uiState.error != null -> item(contentType = "error") {
@@ -97,57 +89,63 @@ fun StatsScreen(
 
             else -> {
                 item(contentType = "summary") {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-                        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-                    ) {
-                        if (uiState.recentlyPlayedCount > 0) {
-                            StatChip(R.drawable.ic_history, "Recently played", uiState.recentlyPlayedCount.toString())
-                        }
-                        if (uiState.totalPlayed > 0) {
-                            StatChip(R.drawable.ic_play_arrow, "Plays", uiState.totalPlayed.toString())
-                        }
-                        if (uiState.playedThisWeek > 0) {
-                            StatChip(R.drawable.ic_calendar, "This week", uiState.playedThisWeek.toString())
-                        }
-                        if (uiState.minutesListened > 0) {
-                            StatChip(R.drawable.ic_history, "Minutes", uiState.minutesListened.toString())
-                        }
-                        if (uiState.likedCount > 0) {
-                            StatChip(R.drawable.ic_favorite, "Liked", uiState.likedCount.toString())
-                        }
-                        if (uiState.songCount > 0) {
-                            StatChip(R.drawable.ic_album, "Library songs", uiState.songCount.toString())
-                        }
-                        if (uiState.artistCount > 0) {
-                            StatChip(R.drawable.ic_artist, "Artists", uiState.artistCount.toString())
-                        }
-                        if (uiState.albumCount > 0) {
-                            StatChip(R.drawable.ic_album, "Albums", uiState.albumCount.toString())
+                    OmniPreferenceCard(title = "Overview") {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(OmniSpacing.small),
+                            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                        ) {
+                            if (uiState.recentlyPlayedCount > 0) {
+                                StatChip(R.drawable.ic_history, "Recently played", uiState.recentlyPlayedCount.toString())
+                            }
+                            if (uiState.totalPlayed > 0) {
+                                StatChip(R.drawable.ic_play_arrow, "Plays", uiState.totalPlayed.toString())
+                            }
+                            if (uiState.playedThisWeek > 0) {
+                                StatChip(R.drawable.ic_calendar, "This week", uiState.playedThisWeek.toString())
+                            }
+                            if (uiState.minutesListened > 0) {
+                                StatChip(R.drawable.ic_history, "Minutes", uiState.minutesListened.toString())
+                            }
+                            if (uiState.likedCount > 0) {
+                                StatChip(R.drawable.ic_favorite, "Liked", uiState.likedCount.toString())
+                            }
+                            if (uiState.songCount > 0) {
+                                StatChip(R.drawable.ic_album, "Library songs", uiState.songCount.toString())
+                            }
+                            if (uiState.artistCount > 0) {
+                                StatChip(R.drawable.ic_artist, "Artists", uiState.artistCount.toString())
+                            }
+                            if (uiState.albumCount > 0) {
+                                StatChip(R.drawable.ic_album, "Albums", uiState.albumCount.toString())
+                            }
                         }
                     }
                 }
 
                 if (uiState.topSongs.isNotEmpty()) {
-                    item(contentType = "section-title") { OmniSectionHeader(title = "Top songs") }
-                    items(
-                        items = uiState.topSongs,
-                        key = { (song, _) -> "top_song_${song.id}" },
-                        contentType = { "top-song" },
-                    ) { (song, plays) ->
-                        TopSongRow(song = song, plays = plays)
+                    item(contentType = "top-songs") {
+                        OmniPreferenceCard(title = "Top songs") {
+                            Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
+                                uiState.topSongs.forEach { (song, plays) ->
+                                    TopSongRow(song = song, plays = plays)
+                                }
+                            }
+                        }
                     }
                 }
 
                 if (uiState.topArtists.isNotEmpty()) {
-                    item(contentType = "section-title") { OmniSectionHeader(title = "Top artists") }
-                    items(
-                        items = uiState.topArtists,
-                        key = { (artist, _) -> "top_artist_$artist" },
-                        contentType = { "top-artist" },
-                    ) { (artist, plays) ->
-                        TopArtistRow(artist = artist, plays = plays)
+                    item(contentType = "top-artists") {
+                        OmniPreferenceCard(title = "Top artists") {
+                            Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
+                                uiState.topArtists.forEach { (artist, plays) ->
+                                    TopArtistRow(artist = artist, plays = plays)
+                                }
+                            }
+                        }
                     }
                 }
             }

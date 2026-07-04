@@ -65,7 +65,18 @@ import com.omnitune.app.ui.screens.Screens
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_DOWNLOADS
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
 import com.omnitune.app.ui.screens.search.SearchScreen
+import com.omnitune.app.ui.screens.settings.AboutSettings
+import com.omnitune.app.ui.screens.settings.AppearanceSettings
+import com.omnitune.app.ui.screens.settings.ContentSettings
+import com.omnitune.app.ui.screens.settings.DiagnosticsSettings
+import com.omnitune.app.ui.screens.settings.LyricsSettings
+import com.omnitune.app.ui.screens.settings.MediaControlsHelp
+import com.omnitune.app.ui.screens.settings.PlaybackSettings
+import com.omnitune.app.ui.screens.settings.ScrobblingSettings
 import com.omnitune.app.ui.screens.settings.SettingsScreen
+import com.omnitune.app.ui.screens.settings.SettingsSubScreenScaffold
+import com.omnitune.app.ui.screens.settings.StorageSettings
+import com.omnitune.app.ui.screens.settings.UpdatesSettings
 import com.omnitune.app.ui.screens.StatsScreen
 import com.omnitune.app.ui.shell.GlassBottomDock
 import com.omnitune.app.ui.component.OmniChrome
@@ -124,7 +135,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         .collectAsState(initial = null)
     var pendingSongQueue by remember { mutableStateOf<PendingSongQueue?>(null) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
-    val showBottomBar = isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings"
+    val showBottomBar = isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings" && !currentRoute.orEmpty().startsWith("settings/")
 
     LaunchedEffect(localPlayerConnection, pendingSongQueue) {
         val queueData = pendingSongQueue
@@ -366,7 +377,17 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             }
             composable("player") { PlayerScreen(playerConnection = localPlayerConnection, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
             composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
-            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) }
+            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }, onNavigateToCategory = { cat -> navController.navigate("settings/$cat") }) }
+            composable("settings/appearance") { SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { AppearanceSettings() } }
+            composable("settings/playback") { SettingsSubScreenScaffold(title = "Playback & Audio", onBack = { navController.popBackStack() }) { PlaybackSettings(onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) } }
+            composable("settings/content") { SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { ContentSettings() } }
+            composable("settings/storage") { SettingsSubScreenScaffold(title = "Storage", onBack = { navController.popBackStack() }) { StorageSettings() } }
+            composable("settings/lyrics") { SettingsSubScreenScaffold(title = "Lyrics", onBack = { navController.popBackStack() }) { LyricsSettings() } }
+            composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "Scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
+            composable("settings/updates") { SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { UpdatesSettings() } }
+            composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
+            composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }
+            composable("settings/notifications") { SettingsSubScreenScaffold(title = "Notifications", onBack = { navController.popBackStack() }) { MediaControlsHelp() } }
             composable(ROUTE_DOWNLOADS) {
                 DownloadsScreen(
                     onBack = { navController.popBackStack() },

@@ -1,36 +1,55 @@
 package com.omnitune.app.ui.screens.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.omnitune.app.R
 import com.omnitune.app.constants.EnableBetterLyricsKey
 import com.omnitune.app.constants.EnableKugouKey
 import com.omnitune.app.constants.EnableLrcLibKey
 import com.omnitune.app.constants.EnableSimpMusicLyricsKey
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.utils.rememberPreference
 
 @Composable
 fun LyricsSettings() {
-    SettingsCategoryLabel("Lyrics providers")
-    TogglePreferenceRow(
-        label = "LrcLib",
-        description = "Use the existing LrcLib provider",
-        key = EnableLrcLibKey,
-        defaultValue = true,
-    )
-    TogglePreferenceRow(
-        label = "KuGou",
-        description = "Use the existing KuGou provider",
-        key = EnableKugouKey,
-        defaultValue = true,
-    )
-    TogglePreferenceRow(
-        label = "Better Lyrics",
-        description = "Use the existing Better Lyrics provider",
-        key = EnableBetterLyricsKey,
-        defaultValue = true,
-    )
-    TogglePreferenceRow(
-        label = "SimpMusic",
-        description = "Use the existing SimpMusic provider",
-        key = EnableSimpMusicLyricsKey,
-        defaultValue = true,
-    )
+    var lrcLib by rememberPreference(EnableLrcLibKey, true)
+    var kugou by rememberPreference(EnableKugouKey, true)
+    var betterLyrics by rememberPreference(EnableBetterLyricsKey, true)
+    var simpMusic by rememberPreference(EnableSimpMusicLyricsKey, true)
+
+    OmniPreferenceCard(title = "Lyrics providers") {
+        OmniSwitchPreference(
+            title = "LrcLib",
+            description = "Use the existing LrcLib provider",
+            iconRes = R.drawable.ic_list,
+            accent = OmniColors.Hot,
+            checked = lrcLib,
+            onCheckedChange = { lrcLib = it },
+        )
+        OmniSwitchPreference(
+            title = "KuGou",
+            description = "Use the existing KuGou provider",
+            iconRes = R.drawable.ic_list,
+            accent = OmniColors.Hot,
+            checked = kugou,
+            onCheckedChange = { kugou = it },
+        )
+        OmniSwitchPreference(
+            title = "Better Lyrics",
+            description = "Use the existing Better Lyrics provider",
+            iconRes = R.drawable.ic_list,
+            accent = OmniColors.Hot,
+            checked = betterLyrics,
+            onCheckedChange = { betterLyrics = it },
+        )
+        OmniSwitchPreference(
+            title = "SimpMusic",
+            description = "Use the existing SimpMusic provider",
+            iconRes = R.drawable.ic_list,
+            accent = OmniColors.Hot,
+            checked = simpMusic,
+            onCheckedChange = { simpMusic = it },
+        )
+    }
 }

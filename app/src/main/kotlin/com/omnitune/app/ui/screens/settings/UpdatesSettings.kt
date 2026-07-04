@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.omnitune.app.R
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -42,11 +43,16 @@ fun UpdatesSettings(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
 
-    SettingsInfoBlock(
-        title = "Installed version",
-        body = viewModel.currentVersionLabel,
-        accent = OmniColors.OmniAccentSecondary,
-    )
+    OmniPreferenceCard(title = "Version") {
+        OmniPreferenceEntry(
+            title = "Installed version",
+            description = viewModel.currentVersionLabel,
+            iconRes = R.drawable.ic_download,
+            accent = OmniColors.OmniAccentSecondary,
+        )
+    }
+
+    Spacer(Modifier.height(8.dp))
 
     when (val current = state) {
         UpdateState.Idle -> {
@@ -55,6 +61,7 @@ fun UpdatesSettings(
                 body = "Uses the existing GitHub latest-release check. No release status is assumed until you run it.",
                 accent = OmniColors.OmniAccentSecondary,
             )
+            Spacer(Modifier.height(8.dp))
             SettingsActionButton("Check for updates") {
                 viewModel.checkForUpdates()
             }
@@ -73,6 +80,7 @@ fun UpdatesSettings(
                 body = "The update checker did not find a newer public release.",
                 accent = OmniColors.Success,
             )
+            Spacer(Modifier.height(8.dp))
             SettingsActionButton("Check again") {
                 viewModel.checkForUpdates()
             }
@@ -82,6 +90,7 @@ fun UpdatesSettings(
             if (current.requireMeteredConfirmation) {
                 UpdateMessage("Mobile data connection detected. Tap again to confirm download.")
             }
+            Spacer(Modifier.height(8.dp))
             SettingsActionButton(
                 if (current.requireMeteredConfirmation) "Download on mobile data" else "Download update"
             ) {
@@ -104,6 +113,7 @@ fun UpdatesSettings(
                 body = "Package: ${current.update.packageName}, code ${current.update.versionCode}",
                 accent = OmniColors.Success,
             )
+            Spacer(Modifier.height(8.dp))
             SettingsActionButton("Install now") {
                 runCatching {
                     if (ApkInstallLauncher.canRequestPackageInstalls(context)) {
@@ -125,6 +135,7 @@ fun UpdatesSettings(
                 body = current.message,
                 accent = OmniColors.Error,
             )
+            Spacer(Modifier.height(8.dp))
             SettingsActionButton("Try again") {
                 viewModel.checkForUpdates()
             }
@@ -148,7 +159,7 @@ fun UpdateDetails(state: UpdateState.UpdateAvailable) {
             color = OmniColors.TextSecondary,
             maxLines = 6,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
         )
     }
 }
@@ -164,6 +175,7 @@ fun UpdateStateCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 12.dp)
             .clip(OmniShapes.Medium)
             .background(OmniColors.OmniGlassMedium)
             .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), OmniShapes.Medium)
@@ -218,7 +230,7 @@ fun UpdateMessage(message: String) {
         text = message,
         style = MaterialTheme.typography.bodySmall,
         color = OmniColors.TextSecondary,
-        modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.micro),
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
     )
 }
 
@@ -227,4 +239,3 @@ private fun formatBytes(bytes: Long): String {
     val mb = bytes / (1024.0 * 1024.0)
     return "%.1f MB".format(mb)
 }
-
