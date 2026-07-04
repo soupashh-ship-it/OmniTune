@@ -213,17 +213,31 @@ fun SearchErrorState(
     status: SearchStatus,
     onRetry: () -> Unit,
 ) {
-    val title = when (status) {
-        SearchStatus.NetworkError -> "Search needs a connection"
-        SearchStatus.ParserChanged -> "Search could not read results"
-        else -> "Search failed"
+    // Parse the message to detect specific error types for better UI guidance
+    val (title, actionLabel) = when {
+        message.contains("403", ignoreCase = true) ||
+            message.contains("blocked", ignoreCase = true) ||
+            message.contains("geo-restriction", ignoreCase = true) ->
+            "YouTube blocked this search" to "Try again"
+        message.contains("404", ignoreCase = true) ||
+            message.contains("not found", ignoreCase = true) ->
+            "Content not available" to "Search again"
+        message.contains("429", ignoreCase = true) ||
+            message.contains("rate limit", ignoreCase = true) ||
+            message.contains("too many requests", ignoreCase = true) ->
+            "Too many requests" to "Retry after a moment"
+        message.contains("timeout", ignoreCase = true) ||
+            message.contains("timed out", ignoreCase = true) ->
+            "Request timed out" to "Retry"
+        status == SearchStatus.ParserChanged -> "Search could not read results" to "Retry"
+        else -> "Search needs a connection" to "Retry when online"
     }
 
     SearchMessageCard(
         icon = R.drawable.ic_search,
         title = title,
         message = message.ifBlank { "Try again in a moment." },
-        actionLabel = if (status == SearchStatus.NetworkError) "Retry when online" else "Retry",
+        actionLabel = actionLabel,
         onAction = onRetry,
     )
 }

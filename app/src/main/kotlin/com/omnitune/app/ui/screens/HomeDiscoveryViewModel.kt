@@ -21,6 +21,7 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.db.entities.SongSkipEntity
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.ui.utils.resize
+import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import com.omnitune.innertube.YouTube
@@ -64,6 +65,7 @@ data class HomeDiscoveryUiState(
     val isLoading: Boolean = true,
     val isHydratingQuickPicks: Boolean = false,
     val isProviderLoading: Boolean = true,
+    val providerError: String? = null,
 )
 
 private const val HOME_THUMBNAIL_WORKERS = 2
@@ -470,9 +472,17 @@ class HomeDiscoveryViewModel @Inject constructor(
     private fun loadProviderFeed() {
         viewModelScope.launch {
             isProviderLoading.value = true
-            providerFeed.value = runCatching { homeFeedRepository.loadProviderFeed() }
-                .onFailure(::reportException)
-                .getOrDefault(HomeProviderFeed())
+            val result = runCatching { homeFeedRepository.loadProviderFeed() }
+            result.onSuccess { feed ->
+                providerFeed.value = feed
+                // Clear error on success, even with partial data
+                _uiState.update { it.copy(providerError = null) }
+            }.onFailure { error ->
+                reportException(error)
+                val pe = classifyProviderError(error)
+                providerFeed.value = HomeProviderFeed()
+                _uiState.update { it.copy(providerError = pe.message) }
+            }
             isProviderLoading.value = false
         }
     }

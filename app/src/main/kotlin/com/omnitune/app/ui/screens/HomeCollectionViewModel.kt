@@ -10,6 +10,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.ui.utils.resize
+import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.innertube.YouTube
@@ -134,10 +135,11 @@ class HomeCollectionViewModel @Inject constructor(
                 }
                 .onFailure { throwable ->
                     reportException(throwable)
+                    val pe = classifyProviderError(throwable)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = "Couldn't load songs. Check your connection and try again.",
+                            error = pe.message,
                         )
                     }
                 }

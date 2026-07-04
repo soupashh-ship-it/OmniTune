@@ -19,9 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.R
 import com.omnitune.app.constants.DiscordActivityNameKey
@@ -110,6 +117,14 @@ fun DiscordSettingsScreen(
     // Interval
     var intervalValue by rememberPreference(DiscordPresenceIntervalValueKey, 30)
     var intervalUnit by rememberPreference(DiscordPresenceIntervalUnitKey, "S")
+
+    // Dialog state
+    var showActivityNameDialog by remember { mutableStateOf(false) }
+    var showActivityTypeDialog by remember { mutableStateOf(false) }
+    var showStatusDialog by remember { mutableStateOf(false) }
+    var showLargeImageDialog by remember { mutableStateOf(false) }
+    var showLargeTextDialog by remember { mutableStateOf(false) }
+    var showSmallImageDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -210,27 +225,21 @@ fun DiscordSettingsScreen(
                 description = activityName.ifBlank { "OmniTune" },
                 iconRes = R.drawable.ic_play_arrow,
                 accent = OmniColors.OmniAccentSecondary,
-                onClick = {
-                    // Would open a text input dialog
-                },
+                onClick = { showActivityNameDialog = true },
             )
             OmniPreferenceEntry(
                 title = "Activity type",
                 description = activityType.lowercase().replaceFirstChar { it.uppercase() },
                 iconRes = R.drawable.ic_play_arrow,
                 accent = OmniColors.OmniAccentSecondary,
-                onClick = {
-                    // Would open enum selection dialog
-                },
+                onClick = { showActivityTypeDialog = true },
             )
             OmniPreferenceEntry(
                 title = "Status",
                 description = presenceStatus.lowercase().replaceFirstChar { it.uppercase() },
                 iconRes = R.drawable.ic_info,
                 accent = OmniColors.OmniAccentSecondary,
-                onClick = {
-                    // Would open status selection dialog
-                },
+                onClick = { showStatusDialog = true },
             )
         }
 
@@ -243,18 +252,21 @@ fun DiscordSettingsScreen(
                 description = largeImageType.replaceFirstChar { it.uppercase() },
                 iconRes = R.drawable.ic_album,
                 accent = OmniColors.OmniAccentPrimary,
+                onClick = { showLargeImageDialog = true },
             )
             OmniPreferenceEntry(
                 title = "Large text",
                 description = largeTextSource.replaceFirstChar { it.uppercase() },
                 iconRes = R.drawable.ic_artist,
                 accent = OmniColors.TextSecondary,
+                onClick = { showLargeTextDialog = true },
             )
             OmniPreferenceEntry(
                 title = "Small image",
                 description = smallImageType.replaceFirstChar { it.uppercase() },
                 iconRes = R.drawable.ic_album,
                 accent = OmniColors.OmniAccentPrimary,
+                onClick = { showSmallImageDialog = true },
             )
         }
 
@@ -317,4 +329,198 @@ fun DiscordSettingsScreen(
 
         Spacer(Modifier.height(32.dp))
     }
+
+    // ── Dialogs ──────────────────────────────────────────────────────
+
+    if (showActivityNameDialog) {
+        TextInputDialog(
+            title = "Activity name",
+            currentValue = activityName,
+            placeholder = "OmniTune",
+            onDismiss = { showActivityNameDialog = false },
+            onConfirm = { newName ->
+                activityName = newName
+                showActivityNameDialog = false
+            },
+        )
+    }
+
+    if (showActivityTypeDialog) {
+        EnumSelectionDialog(
+            title = "Activity type",
+            options = DiscordActivityType.values().toList(),
+            current = DiscordActivityType.valueOf(activityType),
+            onDismiss = { showActivityTypeDialog = false },
+            onSelected = { selected ->
+                activityType = selected.name
+                showActivityTypeDialog = false
+            },
+        )
+    }
+
+    if (showStatusDialog) {
+        EnumSelectionDialog(
+            title = "Status",
+            options = DiscordStatus.values().toList(),
+            current = DiscordStatus.valueOf(presenceStatus),
+            onDismiss = { showStatusDialog = false },
+            onSelected = { selected ->
+                presenceStatus = selected.name
+                showStatusDialog = false
+            },
+        )
+    }
+
+    if (showLargeImageDialog) {
+        EnumSelectionDialog(
+            title = "Large image",
+            options = DiscordImageType.values().toList(),
+            current = DiscordImageType.fromKey(largeImageType),
+            onDismiss = { showLargeImageDialog = false },
+            onSelected = { selected ->
+                largeImageType = selected.key
+                showLargeImageDialog = false
+            },
+        )
+    }
+
+    if (showLargeTextDialog) {
+        EnumSelectionDialog(
+            title = "Large text",
+            options = DiscordTextSource.values().toList(),
+            current = DiscordTextSource.fromKey(largeTextSource),
+            onDismiss = { showLargeTextDialog = false },
+            onSelected = { selected ->
+                largeTextSource = selected.key
+                showLargeTextDialog = false
+            },
+        )
+    }
+
+    if (showSmallImageDialog) {
+        EnumSelectionDialog(
+            title = "Small image",
+            options = DiscordSmallImageType.values().toList(),
+            current = DiscordSmallImageType.fromKey(smallImageType),
+            onDismiss = { showSmallImageDialog = false },
+            onSelected = { selected ->
+                smallImageType = selected.key
+                showSmallImageDialog = false
+            },
+        )
+    }
+}
+
+// ── Supporting types ─────────────────────────────────────────────────
+
+private enum class DiscordActivityType {
+    PLAYING,
+    STREAMING,
+    LISTENING,
+    WATCHING,
+    COMPETING,
+}
+
+private enum class DiscordStatus {
+    ONLINE,
+    IDLE,
+    DND,
+    INVISIBLE,
+}
+
+private enum class DiscordImageType(val key: String) {
+    Thumbnail("thumbnail"),
+    Artist("artist"),
+    AppIcon("appicon"),
+    Custom("custom"),
+    None("none"),
+    ;
+
+    companion object {
+        fun fromKey(key: String): DiscordImageType =
+            entries.find { it.key == key } ?: Thumbnail
+    }
+}
+
+/** Values for [DiscordLargeTextSourceKey] */
+private enum class DiscordTextSource(val key: String) {
+    Song("song"),
+    Artist("artist"),
+    Album("album"),
+    Custom("custom"),
+    None("none"),
+    ;
+
+    companion object {
+        fun fromKey(key: String): DiscordTextSource =
+            entries.find { it.key == key } ?: Song
+    }
+}
+
+/** Values for [DiscordSmallImageTypeKey] */
+private enum class DiscordSmallImageType(val key: String) {
+    None("none"),
+    Thumbnail("thumbnail"),
+    Artist("artist"),
+    AppIcon("appicon"),
+    Custom("custom"),
+    ;
+
+    companion object {
+        fun fromKey(key: String): DiscordSmallImageType =
+            entries.find { it.key == key } ?: None
+    }
+}
+
+// ── Reusable dialog composables ───────────────────────────────────────
+
+@Composable
+private fun TextInputDialog(
+    title: String,
+    currentValue: String = "",
+    placeholder: String = "",
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var text by remember(currentValue) { mutableStateOf(currentValue) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = OmniColors.OmniBackgroundElevated,
+        titleContentColor = OmniColors.TextPrimary,
+        textContentColor = OmniColors.TextSecondary,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = {
+                    if (placeholder.isNotBlank()) {
+                        Text(placeholder, color = OmniColors.TextTertiary)
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onConfirm(text.trim()) }),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = OmniColors.TextPrimary,
+                    unfocusedTextColor = OmniColors.TextPrimary,
+                    cursorColor = OmniColors.OmniAccentSecondary,
+                    focusedBorderColor = OmniColors.OmniAccentSecondary,
+                    unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text.trim()) }) {
+                Text("Save", fontWeight = FontWeight.Bold, color = OmniColors.OmniAccentSecondary)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = OmniColors.TextSecondary)
+            }
+        },
+    )
 }

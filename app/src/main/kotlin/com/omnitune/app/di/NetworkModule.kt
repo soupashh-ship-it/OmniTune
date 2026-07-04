@@ -21,6 +21,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    @Volatile
+    private var httpClient: HttpClient? = null
+
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
@@ -31,11 +34,22 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideHttpClient(): HttpClient = HttpClient()
+    fun provideHttpClient(): HttpClient {
+        return HttpClient().also { httpClient = it }
+    }
 
     @Provides
     @Singleton
     fun provideNetworkConnectivityObserver(
         @ApplicationContext context: Context,
     ): NetworkConnectivityObserver = NetworkConnectivityObserver(context)
+
+    /**
+     * Closes the created [HttpClient] to release connections and thread pools.
+     * Safe to call multiple times; subsequent calls are no-ops.
+     */
+    fun shutdown() {
+        httpClient?.close()
+        httpClient = null
+    }
 }

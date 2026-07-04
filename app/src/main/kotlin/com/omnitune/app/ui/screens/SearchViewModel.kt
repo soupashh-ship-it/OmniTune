@@ -11,6 +11,8 @@ import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.utils.isInternetAvailable
+import com.omnitune.app.utils.ProviderErrorType
+import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
@@ -479,11 +481,16 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun classifySearchFailure(throwable: Throwable): SearchStatus {
-        val text = "${throwable::class.java.simpleName} ${throwable.message.orEmpty()}".lowercase()
-        return when {
-            "json" in text || "parse" in text || "serializer" in text || "unexpected" in text -> SearchStatus.ParserChanged
-            "timeout" in text || "network" in text || "connect" in text || "unknownhost" in text -> SearchStatus.NetworkError
-            else -> SearchStatus.NetworkError
+        val error = classifyProviderError(throwable)
+        return when (error.type) {
+            ProviderErrorType.ParserChanged -> SearchStatus.ParserChanged
+            ProviderErrorType.Timeout,
+            ProviderErrorType.NetworkUnavailable,
+            ProviderErrorType.Unknown -> SearchStatus.NetworkError
+            ProviderErrorType.Forbidden403,
+            ProviderErrorType.NotFound404,
+            ProviderErrorType.TooManyRequests429,
+            ProviderErrorType.ServerError -> SearchStatus.NetworkError
         }
     }
 }

@@ -160,6 +160,14 @@ fun HomeDiscoveryRoute(
             }
 
 
+            if (uiState.providerError != null && !uiState.isProviderLoading) {
+                item(key = "provider-error", contentType = "error") {
+                    ProviderErrorCard(
+                        message = uiState.providerError.orEmpty(),
+                    )
+                }
+            }
+
             item(contentType = "quick-picks") {
                 val localSongs = uiState.quickPicks.mapNotNull { it.song }
                 val providerSongs = uiState.quickPicks.mapNotNull { it.providerSong }
@@ -1017,6 +1025,35 @@ private fun StartExploringRow(onClick: () -> Unit) {
             text = "Browse",
             style = MaterialTheme.typography.labelLarge,
             color = OmniColors.OmniAccentSecondary,
+        )
+    }
+}
+
+@Composable
+private fun ProviderErrorCard(
+    message: String,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.Warning.copy(alpha = 0.10f))
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_info),
+            contentDescription = null,
+            tint = OmniColors.Warning,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Text(
+            text = message,
+            style = OmniTextStyles.metadata,
+            color = OmniColors.TextPrimary,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
