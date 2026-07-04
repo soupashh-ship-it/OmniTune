@@ -100,6 +100,8 @@ class PlayerConnection(
         }
     }.stateIn(scope, SharingStarted.Eagerly, 0L)
 
+    val discordPresenceRunning: StateFlow<Boolean> = service.discordPresenceManager.isRunning
+
     init {
         player.addListener(this)
 
@@ -292,4 +294,8 @@ class PlayerConnection(
     fun setPlaybackParameters(speed: Float, pitch: Float) { player.playbackParameters = PlaybackParameters(speed, pitch) }
     val playbackSpeed: Float get() = player.playbackParameters.speed
     val playbackPitch: Float get() = player.playbackParameters.pitch
+
+    fun restartDiscordPresence() {
+        service.restartDiscordPresence()
+    }
 }

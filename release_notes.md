@@ -1,3 +1,46 @@
+# OmniTune v0.9.0
+
+**OmniGlass UI Overhaul — Lyrics Display, Card-Group Polish, Dead Code Removal**
+
+### 🚀 Features
+* **Lyrics Bottom Sheet**: Tap the music-note icon in the full player to open a draggable bottom sheet with synced lyrics, auto-scroll to the current line, and a glowing animated active-line background. The "return to current" button fades in/out smoothly.
+* **Custom Inter Font**: Integrated the Inter typeface across all Material3 text styles for a cleaner, more professional reading experience.
+* **Shimmer Signal-Bars Loader**: Replaced the plain CircularProgressIndicator with a custom animated 4-bar signal meter featuring a shimmer sweep effect.
+* **Player Background Effect**: Added dynamic background gradient extraction from album art in the full player, with blurred backdrop and animated color transitions.
+* **Settings Sub-Navigation**: Replaced the single scrolling settings page with a categorized navigation system — 10 dedicated screens (Appearance, Playback & Audio, Content, Storage, Lyrics, Scrobbling, Updates, Diagnostics, About, Notifications) accessible via the main Settings index.
+* **Card-Group Polish**: Stats and History screens now use `OmniPreferenceCard` groupings to match the Settings visual language, giving each section (Overview, Top songs, Top artists, Today, Yesterday, Older) a polished card appearance.
+
+### 🧹 Code Cleanup
+* **Removed Dead Files**: Deleted the old `GlassComponents.kt`, the legacy 1406-line `SettingsScreen.kt`, `HomeScreen.kt` (821 lines), and `HomeViewModel.kt` — all had zero remaining callers.
+* **Stripped Deprecated QA Artifacts**: Removed outdated QA documentation and UI snapshot patches.
+
+### 🛠️ Fixes
+* **Completed-Download Playback Fix**: Resolved a regression where downloaded songs would fail to play after the download completed.
+* **font_certs.xml Lint Compatibility**: Fixed `Unknown tag <string> in <array>` resource error by correcting the Android resource format, unblocking `lintDebug`.
+
+### 📦 Build
+* Version: **0.9.0** (code 37)
+* APK is automatically signed via GitHub Actions Secrets when the `v0.9.0` tag is pushed.
+
+---
+
+# OmniTune v0.8.5
+
+**Quick Picks Personalization, Pagination & Deduplication**
+
+### 🚀 Features
+* **Personalized Seeds**: Quick Picks now seed from your top artists, recently played, and liked tracks — with a curated default fallback when listening history is sparse.
+* **Cross-Source Deduplication**: Duplicate songs from different providers (local vs. YouTube Music) are automatically collapsed using normalized title/artist keys.
+* **Auto-Refresh Timer**: Quick Picks automatically refresh every 30 minutes to keep recommendations current.
+* **Expanded Collections**: Page limits raised from 50 to 100 across home categories, provider collections, and search history.
+* **Looping Pagination**: Album/playlist collections with >100 items now fetch continuation pages for full browsing (up to 100 items).
+* **Personalized Song Carousel**: Home screen now shows a horizontal carousel of up to 20 personalized song recommendations.
+
+### 🛠️ Fixes
+* **Flow Operator Lint Warning**: Resolved lint warning on flow composition operators.
+
+---
+
 # OmniTune v0.8.4
 
 **Quick Picks Overhaul — Swipeable Pages, Smarter Recommendations, Dead Code Removal**

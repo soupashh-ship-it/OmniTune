@@ -65,6 +65,9 @@ import com.omnitune.app.ui.screens.Screens
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_DOWNLOADS
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
 import com.omnitune.app.ui.screens.search.SearchScreen
+import com.omnitune.app.ui.screens.settings.DiscordSettingsScreen
+import com.omnitune.app.ui.screens.settings.DiscordLoginScreen
+import com.omnitune.app.ui.screens.settings.BackupRestoreScreen
 import com.omnitune.app.ui.screens.settings.AboutSettings
 import com.omnitune.app.ui.screens.settings.AppearanceSettings
 import com.omnitune.app.ui.screens.settings.ContentSettings
@@ -387,6 +390,9 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("settings/updates") { SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { UpdatesSettings() } }
             composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
             composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }
+            composable("settings/discord") { SettingsSubScreenScaffold(title = "Discord RPC", onBack = { navController.popBackStack() }) { DiscordSettingsScreen(onNavigateToLogin = { navController.navigate("settings/discord_login") }) } }
+            composable("settings/discord_login") { DiscordLoginScreen(onBack = { navController.popBackStack() }, onLoggedIn = { navController.popBackStack() }) }
+            composable("settings/backup_restore") { SettingsSubScreenScaffold(title = "Backup & Restore", onBack = { navController.popBackStack() }) { BackupRestoreScreen() } }
             composable("settings/notifications") { SettingsSubScreenScaffold(title = "Notifications", onBack = { navController.popBackStack() }) { MediaControlsHelp() } }
             composable(ROUTE_DOWNLOADS) {
                 DownloadsScreen(

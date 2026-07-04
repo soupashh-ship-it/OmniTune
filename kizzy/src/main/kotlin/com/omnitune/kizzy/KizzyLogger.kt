@@ -1,18 +1,15 @@
+/*
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
+ *
+ * Based on Kizzy (c) yzziK(Vaibhav) 2022
+ */
+
 package com.omnitune.kizzy
 
-object KizzyLogger {
-    private const val TAG = "Kizzy"
-
-    fun log(message: String) {
-        println("[$TAG] $message")
-    }
-
-    fun error(message: String, throwable: Throwable? = null) {
-        println("[$TAG][ERROR] $message")
-        throwable?.printStackTrace()
-    }
-
-    fun debug(message: String) {
-        println("[$TAG][DEBUG] $message")
-    }
+interface KizzyLogger {
+    fun info(message: String)
+    fun fine(message: String)
+    fun warning(message: String)
+    fun severe(message: String, throwable: Throwable? = null)
 }

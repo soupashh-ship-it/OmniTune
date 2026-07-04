@@ -207,6 +207,20 @@ fun SettingsScreen(
                     onClick = { onNavigateToCategory("updates") },
                 ),
                 SettingsCategoryItem(
+                    icon = R.drawable.ic_favorite,
+                    title = "Discord RPC",
+                    subtitle = "Rich Presence integration",
+                    accentColor = OmniColors.Hot,
+                    onClick = { onNavigateToCategory("discord") },
+                ),
+                SettingsCategoryItem(
+                    icon = R.drawable.ic_download,
+                    title = "Backup & Restore",
+                    subtitle = "Export and import your data",
+                    accentColor = OmniColors.Downloaded,
+                    onClick = { onNavigateToCategory("backup_restore") },
+                ),
+                SettingsCategoryItem(
                     icon = R.drawable.ic_share,
                     title = "Diagnostics",
                     subtitle = "Share diagnostic report",

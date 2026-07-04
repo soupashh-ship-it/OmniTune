@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 37
-        versionName = "0.9.0"
+        versionCode = 38
+        versionName = "0.9.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -184,6 +184,7 @@ dependencies {
     coreLibraryDesugaring(libs.desugaring)
 
     implementation(libs.hilt)
+    // Hilt KSP scoped to main source set only (tests don't use Hilt)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation)
 

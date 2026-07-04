@@ -50,6 +50,11 @@ import kotlinx.coroutines.CancellationException
 import timber.log.Timber
 import javax.inject.Inject
 
+import com.omnitune.app.constants.DiscordTokenKey
+import com.omnitune.app.constants.EnableDiscordRPCKey
+import com.omnitune.app.discord.DiscordPresenceManager
+import com.omnitune.app.discord.SongPresenceData
+import com.omnitune.app.discord.getPresenceIntervalMillis
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.flow.first
 
@@ -62,6 +67,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var streamExtractor: com.omnitune.app.data.StreamExtractor
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
+    @Inject lateinit var discordPresenceManager: DiscordPresenceManager
 
     private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
     private lateinit var playbackRecoveryCoordinator: PlaybackRecoveryCoordinator
@@ -265,6 +271,44 @@ class MusicService : MediaLibraryService(), Player.Listener {
         sessionCallback.onToggleLike = { toggleLike() }
         sessionCallback.onToggleLibrary = { toggleLibrary() }
         sessionCallback.onStartRadio = { toggleStartRadio() }
+
+        // Start Discord Rich Presence if configured
+        scope.launch {
+            try {
+                val prefs = this@MusicService.dataStore.data.first()
+                val enabled = prefs[EnableDiscordRPCKey] ?: false
+                val token = prefs[DiscordTokenKey] ?: ""
+                if (enabled && token.isNotBlank()) {
+                    discordPresenceManager.start(
+                        context = this@MusicService,
+                        token = token,
+                        songProvider = {
+                            val meta = _currentMediaMetadata.value
+                            if (meta != null) {
+                                SongPresenceData(
+                                    title = meta.title,
+                                    videoId = meta.id,
+                                    artist = meta.artists.firstOrNull()?.name ?: "",
+                                    album = meta.album?.title ?: "",
+                                    thumbnail = meta.thumbnailUrl ?: "",
+                                    artistImage = meta.artists.firstOrNull()?.thumbnailUrl ?: "",
+                                    position = player.currentPosition,
+                                    duration = meta.duration.toLong(),
+                                    isPaused = !player.playWhenReady,
+                                )
+                            } else {
+                                SongPresenceData()
+                            }
+                        },
+                        positionProvider = { player.currentPosition },
+                        pauseProvider = { !player.playWhenReady },
+                        intervalProvider = { getPresenceIntervalMillis() },
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.tag("MusicService").e(e, "Failed to start Discord presence")
+            }
+        }
     }
 
     private suspend fun restoreQueueMetadataOnly(queue: Queue) {
@@ -577,7 +621,50 @@ class MusicService : MediaLibraryService(), Player.Listener {
         player.clearMediaItems()
     }
 
+    fun restartDiscordPresence() {
+        scope.launch {
+            try {
+                val prefs = this@MusicService.dataStore.data.first()
+                val enabled = prefs[EnableDiscordRPCKey] ?: false
+                val token = prefs[DiscordTokenKey] ?: ""
+                if (enabled && token.isNotBlank()) {
+                    discordPresenceManager.stop()
+                    discordPresenceManager.start(
+                        context = this@MusicService,
+                        token = token,
+                        songProvider = {
+                            val meta = _currentMediaMetadata.value
+                            if (meta != null) {
+                                SongPresenceData(
+                                    title = meta.title,
+                                    videoId = meta.id,
+                                    artist = meta.artists.firstOrNull()?.name ?: "",
+                                    album = meta.album?.title ?: "",
+                                    thumbnail = meta.thumbnailUrl ?: "",
+                                    artistImage = meta.artists.firstOrNull()?.thumbnailUrl ?: "",
+                                    position = player.currentPosition,
+                                    duration = meta.duration.toLong(),
+                                    isPaused = !player.playWhenReady,
+                                )
+                            } else {
+                                SongPresenceData()
+                            }
+                        },
+                        positionProvider = { player.currentPosition },
+                        pauseProvider = { !player.playWhenReady },
+                        intervalProvider = { getPresenceIntervalMillis() },
+                    )
+                } else {
+                    discordPresenceManager.stop()
+                }
+            } catch (e: Exception) {
+                Timber.tag("MusicService").e(e, "Failed to restart Discord presence")
+            }
+        }
+    }
+
     override fun onDestroy() {
+        discordPresenceManager.destroy()
         Timber.tag("MusicService").i("MusicService destroyed")
         try {
             crossfadePlaybackCoordinator?.release()
