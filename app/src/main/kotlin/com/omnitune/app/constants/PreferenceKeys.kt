@@ -591,3 +591,5 @@ val EqualizerPresetKey = stringPreferencesKey("equalizerPreset") // preset name
 // Downloads
 val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // default 3
 val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
+
+enum class LyricsPosition { LEFT, CENTER, RIGHT }

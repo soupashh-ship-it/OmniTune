@@ -1,6 +1,7 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import com.omnitune.app.ui.theme.OmniSpacing
 @Composable
 fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
+    onNavigateToYearInMusic: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -64,6 +66,38 @@ fun StatsScreen(
                 minutesListened = uiState.minutesListened,
                 totalPlayed = uiState.totalPlayed,
             )
+        }
+
+        item(contentType = "year-in-music") {
+            com.omnitune.app.ui.screens.settings.OmniPreferenceCard(title = null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToYearInMusic() }
+                        .padding(OmniSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Icon(
+                        painter = androidx.compose.ui.res.painterResource(R.drawable.ic_history), // Use any available icon
+                        contentDescription = null,
+                        tint = com.omnitune.app.ui.theme.OmniColors.OmniAccentPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                    Column {
+                        androidx.compose.material3.Text(
+                            text = "Year in Music",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            color = com.omnitune.app.ui.theme.OmniColors.TextPrimary
+                        )
+                        androidx.compose.material3.Text(
+                            text = "View your personal music recap",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = com.omnitune.app.ui.theme.OmniColors.TextSecondary
+                        )
+                    }
+                }
+            }
         }
 
         when {

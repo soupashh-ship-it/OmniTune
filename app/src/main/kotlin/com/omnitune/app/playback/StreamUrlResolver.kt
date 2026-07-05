@@ -35,7 +35,7 @@ object StreamUrlResolver {
     data class CachedStream(val streamResult: StreamResult, val fetchedAtMs: Long)
 
     /** In-memory cache for resolved stream results (videoId -> CachedStream). */
-    private val streamCache = LruCache<String, CachedStream>(50)
+    private val streamCache = LruCache<String, CachedStream>(200)
 
     fun invalidate(videoId: String) {
         streamCache.remove(videoId)

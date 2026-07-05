@@ -3,4 +3,40 @@
     <string name="app_name">OmniTune</string>
     <string name="music_player_channel_name">OmniTune Playback</string>
     <string name="download_channel_name">OmniTune Downloads</string>
+
+    <!-- Year in Music -->
+    <string name="year_in_music">Year in Music</string>
+    <string name="your_year_in_music">Your %d Year in Music</string>
+    <string name="total_listening_time">Total Listening Time</string>
+    <string name="top_songs">Top Songs</string>
+    <string name="top_artists">Top Artists</string>
+    <string name="albums">Albums</string>
+    <string name="share_summary">Share Summary</string>
+    <string name="no_listening_data">No listening data</string>
+    <plurals name="songs">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+    <plurals name="played">
+        <item quantity="one">%d play</item>
+        <item quantity="other">%d plays</item>
+    </plurals>
+    <string name="lyrics_not_found">Lyrics not found</string>
+
+    <!-- Tags & Library Management -->
+    <string name="add_symbol">Add Symbol</string>
+    <string name="enter_symbol">Enter Symbol</string>
+    <string name="artist_separators">Artist Separators</string>
+    <string name="save">Save</string>
+    <string name="close">Close</string>
+    <string name="assign_tags">Assign Tags</string>
+    <string name="no_tags_available">No tags available</string>
+    <string name="manage_tags">Manage Tags</string>
+    <string name="assign_tags_to_playlists">Assign Tags to Playlists</string>
+    <string name="add_tag">Add Tag</string>
+    <string name="edit_tag">Edit Tag</string>
+    <string name="tag_name">Tag Name</string>
+    <string name="tag_color">Tag Color</string>
+    <string name="tap_to_change_color">Tap to change color</string>
+    <string name="choose_color">Choose Color</string>
 </resources>

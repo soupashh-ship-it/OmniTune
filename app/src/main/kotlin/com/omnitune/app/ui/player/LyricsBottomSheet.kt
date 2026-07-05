@@ -162,10 +162,17 @@ fun LyricsBottomSheet(
                         EmptyState(message = "No lyrics found for this track.")
                     }
                     is LyricsUiState.Success -> {
-                        LyricsContent(
-                            lines = state.lines,
-                            playerConnection = playerConnection,
-                        )
+                        val useLyricsV2 by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.UseLyricsV2Key, false)
+                        if (useLyricsV2) {
+                            com.omnitune.app.ui.component.LyricsV2(
+                                sliderPositionProvider = { playerConnection?.player?.currentPosition }
+                            )
+                        } else {
+                            LyricsContent(
+                                lines = state.lines,
+                                playerConnection = playerConnection,
+                            )
+                        }
                     }
                 }
             }

@@ -123,6 +123,25 @@ fun SettingsScreen(
 
     val categories = listOf(
         SettingsCategory(
+            title = "ACCOUNT & SOCIAL",
+            items = listOf(
+                SettingsCategoryItem(
+                    icon = R.drawable.ic_settings, // Use generic if needed, or specific
+                    title = "OmniTune Account",
+                    subtitle = "Manage your OmniTune account",
+                    accentColor = OmniColors.OmniAccentPrimary,
+                    onClick = { onNavigateToCategory("account_settings") }, // Wait, how do I navigate to AccountSettings?
+                ),
+                SettingsCategoryItem(
+                    icon = R.drawable.ic_share,
+                    title = "Listen Together",
+                    subtitle = "Sync playback with friends",
+                    accentColor = OmniColors.OmniAccentSecondary,
+                    onClick = { onNavigateToCategory("music_together") },
+                )
+            )
+        ),
+        SettingsCategory(
             title = "UI & DISPLAY",
             items = listOf(
                 SettingsCategoryItem(

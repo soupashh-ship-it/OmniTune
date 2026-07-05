@@ -14,7 +14,27 @@ sealed class Screens(
     object Stats : Screens("stats")
     object History : Screens("history")
     object Search : Screens("search")
+    object YearInMusic : Screens("year_in_music")
+    object ThemeCreator : Screens("theme_creator")
+    object PalettePicker : Screens("palette_picker")
+    object CustomizeBackground : Screens("customize_background")
+    object PoToken : Screens("po_token")
 
+    
+    object Charts : Screens("charts")
+    object Explore : Screens("explore")
+    object NewRelease : Screens("new_release")
+    object MoodAndGenres : Screens("mood_and_genres")
+    object YouTubeBrowse : Screens("youtube_browse")
+    object AutoPlaylist : Screens("auto_playlist")
+    
+    object MusicTogether : Screens("music_together")
+    
+    object Account : Screens("account")
+    object Login : Screens("login")
+    object AccountSettings : Screens("account_settings")
+    
+    object Changelog : Screens("changelog")
     companion object {
         val MainScreens = listOf(Home, Stats, History, Library)
         const val ACTION_SEARCH = "com.omnitune.app.action.SEARCH"

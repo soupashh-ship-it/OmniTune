@@ -33,9 +33,10 @@ object PlayerFactory {
             .setBufferDurationsMs(
                 15000, // minBufferMs
                 50000, // maxBufferMs
-                1000,  // bufferForPlaybackMs
-                1500   // bufferForPlaybackAfterRebufferMs
+                250,   // bufferForPlaybackMs
+                1000   // bufferForPlaybackAfterRebufferMs
             )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         return ExoPlayer.Builder(context)

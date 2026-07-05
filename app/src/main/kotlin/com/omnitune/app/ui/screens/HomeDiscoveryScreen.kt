@@ -101,6 +101,7 @@ fun HomeDiscoveryRoute(
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAllGenres: (() -> Unit)? = null,
+    onNavigateToExplore: (String) -> Unit = {},
     onResumePlayback: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onPlayProviderSong: (SongItem) -> Unit,

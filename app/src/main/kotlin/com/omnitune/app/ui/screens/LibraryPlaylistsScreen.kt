@@ -152,68 +152,71 @@ fun LibraryPlaylistsScreen(
             onBack = onBack,
         )
 
-        // ── Folder chips + manage button ────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            LazyRow(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        val showTagsInLibrary by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowTagsInLibraryKey, true)
+        if (showTagsInLibrary) {
+            // ── Folder chips + manage button ────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                item {
-                    AssistChip(
-                        onClick = { selectedTagId = null },
-                        label = { Text("All") },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (selectedTagId == null)
-                                OmniColors.OmniAccentPrimary.copy(alpha = 0.2f)
-                            else OmniColors.OmniGlassSubtle,
-                            labelColor = if (selectedTagId == null)
-                                OmniColors.OmniAccentPrimary
-                            else OmniColors.TextSecondary,
-                        ),
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+                ) {
+                    item {
+                        AssistChip(
+                            onClick = { selectedTagId = null },
+                            label = { Text("All") },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = if (selectedTagId == null)
+                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.2f)
+                                else OmniColors.OmniGlassSubtle,
+                                labelColor = if (selectedTagId == null)
+                                    OmniColors.OmniAccentPrimary
+                                else OmniColors.TextSecondary,
+                            ),
+                        )
+                    }
+                    items(allTags, key = { it.id }) { tag ->
+                        val tagColor = android.graphics.Color.parseColor(tag.color).let { Color(it) }
+                        AssistChip(
+                            onClick = { selectedTagId = if (selectedTagId == tag.id) null else tag.id },
+                            label = { Text(tag.name) },
+                            leadingIcon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(tagColor)
+                                )
+                            },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = if (selectedTagId == tag.id)
+                                    tagColor.copy(alpha = 0.2f)
+                                else OmniColors.OmniGlassSubtle,
+                                labelColor = if (selectedTagId == tag.id)
+                                    tagColor
+                                else OmniColors.TextSecondary,
+                            ),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                IconButton(
+                    onClick = { showManageFolders = true },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(OmniColors.OmniGlassMedium)
+                        .border(1.dp, OmniColors.OmniGlassBorderSubtle, CircleShape),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_settings),
+                        contentDescription = "Manage folders",
+                        tint = OmniColors.TextSecondary,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
-                items(allTags, key = { it.id }) { tag ->
-                    val tagColor = parseColor(tag.color)
-                    AssistChip(
-                        onClick = { selectedTagId = if (selectedTagId == tag.id) null else tag.id },
-                        label = { Text(tag.name) },
-                        leadingIcon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(tagColor)
-                            )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (selectedTagId == tag.id)
-                                tagColor.copy(alpha = 0.2f)
-                            else OmniColors.OmniGlassSubtle,
-                            labelColor = if (selectedTagId == tag.id)
-                                tagColor
-                            else OmniColors.TextSecondary,
-                        ),
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(OmniSpacing.compact))
-            IconButton(
-                onClick = { showManageFolders = true },
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(OmniColors.OmniGlassMedium)
-                    .border(1.dp, OmniColors.OmniGlassBorderSubtle, CircleShape),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_settings),
-                    contentDescription = "Manage folders",
-                    tint = OmniColors.TextSecondary,
-                    modifier = Modifier.size(18.dp),
-                )
             }
         }
 

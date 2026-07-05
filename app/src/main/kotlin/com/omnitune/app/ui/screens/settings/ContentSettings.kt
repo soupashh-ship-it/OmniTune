@@ -23,7 +23,9 @@ import kotlinx.coroutines.flow.map
 
 @Composable
 fun ContentSettings(
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateToPoToken: () -> Unit = {},
+    onNavigateToMusicTogether: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showClearSearchHistoryDialog by remember { mutableStateOf(false) }
@@ -129,6 +131,23 @@ fun ContentSettings(
             iconRes = R.drawable.ic_history,
             accent = OmniColors.Warning,
             onClick = { showClearListenHistoryDialog = true },
+        )
+    }
+
+    OmniPreferenceCard(title = "API & Tokens") {
+        OmniPreferenceEntry(
+            title = "Music Together",
+            description = "Listen with friends in real-time",
+            iconRes = R.drawable.ic_play_arrow,
+            accent = OmniColors.OmniAccentPrimary,
+            onClick = onNavigateToMusicTogether,
+        )
+        OmniPreferenceEntry(
+            title = "YouTube PO Token",
+            description = "Bypass YouTube bot protections",
+            iconRes = R.drawable.ic_settings,
+            accent = OmniColors.OmniAccentSecondary,
+            onClick = onNavigateToPoToken,
         )
     }
 }

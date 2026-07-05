@@ -14,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import okhttp3.OkHttpClient
+import okhttp3.ConnectionPool
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -30,6 +31,7 @@ object NetworkModule {
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .connectionPool(ConnectionPool(maxIdleConnections = 20, keepAliveDuration = 5, TimeUnit.MINUTES))
         .build()
 
     @Provides

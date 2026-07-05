@@ -198,6 +198,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToSettings = { navController.navigate("settings") },
                     onNavigateToAllGenres = { navController.navigate("all_genres") },
                     onResumePlayback = { navController.navigate("player") },
+                    onNavigateToExplore = { route -> navController.navigate(route) },
                     onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
                     onPlayProviderSong = { song ->
                         playSongList(
@@ -226,11 +227,68 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     },
                 )
             }
-            composable(Screens.Stats.route) { StatsScreen() }
+            composable(Screens.Stats.route) { 
+                StatsScreen(onNavigateToYearInMusic = { navController.navigate(Screens.YearInMusic.route) }) 
+            }
             composable(Screens.History.route) {
                 HistoryScreen(onPlaySong = { song ->
                     localPlayerConnection?.playQueue(ListQueue(title = "History", items = listOf(song.toMediaItem())))
                 })
+            }
+            composable(Screens.YearInMusic.route) {
+                com.omnitune.app.ui.screens.YearInMusicScreen(navController = navController)
+            }
+            composable(Screens.ThemeCreator.route) {
+                com.omnitune.app.ui.screens.settings.ThemeCreatorScreen(navController = navController)
+            }
+            composable(Screens.PalettePicker.route) {
+                com.omnitune.app.ui.screens.settings.PalettePickerScreen(navController = navController)
+            }
+            composable(Screens.CustomizeBackground.route) {
+                com.omnitune.app.ui.screens.settings.CustomizeBackground(navController = navController)
+            }
+            composable(Screens.PoToken.route) {
+                com.omnitune.app.ui.screens.settings.PoTokenScreen(navController = navController)
+            }
+            composable(Screens.Changelog.route) {
+                com.omnitune.app.ui.screens.settings.ChangelogScreen(navController = navController)
+            }
+            composable(Screens.MusicTogether.route) {
+                com.omnitune.app.ui.screens.settings.MusicTogetherScreen(navController = navController)
+            }
+            composable(Screens.Charts.route) {
+                com.omnitune.app.ui.screens.ChartsScreen(navController = navController)
+            }
+            composable(Screens.Explore.route) {
+                com.omnitune.app.ui.screens.ExploreScreen(navController = navController)
+            }
+            composable(Screens.NewRelease.route) {
+                com.omnitune.app.ui.screens.NewReleaseScreen(navController = navController)
+            }
+            composable(Screens.MoodAndGenres.route) {
+                com.omnitune.app.ui.screens.MoodAndGenresScreen(navController = navController)
+            }
+            composable(Screens.YouTubeBrowse.route) {
+                com.omnitune.app.ui.screens.YouTubeBrowseScreen(navController = navController)
+            }
+            composable(Screens.Account.route) {
+                com.omnitune.app.ui.screens.AccountScreen(navController = navController)
+            }
+            composable(Screens.Login.route) {
+                com.omnitune.app.ui.screens.LoginScreen(navController = navController)
+            }
+            composable(Screens.AccountSettings.route) {
+                com.omnitune.app.ui.screens.settings.OmniTuneAccountSettingsScreen(navController = navController)
+            }
+            composable(
+                route = Screens.AutoPlaylist.route + "/{playlistType}",
+                arguments = listOf(androidx.navigation.navArgument("playlistType") { type = androidx.navigation.NavType.StringType })
+            ) { backStackEntry ->
+                val playlistType = backStackEntry.arguments?.getString("playlistType") ?: ""
+                com.omnitune.app.ui.screens.AutoPlaylistScreen(
+                    navController = navController,
+                    playlistType = playlistType
+                )
             }
             composable(Screens.Library.route) {
                 LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
@@ -370,8 +428,16 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             ) {
                 HomeAllGenresScreen(
                     onBack = { navController.popBackStack() },
-                    onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) },
+                    onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) }
                 )
+            }
+            composable("settings/content") { 
+                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { 
+                    ContentSettings(
+                        onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) },
+                        onNavigateToMusicTogether = { navController.navigate(Screens.MusicTogether.route) }
+                    ) 
+                } 
             }
             composable("album/{albumId}") {
                 AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
@@ -383,15 +449,48 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToAlbum = { navController.navigate("album/$it") })
             }
             composable("player") { PlayerScreen(playerConnection = localPlayerConnection, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
-            composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
-            composable("settings") { SettingsScreen(onBack = { navController.popBackStack() }, onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }, onNavigateToCategory = { cat -> navController.navigate("settings/$cat") }) }
-            composable("settings/appearance") { SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { AppearanceSettings() } }
+            composable("settings/appearance") { 
+                SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { 
+                    AppearanceSettings(
+                        onNavigateToThemeCreator = { navController.navigate(Screens.ThemeCreator.route) },
+                        onNavigateToCustomizeBackground = { navController.navigate(Screens.CustomizeBackground.route) }
+                    ) 
+                } 
+            }
+            composable("settings/updates") { 
+                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { 
+                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) }) 
+                } 
+            }
+            composable("settings") { 
+                SettingsScreen(
+                    onBack = { navController.popBackStack() }, 
+                    onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }, 
+                    onNavigateToCategory = { cat -> 
+                        if (cat == "account_settings") {
+                            navController.navigate(Screens.AccountSettings.route)
+                        } else if (cat == "music_together") {
+                            navController.navigate(Screens.MusicTogether.route)
+                        } else {
+                            navController.navigate("settings/$cat") 
+                        }
+                    }
+                ) 
+            }
             composable("settings/playback") { SettingsSubScreenScaffold(title = "Playback & Audio", onBack = { navController.popBackStack() }) { PlaybackSettings(onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) } }
-            composable("settings/content") { SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { ContentSettings() } }
+            composable("settings/content") { 
+                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { 
+                    ContentSettings(onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) }) 
+                } 
+            }
             composable("settings/storage") { SettingsSubScreenScaffold(title = "Storage", onBack = { navController.popBackStack() }) { StorageSettings() } }
             composable("settings/lyrics") { SettingsSubScreenScaffold(title = "Lyrics", onBack = { navController.popBackStack() }) { LyricsSettings() } }
             composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "Scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
-            composable("settings/updates") { SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { UpdatesSettings() } }
+            composable("settings/updates") { 
+                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { 
+                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) }) 
+                } 
+            }
             composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
             composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }
             composable("settings/discord") { SettingsSubScreenScaffold(title = "Discord RPC", onBack = { navController.popBackStack() }) { DiscordSettingsScreen(onNavigateToLogin = { navController.navigate("settings/discord_login") }) } }

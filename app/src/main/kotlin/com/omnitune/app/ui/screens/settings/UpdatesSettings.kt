@@ -39,6 +39,7 @@ import com.omnitune.app.update.UpdateViewModel
 @Composable
 fun UpdatesSettings(
     viewModel: UpdateViewModel = hiltViewModel(),
+    onNavigateToChangelog: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
@@ -49,6 +50,13 @@ fun UpdatesSettings(
             description = viewModel.currentVersionLabel,
             iconRes = R.drawable.ic_download,
             accent = OmniColors.OmniAccentSecondary,
+        )
+        OmniPreferenceEntry(
+            title = "Changelog",
+            description = "View new features and improvements",
+            iconRes = R.drawable.ic_info,
+            accent = OmniColors.OmniAccentTertiary,
+            onClick = onNavigateToChangelog,
         )
     }
 

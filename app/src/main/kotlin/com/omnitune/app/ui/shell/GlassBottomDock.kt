@@ -77,6 +77,7 @@ fun GlassBottomDock(
     onNavigate: (String) -> Unit,
     pureBlack: Boolean = false,
 ) {
+    val slimNavBar by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.SlimNavBarKey, false)
     val selectedIndex = navItems.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
 
     OmniGlassSurface(
@@ -85,7 +86,7 @@ fun GlassBottomDock(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = OmniChrome.BottomDockHorizontalPadding)
-            .height(OmniChrome.BottomDockHeight),
+            .height(if (slimNavBar) 56.dp else OmniChrome.BottomDockHeight),
     ) {
         BoxWithConstraints(
             modifier = Modifier

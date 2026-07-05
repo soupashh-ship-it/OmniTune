@@ -57,6 +57,8 @@ fun LibraryScreen(
     onNavigateToPlaylists: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
+    val showLiked by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowLikedPlaylistKey, true)
+    val showDownloaded by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowDownloadedPlaylistKey, true)
     val uiState by viewModel.uiState.collectAsState()
     val totalCount = uiState.librarySongCount + uiState.libraryAlbumCount + uiState.libraryArtistCount + uiState.playlistCount
     val hasQuickRows = uiState.likedCount > 0 || uiState.downloadCount > 0 || uiState.recentlyPlayed.isNotEmpty()
@@ -93,25 +95,29 @@ fun LibraryScreen(
 
         if (hasQuickRows) {
             if (uiState.likedCount > 0) {
-                item(key = "liked", contentType = "route-row") {
-                    LibraryRouteRow(
-                        painter = painterResource(R.drawable.ic_favorite),
-                        title = "Liked",
-                        detail = countLabel(uiState.likedCount, "song"),
-                        accent = OmniColors.Hot,
-                        onClick = onNavigateToLiked,
-                    )
+                if (showLiked) {
+                    item(key = "liked", contentType = "route-row") {
+                        LibraryRouteRow(
+                            painter = painterResource(R.drawable.ic_favorite),
+                            title = "Liked",
+                            detail = countLabel(uiState.likedCount, "song"),
+                            accent = OmniColors.Hot,
+                            onClick = onNavigateToLiked,
+                        )
+                    }
                 }
             }
             if (uiState.downloadCount > 0) {
-                item(key = "downloaded", contentType = "route-row") {
-                    LibraryRouteRow(
-                        painter = painterResource(R.drawable.ic_download),
-                        title = "Downloaded",
-                        detail = countLabel(uiState.downloadCount, "song"),
-                        accent = OmniColors.Downloaded,
-                        onClick = onNavigateToDownloads,
-                    )
+                if (showDownloaded) {
+                    item(key = "downloaded", contentType = "route-row") {
+                        LibraryRouteRow(
+                            painter = painterResource(R.drawable.ic_download),
+                            title = "Downloaded",
+                            detail = countLabel(uiState.downloadCount, "song"),
+                            accent = OmniColors.Downloaded,
+                            onClick = onNavigateToDownloads,
+                        )
+                    }
                 }
             }
             if (uiState.recentlyPlayed.isNotEmpty()) {

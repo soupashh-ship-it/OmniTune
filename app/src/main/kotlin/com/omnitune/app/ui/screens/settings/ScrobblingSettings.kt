@@ -54,6 +54,9 @@ fun ScrobblingSettings() {
     var delayPercent by rememberPreference(ScrobbleDelayPercentKey, 50f)
     var delaySeconds by rememberPreference(ScrobbleDelaySecondsKey, 30)
     var minSongDuration by rememberPreference(ScrobbleMinSongDurationKey, 30)
+    var listenBrainzEnabled by rememberPreference(com.omnitune.app.constants.ListenBrainzEnabledKey, false)
+    var listenBrainzToken by rememberPreference(com.omnitune.app.constants.ListenBrainzTokenKey, "")
+    var showListenBrainzDialog by remember { mutableStateOf(false) }
 
     var showLoginDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -147,6 +150,59 @@ fun ScrobblingSettings() {
                 valueRange = 10f..300f,
                 steps = 28,
                 valueFormat = { "${it.toInt()}s" },
+            )
+        }
+
+
+        OmniPreferenceCard(title = "ListenBrainz") {
+            OmniSwitchPreference(
+                title = "Enable scrobbling",
+                description = "Send your listening history to ListenBrainz",
+                iconRes = R.drawable.ic_history,
+                accent = OmniColors.OmniAccentTertiary,
+                checked = listenBrainzEnabled,
+                onCheckedChange = { listenBrainzEnabled = it },
+            )
+            OmniPreferenceEntry(
+                title = "User Token",
+                description = if (listenBrainzToken.isBlank()) "Tap to configure token" else "Token configured",
+                iconRes = R.drawable.ic_settings,
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = { showListenBrainzDialog = true }
+            )
+        }
+        
+        if (showListenBrainzDialog) {
+            var tokenInput by remember { mutableStateOf(listenBrainzToken) }
+            AlertDialog(
+                onDismissRequest = { showListenBrainzDialog = false },
+                containerColor = OmniColors.OmniBackgroundElevated,
+                titleContentColor = OmniColors.TextPrimary,
+                textContentColor = OmniColors.TextSecondary,
+                title = { Text("ListenBrainz Token", fontWeight = FontWeight.Bold) },
+                text = {
+                    OutlinedTextField(
+                        value = tokenInput,
+                        onValueChange = { tokenInput = it },
+                        singleLine = true,
+                        placeholder = { Text("Enter user token") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OmniColors.OmniAccentPrimary,
+                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                            focusedTextColor = OmniColors.TextPrimary,
+                            unfocusedTextColor = OmniColors.TextPrimary
+                        )
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        listenBrainzToken = tokenInput
+                        showListenBrainzDialog = false
+                    }) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showListenBrainzDialog = false }) { Text("Cancel") }
+                },
             )
         }
 

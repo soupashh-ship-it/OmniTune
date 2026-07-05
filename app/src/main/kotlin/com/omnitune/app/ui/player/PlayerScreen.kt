@@ -44,6 +44,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -1042,3 +1043,104 @@ private fun SleepTimerDialog(
         }
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PlayerOptionsBottomSheet(
+    playerConnection: PlayerConnection?,
+    onDismissRequest: () -> Unit,
+    onNavigateToRadio: () -> Unit = {},
+    onAddToPlaylist: () -> Unit = {},
+    onCopyLink: () -> Unit = {},
+    onListenTogether: () -> Unit = {}
+) {
+    val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
+    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = OmniColors.OmniBackgroundElevated,
+        shape = OmniShapes.ExtraLarge,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = OmniSpacing.section, vertical = OmniSpacing.medium)
+        ) {
+            // Header
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (currentMetadata?.thumbnailUrl != null) {
+                    coil3.compose.AsyncImage(
+                        model = currentMetadata?.thumbnailUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(OmniShapes.Medium),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                }
+                Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                Column {
+                    Text("Now Playing", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = currentMetadata?.title ?: "No track",
+                        color = OmniColors.TextPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = currentMetadata?.artists?.joinToString(", ") { it.name } ?: "Unknown artist",
+                        color = OmniColors.TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(OmniSpacing.large))
+
+            // Options Grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OptionButton(R.drawable.ic_insights, "Start radio", onNavigateToRadio)
+                OptionButton(R.drawable.ic_list, "Add to playlist", onAddToPlaylist)
+                OptionButton(R.drawable.ic_share, "Copy link", onCopyLink)
+                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether) // reusing share icon for now
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun OptionButton(icon: Int, label: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(OmniShapes.Medium)
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(OmniShapes.Large)
+                .background(OmniColors.SurfaceRaised),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(painterResource(icon), contentDescription = null, tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(label, color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+
+
