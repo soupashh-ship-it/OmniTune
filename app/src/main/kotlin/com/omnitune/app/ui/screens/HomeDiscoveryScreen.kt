@@ -321,10 +321,10 @@ private fun HomeTopHeader(
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
             // OmniTune app icon
-            Icon(
-                painter = painterResource(R.drawable.ic_launcher_foreground),
+            androidx.compose.foundation.Image(
+                painter = painterResource(R.mipmap.ic_launcher),
                 contentDescription = "OmniTune",
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
             )
             Text(
                 text = "OmniTune",

@@ -68,7 +68,7 @@ class PlaybackNotificationManager(
             .setNotificationId(NOTIFICATION_ID)
             .build()
             .apply {
-                setSmallIcon(R.drawable.ic_stat_omnitune)
+                setSmallIcon(R.drawable.ic_launcher_foreground)
             }
     }
 
@@ -163,7 +163,7 @@ class PlaybackNotificationManager(
             ?: "Playing"
 
         return Notification.Builder(service, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_omnitune)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(artist)
             .setTicker(title)
@@ -200,13 +200,15 @@ class PlaybackNotificationManager(
     }
 
     private fun defaultNotificationArtwork(): Bitmap {
-        val size = (96 * service.resources.displayMetrics.density).toInt().coerceAtLeast(96)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val drawable = service.getDrawable(R.drawable.ic_launcher_foreground)
-        drawable?.setBounds(0, 0, size, size)
-        drawable?.draw(canvas)
-        return bitmap
+        val d = androidx.core.content.ContextCompat.getDrawable(service, R.mipmap.ic_launcher)
+        if (d != null) {
+            val bitmap = Bitmap.createBitmap(d.intrinsicWidth.coerceAtLeast(1), d.intrinsicHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            d.setBounds(0, 0, canvas.width, canvas.height)
+            d.draw(canvas)
+            return bitmap
+        }
+        return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     }
 
     private fun notificationAction(
