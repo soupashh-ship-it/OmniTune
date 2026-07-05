@@ -1,3 +1,19 @@
+# OmniTune v0.9.5
+**Default App Icon & System Overhaul**
+
+### 🚀 Features
+* New default app icon
+* Redesigned 3-dot overflow menu icon (Material Design style)
+* New drag handle, volume, and horizontal more icons
+
+### 🛠️ Fixes
+* Fixed queue crash on song removal
+* Fixed player options sheet layout issues
+* Resolved duplicate songs in "Listen Together"
+
+### 📦 Build
+* Version: 0.9.5 (42)
+
 # OmniTune v0.9.2
 
 **Last.fm Scrobbling, Recently Played Chronological History, Discord Settings Polish**

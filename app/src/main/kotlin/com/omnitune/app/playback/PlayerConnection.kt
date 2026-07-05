@@ -282,6 +282,8 @@ class PlayerConnection(
     fun seekTo(index: Int, position: Long) = player.seekTo(index, position)
     fun getMediaItemAt(index: Int): MediaItem = player.getMediaItemAt(index)
     fun removeMediaItem(index: Int) = player.removeMediaItem(index)
+    fun moveMediaItem(fromIndex: Int, toIndex: Int) = player.moveMediaItem(fromIndex, toIndex)
+    fun addMediaItem(mediaItem: androidx.media3.common.MediaItem) = player.addMediaItem(mediaItem)
     fun setShuffleModeEnabled(enabled: Boolean) { player.shuffleModeEnabled = enabled }
     fun setRepeatMode(mode: Int) { player.repeatMode = mode }
     fun prepare() = player.prepare()

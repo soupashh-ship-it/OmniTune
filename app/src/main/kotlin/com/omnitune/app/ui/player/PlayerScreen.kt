@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -97,6 +99,7 @@ import com.omnitune.app.ui.theme.omniSoftBorder
 import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 private const val ARTWORK_REQUEST_SIZE = 800
@@ -107,6 +110,8 @@ fun PlayerScreen(
     onDismiss: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onNavigateToListenTogether: () -> Unit = {},
+    onNavigateToAlbum: ((String) -> Unit)? = null,
+    onNavigateToArtist: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
@@ -116,6 +121,13 @@ fun PlayerScreen(
     val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsState(initial = REPEAT_MODE_OFF)
     val isSeeking = remember { mutableFloatStateOf(-1f) }
     var showOptionsSheet by remember { mutableStateOf(false) }
+    var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    var showLyricsSheet by remember { mutableStateOf(false) }
+    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
+    val libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = hiltViewModel()
+    val playlists by libraryViewModel.playlists.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
 
     val gradientState = rememberPlayerGradient(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
@@ -165,7 +177,7 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = OmniSpacing.section)
-                        .padding(top = verticalPadding, bottom = verticalPadding),
+                        .padding(top = verticalPadding, bottom = OmniSpacing.hero),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     PlayerTopBar(
@@ -195,6 +207,7 @@ fun PlayerScreen(
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
                     )
+                    Spacer(modifier = Modifier.height(largeGap))
                     PlayerActionsRow(
                         playerConnection = playerConnection,
                         onOpenQueue = onOpenQueue,
@@ -211,8 +224,12 @@ fun PlayerScreen(
             onNavigateToRadio = {
                 showOptionsSheet = false
                 playerConnection?.startRadioSeamlessly()
+                Toast.makeText(context, "Starting radio...", Toast.LENGTH_SHORT).show()
             },
-            onAddToPlaylist = { showOptionsSheet = false },
+            onAddToPlaylist = {
+                showOptionsSheet = false
+                showAddToPlaylistDialog = true
+            },
             onCopyLink = {
                 showOptionsSheet = false
                 val videoId = mediaMetadata?.id
@@ -225,6 +242,76 @@ fun PlayerScreen(
             onListenTogether = {
                 showOptionsSheet = false
                 onNavigateToListenTogether()
+            },
+            onNavigateToAlbum = onNavigateToAlbum?.let { { showOptionsSheet = false; val id = mediaMetadata?.album?.id; if (id != null) it(id) } },
+            onNavigateToArtist = onNavigateToArtist?.let { { showOptionsSheet = false; val id = mediaMetadata?.artists?.firstOrNull()?.id; if (id != null) it(id) } },
+            onShare = {
+                showOptionsSheet = false
+                val videoId = mediaMetadata?.id
+                val title = mediaMetadata?.title
+                if (!videoId.isNullOrBlank()) {
+                    val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=$videoId")
+                        if (title != null) putExtra(android.content.Intent.EXTRA_SUBJECT, title)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
+                }
+            },
+            onSleepTimer = {
+                showOptionsSheet = false
+                showSleepTimerDialog = true
+            },
+            onOpenQueue = {
+                showOptionsSheet = false
+                onOpenQueue()
+            },
+        )
+    }
+    if (showSleepTimerDialog) {
+        SleepTimerDialog(
+            onDismiss = { showSleepTimerDialog = false },
+            onSet = { minutes, endOfSong ->
+                playerConnection?.service?.sleepTimer?.start(
+                    durationMs = minutes * 60_000L,
+                    stopAtEndOfSong = endOfSong,
+                )
+                showSleepTimerDialog = false
+            },
+            onCancel = {
+                playerConnection?.service?.sleepTimer?.cancel()
+                showSleepTimerDialog = false
+            },
+            isRunning = sleepTimerRunning,
+        )
+    }
+    if (showAddToPlaylistDialog) {
+        com.omnitune.app.ui.component.AddToPlaylistDialog(
+            playlists = playlists,
+            onDismissRequest = { showAddToPlaylistDialog = false },
+            onPlaylistSelected = { playlist ->
+                val meta = mediaMetadata
+                if (meta != null) {
+                    libraryViewModel.ensureSongExists(meta)
+                    scope.launch {
+                        val added = libraryViewModel.addToPlaylist(playlist, meta.id)
+                        if (!added) {
+                            Toast.makeText(context, "Already in playlist", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Added to playlist", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                showAddToPlaylistDialog = false
+            },
+            onCreatePlaylist = { name ->
+                val meta = mediaMetadata
+                if (meta != null) {
+                    libraryViewModel.ensureSongExists(meta)
+                    libraryViewModel.createPlaylist(name, meta.id)
+                    Toast.makeText(context, "Playlist created", Toast.LENGTH_SHORT).show()
+                }
+                showAddToPlaylistDialog = false
             },
         )
     }
@@ -746,18 +833,15 @@ private fun PlayerActionsRow(
 ) {
     val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
     val currentMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
-    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
     val liked = currentSong?.song?.liked == true || currentMetadata?.liked == true
     val downloadsViewModel: DownloadsViewModel = hiltViewModel()
     val context = LocalContext.current
-    var showEffectsDialog by remember { mutableStateOf(false) }
-    var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showLyricsSheet by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
+            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -792,53 +876,32 @@ private fun PlayerActionsRow(
             },
         )
         ActionButton(
-            icon = R.drawable.ic_settings,
-            contentDescription = "Audio Effects",
-            onClick = { showEffectsDialog = true },
+            icon = R.drawable.ic_lyrics,
+            contentDescription = "Lyrics",
+            onClick = { showLyricsSheet = true },
         )
         ActionButton(
             icon = R.drawable.ic_lyrics,
             contentDescription = "Lyrics",
             onClick = { showLyricsSheet = true },
         )
-        ActionButton(
-            icon = R.drawable.ic_bedtime,
-            contentDescription = if (sleepTimerRunning) "Cancel sleep timer" else "Set sleep timer",
-            active = sleepTimerRunning,
-            onClick = { showSleepTimerDialog = true },
-        )
-        ActionButton(
-            icon = R.drawable.ic_list,
-            contentDescription = "Queue",
-            onClick = onOpenQueue,
-        )
-        ActionButton(
-            icon = R.drawable.ic_more_vert,
-            contentDescription = "More options",
-            onClick = onShowOptions,
-        )
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(OmniColors.TextSecondary.copy(alpha = 0.12f))
+                .clickable(onClick = onShowOptions),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_more_vert),
+                contentDescription = "More options",
+                tint = OmniColors.TextSecondary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
     }
 
-    if (showEffectsDialog) {
-        AudioEffectsDialog(playerConnection = playerConnection, onDismiss = { showEffectsDialog = false })
-    }
-    if (showSleepTimerDialog) {
-        SleepTimerDialog(
-            onDismiss = { showSleepTimerDialog = false },
-            onSet = { minutes, endOfSong ->
-                playerConnection?.service?.sleepTimer?.start(
-                    durationMs = minutes * 60_000L,
-                    stopAtEndOfSong = endOfSong,
-                )
-                showSleepTimerDialog = false
-            },
-            onCancel = {
-                playerConnection?.service?.sleepTimer?.cancel()
-                showSleepTimerDialog = false
-            },
-            isRunning = sleepTimerRunning,
-        )
-    }
     if (showLyricsSheet) {
         LyricsBottomSheet(
             playerConnection = playerConnection,
@@ -1086,7 +1149,12 @@ fun PlayerOptionsBottomSheet(
     onNavigateToRadio: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
     onCopyLink: () -> Unit = {},
-    onListenTogether: () -> Unit = {}
+    onListenTogether: () -> Unit = {},
+    onNavigateToAlbum: (() -> Unit)? = null,
+    onNavigateToArtist: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
+    onSleepTimer: () -> Unit = {},
+    onOpenQueue: () -> Unit = {},
 ) {
     val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1134,10 +1202,50 @@ fun PlayerOptionsBottomSheet(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(OmniSpacing.large))
 
-            // Options Grid
+            // Volume slider
+            var volume by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.volume ?: 1f) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    painter = painterResource(
+                        if (volume == 0f) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+                    ),
+                    contentDescription = "Volume",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Slider(
+                    value = volume,
+                    onValueChange = {
+                        volume = it
+                        playerConnection?.player?.setVolume(it)
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = OmniColors.OmniAccentPrimary,
+                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                    ),
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Text(
+                    text = "${(volume * 100).toInt()}%",
+                    color = OmniColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(32.dp),
+                    textAlign = TextAlign.End,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+
+            // Options Row 1
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1145,8 +1253,35 @@ fun PlayerOptionsBottomSheet(
                 OptionButton(R.drawable.ic_insights, "Start radio", onNavigateToRadio)
                 OptionButton(R.drawable.ic_list, "Add to playlist", onAddToPlaylist)
                 OptionButton(R.drawable.ic_share, "Copy link", onCopyLink)
-                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether) // reusing share icon for now
+                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether)
             }
+
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+
+            // Options Row 2 — navigation & share
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (onNavigateToAlbum != null) {
+                    OptionButton(R.drawable.ic_album, "Go to album", onNavigateToAlbum)
+                } else {
+                    Spacer(modifier = Modifier.size(72.dp))
+                }
+                if (onNavigateToArtist != null) {
+                    OptionButton(R.drawable.ic_artist, "Go to artist", onNavigateToArtist)
+                } else {
+                    Spacer(modifier = Modifier.size(72.dp))
+                }
+                if (onShare != null) {
+                    OptionButton(R.drawable.ic_share, "Share", onShare)
+                } else {
+                    Spacer(modifier = Modifier.size(72.dp))
+                }
+                OptionButton(R.drawable.ic_bedtime, "Sleep timer", onSleepTimer)
+                OptionButton(R.drawable.ic_list, "Queue", onOpenQueue)
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

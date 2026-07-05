@@ -201,22 +201,6 @@ fun LibraryPlaylistsScreen(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                IconButton(
-                    onClick = { showManageFolders = true },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(OmniColors.OmniGlassMedium)
-                        .border(1.dp, OmniColors.OmniGlassBorderSubtle, CircleShape),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_settings),
-                        contentDescription = "Manage folders",
-                        tint = OmniColors.TextSecondary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
             }
         }
 

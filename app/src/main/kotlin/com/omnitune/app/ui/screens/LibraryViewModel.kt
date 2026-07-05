@@ -155,7 +155,10 @@ class LibraryViewModel @Inject constructor(
 
     fun createPlaylist(name: String, initialSongId: String? = null) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val playlist = com.omnitune.app.db.entities.PlaylistEntity(name = name)
+            val playlist = com.omnitune.app.db.entities.PlaylistEntity(
+                name = name,
+                bookmarkedAt = java.time.LocalDateTime.now(),
+            )
             database.insert(playlist)
             if (initialSongId != null) {
                 val savedPlaylist = database.getPlaylistByIdBlocking(playlist.id)

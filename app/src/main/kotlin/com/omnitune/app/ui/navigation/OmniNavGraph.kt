@@ -4,6 +4,9 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -139,8 +143,9 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
     var pendingSongQueue by remember { mutableStateOf<PendingSongQueue?>(null) }
+    var showPlayerOverlay by remember { mutableStateOf(false) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
-    val showBottomBar = isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings" && !currentRoute.orEmpty().startsWith("settings/")
+    val showBottomBar = !showPlayerOverlay && isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings" && !currentRoute.orEmpty().startsWith("settings/")
 
     LaunchedEffect(localPlayerConnection, pendingSongQueue) {
         val queueData = pendingSongQueue
@@ -154,7 +159,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         }
     }
 
-    val showMiniPlayer = currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
+    val showMiniPlayer = !showPlayerOverlay && currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
 
     val mpHeight = OmniChrome.MiniPlayerHeight
     val dockHeight = OmniChrome.BottomDockHeight
@@ -162,7 +167,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val chromeBottomMargin = OmniChrome.BottomDockBottomMargin
 
     val shellBottomPaddingTarget = when {
-        currentRoute == "player" || currentRoute == "queue" -> 0.dp
+        showPlayerOverlay || currentRoute == "player" || currentRoute == "queue" -> 0.dp
         showMiniPlayer && showBottomBar -> mpHeight + chromeSpacing + dockHeight + chromeBottomMargin
         showBottomBar -> dockHeight + chromeBottomMargin
         showMiniPlayer -> mpHeight + chromeSpacing
@@ -561,11 +566,40 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     MiniPlayer(
                         pureBlack = pureBlack,
                         playerConnection = localPlayerConnection,
-                        onClick = { if (localPlayerConnection != null) navController.navigate("player") }
+                        onClick = { if (localPlayerConnection != null) showPlayerOverlay = true },
+                        onOpenQueue = { showPlayerOverlay = false; navController.navigate("queue") },
+                        onNavigateToAlbum = { albumId -> showPlayerOverlay = false; navController.navigate("album/$albumId") },
+                        onNavigateToArtist = { artistId -> showPlayerOverlay = false; navController.navigate("artist/$artistId") },
+                        onShare = { videoId, title ->
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=$videoId")
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, title)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
+                        },
                     )
                 }
             }
             if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }, pureBlack = pureBlack)
+        }
+
+        AnimatedVisibility(
+            visible = showPlayerOverlay,
+            enter = slideInVertically { fullHeight -> fullHeight },
+            exit = slideOutVertically { fullHeight -> fullHeight },
+        ) {
+            BackHandler(enabled = showPlayerOverlay) { showPlayerOverlay = false }
+            Box(modifier = Modifier.fillMaxSize().background(com.omnitune.app.ui.theme.OmniColors.OmniBackgroundBase)) {
+                PlayerScreen(
+                    playerConnection = localPlayerConnection,
+                    onDismiss = { showPlayerOverlay = false },
+                    onOpenQueue = { showPlayerOverlay = false; navController.navigate("queue") },
+                    onNavigateToListenTogether = { showPlayerOverlay = false; navController.navigate(Screens.MusicTogether.route) },
+                    onNavigateToAlbum = { albumId -> showPlayerOverlay = false; navController.navigate("album/$albumId") },
+                    onNavigateToArtist = { artistId -> showPlayerOverlay = false; navController.navigate("artist/$artistId") },
+                )
+            }
         }
     }
 }

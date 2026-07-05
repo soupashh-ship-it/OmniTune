@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -97,6 +99,10 @@ fun MiniPlayer(
     pureBlack: Boolean = false,
     playerConnection: PlayerConnection? = null,
     onClick: () -> Unit = {},
+    onNavigateToAlbum: ((String) -> Unit)? = null,
+    onNavigateToArtist: ((String) -> Unit)? = null,
+    onShare: ((String, String?) -> Unit)? = null,
+    onOpenQueue: (() -> Unit)? = null,
 ) {
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
     val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
@@ -106,6 +112,7 @@ fun MiniPlayer(
     val isLoading = playbackState == STATE_BUFFERING
     val layoutDirection = LocalLayoutDirection.current
     val coroutineScope = rememberCoroutineScope()
+    var showMenu by remember { mutableStateOf(false) }
 
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableFloatStateOf(0f) }
@@ -280,6 +287,98 @@ fun MiniPlayer(
                             contentDescription = "Next",
                             onClick = { pc.seekToNext() },
                         )
+                    }
+                    Spacer(modifier = Modifier.width(OmniSpacing.micro))
+                    Box {
+                        MiniControlButton(
+                            icon = R.drawable.ic_more_vert,
+                            contentDescription = "More options",
+                            onClick = { showMenu = true },
+                        )
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                        ) {
+                            mediaMetadata?.let { meta ->
+                                DropdownMenuItem(
+                                    text = { Text(if (meta.liked) "Unlike" else "Like") },
+                                    onClick = {
+                                        showMenu = false
+                                        pc.toggleLike()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(
+                                                if (meta.liked) R.drawable.ic_favorite
+                                                else R.drawable.ic_favorite_border
+                                            ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                )
+                                if (meta.album != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Go to album") },
+                                        onClick = {
+                                            showMenu = false
+                                            onNavigateToAlbum?.invoke(meta.album.id)
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_album),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        },
+                                    )
+                                }
+                                if (meta.artists.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("Go to artist") },
+                                        onClick = {
+                                            showMenu = false
+                                            meta.artists.firstOrNull()?.id?.let { onNavigateToArtist?.invoke(it) }
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_artist),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Share") },
+                                    onClick = {
+                                        showMenu = false
+                                        onShare?.invoke(meta.id, meta.title)
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_share),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("View queue") },
+                                    onClick = {
+                                        showMenu = false
+                                        onOpenQueue?.invoke()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_list),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }

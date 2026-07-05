@@ -22,6 +22,7 @@ class PlaylistDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val database: MusicDatabase,
 ) : ViewModel() {
+    val db: MusicDatabase get() = database
     private val playlistId: String = savedStateHandle["playlistId"] ?: ""
 
     val playlist = database.playlist(playlistId)
@@ -54,4 +55,19 @@ class PlaylistDetailViewModel @Inject constructor(
         }
     }
 
+    fun moveSong(fromPosition: Int, toPosition: Int) {
+        val current = playlist.value ?: return
+        if (!current.playlist.isEditable) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.move(current.playlist.id, fromPosition, toPosition)
+        }
+    }
+
+    fun removeSongs(songIds: List<String>) {
+        val current = playlist.value ?: return
+        if (!current.playlist.isEditable) return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            songIds.forEach { database.removeSongFromPlaylist(current.playlist.id, it) }
+        }
+    }
 }

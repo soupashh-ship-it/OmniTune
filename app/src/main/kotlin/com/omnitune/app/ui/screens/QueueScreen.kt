@@ -1,10 +1,16 @@
 package com.omnitune.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,50 +20,70 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
 import com.omnitune.app.R
+import com.omnitune.app.db.entities.FormatEntity
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
-import kotlin.math.max
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val QUEUE_ARTWORK_SIZE = 160
 
@@ -67,14 +93,33 @@ fun QueueScreen(
     playerConnection: PlayerConnection?,
     onBack: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     val queueTitle by playerConnection?.queueTitle?.collectAsState() ?: remember { mutableStateOf(null) }
     val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsState() ?: remember { mutableStateOf(-1) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
     val queueIndices by playerConnection?.queueIndices?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+    val currentFormat by playerConnection?.currentFormat?.collectAsState(initial = null) ?: remember { mutableStateOf<FormatEntity?>(null) }
+    val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsState(initial = false) ?: remember { mutableStateOf(false) }
+    val sleepTimerRemaining by playerConnection?.sleepTimerRemaining?.collectAsState(initial = 0L) ?: remember { mutableStateOf(0L) }
+
     val itemCount = queueIndices.size
     val currentIndexInQueue = queueIndices.indexOf(currentIndex).coerceAtLeast(0)
     val upcomingIndices = queueIndices.drop(currentIndexInQueue + 1)
     val upcomingCount = upcomingIndices.size
+
+    // Multi-select state
+    var selectionMode by remember { mutableStateOf(false) }
+    val selectedIndices = remember { mutableStateListOf<Int>() }
+
+    // Drag-to-reorder state
+    val lazyListState = rememberLazyListState()
+    var draggedItemIndex by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var itemHeights by remember { mutableStateOf(listOf<Int>()) }
 
     Box(
         modifier = Modifier
@@ -103,10 +148,45 @@ fun QueueScreen(
                 onBack = onBack,
             )
 
+            // Sleep timer banner
+            AnimatedVisibility(
+                visible = sleepTimerRunning && sleepTimerRemaining > 0,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut(),
+            ) {
+                SleepTimerBanner(remainingMs = sleepTimerRemaining)
+            }
+
+            // Selection mode toolbar
+            AnimatedVisibility(
+                visible = selectionMode,
+                enter = slideInVertically() + fadeIn(),
+                exit = slideOutVertically() + fadeOut(),
+            ) {
+                BulkActionBar(
+                    selectedCount = selectedIndices.size,
+                    onClearSelection = {
+                        selectionMode = false
+                        selectedIndices.clear()
+                    },
+                    onRemoveSelected = {
+                        playerConnection?.let { pc ->
+                            selectedIndices.sortedDescending().forEach { idx ->
+                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                                pc.removeMediaItem(windowIndex)
+                            }
+                            selectedIndices.clear()
+                            selectionMode = false
+                        }
+                    },
+                )
+            }
+
             if (playerConnection == null || mediaMetadata == null) {
                 QueueEmptyState(text = "No items in queue")
             } else {
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
                 ) {
@@ -115,7 +195,10 @@ fun QueueScreen(
                             title = "Now playing",
                             subtitle = "Current track",
                         )
-                        NowPlayingCard(mediaMetadata = mediaMetadata!!)
+                        NowPlayingCard(
+                            mediaMetadata = mediaMetadata!!,
+                            format = currentFormat,
+                        )
                     }
 
                     item(contentType = "upNextHeader") {
@@ -133,11 +216,12 @@ fun QueueScreen(
                             )
                         }
                     } else {
-                        items(
+                        // Track item heights for drag reorder
+                        itemsIndexed(
                             items = upcomingIndices,
-                            key = { windowIndex -> queueItemKey(playerConnection, windowIndex) },
-                            contentType = { _ -> "queueItem" },
-                        ) { windowIndex ->
+                            key = { idx, windowIndex -> queueItemKey(playerConnection, windowIndex) },
+                            contentType = { _, _ -> "queueItem" },
+                        ) { idx, windowIndex ->
                             val mediaItem = playerConnection.getMediaItemAt(windowIndex)
                             val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                             val title = meta?.title
@@ -148,13 +232,29 @@ fun QueueScreen(
                                 ?: mediaItem.mediaMetadata.artist?.toString()
                                 ?: "Unknown artist"
 
+                            val isSelected = windowIndex in selectedIndices
+                            val isDragging = draggedItemIndex == idx && dragOffset != 0f
+
                             val dismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = { dismissValue ->
                                     if (
                                         dismissValue == SwipeToDismissBoxValue.EndToStart ||
                                         dismissValue == SwipeToDismissBoxValue.StartToEnd
                                     ) {
-                                        playerConnection.removeMediaItem(windowIndex)
+                                        if (!selectionMode) {
+                                            playerConnection.removeMediaItem(windowIndex)
+                                            scope.launch {
+                                                snackbarHostState.currentSnackbarData?.dismiss()
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "Removed \"$title\"",
+                                                    actionLabel = "Undo",
+                                                    duration = SnackbarDuration.Short,
+                                                )
+                                                if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                    playerConnection.addMediaItem(mediaItem)
+                                                }
+                                            }
+                                        }
                                         true
                                     } else {
                                         false
@@ -162,44 +262,109 @@ fun QueueScreen(
                                 }
                             )
 
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                backgroundContent = {
-                                    val color by animateColorAsState(
-                                        targetValue = when (dismissState.targetValue) {
-                                            SwipeToDismissBoxValue.Settled -> Color.Transparent
-                                            else -> OmniColors.Error.copy(alpha = 0.28f)
-                                        },
-                                        label = "queueDismissColor",
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(OmniShapes.Large)
-                                            .background(color)
-                                            .padding(horizontal = OmniSpacing.large),
-                                        contentAlignment = Alignment.CenterEnd,
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_close),
-                                            contentDescription = "Remove from queue",
-                                            tint = OmniColors.Error,
-                                        )
+                            Box(
+                                modifier = Modifier
+                                    .zIndex(if (isDragging) 1f else 0f)
+                                    .offset { IntOffset(0, if (isDragging) dragOffset.roundToInt() else 0) }
+                                    .onGloballyPositioned { coords ->
+                                        val h = coords.size.height
+                                        itemHeights = itemHeights.toMutableList().apply {
+                                            while (size <= idx) add(0)
+                                            set(idx, h)
+                                        }
                                     }
-                                },
-                                content = {
-                                    QueueItemRow(
-                                        title = title,
-                                        artists = artists,
-                                        thumbnail = meta?.thumbnailUrl,
-                                        isCurrent = false,
-                                        onClick = {
-                                            playerConnection.seekTo(windowIndex, 0)
-                                            playerConnection.prepare()
-                                        },
-                                    )
-                                }
-                            )
+                                    .pointerInput(selectionMode) {
+                                        if (!selectionMode) {
+                                            detectDragGesturesAfterLongPress(
+                                                onDragStart = {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                    draggedItemIndex = idx
+                                                    dragOffset = 0f
+                                                },
+                                                onDrag = { change, dragAmount ->
+                                                    change.consume()
+                                                    dragOffset += dragAmount.y
+                                                },
+                                                onDragEnd = {
+                                                    if (draggedItemIndex >= 0) {
+                                                        val fromIdx = draggedItemIndex
+                                                        val totalDrag = dragOffset
+                                                        val itemH = itemHeights.getOrElse(fromIdx) { 1 }.coerceAtLeast(1)
+                                                        val shiftCount = (totalDrag / itemH).roundToInt()
+                                                        val toIdx = (fromIdx + shiftCount)
+                                                            .coerceIn(0, upcomingIndices.lastIndex)
+
+                                                        if (toIdx != fromIdx && abs(shiftCount) > 0) {
+                                                            playerConnection.moveMediaItem(
+                                                                upcomingIndices[fromIdx],
+                                                                upcomingIndices[toIdx]
+                                                            )
+                                                        }
+                                                    }
+                                                    draggedItemIndex = -1
+                                                    dragOffset = 0f
+                                                },
+                                                onDragCancel = {
+                                                    draggedItemIndex = -1
+                                                    dragOffset = 0f
+                                                },
+                                            )
+                                        }
+                                    }
+                            ) {
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    enableDismissFromStartToEnd = !selectionMode,
+                                    enableDismissFromEndToStart = !selectionMode,
+                                    backgroundContent = {
+                                        val color by animateColorAsState(
+                                            targetValue = when (dismissState.targetValue) {
+                                                SwipeToDismissBoxValue.Settled -> Color.Transparent
+                                                else -> OmniColors.Error.copy(alpha = 0.28f)
+                                            },
+                                            label = "queueDismissColor",
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(OmniShapes.Large)
+                                                .background(color)
+                                                .padding(horizontal = OmniSpacing.large),
+                                            contentAlignment = Alignment.CenterEnd,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_close),
+                                                contentDescription = "Remove from queue",
+                                                tint = OmniColors.Error,
+                                            )
+                                        }
+                                    },
+                                    content = {
+                                        QueueItemRow(
+                                            title = title,
+                                            artists = artists,
+                                            thumbnail = meta?.thumbnailUrl,
+                                            isCurrent = false,
+                                            isSelected = isSelected,
+                                            showDragHandle = !selectionMode,
+                                            onClick = {
+                                                if (selectionMode) {
+                                                    if (windowIndex in selectedIndices) {
+                                                        selectedIndices.remove(windowIndex)
+                                                        if (selectedIndices.isEmpty()) selectionMode = false
+                                                    } else {
+                                                        selectedIndices.add(windowIndex)
+                                                    }
+                                                } else {
+                                                    playerConnection.seekTo(windowIndex, 0)
+                                                    playerConnection.prepare()
+                                                }
+                                            },
+                                            onLongClick = null,
+                                        )
+                                    },
+                                )
+                            }
                         }
                     }
 
@@ -209,7 +374,93 @@ fun QueueScreen(
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = OmniSpacing.section)
+                .navigationBarsPadding(),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                containerColor = OmniColors.OmniBackgroundElevated,
+                contentColor = OmniColors.TextPrimary,
+                actionColor = OmniColors.OmniAccentPrimary,
+                shape = OmniShapes.Large,
+            )
+        }
     }
+}
+
+@Composable
+private fun SleepTimerBanner(remainingMs: Long) {
+    val minutes = (remainingMs / 60_000).toInt()
+    val seconds = ((remainingMs % 60_000) / 1000).toInt()
+    val display = if (minutes > 0) "${minutes}m ${seconds}s" else "${seconds}s"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.12f))
+            .border(
+                BorderStroke(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.3f)),
+                OmniShapes.Large,
+            )
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_bedtime),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentPrimary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Text(
+            text = "Sleep timer: $display remaining",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.OmniAccentPrimary,
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Spacer(modifier = Modifier.height(OmniSpacing.small))
+}
+
+@Composable
+private fun BulkActionBar(
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    onRemoveSelected: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.OmniGlassMedium)
+            .border(
+                BorderStroke(1.dp, OmniColors.OmniGlassBorderStrong),
+                OmniShapes.Large,
+            )
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "$selectedCount selected",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onRemoveSelected) {
+            Text("Remove", color = OmniColors.Error)
+        }
+        TextButton(onClick = onClearSelection) {
+            Text("Cancel", color = OmniColors.TextSecondary)
+        }
+    }
+    Spacer(modifier = Modifier.height(OmniSpacing.small))
 }
 
 @Composable
@@ -294,7 +545,10 @@ private fun SectionLabel(
 }
 
 @Composable
-private fun NowPlayingCard(mediaMetadata: MediaMetadata) {
+private fun NowPlayingCard(
+    mediaMetadata: MediaMetadata,
+    format: FormatEntity?,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,14 +592,19 @@ private fun NowPlayingCard(mediaMetadata: MediaMetadata) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            val artistText = mediaMetadata.artists.joinToString(", ") { it.name }
+                .ifBlank { "Unknown artist" }
             Text(
-                text = mediaMetadata.artists.joinToString(", ") { it.name }
-                    .ifBlank { "Unknown artist" },
+                text = artistText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            // Codec/bitrate info
+            if (format != null) {
+                FormatInfoText(format = format)
+            }
         }
 
         Spacer(modifier = Modifier.width(OmniSpacing.small))
@@ -368,39 +627,74 @@ private fun NowPlayingCard(mediaMetadata: MediaMetadata) {
 }
 
 @Composable
+private fun FormatInfoText(format: FormatEntity) {
+    val parts = mutableListOf<String>()
+    format.codecs?.let { if (it.isNotBlank()) parts.add(it) }
+    format.bitrate?.let { if (it > 0) parts.add("${it / 1000}kbps") }
+    format.sampleRate?.let { if (it > 0) parts.add("${it / 1000}kHz") }
+    if (parts.isNotEmpty()) {
+        Text(
+            text = parts.joinToString(" · "),
+            style = MaterialTheme.typography.labelSmall,
+            color = OmniColors.TextTertiary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun QueueItemRow(
     title: String,
     artists: String,
     thumbnail: String?,
     isCurrent: Boolean,
+    isSelected: Boolean = false,
+    showDragHandle: Boolean = true,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
+            .clickable(onClick = onClick)
             .background(
-                if (isCurrent) {
-                    OmniColors.OmniAccentPrimary.copy(alpha = 0.12f)
-                } else {
-                    OmniColors.OmniGlassSubtle
+                when {
+                    isSelected -> OmniColors.OmniAccentPrimary.copy(alpha = 0.18f)
+                    isCurrent -> OmniColors.OmniAccentPrimary.copy(alpha = 0.12f)
+                    else -> OmniColors.OmniGlassSubtle
                 }
             )
             .border(
                 BorderStroke(
                     1.dp,
-                    if (isCurrent) OmniColors.OmniGlassBorderStrong else OmniColors.OmniGlassBorderSubtle,
+                    when {
+                        isSelected -> OmniColors.OmniAccentPrimary
+                        isCurrent -> OmniColors.OmniGlassBorderStrong
+                        else -> OmniColors.OmniGlassBorderSubtle
+                    },
                 ),
                 OmniShapes.Large,
             )
-            .clickable(onClick = onClick)
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Selection indicator
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(OmniColors.OmniAccentPrimary),
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.small))
+        }
+
         QueueArtwork(
             thumbnail = thumbnail,
             contentDescription = null,
-            size = 58.dp,
+            size = if (isSelected) 50.dp else 58.dp,
         )
 
         Spacer(modifier = Modifier.width(OmniSpacing.small))
@@ -420,6 +714,17 @@ private fun QueueItemRow(
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        // Drag handle
+        if (showDragHandle) {
+            Spacer(modifier = Modifier.width(OmniSpacing.small))
+            Icon(
+                painter = painterResource(R.drawable.ic_sort),
+                contentDescription = "Drag to reorder",
+                tint = OmniColors.TextTertiary,
+                modifier = Modifier.size(20.dp),
             )
         }
     }
