@@ -1,4 +1,4 @@
-# OmniTune v0.9.5
+# OmniTune v0.9.6
 
 This release focuses heavily on visual polish and UI fidelity, bringing the premium design details of Velune into OmniTune.
 
