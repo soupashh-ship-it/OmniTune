@@ -320,35 +320,12 @@ private fun HomeTopHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
-            // Signal bars logo mark
-            Row(
-                modifier = Modifier
-                    .clip(OmniShapes.Small)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                OmniColors.OmniAccentSecondary.copy(alpha = 0.18f),
-                                OmniColors.OmniAccentPrimary.copy(alpha = 0.14f),
-                            )
-                        )
-                    )
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                val heights = listOf(8.dp, 14.dp, 10.dp, 18.dp)
-                heights.forEachIndexed { index, height ->
-                    Box(
-                        modifier = Modifier
-                            .width(4.dp)
-                            .height(height)
-                            .clip(OmniShapes.Pill)
-                            .background(
-                                if (index == 3) OmniColors.OmniAccentSecondary else OmniColors.OmniAccentPrimary
-                            )
-                    )
-                }
-            }
+            // OmniTune app icon
+            Icon(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = "OmniTune",
+                modifier = Modifier.size(32.dp),
+            )
             Text(
                 text = "OmniTune",
                 style = MaterialTheme.typography.headlineMedium,

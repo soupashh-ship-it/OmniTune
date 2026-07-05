@@ -68,7 +68,7 @@ class PlaybackNotificationManager(
             .setNotificationId(NOTIFICATION_ID)
             .build()
             .apply {
-                setSmallIcon(R.drawable.ic_notification_album)
+                setSmallIcon(R.drawable.ic_stat_omnitune)
             }
     }
 
@@ -163,7 +163,7 @@ class PlaybackNotificationManager(
             ?: "Playing"
 
         return Notification.Builder(service, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_album)
+            .setSmallIcon(R.drawable.ic_stat_omnitune)
             .setContentTitle(title)
             .setContentText(artist)
             .setTicker(title)
@@ -203,7 +203,7 @@ class PlaybackNotificationManager(
         val size = (96 * service.resources.displayMetrics.density).toInt().coerceAtLeast(96)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val drawable = service.getDrawable(R.drawable.ic_notification_album)
+        val drawable = service.getDrawable(R.drawable.ic_launcher_foreground)
         drawable?.setBounds(0, 0, size, size)
         drawable?.draw(canvas)
         return bitmap
