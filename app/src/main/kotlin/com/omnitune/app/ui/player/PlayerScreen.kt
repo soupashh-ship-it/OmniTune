@@ -134,25 +134,36 @@ fun PlayerScreen(
         videoId = mediaMetadata?.id,
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(gradientState.backgroundBrush),
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            gradientState.accentGlow,
-                            Color.Transparent,
-                        )
-                    )
-                ),
-        )
+    Box(modifier = modifier.fillMaxSize()) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = gradientState,
+            transitionSpec = {
+                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(1000)) togetherWith 
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(1000))
+            },
+            label = "BackgroundAnimation"
+        ) { state ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(state.backgroundBrush),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    state.accentGlow,
+                                    Color.Transparent,
+                                )
+                            )
+                        ),
+                )
+            }
+        }
 
         BoxWithConstraints(
             modifier = Modifier
@@ -548,10 +559,12 @@ private fun MetadataBlock(mediaMetadata: MediaMetadata?) {
 }
 
 @Composable
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 private fun PlayerSeekBar(
     playerConnection: PlayerConnection?,
     isSeeking: androidx.compose.runtime.MutableFloatState,
 ) {
+    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
     val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
@@ -601,7 +614,7 @@ private fun PlayerSeekBar(
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small)
             .semantics { contentDescription = "Playback progress" },
     ) {
-        Slider(
+        me.saket.squiggles.SquigglySlider(
             value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
             onValueChange = { isSeeking.floatValue = it },
             onValueChangeFinished = {
@@ -614,6 +627,10 @@ private fun PlayerSeekBar(
                 thumbColor = OmniColors.ActivePlayback,
                 activeTrackColor = OmniColors.ActivePlayback,
                 inactiveTrackColor = OmniColors.OmniGlassStrong,
+            ),
+            squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
+                amplitude = if (isPlaying) 2.dp else 0.dp,
+                strokeWidth = 6.dp
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1220,7 +1237,7 @@ fun PlayerOptionsBottomSheet(
                     modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Slider(
+                me.saket.squiggles.SquigglySlider(
                     value = volume,
                     onValueChange = {
                         volume = it
@@ -1231,6 +1248,10 @@ fun PlayerOptionsBottomSheet(
                         thumbColor = OmniColors.OmniAccentPrimary,
                         activeTrackColor = OmniColors.OmniAccentPrimary,
                         inactiveTrackColor = OmniColors.SurfaceRaised,
+                    ),
+                    squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
+                        amplitude = 2.dp,
+                        strokeWidth = 6.dp
                     ),
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))

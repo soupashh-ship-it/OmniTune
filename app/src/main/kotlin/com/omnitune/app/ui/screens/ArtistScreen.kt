@@ -183,40 +183,72 @@ fun ArtistScreen(
                     } else {
                         page.sections.forEach { section ->
                             item {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(24.dp))
                                 Text(
                                     text = section.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
                             }
 
-                            items(
-                                items = section.items,
-                                key = { item -> "artist_section_${section.title}_${item.id}" },
-                                contentType = { item ->
-                                    when (item) {
-                                        is SongItem -> "artist-song"
-                                        is AlbumItem -> "artist-album"
-                                        else -> "artist-item"
+                            if (section.items.firstOrNull() is SongItem) {
+                                items(
+                                    items = section.items,
+                                    key = { item -> "artist_section_${section.title}_${item.id}" },
+                                    contentType = { "artist-song" },
+                                ) { item ->
+                                    if (item is SongItem) {
+                                        ArtistSongRow(
+                                            song = item,
+                                            onClick = { onPlaySong(item) },
+                                        )
+                                        HorizontalDivider(
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        )
                                     }
-                                },
-                            ) { item ->
-                                when (item) {
-                                    is SongItem -> ArtistSongRow(
-                                        song = item,
-                                        onClick = { onPlaySong(item) },
-                                    )
-                                    is AlbumItem -> ArtistAlbumRow(
-                                        album = item,
-                                        onClick = { onNavigateToAlbum(item.browseId) },
-                                    )
-                                    else -> {}
                                 }
-                                HorizontalDivider(
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                )
+                            } else {
+                                item {
+                                    androidx.compose.foundation.lazy.LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = (-16).dp)
+                                    ) {
+                                        items(section.items) { item ->
+                                            if (item is AlbumItem) {
+                                                val subtitleText = item.year?.toString() ?: item.artists?.joinToString(", ") { it.name } ?: ""
+                                                com.omnitune.app.ui.component.GridItem(
+                                                    title = item.title,
+                                                    subtitle = subtitleText,
+                                                    thumbnailContent = {
+                                                        AsyncImage(
+                                                            model = item.thumbnail,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                                                            contentScale = ContentScale.Crop,
+                                                        )
+                                                    },
+                                                    modifier = Modifier.width(160.dp).clickable { onNavigateToAlbum(item.browseId) }
+                                                )
+                                            } else if (item is com.omnitune.innertube.models.ArtistItem) {
+                                                com.omnitune.app.ui.component.GridItem(
+                                                    title = item.title,
+                                                    subtitle = "Artist",
+                                                    thumbnailContent = {
+                                                        AsyncImage(
+                                                            model = item.thumbnail,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                            contentScale = ContentScale.Crop,
+                                                        )
+                                                    },
+                                                    modifier = Modifier.width(160.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

@@ -239,6 +239,8 @@ dependencies {
     implementation(libs.annotation)
     implementation(libs.apache.lang3)
     implementation(libs.kuromoji.ipadic)
+    implementation(libs.squigglyslider)
+    implementation(libs.palette.ktx)
 
     implementation(project(":innertube"))
     implementation(project(":simpmusic"))
