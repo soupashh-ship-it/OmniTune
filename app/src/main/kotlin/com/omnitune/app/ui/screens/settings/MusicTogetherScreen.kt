@@ -102,18 +102,6 @@ fun MusicTogetherScreen(
                 }
             )
 
-            OmniSwitchPreference(
-                title = "Allow guests to control playback",
-                iconRes = R.drawable.ic_settings,
-                checked = allowControlPlayback,
-                onCheckedChange = { allowControlPlayback = it }
-            )
-            OmniSwitchPreference(
-                title = "Require host approval to join",
-                iconRes = R.drawable.ic_settings,
-                checked = requireApproval,
-                onCheckedChange = { requireApproval = it }
-            )
         }
     }
 
@@ -140,12 +128,9 @@ fun MusicTogetherScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showJoinDialog = false
                         if (joinInput.isNotBlank()) {
+                            showJoinDialog = false
                             viewModel.joinSession(joinInput)
-                            android.widget.Toast.makeText(context, "Connecting to session...", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                        if (joinInput.isNotBlank()) {
                             android.widget.Toast.makeText(context, "Connecting to session...", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }

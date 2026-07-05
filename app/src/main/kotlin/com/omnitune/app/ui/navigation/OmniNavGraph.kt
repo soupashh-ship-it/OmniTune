@@ -448,7 +448,15 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
                     onNavigateToAlbum = { navController.navigate("album/$it") })
             }
-            composable("player") { PlayerScreen(playerConnection = localPlayerConnection, onDismiss = { navController.popBackStack() }, onOpenQueue = { navController.navigate("queue") }) }
+            composable("player") { 
+                PlayerScreen(
+                    playerConnection = localPlayerConnection, 
+                    onDismiss = { navController.popBackStack() }, 
+                    onOpenQueue = { navController.navigate("queue") },
+                    onNavigateToListenTogether = { navController.navigate(Screens.MusicTogether.route) }
+                ) 
+            }
+            composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
             composable("settings/appearance") { 
                 SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { 
                     AppearanceSettings(

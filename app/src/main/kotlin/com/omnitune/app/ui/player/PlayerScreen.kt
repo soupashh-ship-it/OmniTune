@@ -106,6 +106,7 @@ fun PlayerScreen(
     playerConnection: PlayerConnection?,
     onDismiss: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
+    onNavigateToListenTogether: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
@@ -114,6 +115,7 @@ fun PlayerScreen(
     val shuffleEnabled by (playerConnection?.shuffleModeEnabled ?: flowOf(false)).collectAsState(initial = false)
     val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsState(initial = REPEAT_MODE_OFF)
     val isSeeking = remember { mutableFloatStateOf(-1f) }
+    var showOptionsSheet by remember { mutableStateOf(false) }
 
     val gradientState = rememberPlayerGradient(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
@@ -193,14 +195,39 @@ fun PlayerScreen(
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
                     )
-                    Spacer(modifier = Modifier.height(mediumGap))
                     PlayerActionsRow(
                         playerConnection = playerConnection,
                         onOpenQueue = onOpenQueue,
+                        onShowOptions = { showOptionsSheet = true },
                     )
                 }
             }
         }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if (showOptionsSheet) {
+        PlayerOptionsBottomSheet(
+            playerConnection = playerConnection,
+            onDismissRequest = { showOptionsSheet = false },
+            onNavigateToRadio = {
+                showOptionsSheet = false
+                playerConnection?.startRadioSeamlessly()
+            },
+            onAddToPlaylist = { showOptionsSheet = false },
+            onCopyLink = {
+                showOptionsSheet = false
+                val videoId = mediaMetadata?.id
+                if (!videoId.isNullOrBlank()) {
+                    val clip = android.content.ClipData.newPlainText("OmniTune link", "https://music.youtube.com/watch?v=$videoId")
+                    (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            },
+            onListenTogether = {
+                showOptionsSheet = false
+                onNavigateToListenTogether()
+            },
+        )
+    }
     }
 }
 
@@ -715,6 +742,7 @@ private fun GlassIconButton(
 private fun PlayerActionsRow(
     playerConnection: PlayerConnection?,
     onOpenQueue: () -> Unit,
+    onShowOptions: () -> Unit = {},
 ) {
     val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
     val currentMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
@@ -783,6 +811,11 @@ private fun PlayerActionsRow(
             icon = R.drawable.ic_list,
             contentDescription = "Queue",
             onClick = onOpenQueue,
+        )
+        ActionButton(
+            icon = R.drawable.ic_more_vert,
+            contentDescription = "More options",
+            onClick = onShowOptions,
         )
     }
 
