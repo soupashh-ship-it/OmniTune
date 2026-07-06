@@ -309,9 +309,9 @@ fun TopPlaylistScreen(
                             .generate()
                     }
 
-                    val extractedColors = PlayerColorExtractor.extractGradientColors(
+                    val extractedColors = com.omnitune.app.ui.theme.PlayerColorExtractor.extractGradientColors(
                         palette = palette,
-                        fallbackArgb = fallbackColor
+                        fallbackColor = fallbackColor
                     )
                     gradientColors = extractedColors
                 }

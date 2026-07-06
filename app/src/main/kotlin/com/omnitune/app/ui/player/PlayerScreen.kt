@@ -39,6 +39,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.toArgb
+import coil3.imageLoader
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -131,46 +133,16 @@ fun PlayerScreen(
     val playlists by libraryViewModel.playlists.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
-    val gradientState = rememberPlayerGradient(
+    val context = LocalContext.current
+    val gradientState = com.omnitune.app.ui.player.rememberPlayerGradient(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
         videoId = mediaMetadata?.id,
     )
-    val dynamicAccent by androidx.compose.animation.animateColorAsState(
-        targetValue = gradientState.dynamicAccentColor,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "dynamicAccent",
-    )
+    val dynamicAccent = gradientState.accentGlow
+
 
     Box(modifier = modifier.fillMaxSize()) {
-        androidx.compose.animation.AnimatedContent(
-            targetState = gradientState,
-            transitionSpec = {
-                androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(1000)) togetherWith 
-                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(1000))
-            },
-            label = "BackgroundAnimation"
-        ) { state ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(state.backgroundBrush),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(260.dp)
-                        .background(
-                            Brush.radialGradient(
-                                listOf(
-                                    state.accentGlow,
-                                    Color.Transparent,
-                                )
-                            )
-                        ),
-                )
-            }
-        }
+        // Background is now handled globally by OmniShell
 
         BoxWithConstraints(
             modifier = Modifier
@@ -212,7 +184,22 @@ fun PlayerScreen(
                         accentColor = dynamicAccent,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
-                    MetadataBlock(mediaMetadata = mediaMetadata)
+                    MetadataBlock(
+                        playerConnection = playerConnection,
+                        onShare = {
+                            showOptionsSheet = false
+                            val videoId = mediaMetadata?.id
+                            val titleText = mediaMetadata?.title
+                            if (!videoId.isNullOrBlank()) {
+                                val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=$videoId")
+                                    if (titleText != null) putExtra(android.content.Intent.EXTRA_SUBJECT, titleText)
+                                }
+                                context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
+                            }
+                        }
+                    )
                     Spacer(modifier = Modifier.height(largeGap))
                     PlayerSeekBar(
                         playerConnection = playerConnection,
@@ -232,6 +219,7 @@ fun PlayerScreen(
                     PlayerActionsRow(
                         playerConnection = playerConnection,
                         onOpenQueue = onOpenQueue,
+                        onShowSleepTimer = { showSleepTimerDialog = true },
                         onShowOptions = { showOptionsSheet = true },
                         accentColor = dynamicAccent,
                     )
@@ -564,7 +552,13 @@ private fun ArtworkHero(
     }
 }
 @Composable
-private fun MetadataBlock(mediaMetadata: MediaMetadata?) {
+private fun MetadataBlock(
+    playerConnection: PlayerConnection?,
+    onShare: () -> Unit
+) {
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
+    val liked = currentSong?.song?.liked == true || mediaMetadata?.liked == true
     val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
     val artist = mediaMetadata
         ?.artists
@@ -573,45 +567,58 @@ private fun MetadataBlock(mediaMetadata: MediaMetadata?) {
         ?: "Unknown artist"
     val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        AnimatedContent(
-            targetState = title,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "player_title",
-        ) { currentTitle ->
-            Text(
-                text = currentTitle,
-                style = OmniTextStyles.screenTitle,
-                color = OmniColors.TextPrimary,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AnimatedContent(
+                targetState = title,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "player_title",
+            ) { currentTitle ->
+                Text(
+                    text = currentTitle,
+                    style = OmniTextStyles.screenTitle,
+                    color = OmniColors.TextPrimary,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            AnimatedContent(
+                targetState = artist + (if (album != null) " • $album" else ""),
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "player_artist",
+            ) { currentArtist ->
+                Text(
+                    text = currentArtist,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        IconButton(onClick = onShare) {
+            Icon(
+                painter = painterResource(R.drawable.ic_share),
+                contentDescription = "Share",
+                tint = OmniColors.TextSecondary,
+                modifier = Modifier.size(24.dp)
             )
         }
-        AnimatedContent(
-            targetState = artist,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "player_artist",
-        ) { currentArtist ->
-            Text(
-                text = currentArtist,
-                style = MaterialTheme.typography.titleMedium,
-                color = OmniColors.OmniAccentSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (album != null) {
-            Text(
-                text = album,
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        IconButton(onClick = { playerConnection?.toggleLike() }) {
+            Icon(
+                painter = painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
+                contentDescription = if (liked) "Unlike" else "Like",
+                tint = if (liked) OmniColors.Hot else OmniColors.TextSecondary,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -736,10 +743,8 @@ private fun PlayerControlRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PlayerIconButton(
-            icon = R.drawable.ic_shuffle,
-            contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-            active = shuffleEnabled,
+        // Shuffle Button (Icon only)
+        IconButton(
             onClick = {
                 val pc = playerConnection
                 if (pc != null) {
@@ -750,15 +755,33 @@ private fun PlayerControlRow(
                     }
                 }
             },
-        )
-        PlayerIconButton(
-            icon = R.drawable.ic_skip_previous,
-            contentDescription = "Previous",
-            enabled = canSkipPrevious,
-            size = 52.dp,
-            iconSize = 28.dp,
-            onClick = { playerConnection?.seekToPrevious() },
-        )
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_shuffle),
+                contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
+                tint = OmniColors.TextPrimary.copy(alpha = if (shuffleEnabled) 1f else 0.4f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        // Previous Button (Boxed)
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(OmniColors.TextPrimary.copy(alpha = 0.08f))
+                .clickable(enabled = canSkipPrevious) { playerConnection?.seekToPrevious() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_skip_previous),
+                contentDescription = "Previous",
+                tint = OmniColors.TextPrimary.copy(alpha = if (canSkipPrevious) 0.9f else 0.4f),
+                modifier = Modifier.size(26.dp)
+            )
+        }
+
         PlayPauseButton(
             isPlaying = isPlaying,
             playbackState = playbackState,
@@ -771,25 +794,42 @@ private fun PlayerControlRow(
                 }
             },
         )
-        PlayerIconButton(
-            icon = R.drawable.ic_skip_next,
-            contentDescription = "Next",
-            enabled = canSkipNext,
-            size = 52.dp,
-            iconSize = 28.dp,
-            onClick = { playerConnection?.seekToNext() },
-        )
-        PlayerIconButton(
-            icon = if (repeatMode == REPEAT_MODE_ONE) R.drawable.ic_repeat_one else R.drawable.ic_repeat,
-            contentDescription = when (repeatMode) {
-                REPEAT_MODE_OFF -> "Repeat off"
-                REPEAT_MODE_ALL -> "Repeat all"
-                REPEAT_MODE_ONE -> "Repeat one"
-                else -> "Repeat"
-            },
-            active = repeatMode != REPEAT_MODE_OFF,
+        
+        // Next Button (Boxed)
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(OmniColors.TextPrimary.copy(alpha = 0.08f))
+                .clickable(enabled = canSkipNext) { playerConnection?.seekToNext() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_skip_next),
+                contentDescription = "Next",
+                tint = OmniColors.TextPrimary.copy(alpha = if (canSkipNext) 0.9f else 0.4f),
+                modifier = Modifier.size(26.dp)
+            )
+        }
+
+        // Repeat Button (Icon only)
+        IconButton(
             onClick = { playerConnection?.toggleRepeatMode() },
-        )
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                painter = painterResource(
+                    when (repeatMode) {
+                        REPEAT_MODE_OFF, REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                        REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                        else -> R.drawable.ic_repeat
+                    }
+                ),
+                contentDescription = "Repeat",
+                tint = OmniColors.TextPrimary.copy(alpha = if (repeatMode == REPEAT_MODE_OFF) 0.4f else 1f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
 
@@ -807,13 +847,13 @@ private fun PlayPauseButton(
         modifier = Modifier
             .size(76.dp)
             .shadow(
-                elevation = 12.dp,
+                elevation = 8.dp,
                 shape = CircleShape,
-                ambientColor = OmniColors.OmniAccentGlow.copy(alpha = 0.20f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.20f),
+                ambientColor = Color.Black.copy(alpha = 0.3f),
+                spotColor = Color.Black.copy(alpha = 0.3f),
             )
             .clip(CircleShape)
-            .background(Brush.linearGradient(OmniColors.PrimaryGradientColors))
+            .background(Color.White)
             .omniPressScale(interactionSource),
     ) {
         Icon(
@@ -827,8 +867,8 @@ private fun PlayPauseButton(
                 }
             ),
             contentDescription = if (isPlaying) "Pause" else "Play",
-            tint = OmniColors.TextOnAccent,
-            modifier = Modifier.size(34.dp),
+            tint = Color.Black,
+            modifier = Modifier.size(36.dp),
         )
     }
 }
@@ -907,77 +947,51 @@ private fun GlassIconButton(
 private fun PlayerActionsRow(
     playerConnection: PlayerConnection?,
     onOpenQueue: () -> Unit,
+    onShowSleepTimer: () -> Unit,
     onShowOptions: () -> Unit = {},
     accentColor: Color = OmniColors.OmniAccentPrimary,
 ) {
-    val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
-    val currentMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
-    val liked = currentSong?.song?.liked == true || currentMetadata?.liked == true
-    val downloadsViewModel: DownloadsViewModel = hiltViewModel()
-    val context = LocalContext.current
     var showLyricsSheet by remember { mutableStateOf(false) }
+
+    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ActionButton(
-            icon = if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
-            contentDescription = if (liked) "Unlike" else "Like",
-            active = liked,
-            activeTint = OmniColors.Hot,
-            onClick = { playerConnection?.toggleLike() },
-        )
-        ActionButton(
-            icon = R.drawable.ic_download,
-            contentDescription = "Download",
-            onClick = {
-                val song = currentSong?.song
-                val metadata = currentMetadata
-                val videoId = song?.id ?: metadata?.id
-                val title = song?.title ?: metadata?.title
-                if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
-                    val activeUri = playerConnection?.activeUri
-                    val resolvedStreamUrl = activeUri?.takeIf {
-                        it.startsWith("http://") || it.startsWith("https://")
-                    }
-                    Timber.d("Download button clicked for %s", videoId)
-                    downloadsViewModel.startDownload(videoId, title, resolvedStreamUrl) { _, message ->
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    Timber.w("Download button clicked without active song")
-                    Toast.makeText(context, "No active song to download", Toast.LENGTH_SHORT).show()
-                }
-            },
-        )
-        ActionButton(
-            icon = R.drawable.ic_lyrics,
-            contentDescription = "Lyrics",
-            onClick = { showLyricsSheet = true },
-        )
-        ActionButton(
-            icon = R.drawable.ic_lyrics,
-            contentDescription = "Lyrics",
-            onClick = { showLyricsSheet = true },
-        )
-        Box(
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(OmniColors.TextSecondary.copy(alpha = 0.12f))
-                .clickable(onClick = onShowOptions),
-            contentAlignment = Alignment.Center,
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onOpenQueue)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_more_vert),
-                contentDescription = "More options",
-                tint = OmniColors.TextSecondary,
-                modifier = Modifier.size(22.dp),
-            )
+            Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = OmniColors.TextSecondary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Queue", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelLarge)
+        }
+
+        IconButton(onClick = onShowSleepTimer) {
+            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) OmniColors.OmniAccentPrimary else OmniColors.TextSecondary)
+        }
+
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { showLyricsSheet = true }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(painterResource(R.drawable.ic_lyrics), contentDescription = "Lyrics", tint = OmniColors.TextSecondary, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Lyrics", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelLarge)
+        }
+
+        IconButton(onClick = onShowOptions) {
+            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options", tint = OmniColors.TextSecondary)
         }
     }
 

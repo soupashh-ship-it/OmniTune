@@ -238,10 +238,7 @@ fun CachePlaylistScreen(
                             .generate()
                     }
 
-                    val extractedColors = PlayerColorExtractor.extractGradientColors(
-                        palette = palette,
-                        fallbackArgb = fallbackColor
-                    )
+                    val extractedColors = com.omnitune.app.ui.theme.PlayerColorExtractor.extractGradientColors(palette, fallbackColor = fallbackColor)
                     gradientColors = extractedColors
                 }
             }

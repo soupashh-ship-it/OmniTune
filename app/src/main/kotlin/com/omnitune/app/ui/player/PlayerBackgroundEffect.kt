@@ -62,16 +62,13 @@ private suspend fun loadArtworkColors(
             val result = SingletonImageLoader.get(context).execute(request)
             val bitmap = (result.image as? BitmapImage)?.bitmap ?: continue
             val palette = withContext(Dispatchers.Default) {
-                PlayerColorExtractor.generatePalette(bitmap)
+                androidx.palette.graphics.Palette.from(bitmap).generate()
             }
             val gradient = PlayerColorExtractor.extractGradientColors(
                 palette = palette,
-                fallbackArgb = OmniColors.OmniBackgroundBase.toArgb(),
+                fallbackColor = OmniColors.OmniBackgroundBase.toArgb()
             )
-            val accent = PlayerColorExtractor.extractDominantAccent(
-                palette = palette,
-                fallbackArgb = OmniColors.OmniAccentPrimary.toArgb(),
-            )
+            val accent = gradient.firstOrNull() ?: OmniColors.OmniAccentPrimary
             return ArtworkColors(gradient, accent)
         } catch (_: Exception) {
             continue

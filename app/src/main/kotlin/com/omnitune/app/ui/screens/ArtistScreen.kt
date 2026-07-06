@@ -17,6 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -135,44 +140,132 @@ fun ArtistScreen(
                         .padding(horizontal = 16.dp),
                 ) {
                     item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             AsyncImage(
                                 model = page.artist.thumbnail,
                                 contentDescription = page.artist.title,
                                 modifier = Modifier
-                                    .size(120.dp)
+                                    .size(180.dp)
                                     .clip(CircleShape),
                                 contentScale = ContentScale.Crop,
                             )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
 
-                            Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = page.artist.title,
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center,
+                            )
+                            
+                            page.description?.let { desc ->
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = page.artist.title,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 2,
+                                    text = desc,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 3,
                                     overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
                                 )
-                                page.description?.let { desc ->
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = desc,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 3,
-                                        overflow = TextOverflow.Ellipsis,
+                                Text(
+                                    text = "more",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .clickable { /* TODO: show full bio */ }
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            // Stats Row
+                            val songCount = page.sections.find { it.title.contains("Song", ignoreCase = true) }?.items?.size ?: 0
+                            val albumCount = page.sections.find { it.title.contains("Album", ignoreCase = true) }?.items?.size ?: 0
+                            
+                            if (songCount > 0 || albumCount > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    if (songCount > 0) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "$songCount+", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(text = "Songs", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    if (albumCount > 0) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(text = "$albumCount+", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                            Text(text = "Albums", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                            }
+                            
+                            // Action Buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Button(
+                                    onClick = { viewModel.toggleBookmark(artistId) },
+                                    modifier = Modifier.weight(1f).height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isBookmarked) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = if (isBookmarked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onErrorContainer
                                     )
+                                ) {
+                                    Icon(painter = painterResource(if (isBookmarked) com.omnitune.app.R.drawable.ic_close else com.omnitune.app.R.drawable.ic_add), contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(if (isBookmarked) "Subscribed" else "Subscribe")
+                                }
+                                
+                                Button(
+                                    onClick = { 
+                                        val allSongs = page.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                                        if (allSongs.isNotEmpty()) {
+                                            val shuffled = allSongs.shuffled()
+                                            // Actually would use playerConnection.playQueue here, handled by parent ideally
+                                            // For now just play the first section
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f).height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                ) {
+                                    Icon(painter = painterResource(com.omnitune.app.R.drawable.ic_shuffle), contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Shuffle")
                                 }
                             }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            OutlinedButton(
+                                onClick = { /* Start Radio */ },
+                                modifier = Modifier.fillMaxWidth().height(50.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Icon(painter = painterResource(com.omnitune.app.R.drawable.ic_insights), contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Radio", color = MaterialTheme.colorScheme.onSurface)
+                            }
                         }
-
-                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
 
                     if (page.sections.isEmpty()) {
