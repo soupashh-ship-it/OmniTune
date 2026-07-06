@@ -60,4 +60,8 @@ object AppModule {
     ): com.omnitune.app.db.DatabaseDao {
         return database as com.omnitune.app.db.DatabaseDao
     }
+
+    @Provides
+    @Singleton
+    fun provideSyncUtils(): com.omnitune.app.utils.SyncUtils = com.omnitune.app.utils.SyncUtils
 }
