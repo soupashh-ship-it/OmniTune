@@ -68,7 +68,7 @@ class PlaybackNotificationManager(
             .setNotificationId(NOTIFICATION_ID)
             .build()
             .apply {
-                setSmallIcon(R.drawable.ic_launcher_foreground)
+                setSmallIcon(R.drawable.ic_stat_omnitune)
             }
     }
 
@@ -163,11 +163,15 @@ class PlaybackNotificationManager(
             ?: "Playing"
 
         return Notification.Builder(service, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_stat_omnitune)
             .setContentTitle(title)
             .setContentText(artist)
             .setTicker(title)
-            .setLargeIcon(defaultNotificationArtwork())
+            .setLargeIcon(
+                metadata?.artworkData?.let { data ->
+                    try { android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size) } catch (_: Exception) { null }
+                } ?: defaultNotificationArtwork()
+            )
             .setContentIntent(
                 PendingIntent.getActivity(
                     service,

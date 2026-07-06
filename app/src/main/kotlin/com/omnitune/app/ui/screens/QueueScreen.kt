@@ -84,6 +84,7 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import timber.log.Timber
 
 private const val QUEUE_ARTWORK_SIZE = 160
 
@@ -95,6 +96,7 @@ fun QueueScreen(
     downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
+    Timber.tag("QueueNav").i("QueueScreen entered: playerConnection=%s mediaMetadata=%s", playerConnection, playerConnection?.mediaMetadata?.value)
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -909,7 +911,7 @@ private fun queueItemKey(
     index: Int,
 ): String {
     val mediaItem = playerConnection?.getMediaItemAt(index) ?: return "unknown_$index"
-    val mediaId = mediaItem.mediaId.takeIf { it.isNotBlank() }
-    val title = mediaItem.mediaMetadata.title?.toString()
-    return mediaId ?: "$index-${title.orEmpty()}"
+    val mediaId = mediaItem.mediaId.takeIf { it.isNotBlank() } ?: ""
+    val title = mediaItem.mediaMetadata.title?.toString() ?: ""
+    return "$mediaId|$index"
 }

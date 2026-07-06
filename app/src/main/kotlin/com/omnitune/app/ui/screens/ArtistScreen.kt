@@ -54,6 +54,7 @@ import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.omnitune.app.R
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +71,7 @@ fun ArtistScreen(
     val isBookmarked by viewModel.isBookmarked.collectAsState()
 
     LaunchedEffect(artistId) {
+        Timber.tag("ArtistNav").i("ArtistScreen LaunchedEffect: artistId=%s", artistId)
         isLoading = true
         viewModel.loadArtist(artistId)
         YouTube.artist(artistId).fold(
@@ -212,8 +214,8 @@ fun ArtistScreen(
                                 item {
                                     androidx.compose.foundation.lazy.LazyRow(
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = (-16).dp)
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         items(section.items) { item ->
                                             if (item is AlbumItem) {
