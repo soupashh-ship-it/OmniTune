@@ -8,6 +8,7 @@ package com.omnitune.app.ui.player
 import android.media.audiofx.AudioEffect
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -134,6 +135,11 @@ fun PlayerScreen(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
         videoId = mediaMetadata?.id,
     )
+    val dynamicAccent by androidx.compose.animation.animateColorAsState(
+        targetValue = gradientState.dynamicAccentColor,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "dynamicAccent",
+    )
 
     Box(modifier = modifier.fillMaxSize()) {
         androidx.compose.animation.AnimatedContent(
@@ -203,6 +209,7 @@ fun PlayerScreen(
                         isPlaying = isPlaying,
                         height = artworkHeight,
                         widthFraction = artworkWidthFraction,
+                        accentColor = dynamicAccent,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
                     MetadataBlock(mediaMetadata = mediaMetadata)
@@ -210,6 +217,7 @@ fun PlayerScreen(
                     PlayerSeekBar(
                         playerConnection = playerConnection,
                         isSeeking = isSeeking,
+                        accentColor = dynamicAccent,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
                     PlayerControlRow(
@@ -218,12 +226,14 @@ fun PlayerScreen(
                         shuffleEnabled = shuffleEnabled,
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
+                        accentColor = dynamicAccent,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
                     PlayerActionsRow(
                         playerConnection = playerConnection,
                         onOpenQueue = onOpenQueue,
                         onShowOptions = { showOptionsSheet = true },
+                        accentColor = dynamicAccent,
                     )
                 }
             }
@@ -436,6 +446,7 @@ private fun ArtworkHero(
     isPlaying: Boolean,
     height: Dp,
     widthFraction: Float,
+    accentColor: Color = OmniColors.OmniAccentPrimary,
 ) {
     val context = LocalContext.current
     val videoId = mediaMetadata?.id
@@ -472,7 +483,7 @@ private fun ArtworkHero(
                 elevation = if (isPlaying) 26.dp else 18.dp,
                 shape = OmniShapes.ArtworkLarge,
                 ambientColor = Color.Black.copy(alpha = 0.42f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = glowAlpha),
+                spotColor = accentColor.copy(alpha = glowAlpha),
             )
             .clip(OmniShapes.ArtworkLarge)
             .omniSoftBorder(
@@ -488,7 +499,7 @@ private fun ArtworkHero(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
+                            accentColor.copy(alpha = 0.10f),
                             OmniColors.OmniGlassStrong,
                             OmniColors.OmniBackgroundElevated,
                         )
@@ -611,6 +622,7 @@ private fun MetadataBlock(mediaMetadata: MediaMetadata?) {
 private fun PlayerSeekBar(
     playerConnection: PlayerConnection?,
     isSeeking: androidx.compose.runtime.MutableFloatState,
+    accentColor: Color = OmniColors.OmniAccentPrimary,
 ) {
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
     val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
@@ -672,8 +684,8 @@ private fun PlayerSeekBar(
                 isSeeking.floatValue = -1f
             },
             colors = SliderDefaults.colors(
-                thumbColor = OmniColors.ActivePlayback,
-                activeTrackColor = OmniColors.ActivePlayback,
+                thumbColor = accentColor,
+                activeTrackColor = accentColor,
                 inactiveTrackColor = OmniColors.OmniGlassStrong,
             ),
             squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
@@ -713,6 +725,7 @@ private fun PlayerControlRow(
     shuffleEnabled: Boolean,
     repeatMode: Int,
     playerConnection: PlayerConnection?,
+    accentColor: Color = OmniColors.OmniAccentPrimary,
 ) {
     val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
     val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
@@ -895,6 +908,7 @@ private fun PlayerActionsRow(
     playerConnection: PlayerConnection?,
     onOpenQueue: () -> Unit,
     onShowOptions: () -> Unit = {},
+    accentColor: Color = OmniColors.OmniAccentPrimary,
 ) {
     val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
     val currentMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)

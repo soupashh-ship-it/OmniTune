@@ -42,10 +42,15 @@ private val FallbackGlow = OmniColors.OmniAccentGlow
  * Loads the artwork bitmap from [urls] (trying each in order) and extracts
  * gradient colors via [PlayerColorExtractor].
  */
-private suspend fun loadArtworkGradient(
+private data class ArtworkColors(
+    val gradient: List<Color>,
+    val accentColor: Color,
+)
+
+private suspend fun loadArtworkColors(
     context: Context,
     urls: List<String>,
-): List<Color> {
+): ArtworkColors? {
     for (url in urls) {
         try {
             val request = ImageRequest.Builder(context)
@@ -59,15 +64,20 @@ private suspend fun loadArtworkGradient(
             val palette = withContext(Dispatchers.Default) {
                 PlayerColorExtractor.generatePalette(bitmap)
             }
-            return PlayerColorExtractor.extractGradientColors(
+            val gradient = PlayerColorExtractor.extractGradientColors(
                 palette = palette,
                 fallbackArgb = OmniColors.OmniBackgroundBase.toArgb(),
             )
+            val accent = PlayerColorExtractor.extractDominantAccent(
+                palette = palette,
+                fallbackArgb = OmniColors.OmniAccentPrimary.toArgb(),
+            )
+            return ArtworkColors(gradient, accent)
         } catch (_: Exception) {
             continue
         }
     }
-    return emptyList()
+    return null
 }
 
 /**
@@ -95,20 +105,29 @@ fun rememberPlayerGradient(
     }
 
     var extractedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    var extractedAccent by remember { mutableStateOf(OmniColors.OmniAccentPrimary) }
     var isFromArtwork by remember { mutableStateOf(false) }
 
     LaunchedEffect(candidates) {
         if (candidates.isEmpty()) {
             extractedColors = emptyList()
+            extractedAccent = OmniColors.OmniAccentPrimary
             isFromArtwork = false
             return@LaunchedEffect
         }
-        val colors = loadArtworkGradient(
+        val colors = loadArtworkColors(
             context = context,
             urls = candidates,
         )
-        extractedColors = colors
-        isFromArtwork = colors.isNotEmpty()
+        if (colors != null) {
+            extractedColors = colors.gradient
+            extractedAccent = colors.accentColor
+            isFromArtwork = true
+        } else {
+            extractedColors = emptyList()
+            extractedAccent = OmniColors.OmniAccentPrimary
+            isFromArtwork = false
+        }
     }
 
     val displayColors = if (isFromArtwork) extractedColors else PlayerFallbackGradient
@@ -123,6 +142,7 @@ fun rememberPlayerGradient(
         backgroundBrush = Brush.verticalGradient(displayColors),
         accentGlow = accentGlow,
         dominantColor = displayColors.firstOrNull() ?: OmniColors.OmniBackgroundBase,
+        dynamicAccentColor = extractedAccent,
         isFromArtwork = isFromArtwork,
     )
 }
@@ -137,5 +157,6 @@ data class PlayerGradientState(
     val backgroundBrush: Brush,
     val accentGlow: Color,
     val dominantColor: Color,
+    val dynamicAccentColor: Color = OmniColors.OmniAccentPrimary,
     val isFromArtwork: Boolean = false,
 )

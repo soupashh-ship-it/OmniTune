@@ -174,6 +174,34 @@ object PlayerColorExtractor {
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
+
+    /**
+     * Extracts a single dominant accent color suitable for UI elements
+     * (sliders, buttons, text highlights). Returns a vivid, bright color
+     * that works well on dark backgrounds.
+     */
+    suspend fun extractDominantAccent(
+        palette: Palette,
+        fallbackArgb: Int,
+    ): Color = withContext(Dispatchers.Default) {
+        val vibrant = palette.vibrantSwatch?.rgb?.let { Color(it) }
+        val lightVibrant = palette.lightVibrantSwatch?.rgb?.let { Color(it) }
+        val dominant = palette.dominantSwatch?.rgb?.let { Color(it) }
+        val muted = palette.mutedSwatch?.rgb?.let { Color(it) }
+
+        // Pick the most vivid swatch, boost it for UI use
+        val raw = vibrant ?: lightVibrant ?: dominant ?: muted
+            ?: Color(fallbackArgb).takeUnless { isNearGray(it) }
+            ?: DefaultThemeColor
+
+        // Ensure the color is vivid and bright enough for UI on dark backgrounds
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(raw.toArgb(), hsv)
+        hsv[1] = (hsv[1] * 1.4f).coerceIn(0.50f, 1.0f)  // boost saturation
+        hsv[2] = hsv[2].coerceIn(0.55f, 0.85f)             // keep brightness in usable range
+        Color(android.graphics.Color.HSVToColor(hsv))
+    }
+
     object Config {
         const val MAX_COLOR_COUNT = 32
         const val BITMAP_AREA = 8000

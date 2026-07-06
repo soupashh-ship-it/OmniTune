@@ -35,6 +35,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -279,12 +284,16 @@ fun OmniMusicRow(
     onClick: (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "musicRowScale")
+    val bgColor by animateColorAsState(if (isPressed) OmniColors.SurfacePanel else OmniColors.SurfaceSubtle.copy(alpha = 0.38f), label = "musicRowBg")
     Row(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 60.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(OmniShapes.Small)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.38f))
+            .background(bgColor)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -352,11 +361,23 @@ fun OmniShelfCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "shelfScale")
     Column(
         modifier = modifier
             .width(144.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.22f))
             .clip(OmniShapes.Small)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.material3.ripple(
+                    bounded = true,
+                    color = OmniColors.OmniAccentPrimary.copy(alpha = 0.1f),
+                ),
+                onClick = onClick,
+            ),
     ) {
         OmniThumbnail(
             thumbnailUrl = thumbnailUrl,
@@ -382,11 +403,16 @@ fun OmniSettingsRow(
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.985f else 1f, label = "settingsRowScale")
+    val bgColor by animateColorAsState(if (isPressed) OmniColors.SurfacePanel else Color.Transparent, label = "settingsRowBg")
     Row(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(OmniShapes.Small)
+            .background(bgColor)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -486,8 +512,8 @@ fun OmniFloatingSurface(
             .shadow(
                 elevation = elevation,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.24f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.06f),
+                ambientColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.08f),
+                spotColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.04f),
             )
             .clip(shape)
             .background(background),

@@ -9,30 +9,30 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 object OmniColors {
-    // Backgrounds
-    val OmniBackgroundBase = Color(0xFF040508)
-    val OmniBackgroundElevated = Color(0xFF0B0E16)
-    val OmniBackgroundGradientTop = Color(0xFF070A11)
+    // Backgrounds — tinted dark with a subtle blue undertone
+    val OmniBackgroundBase = Color(0xFF06080F)
+    val OmniBackgroundElevated = Color(0xFF0D1019)
+    val OmniBackgroundGradientTop = Color(0xFF0A0D16)
     val OmniBackgroundGradientBottom = OmniBackgroundBase
 
     val Background = OmniBackgroundBase
-    val BackgroundAlt = Color(0xFF070A12)
-    val Surface = Color(0xFF0A0D14)
+    val BackgroundAlt = Color(0xFF080B14)
+    val Surface = Color(0xFF0C101A)
     val SurfaceElevated = OmniBackgroundElevated
-    val SurfaceHairline = Color.White.copy(alpha = 0.055f)
+    val SurfaceHairline = Color.White.copy(alpha = 0.06f)
     val SurfacePressed = Color.White.copy(alpha = 0.08f)
-    val SurfaceQuiet = Color(0xFF0A0E17).copy(alpha = 0.68f)
-    val SurfacePanel = Color(0xFF0E1420).copy(alpha = 0.78f)
-    val SurfaceSubtle = Color(0xFF0C1019).copy(alpha = 0.74f)
-    val SurfaceRaised = Color(0xFF101623).copy(alpha = 0.92f)
-    val SurfaceFloating = Color(0xFF080C14).copy(alpha = 0.96f)
+    val SurfaceQuiet = Color(0xFF0B0F1A).copy(alpha = 0.68f)
+    val SurfacePanel = Color(0xFF101522).copy(alpha = 0.78f)
+    val SurfaceSubtle = Color(0xFF0D111C).copy(alpha = 0.74f)
+    val SurfaceRaised = Color(0xFF131928).copy(alpha = 0.92f)
+    val SurfaceFloating = Color(0xFF0A0E18).copy(alpha = 0.96f)
 
     // Glass surfaces
     val OmniGlassSubtle = Color.White.copy(alpha = 0.01f)
     val OmniGlassMedium = Color.White.copy(alpha = 0.02f)
     val OmniGlassStrong = Color.White.copy(alpha = 0.04f)
-    val OmniGlassDock = Color(0xFF080B12).copy(alpha = 0.94f)
-    val OmniGlassPlayer = Color(0xFF06090E).copy(alpha = 0.96f)
+    val OmniGlassDock = Color(0xFF0A0E18).copy(alpha = 0.94f)
+    val OmniGlassPlayer = Color(0xFF080C14).copy(alpha = 0.96f)
     val OmniGlassBorderSubtle = Color.White.copy(alpha = 0.01f)
     val OmniGlassBorderStrong = Color.White.copy(alpha = 0.02f)
 
@@ -41,21 +41,21 @@ object OmniColors {
     val GlassBorder = OmniGlassBorderStrong
     val GlassBorderLight = OmniGlassBorderSubtle
 
-    // Accents
-    val OmniAccentPrimary = Color(0xFF7F8CFF)
-    val OmniAccentSecondary = Color(0xFF55D0F5)
-    val OmniAccentTertiary = Color(0xFF6EE7CF)
-    val OmniAccentWarm = Color(0xFFFFC46B)
-    val OmniAccentMuted = Color(0xFF756AC4)
-    val OmniAccentSoft = Color(0xFF45C7F0).copy(alpha = 0.16f)
-    val OmniAccentGlow = Color(0x4D7F8CFF)
+    // Accents — single lavender primary with a cooler blue-violet for contrast
+    val OmniAccentPrimary = Color(0xFF8B8FFF)       // Lavender — the one accent
+    val OmniAccentSecondary = Color(0xFF6B7FFF)      // Cooler blue-violet for gradient endpoints
+    val OmniAccentTertiary = Color(0xFFB8A0FF)       // Warmer lilac for highlights
+    val OmniAccentWarm = Color(0xFFFFC46B)            // Kept for semantic warning only
+    val OmniAccentMuted = Color(0xFF6B6AAA)           // Desaturated lavender for muted elements
+    val OmniAccentSoft = OmniAccentPrimary.copy(alpha = 0.12f)
+    val OmniAccentGlow = OmniAccentPrimary.copy(alpha = 0.30f)
     val OmniAccentOnPrimary = Color(0xFF05060A)
 
     val Primary = OmniAccentPrimary
-    val PrimaryLight = Color(0xFFA99CFF)
+    val PrimaryLight = Color(0xFFADA8FF)
     val Secondary = OmniAccentSecondary
-    val SecondaryLight = Color(0xFF8CE6FF)
-    val Hot = Color(0xFFFF5C93)
+    val SecondaryLight = Color(0xFF9B9AFF)
+    val Hot = Color(0xFFFF5C93)                        // Kept for likes/favorites only
     val HotLight = Color(0xFFFF83AD)
 
     // Semantic colors
@@ -64,23 +64,23 @@ object OmniColors {
     val Error = Color(0xFFFF6363)
     val Offline = Color(0xFF6E7787)
     val Downloaded = Color(0xFF6EE7B7)
-    val ActivePlayback = OmniAccentSecondary
+    val ActivePlayback = OmniAccentPrimary
 
     // Text
-    val TextPrimary = Color(0xFFF7F8FB)
-    val TextSecondary = Color(0xFFB3BAC8)
-    val TextTertiary = Color(0xFF8A93A5)
-    val TextDisabled = Color(0xFF4C5361)
+    val TextPrimary = Color(0xFFF2F3F8)
+    val TextSecondary = Color(0xFFA8B0C4)
+    val TextTertiary = Color(0xFF7A8299)
+    val TextDisabled = Color(0xFF444B5C)
     val TextOnAccent = OmniAccentOnPrimary
     val TextMuted = TextTertiary
-    val BorderSubtle = Color.White.copy(alpha = 0.075f)
+    val BorderSubtle = Color.White.copy(alpha = 0.07f)
 
-    // Gradients
+    // Gradients — lavender-to-blue-violet for depth, not flat single-hue
     val PrimaryGradient = Brush.horizontalGradient(
         colors = listOf(OmniAccentPrimary, OmniAccentSecondary)
     )
     val PrimaryGradientVertical = Brush.verticalGradient(
-        colors = listOf(OmniAccentPrimary, PrimaryLight)
+        colors = listOf(OmniAccentPrimary, OmniAccentTertiary)
     )
     val HotGradient = Brush.horizontalGradient(
         colors = listOf(Hot, OmniAccentPrimary)
