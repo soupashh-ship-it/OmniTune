@@ -13,6 +13,14 @@ import androidx.media3.exoplayer.offline.DownloadManager
 import okhttp3.OkHttpClient
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import com.omnitune.app.utils.dataStore
+import com.omnitune.app.constants.SkipSilenceKey
+import com.omnitune.app.constants.AudioOffload
+import com.omnitune.app.extensions.setOffloadEnabled
+
 object PlayerFactory {
 
     fun createPlayer(
@@ -39,6 +47,10 @@ object PlayerFactory {
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
+        val prefs = runBlocking(Dispatchers.IO) { context.dataStore.data.first() }
+        val skipSilence = prefs[SkipSilenceKey] ?: false
+        val audioOffload = prefs[AudioOffload] ?: true
+
         return ExoPlayer.Builder(context)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
@@ -55,6 +67,10 @@ object PlayerFactory {
             .setSeekBackIncrementMs(5_000L)
             .setSeekForwardIncrementMs(10_000L)
             .build()
+            .apply {
+                skipSilenceEnabled = skipSilence
+                setOffloadEnabled(audioOffload)
+            }
     }
 
     fun createCacheDataSourceFactory(

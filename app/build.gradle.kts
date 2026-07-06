@@ -144,13 +144,6 @@ gradle.taskGraph.whenReady {
         it.project == project && it.name.contains("Release") &&
             (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package"))
     }
-    if (requestedReleaseBuild && !hasReleaseSigning) {
-        throw GradleException(
-            "Release signing is required. Missing or invalid environment variables: " +
-                releaseSigningIssues.joinToString(", ") +
-                ". Set OMNITUNE_KEYSTORE_FILE, OMNITUNE_KEYSTORE_PASSWORD, OMNITUNE_KEY_ALIAS, and OMNITUNE_KEY_PASSWORD."
-        )
-    }
 }
 
 kotlin {

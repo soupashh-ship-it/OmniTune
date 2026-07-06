@@ -147,6 +147,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val _queueRestoreCompleted = MutableStateFlow(false)
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
     private var saveQueueJob: Job? = null
+    private var bluetoothReceiver: android.content.BroadcastReceiver? = null
+
 
     private var currentQueue: Queue = EmptyQueue
 
@@ -243,22 +245,28 @@ class MusicService : MediaLibraryService(), Player.Listener {
         // Restore persistent queue
         scope.launch(Dispatchers.IO) {
             try {
-                val savedQueue = database.getQueue()
-                if (savedQueue != null && savedQueue.mediaIdList.isNotBlank()) {
-                    val mediaIds = savedQueue.mediaIdList.split(",")
-                    val songs = database.getSongsByIds(mediaIds)
-                    // Ensure the order is preserved
-                    val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
-                    
-                    if (mediaItems.isNotEmpty()) {
-                        val queue = ListQueue(
-                            title = savedQueue.title,
-                            items = mediaItems,
-                            startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
-                            position = savedQueue.position
-                        )
-                        withContext(Dispatchers.Main) {
-                            restoreQueueMetadataOnly(queue)
+                val prefs = this@MusicService.dataStore.data.first()
+                val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
+                if (!persistentQueue) {
+                    database.clearQueue()
+                } else {
+                    val savedQueue = database.getQueue()
+                    if (savedQueue != null && savedQueue.mediaIdList.isNotBlank()) {
+                        val mediaIds = savedQueue.mediaIdList.split(",")
+                        val songs = database.getSongsByIds(mediaIds)
+                        // Ensure the order is preserved
+                        val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
+                        
+                        if (mediaItems.isNotEmpty()) {
+                            val queue = ListQueue(
+                                title = savedQueue.title,
+                                items = mediaItems,
+                                startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
+                                position = savedQueue.position
+                            )
+                            withContext(Dispatchers.Main) {
+                                restoreQueueMetadataOnly(queue)
+                            }
                         }
                     }
                 }
@@ -268,6 +276,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 _queueRestoreCompleted.value = true
             }
         }
+
+
+        val filter = android.content.IntentFilter(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+        bluetoothReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+                if (intent.action == android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) {
+                    val state = intent.getIntExtra(android.bluetooth.BluetoothProfile.EXTRA_STATE, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
+                    if (state == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
+                        scope.launch {
+                            val prefs = this@MusicService.dataStore.data.first()
+                            val autoStart = prefs[com.omnitune.app.constants.AutoStartOnBluetoothKey] ?: false
+                            if (autoStart) {
+                                player.play()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(this, bluetoothReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
 
         connectivityObserver = NetworkConnectivityObserver(this)
 
@@ -344,7 +372,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private fun initializePlayer() {
         player = PlayerFactory.createPlayer(this, okHttpClient, downloadUtil)
             .also { exoPlayer ->
-                exoPlayer.setOffloadEnabled(true)
                 exoPlayer.playWhenReady = false
                 exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
                 exoPlayer.addListener(this)
@@ -690,6 +717,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (::playbackNotificationManager.isInitialized) {
             playbackNotificationManager.release()
         }
+        bluetoothReceiver?.let { unregisterReceiver(it) }
+
         scopeJob.cancel()
         player.release()
         super.onDestroy()
@@ -891,6 +920,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueJob?.cancel()
         saveQueueJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                val prefs = this@MusicService.dataStore.data.first()
+                val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
+                if (!persistentQueue) return@launch
+
                 kotlinx.coroutines.delay(1000) // Debounce
                 
                 val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
@@ -918,10 +951,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 )
                 database.saveQueue(entity)
                 Timber.tag("OmniTuneQueue").i("Queue saved: count=$count, index=$currentIndex, pos=$currentPos")
-            } catch (e: CancellationException) {
+            } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                timber.log.Timber.tag("MusicService").e(e, "Error saving queue state")
+                Timber.tag("MusicService").e(e, "Error saving queue state")
             }
         }
     }

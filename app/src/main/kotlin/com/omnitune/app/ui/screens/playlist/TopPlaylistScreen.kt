@@ -124,6 +124,16 @@ import com.omnitune.app.ui.utils.ItemWrapper
 import com.omnitune.app.ui.utils.backToMain
 import com.omnitune.app.utils.makeTimeString
 import com.omnitune.app.utils.rememberPreference
+import com.omnitune.app.ui.screens.LibraryViewModel
+import com.omnitune.app.db.entities.PlaylistEntity
+import com.omnitune.app.ui.component.AssignTagsDialog
+import com.omnitune.app.ui.component.TagChip
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import com.omnitune.app.LocalDatabase
 import com.omnitune.app.viewmodels.TopPlaylistViewModel
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -132,6 +142,7 @@ fun TopPlaylistScreen(
     navController: NavController,
     scrollBehavior: TopAppBarScrollBehavior,
     viewModel: TopPlaylistViewModel = hiltViewModel(),
+    libraryViewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val menuState = LocalMenuState.current
@@ -182,6 +193,18 @@ fun TopPlaylistScreen(
 
     val downloadUtil = LocalDownloadUtil.current
     var downloadState by remember { mutableStateOf(Download.STATE_STOPPED) }
+    // Tags
+    val pid = "LP_TOP"
+    val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
+    var showAssignTagsDialog by remember { mutableStateOf(false) }
+
+    if (showAssignTagsDialog) {
+        AssignTagsDialog(
+            database = LocalDatabase.current,
+            playlistId = pid,
+            onDismiss = { showAssignTagsDialog = false }
+        )
+    }
 
     LaunchedEffect(songs) {
         mutableSongs.apply {
@@ -505,9 +528,9 @@ fun TopPlaylistScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // Metadata chips row
-                                Row(
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     // Song count chip
                                     Surface(
@@ -535,6 +558,36 @@ fun TopPlaylistScreen(
                                             style = MaterialTheme.typography.labelMedium,
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                         )
+                                    }
+
+                                    tags.forEach { tag ->
+                                        TagChip(
+                                            tag = tag,
+                                            editable = true,
+                                            onRemove = { libraryViewModel.removePlaylistTag(pid, tag.id) }
+                                        )
+                                    }
+                                    // Add Tag chip
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.clickable { showAssignTagsDialog = true }
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(
+                                                painter = androidx.compose.ui.res.painterResource(com.omnitune.app.R.drawable.ic_add),
+                                                contentDescription = "Add Tag",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Tag",
+                                                style = MaterialTheme.typography.labelMedium
+                                            )
+                                        }
                                     }
                                 }
 

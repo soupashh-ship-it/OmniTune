@@ -46,14 +46,12 @@ import com.omnitune.app.db.entities.TagEntity
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PlaylistTagChips(
-    database: MusicDatabase,
-    playlistId: String,
+    tags: List<TagEntity>,
     editable: Boolean = false,
     onTagClick: ((TagEntity) -> Unit)? = null,
+    onRemoveTag: ((TagEntity) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val tags by database.playlistTags(playlistId).collectAsState(initial = emptyList())
-
     if (tags.isNotEmpty()) {
         FlowRow(
             modifier = modifier.fillMaxWidth(),
@@ -66,7 +64,7 @@ fun PlaylistTagChips(
                     editable = editable,
                     onClick = { onTagClick?.invoke(tag) },
                     onRemove = if (editable) {
-                        { database.transaction { removePlaylistTag(playlistId, tag.id) } }
+                        { onRemoveTag?.invoke(tag) }
                     } else null
                 )
             }

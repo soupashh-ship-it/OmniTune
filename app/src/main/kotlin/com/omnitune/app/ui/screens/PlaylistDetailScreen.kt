@@ -75,12 +75,14 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.omnitune.app.ui.screens.LibraryViewModel
 
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit = {},
     onPlaySong: (com.omnitune.app.db.entities.Song) -> Unit = {},
     viewModel: PlaylistDetailViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
+    libraryViewModel: LibraryViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
 ) {
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.songs.collectAsState()
@@ -143,9 +145,11 @@ fun PlaylistDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 val pid = playlist?.playlist?.id
                 if (pid != null) {
+                    val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
                     PlaylistTagChips(
-                        database = viewModel.db,
-                        playlistId = pid,
+                        tags = tags,
+                        editable = playlist?.playlist?.isEditable == true,
+                        onRemoveTag = { tag -> libraryViewModel.removePlaylistTag(pid, tag.id) }
                     )
                 }
             }

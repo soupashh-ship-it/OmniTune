@@ -26,7 +26,7 @@
 
 OmniTune is a modern, lightweight music player for Android that streams music directly from YouTube. Built with Jetpack Compose and Material 3, it delivers a dark-first OmniGlass interface with playback, queue, downloads, update checking, and diagnostics.
 
-Current public release: `v0.9.1 - Discord Rich Presence Integration`.
+Current public release: `v0.9.8 - Playlist Variants, Context Menus, Bluetooth Auto-Play & More`.
 
 The `0.9.x` line ships the OmniGlass UI overhaul, Quick Picks personalization, and Discord Rich Presence integration. Work toward `1.0.0` is focused on reliability, claim verification, download/search hardening, and device-specific QA. OmniTune is not claiming universal lock-screen or OEM media-control behavior.
 

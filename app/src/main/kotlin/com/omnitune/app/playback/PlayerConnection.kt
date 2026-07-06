@@ -28,6 +28,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import com.omnitune.app.utils.dataStore
+import androidx.core.net.toUri
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
+import com.omnitune.app.playback.ExoDownloadService
+import com.omnitune.app.constants.PermanentShuffleKey
+import com.omnitune.app.constants.PauseOnDeviceMuteKey
+import com.omnitune.app.constants.AutoDownloadOnLikeKey
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -102,6 +112,8 @@ class PlayerConnection(
 
     val discordPresenceRunning: StateFlow<Boolean> = service.discordPresenceManager.isRunning
 
+    private var pausedByMute = false
+
     init {
         player.addListener(this)
 
@@ -126,7 +138,14 @@ class PlayerConnection(
     }
 
     fun playQueue(queue: Queue) {
-        service.playQueue(queue)
+        service.scope.launch {
+            val prefs = service.dataStore.data.first()
+            val permanentShuffle = prefs[PermanentShuffleKey] ?: false
+            if (!permanentShuffle) {
+                player.shuffleModeEnabled = false
+            }
+            service.playQueue(queue)
+        }
     }
 
     fun playOrResolveCurrent() {
@@ -183,6 +202,23 @@ class PlayerConnection(
                 database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
             }
             com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+
+            if (!meta.liked) {
+                val prefs = service.dataStore.data.first()
+                val autoDownload = prefs[AutoDownloadOnLikeKey] ?: false
+                if (autoDownload) {
+                    val downloadRequest = DownloadRequest.Builder(meta.id, meta.id.toUri())
+                        .setCustomCacheKey(meta.id)
+                        .setData((meta.title ?: "").toString().toByteArray())
+                        .build()
+                    DownloadService.sendAddDownload(
+                        service,
+                        ExoDownloadService::class.java,
+                        downloadRequest,
+                        false
+                    )
+                }
+            }
         }
         mediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
     }
@@ -267,6 +303,24 @@ class PlayerConnection(
         } else {
             canSkipPrevious.value = false
             canSkipNext.value = false
+        }
+    }
+
+    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
+        service.scope.launch {
+            val prefs = service.dataStore.data.first()
+            val pauseOnMute = prefs[PauseOnDeviceMuteKey] ?: false
+            if (pauseOnMute) {
+                if (volume == 0 || muted) {
+                    if (player.playWhenReady) {
+                        pausedByMute = true
+                        player.pause()
+                    }
+                } else if (pausedByMute) {
+                    pausedByMute = false
+                    player.play()
+                }
+            }
         }
     }
 

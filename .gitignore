@@ -50,3 +50,8 @@ page@6c78803ef718b2d15f66e9efe9ef01be.webm
 /all_logs.txt
 /view.xml
 /test.kt
+
+# Generated job/run logs
+/job_log.txt
+/jobs.json
+/runs.json
