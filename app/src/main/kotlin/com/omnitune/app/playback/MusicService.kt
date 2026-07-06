@@ -392,7 +392,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             audioNormalizationEnabled = audioNormalizationEnabled,
         ).also { it.start(scope) }
 
-        sessionManager = SessionManager(this, player, sessionCallback)
+        sessionManager = SessionManager(this, player, sessionCallback, scope)
 
         playbackNotificationManager = PlaybackNotificationManager(this, player) { mediaSession }
         playbackNotificationManager.createChannelIfNeeded()

@@ -17,11 +17,13 @@ import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLike
 import com.omnitune.app.constants.MediaSessionConstants.CommandToggleRepeatMode
 import com.omnitune.app.constants.MediaSessionConstants.CommandToggleShuffle
 import com.omnitune.app.constants.MediaSessionConstants.CommandToggleStartRadio
+import kotlinx.coroutines.CoroutineScope
 
 class SessionManager(
     private val context: Context,
     private val player: Player,
     private val sessionCallback: MusicSessionCallback,
+    scope: CoroutineScope,
 ) {
     val session: MediaLibrarySession = MediaLibrarySession.Builder(context, player, sessionCallback)
         .setSessionActivity(
@@ -33,6 +35,7 @@ class SessionManager(
             ),
         )
         .setId("OmniTune")
+        .setBitmapLoader(CoilBitmapLoader(context, scope))
         .build()
 
     @Suppress("DEPRECATION")
