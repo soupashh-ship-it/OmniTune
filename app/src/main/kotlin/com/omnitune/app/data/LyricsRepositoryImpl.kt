@@ -32,7 +32,10 @@ class LyricsRepositoryImpl @Inject constructor(
             val lrcText = if (dbLyrics != null && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
                 dbLyrics
             } else {
-                lyricsHelper.getLyrics(metadata)
+                val fetched = lyricsHelper.getLyrics(metadata)
+                // Cache result in database (both success and not-found status)
+                databaseDao.upsert(LyricsEntity(id = songId, lyrics = fetched))
+                fetched
             }
             
             if (lrcText == LyricsEntity.LYRICS_NOT_FOUND) {

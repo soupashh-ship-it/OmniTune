@@ -10,73 +10,39 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.omnitune.app.ui.navigation.OmniTuneMainScreen
-import com.omnitune.app.ui.shell.OmniShellBackground
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
 import android.content.Context
-import androidx.media3.exoplayer.offline.Download
-import com.omnitune.app.models.MediaMetadata
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.compositionLocalOf
+import android.util.Log
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.playback.PlayerConnection
-import kotlinx.coroutines.flow.map
-import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.constants.DynamicThemeKey
+import com.omnitune.app.constants.PureBlackKey
+import com.omnitune.app.constants.DarkModeKey
+import com.omnitune.app.constants.UseSystemFontKey
 import com.omnitune.app.utils.dataStore
-import androidx.compose.runtime.collectAsState
 import com.omnitune.app.utils.reportException
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.OmniShapes
-import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTuneTheme
+import com.omnitune.app.ui.theme.DefaultThemeColor
+import com.omnitune.app.ui.theme.extractThemeColor
+import com.omnitune.app.ui.theme.boostSaturation
+import com.omnitune.app.ui.navigation.OmniTuneMainScreen
+import com.omnitune.app.ui.shell.OmniShellBackground
 import dagger.hilt.android.AndroidEntryPoint
-import timber.log.Timber
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import coil3.BitmapImage
+import coil3.request.ImageRequest
+import coil3.SingletonImageLoader
+import coil3.request.allowHardware
+import androidx.compose.ui.graphics.toArgb
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -97,7 +63,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun startMusicServiceSafely() { try { startService(Intent(this, MusicService::class.java)) } catch (e: Exception) { reportException(e) } }
+    private fun startMusicServiceSafely() {
+        try { startService(Intent(this, MusicService::class.java)) } catch (e: Exception) { reportException(e) }
+    }
+
     private fun bindToMusicService() {
         bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
     }
@@ -106,14 +75,20 @@ class MainActivity : ComponentActivity() {
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (!isGranted) {
-            android.widget.Toast.makeText(this, "Notifications disabled. Media controls won't show in status bar.", android.widget.Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Notifications disabled. Media controls won't show in status bar.", Toast.LENGTH_LONG).show()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        startMusicServiceSafely()
+        bindToMusicService()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
+
         val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
         val lastCrash = prefs.getString("last_crash", null)
         if (BuildConfig.DEBUG && lastCrash != null) {
@@ -141,20 +116,110 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
-            val dynamicThemeFlow = remember(context) { context.dataStore.data.map { it[DynamicThemeKey] ?: false } }
-            val dynamicTheme by dynamicThemeFlow.collectAsState(initial = false)
-                
-            OmniTuneTheme(dynamicColor = dynamicTheme) {
+
+            val dynamicTheme by remember {
+                context.dataStore.data.map { it[DynamicThemeKey] ?: false }
+            }.collectAsState(initial = false)
+
+            val pureBlack by remember {
+                context.dataStore.data.map { it[PureBlackKey] ?: false }
+            }.collectAsState(initial = false)
+
+            val useSystemFont by remember {
+                context.dataStore.data.map { it[UseSystemFontKey] ?: false }
+            }.collectAsState(initial = false)
+
+            val darkModePref by remember {
+                context.dataStore.data.map { it[DarkModeKey] ?: "ON" }
+            }.collectAsState(initial = "ON")
+
+            val isDark = isSystemInDarkTheme()
+            val darkTheme = remember(darkModePref, isDark) {
+                when (darkModePref) {
+                    "OFF" -> false
+                    "AUTO" -> isDark
+                    else -> true
+                }
+            }
+
+            // Extract theme color from current song artwork via Coil (Velune-style)
+            var themeColor by remember { mutableStateOf(DefaultThemeColor) }
+
+            LaunchedEffect(playerConnection, dynamicTheme) {
+                val pc = playerConnection
+                if (pc == null) {
+                    Log.d("OmniTuneColor", "playerConnection is null, using default")
+                    themeColor = DefaultThemeColor
+                    return@LaunchedEffect
+                }
+
+                Log.d("OmniTuneColor", "Starting to collect mediaMetadata flow")
+                // Use direct flow.collectLatest (snapshotFlow doesn't track StateFlow.value)
+                pc.mediaMetadata.collectLatest { metadata ->
+                    Log.d("OmniTuneColor", "Received metadata: " + (metadata?.title ?: "null"))
+                    val thumbnailUrl = metadata?.thumbnailUrl
+                    Log.d("OmniTuneColor", "Thumbnail URL: " + (thumbnailUrl ?: "null/blank"))
+                    if (thumbnailUrl.isNullOrBlank()) {
+                        themeColor = DefaultThemeColor
+                        return@collectLatest
+                    }
+                    Log.d("OmniTuneColor", "Loading image from: " + thumbnailUrl)
+                    // Run heavy work (image loading + palette extraction) on background thread
+                    withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        try {
+                            val imageLoader = SingletonImageLoader.get(context)
+                            val request = ImageRequest.Builder(context)
+                                .data(thumbnailUrl)
+                                .allowHardware(false)
+                                .build()
+                            Log.d("OmniTuneColor", "Executing Coil request...")
+                            val result = imageLoader.execute(request)
+                            Log.d("OmniTuneColor", "Coil result: " + result.image?.let { "success" } ?: "null image")
+                            val bitmap = (result.image as? BitmapImage)?.bitmap
+                            if (bitmap != null) {
+                                Log.d("OmniTuneColor", "Bitmap obtained, extracting theme color...")
+                                val extractedColor = bitmap.extractThemeColor()
+                                // Boost saturation for more exciting/vibrant colors (Velune-style)
+                                val boostedColor = extractedColor.boostSaturation()
+                                Log.d("OmniTuneColor", "Extracted color: #" + Integer.toHexString(extractedColor.toArgb()) + " boosted: #" + Integer.toHexString(boostedColor.toArgb()))
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    themeColor = boostedColor
+                                    Log.d("OmniTuneColor", "themeColor updated!")
+                                }
+                            } else {
+                                Log.d("OmniTuneColor", "Bitmap was null after loading")
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    themeColor = DefaultThemeColor
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.d("OmniTuneColor", "Exception: " + e.message)
+                            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                reportException(e)
+                                themeColor = DefaultThemeColor
+                            }
+                        }
+                    }
+                }
+            }
+
+            OmniTuneTheme(
+                darkTheme = darkTheme,
+                dynamicColor = dynamicTheme,
+                pureBlack = pureBlack,
+                themeColor = themeColor,
+                useSystemFont = useSystemFont,
+            ) {
                 val menuState = androidx.compose.runtime.remember { com.omnitune.app.ui.component.MenuState() }
-                CompositionLocalProvider(
-                    LocalPlayerConnection provides playerConnection,
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.omnitune.app.LocalPlayerConnection provides playerConnection,
                     com.omnitune.app.ui.component.LocalMenuState provides menuState,
                     LocalDatabase provides database,
                     LocalDownloadUtil provides downloadUtil,
                     LocalSyncUtils provides syncUtils
                 ) {
-                    OmniShellBackground {
-                        OmniTuneMainScreen(database = database)
+                    com.omnitune.app.ui.shell.OmniShellBackground {
+                        com.omnitune.app.ui.navigation.OmniTuneMainScreen(database = database)
                         com.omnitune.app.ui.component.BottomSheetMenu(state = menuState)
                     }
                 }
@@ -162,15 +227,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        startMusicServiceSafely()
-        bindToMusicService()
-    }
-
     override fun onStop() {
         super.onStop()
-        unbindService(serviceConnection)
+        try { unbindService(serviceConnection) } catch (_: Exception) {}
     }
 }
-

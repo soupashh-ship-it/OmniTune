@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.omnitune.app.ui.navigation.LocalPlayerConnection
+import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.ui.player.rememberPlayerGradient
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween

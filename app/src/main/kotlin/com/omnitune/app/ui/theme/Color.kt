@@ -7,7 +7,6 @@ package com.omnitune.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val DefaultThemeColor = Color(0xFF4FC3F7)
 val PlayerThemeColor = Color(0xFF29B6F6)
 val MiniPlayerColor = Color(0xFF0277BD)
 

@@ -1,21 +1,23 @@
 package com.omnitune.app.ui.screens.settings
 
+import androidx.compose.ui.graphics.Color
 import kotlin.random.Random
 
 data class ThemePalette(
-    val primary: Long,
-    val secondary: Long,
-    val tertiary: Long,
-    val neutral: Long
+    val primary: Color,
+    val secondary: Color,
+    val tertiary: Color,
+    val neutral: Color
 )
 
 object ThemePalettes {
     fun generateRandomPalette(): ThemePalette {
+        fun randomColor(): Color = Color(0xFF000000L or (Random.nextLong() and 0xFFFFFFL))
         return ThemePalette(
-            primary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
-            secondary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
-            tertiary = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL),
-            neutral = 0xFF000000L or (Random.nextLong() and 0xFFFFFFL)
+            primary = randomColor(),
+            secondary = randomColor(),
+            tertiary = randomColor(),
+            neutral = randomColor()
         )
     }
 }

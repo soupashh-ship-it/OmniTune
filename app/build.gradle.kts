@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 45
-        versionName = "0.9.8"
+        versionCode = 46
+        versionName = "0.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -235,6 +235,8 @@ dependencies {
     implementation(libs.squigglyslider)
     implementation(libs.palette.ktx)
 
+    // M3 color science for dynamic theme generation
+    implementation("com.github.Kyant0:m3color:2025.4")
     implementation(project(":innertube"))
     implementation(project(":simpmusic"))
     implementation(project(":betterlyrics"))

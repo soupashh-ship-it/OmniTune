@@ -77,6 +77,7 @@ import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerHeroBanner
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -493,10 +494,10 @@ private fun HeroCard(
                 text = if (item.song != null || item.providerSong != null) "Play" else "Open",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.OmniAccentSecondary,
+                color = LocalOmniAccents.current.secondary,
                 modifier = Modifier
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+                    .background(LocalOmniAccents.current.secondary.copy(alpha = 0.12f))
                     .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
             )
             Spacer(modifier = Modifier.height(OmniSpacing.small))
@@ -554,14 +555,14 @@ private fun QuickPicksSection(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+                        .background(LocalOmniAccents.current.secondary.copy(alpha = 0.12f))
                         .clickable(onClick = onPlayAll),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_play_arrow),
                         contentDescription = "Play all",
-                        tint = OmniColors.OmniAccentSecondary,
+                        tint = LocalOmniAccents.current.secondary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -610,7 +611,7 @@ private fun QuickPicksSection(
                                 .clip(OmniShapes.Pill)
                                 .background(
                                     if (pagerState.currentPage == index)
-                                        OmniColors.OmniAccentSecondary
+                                        LocalOmniAccents.current.secondary
                                     else
                                         OmniColors.TextTertiary.copy(alpha = 0.4f)
                                 ),
@@ -892,8 +893,8 @@ private fun MoodGenreCard(
     modifier: Modifier = Modifier,
 ) {
     val accents = listOf(
-        OmniColors.OmniAccentSecondary,
-        OmniColors.OmniAccentPrimary,
+        LocalOmniAccents.current.secondary,
+        LocalOmniAccents.current.primary,
         OmniColors.OmniAccentTertiary,
         OmniColors.Hot,
         OmniColors.Warning,
@@ -975,7 +976,7 @@ private fun EmptyDiscoveryCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, modifier = Modifier.weight(1f))
-        Text(action, style = MaterialTheme.typography.labelLarge, color = OmniColors.OmniAccentSecondary)
+        Text(action, style = MaterialTheme.typography.labelLarge, color = LocalOmniAccents.current.secondary)
     }
 }
 
@@ -1002,7 +1003,7 @@ private fun StartExploringRow(onClick: () -> Unit) {
         Text(
             text = "Browse",
             style = MaterialTheme.typography.labelLarge,
-            color = OmniColors.OmniAccentSecondary,
+            color = LocalOmniAccents.current.secondary,
         )
     }
 }
@@ -1232,7 +1233,7 @@ private fun StaticArtworkPlaceholder(
                 listOf(
                     OmniColors.SurfaceQuiet,
                     OmniColors.OmniBackgroundElevated,
-                    OmniColors.OmniAccentSecondary.copy(alpha = 0.10f),
+                    LocalOmniAccents.current.secondary.copy(alpha = 0.10f),
                 ),
             ),
         ),

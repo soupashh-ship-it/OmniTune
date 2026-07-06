@@ -17,11 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import coil3.BitmapImage
-import coil3.SingletonImageLoader
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.size.Scale
 import coil3.size.Size
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.PlayerColorExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,13 +31,15 @@ import kotlinx.coroutines.withContext
  * Fallback gradient colors — used while loading or when extraction fails.
  * Matches the static gradient from the original PlayerScreen.
  */
-val PlayerFallbackGradient: List<Color> = listOf(
-    OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.82f),
-    OmniColors.OmniBackgroundElevated,
-    OmniColors.OmniBackgroundBase,
-)
+val PlayerFallbackGradient: List<Color>
+    get() = listOf(
+        OmniColors.OmniAccentGlow.copy(alpha = 0.40f),
+        OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.82f),
+        OmniColors.OmniBackgroundElevated,
+        OmniColors.OmniBackgroundBase,
+    )
 
-private val FallbackGlow = OmniColors.OmniAccentGlow
+private val FallbackGlow = Color(0xFF8B8FFF).copy(alpha = 0.30f)
 
 /**
  * Loads the artwork bitmap from [urls] (trying each in order) and extracts
@@ -59,7 +62,7 @@ private suspend fun loadArtworkColors(
                 .scale(Scale.FILL)
                 .memoryCacheKey("palette:$url")
                 .build()
-            val result = SingletonImageLoader.get(context).execute(request)
+            val result = context.imageLoader.execute(request)
             val bitmap = (result.image as? BitmapImage)?.bitmap ?: continue
             val palette = withContext(Dispatchers.Default) {
                 androidx.palette.graphics.Palette.from(bitmap).generate()
@@ -68,7 +71,7 @@ private suspend fun loadArtworkColors(
                 palette = palette,
                 fallbackColor = OmniColors.OmniBackgroundBase.toArgb()
             )
-            val accent = gradient.firstOrNull() ?: OmniColors.OmniAccentPrimary
+            val accent = gradient.firstOrNull() ?: Color(0xFF8B8FFF)
             return ArtworkColors(gradient, accent)
         } catch (_: Exception) {
             continue
@@ -88,6 +91,7 @@ fun rememberPlayerGradient(
     videoId: String?,
 ): PlayerGradientState {
     val context = LocalContext.current
+    val _dynamicAccents = LocalOmniAccents.current // Force recomposition when accent colors change
 
     val candidates = remember(thumbnailUrl, videoId) {
         buildList {
@@ -102,13 +106,13 @@ fun rememberPlayerGradient(
     }
 
     var extractedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
-    var extractedAccent by remember { mutableStateOf(OmniColors.OmniAccentPrimary) }
+    var extractedAccent by remember { mutableStateOf(Color(0xFF8B8FFF)) }
     var isFromArtwork by remember { mutableStateOf(false) }
 
     LaunchedEffect(candidates) {
         if (candidates.isEmpty()) {
             extractedColors = emptyList()
-            extractedAccent = OmniColors.OmniAccentPrimary
+            extractedAccent = Color(0xFF8B8FFF)
             isFromArtwork = false
             return@LaunchedEffect
         }
@@ -117,12 +121,14 @@ fun rememberPlayerGradient(
             urls = candidates,
         )
         if (colors != null) {
+            android.util.Log.d("OmniGradient", "Extraction SUCCESS - gradient: " + colors.gradient.size + " colors, accent: #" + Integer.toHexString(colors.accentColor.toArgb()))
             extractedColors = colors.gradient
             extractedAccent = colors.accentColor
             isFromArtwork = true
         } else {
+            android.util.Log.d("OmniGradient", "Extraction FAILED - null result")
             extractedColors = emptyList()
-            extractedAccent = OmniColors.OmniAccentPrimary
+            extractedAccent = Color(0xFF8B8FFF)
             isFromArtwork = false
         }
     }
@@ -138,7 +144,7 @@ fun rememberPlayerGradient(
     return PlayerGradientState(
         backgroundBrush = Brush.verticalGradient(displayColors),
         accentGlow = accentGlow,
-        dominantColor = displayColors.firstOrNull() ?: OmniColors.OmniBackgroundBase,
+        dominantColor = displayColors.firstOrNull() ?: Color(0xFF06080F),
         dynamicAccentColor = extractedAccent,
         isFromArtwork = isFromArtwork,
     )
@@ -154,6 +160,6 @@ data class PlayerGradientState(
     val backgroundBrush: Brush,
     val accentGlow: Color,
     val dominantColor: Color,
-    val dynamicAccentColor: Color = OmniColors.OmniAccentPrimary,
+    val dynamicAccentColor: Color = Color(0xFF8B8FFF),
     val isFromArtwork: Boolean = false,
 )

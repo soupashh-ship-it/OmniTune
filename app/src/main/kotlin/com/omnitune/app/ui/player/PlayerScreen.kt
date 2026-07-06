@@ -93,6 +93,7 @@ import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.screens.DownloadsViewModel
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -139,6 +140,7 @@ fun PlayerScreen(
         videoId = mediaMetadata?.id,
     )
     val dynamicAccent = gradientState.accentGlow
+
 
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -434,7 +436,7 @@ private fun ArtworkHero(
     isPlaying: Boolean,
     height: Dp,
     widthFraction: Float,
-    accentColor: Color = OmniColors.OmniAccentPrimary,
+    accentColor: Color = LocalOmniAccents.current.primary,
 ) {
     val context = LocalContext.current
     val videoId = mediaMetadata?.id
@@ -505,7 +507,7 @@ private fun ArtworkHero(
                 loading = {
                     OmniTuneLoader(
                         modifier = Modifier.size(48.dp),
-                        color = OmniColors.ActivePlayback,
+                        color = LocalOmniAccents.current.primary,
                         size = 48.dp,
                     )
                 },
@@ -525,7 +527,7 @@ private fun ArtworkHero(
                     ) {
                         OmniTuneLoader(
                             modifier = Modifier.size(32.dp),
-                            color = OmniColors.ActivePlayback,
+                            color = LocalOmniAccents.current.primary,
                             size = 32.dp,
                         )
                     }
@@ -629,7 +631,7 @@ private fun MetadataBlock(
 private fun PlayerSeekBar(
     playerConnection: PlayerConnection?,
     isSeeking: androidx.compose.runtime.MutableFloatState,
-    accentColor: Color = OmniColors.OmniAccentPrimary,
+    accentColor: Color = LocalOmniAccents.current.primary,
 ) {
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
     val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
@@ -732,7 +734,7 @@ private fun PlayerControlRow(
     shuffleEnabled: Boolean,
     repeatMode: Int,
     playerConnection: PlayerConnection?,
-    accentColor: Color = OmniColors.OmniAccentPrimary,
+    accentColor: Color = LocalOmniAccents.current.primary,
 ) {
     val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
     val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
@@ -895,7 +897,7 @@ private fun PlayerIconButton(
             .clip(CircleShape)
             .background(
                 if (active) {
-                    OmniColors.OmniAccentPrimary.copy(alpha = 0.18f)
+                    LocalOmniAccents.current.primary.copy(alpha = 0.18f)
                 } else {
                     OmniColors.OmniGlassSubtle
                 }
@@ -907,7 +909,7 @@ private fun PlayerIconButton(
             contentDescription = contentDescription,
             tint = when {
                 !enabled -> OmniColors.TextDisabled
-                active -> OmniColors.OmniAccentSecondary
+                active -> LocalOmniAccents.current.secondary
                 else -> OmniColors.TextSecondary
             },
             modifier = Modifier.size(iconSize),
@@ -949,7 +951,7 @@ private fun PlayerActionsRow(
     onOpenQueue: () -> Unit,
     onShowSleepTimer: () -> Unit,
     onShowOptions: () -> Unit = {},
-    accentColor: Color = OmniColors.OmniAccentPrimary,
+    accentColor: Color = LocalOmniAccents.current.primary,
 ) {
     var showLyricsSheet by remember { mutableStateOf(false) }
 
@@ -975,7 +977,7 @@ private fun PlayerActionsRow(
         }
 
         IconButton(onClick = onShowSleepTimer) {
-            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) OmniColors.OmniAccentPrimary else OmniColors.TextSecondary)
+            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) LocalOmniAccents.current.primary else OmniColors.TextSecondary)
         }
 
         Row(
@@ -1009,7 +1011,7 @@ private fun ActionButton(
     contentDescription: String,
     onClick: () -> Unit,
     active: Boolean = false,
-    activeTint: Color = OmniColors.OmniAccentSecondary,
+    activeTint: Color = LocalOmniAccents.current.secondary,
 ) {
     IconButton(
         onClick = onClick,
@@ -1109,7 +1111,7 @@ private fun AudioEffectsDialog(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = LocalOmniAccents.current.primary),
             ) {
                 Text("Open System Equalizer", color = OmniColors.TextOnAccent)
             }
@@ -1140,8 +1142,8 @@ private fun EffectSlider(
             onValueChangeFinished = onValueChangeFinished,
             valueRange = valueRange,
             colors = SliderDefaults.colors(
-                thumbColor = OmniColors.ActivePlayback,
-                activeTrackColor = OmniColors.ActivePlayback,
+                thumbColor = LocalOmniAccents.current.primary,
+                activeTrackColor = LocalOmniAccents.current.primary,
                 inactiveTrackColor = OmniColors.OmniGlassStrong,
             ),
         )
@@ -1182,7 +1184,7 @@ private fun SleepTimerDialog(
                         .clip(OmniShapes.Small)
                         .background(
                             if (selected) {
-                                OmniColors.OmniAccentPrimary.copy(alpha = 0.18f)
+                                LocalOmniAccents.current.primary.copy(alpha = 0.18f)
                             } else {
                                 Color.Transparent
                             }
@@ -1221,7 +1223,7 @@ private fun SleepTimerDialog(
                 Button(
                     onClick = { onSet(selectedMinutes, endOfSong) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = LocalOmniAccents.current.primary),
                 ) {
                     Text(
                         text = if (isRunning) "Restart" else "Set Timer",
@@ -1323,8 +1325,8 @@ fun PlayerOptionsBottomSheet(
                     },
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = OmniColors.OmniAccentPrimary,
-                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        thumbColor = LocalOmniAccents.current.primary,
+                        activeTrackColor = LocalOmniAccents.current.primary,
                         inactiveTrackColor = OmniColors.SurfaceRaised,
                     ),
                     squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
@@ -1368,8 +1370,8 @@ fun PlayerOptionsBottomSheet(
                     valueRange = 0.5f..2.0f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = OmniColors.OmniAccentPrimary,
-                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        thumbColor = LocalOmniAccents.current.primary,
+                        activeTrackColor = LocalOmniAccents.current.primary,
                         inactiveTrackColor = OmniColors.SurfaceRaised,
                     )
                 )
@@ -1408,8 +1410,8 @@ fun PlayerOptionsBottomSheet(
                     valueRange = 0.5f..2.0f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = OmniColors.OmniAccentPrimary,
-                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        thumbColor = LocalOmniAccents.current.primary,
+                        activeTrackColor = LocalOmniAccents.current.primary,
                         inactiveTrackColor = OmniColors.SurfaceRaised,
                     )
                 )
@@ -1451,7 +1453,7 @@ fun PlayerOptionsBottomSheet(
                     },
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = { showMediaInfoDialog = false }) {
-                            Text("Close", color = OmniColors.OmniAccentPrimary)
+                            Text("Close", color = LocalOmniAccents.current.primary)
                         }
                     }
                 )

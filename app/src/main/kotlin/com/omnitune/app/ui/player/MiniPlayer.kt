@@ -389,7 +389,7 @@ fun MiniPlayer(
                     .fillMaxWidth()
                     .height(2.dp)
                     .align(Alignment.BottomCenter),
-                color = OmniColors.ActivePlayback,
+                color = OmniColors.OmniAccentPrimary,
                 trackColor = OmniColors.OmniGlassStrong.copy(alpha = 0.45f),
                 strokeCap = StrokeCap.Square,
             )
@@ -528,7 +528,7 @@ private fun MiniPlayPauseButton(
         if (isLoading) {
             OmniTuneLoader(
                 modifier = Modifier.size(22.dp),
-                color = OmniColors.ActivePlayback,
+                color = OmniColors.OmniAccentPrimary,
                 size = 22.dp,
             )
         } else {
