@@ -82,6 +82,8 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var database: MusicDatabase
+    @Inject lateinit var downloadUtil: com.omnitune.app.playback.DownloadUtil
+    @Inject lateinit var syncUtils: com.omnitune.app.utils.SyncUtils
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
 
     private val serviceConnection = object : android.content.ServiceConnection {
@@ -143,9 +145,17 @@ class MainActivity : ComponentActivity() {
             val dynamicTheme by dynamicThemeFlow.collectAsState(initial = false)
                 
             OmniTuneTheme(dynamicColor = dynamicTheme) {
-                CompositionLocalProvider(LocalPlayerConnection provides playerConnection) {
+                val menuState = androidx.compose.runtime.remember { com.omnitune.app.ui.component.MenuState() }
+                CompositionLocalProvider(
+                    LocalPlayerConnection provides playerConnection,
+                    com.omnitune.app.ui.component.LocalMenuState provides menuState,
+                    LocalDatabase provides database,
+                    LocalDownloadUtil provides downloadUtil,
+                    LocalSyncUtils provides syncUtils
+                ) {
                     OmniShellBackground {
                         OmniTuneMainScreen(database = database)
+                        com.omnitune.app.ui.component.BottomSheetMenu(state = menuState)
                     }
                 }
             }

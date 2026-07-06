@@ -322,6 +322,26 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 PlaylistDetailScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
                     localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
             }
+            composable("playlist_cache") {
+                @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+                com.omnitune.app.ui.screens.playlist.CachePlaylistScreen(
+                    navController = navController,
+                    scrollBehavior = androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior(androidx.compose.material3.rememberTopAppBarState())
+                )
+            }
+            composable("playlist_top") {
+                @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+                com.omnitune.app.ui.screens.playlist.TopPlaylistScreen(
+                    navController = navController,
+                    scrollBehavior = androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior(androidx.compose.material3.rememberTopAppBarState())
+                )
+            }
+            composable("library_mix") {
+                com.omnitune.app.ui.screens.library.LibraryMixScreen(
+                    navController = navController,
+                    filterContent = {}
+                )
+            }
             composable("liked_songs") {
                 LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
                     localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })

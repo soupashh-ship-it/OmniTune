@@ -24,12 +24,17 @@ class PlaylistDetailViewModel @Inject constructor(
 ) : ViewModel() {
     val db: MusicDatabase get() = database
     private val playlistId: String = savedStateHandle["playlistId"] ?: ""
+    val getPlaylistId: String get() = playlistId
+
 
     val playlist = database.playlist(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val songs: StateFlow<List<PlaylistSong>> = database.playlistSongs(playlistId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val playlistSuggestions = kotlinx.coroutines.flow.MutableStateFlow<com.omnitune.app.models.PlaylistSuggestion?>(null)
+    val isLoadingSuggestions = kotlinx.coroutines.flow.MutableStateFlow(false)
+
 
     fun renamePlaylist(newName: String) {
         val current = playlist.value ?: return
@@ -54,6 +59,19 @@ class PlaylistDetailViewModel @Inject constructor(
             database.removeSongFromPlaylist(current.playlist.id, songId)
         }
     }
+
+    suspend fun addSongToPlaylist(song: com.omnitune.innertube.models.SongItem, browseId: String? = null): Boolean {
+        val current = playlist.value ?: return false
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            database.addSongToPlaylist(current, listOf(song.id))
+            true
+        }
+    }
+
+    fun resetAndLoadPlaylistSuggestions() {
+        // Stub for now
+    }
+
 
     fun moveSong(fromPosition: Int, toPosition: Int) {
         val current = playlist.value ?: return
