@@ -92,6 +92,8 @@ private const val QUEUE_ARTWORK_SIZE = 160
 fun QueueScreen(
     playerConnection: PlayerConnection?,
     onBack: () -> Unit = {},
+    downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -114,6 +116,7 @@ fun QueueScreen(
     // Multi-select state
     var selectionMode by remember { mutableStateOf(false) }
     val selectedIndices = remember { mutableStateListOf<Int>() }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     // Drag-to-reorder state
     val lazyListState = rememberLazyListState()
@@ -175,6 +178,24 @@ fun QueueScreen(
                                 val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
                                 pc.removeMediaItem(windowIndex)
                             }
+                            selectedIndices.clear()
+                            selectionMode = false
+                        }
+                    },
+                    onAddSelectedToPlaylist = {
+                        showAddToPlaylistDialog = true
+                    },
+                    onDownloadSelected = {
+                        playerConnection?.let { pc ->
+                            selectedIndices.forEach { idx ->
+                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                                val mediaItem = pc.getMediaItemAt(windowIndex)
+                                val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
+                                val videoId = meta?.id ?: return@forEach
+                                val title = meta.title ?: "Unknown"
+                                downloadsViewModel.startDownload(videoId, title, null) { _, _ -> }
+                            }
+                            android.widget.Toast.makeText(context, "Started ${selectedIndices.size} downloads", android.widget.Toast.LENGTH_SHORT).show()
                             selectedIndices.clear()
                             selectionMode = false
                         }
@@ -360,7 +381,12 @@ fun QueueScreen(
                                                     playerConnection.prepare()
                                                 }
                                             },
-                                            onLongClick = null,
+                                            onLongClick = {
+                                                if (!selectionMode) {
+                                                    selectionMode = true
+                                                    selectedIndices.add(windowIndex)
+                                                }
+                                            },
                                         )
                                     },
                                 )
@@ -388,6 +414,71 @@ fun QueueScreen(
                 contentColor = OmniColors.TextPrimary,
                 actionColor = OmniColors.OmniAccentPrimary,
                 shape = OmniShapes.Large,
+            )
+        }
+        
+        if (showAddToPlaylistDialog) {
+            val playlists by libraryViewModel.playlists.collectAsState()
+            com.omnitune.app.ui.component.AddToPlaylistDialog(
+                playlists = playlists,
+                onDismissRequest = { showAddToPlaylistDialog = false },
+                onPlaylistSelected = { playlist ->
+                    playerConnection?.let { pc ->
+                        scope.launch {
+                            var addedCount = 0
+                            selectedIndices.forEach { idx ->
+                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                                val mediaItem = pc.getMediaItemAt(windowIndex)
+                                val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
+                                if (meta != null) {
+                                    libraryViewModel.ensureSongExists(meta)
+                                    val added = libraryViewModel.addToPlaylist(playlist, meta.id)
+                                    if (added) addedCount++
+                                }
+                            }
+                            android.widget.Toast.makeText(context, "Added $addedCount songs to playlist", android.widget.Toast.LENGTH_SHORT).show()
+                            selectedIndices.clear()
+                            selectionMode = false
+                        }
+                    }
+                    showAddToPlaylistDialog = false
+                },
+                onCreatePlaylist = { name ->
+                    playerConnection?.let { pc ->
+                        scope.launch {
+                            val firstMeta = selectedIndices.firstOrNull()?.let { idx ->
+                                val windowIndex = upcomingIndices.getOrNull(idx)
+                                windowIndex?.let { pc.getMediaItemAt(it).localConfiguration?.tag as? MediaMetadata }
+                            }
+                            if (firstMeta != null) {
+                                libraryViewModel.ensureSongExists(firstMeta)
+                                libraryViewModel.createPlaylist(name, firstMeta.id)
+                                
+                                // Wait briefly for playlist to be created (hacky but works for bulk create)
+                                kotlinx.coroutines.delay(200)
+                                
+                                val playlists = libraryViewModel.playlists.value
+                                val newPlaylist = playlists.find { it.playlist.name == name }
+                                
+                                if (newPlaylist != null) {
+                                    selectedIndices.drop(1).forEach { idx ->
+                                        val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                                        val mediaItem = pc.getMediaItemAt(windowIndex)
+                                        val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
+                                        if (meta != null) {
+                                            libraryViewModel.ensureSongExists(meta)
+                                            libraryViewModel.addToPlaylist(newPlaylist, meta.id)
+                                        }
+                                    }
+                                }
+                            }
+                            android.widget.Toast.makeText(context, "Added ${selectedIndices.size} songs to $name", android.widget.Toast.LENGTH_SHORT).show()
+                            selectedIndices.clear()
+                            selectionMode = false
+                        }
+                    }
+                    showAddToPlaylistDialog = false
+                },
             )
         }
     }
@@ -433,6 +524,8 @@ private fun BulkActionBar(
     selectedCount: Int,
     onClearSelection: () -> Unit,
     onRemoveSelected: () -> Unit,
+    onAddSelectedToPlaylist: () -> Unit,
+    onDownloadSelected: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -446,18 +539,25 @@ private fun BulkActionBar(
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        IconButton(onClick = onClearSelection) {
+            Icon(painterResource(R.drawable.ic_close), "Clear selection", tint = OmniColors.TextSecondary)
+        }
         Text(
-            text = "$selectedCount selected",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
+            text = "$selectedCount",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
             color = OmniColors.TextPrimary,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
+        Spacer(modifier = Modifier.weight(1f))
+        IconButton(onClick = onDownloadSelected) {
+            Icon(painterResource(R.drawable.ic_download), "Download", tint = OmniColors.TextPrimary)
+        }
+        IconButton(onClick = onAddSelectedToPlaylist) {
+            Icon(painterResource(R.drawable.ic_list), "Add to playlist", tint = OmniColors.TextPrimary)
+        }
         TextButton(onClick = onRemoveSelected) {
             Text("Remove", color = OmniColors.Error)
-        }
-        TextButton(onClick = onClearSelection) {
-            Text("Cancel", color = OmniColors.TextSecondary)
         }
     }
     Spacer(modifier = Modifier.height(OmniSpacing.small))

@@ -124,6 +124,7 @@ fun PlayerScreen(
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
     var showLyricsSheet by remember { mutableStateOf(false) }
+    var showArtistSelectionDialog by remember { mutableStateOf(false) }
     val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
     val libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = hiltViewModel()
     val playlists by libraryViewModel.playlists.collectAsState(initial = emptyList())
@@ -254,8 +255,19 @@ fun PlayerScreen(
                 showOptionsSheet = false
                 onNavigateToListenTogether()
             },
-            onNavigateToAlbum = onNavigateToAlbum?.let { { showOptionsSheet = false; val id = mediaMetadata?.album?.id; if (id != null) it(id) } },
-            onNavigateToArtist = onNavigateToArtist?.let { { showOptionsSheet = false; val id = mediaMetadata?.artists?.firstOrNull()?.id; if (id != null) it(id) } },
+            onNavigateToAlbum = onNavigateToAlbum?.let { navigate -> { showOptionsSheet = false; val id = mediaMetadata?.album?.id; if (id != null) navigate(id) } },
+            onNavigateToArtist = onNavigateToArtist?.let { navigate ->
+                {
+                    val artists = mediaMetadata?.artists
+                    if (artists != null && artists.size > 1) {
+                        showArtistSelectionDialog = true
+                    } else {
+                        showOptionsSheet = false
+                        val id = artists?.firstOrNull()?.id
+                        if (id != null) navigate(id)
+                    }
+                }
+            },
             onShare = {
                 showOptionsSheet = false
                 val videoId = mediaMetadata?.id
@@ -324,6 +336,42 @@ fun PlayerScreen(
                 }
                 showAddToPlaylistDialog = false
             },
+        )
+    }
+
+    if (showArtistSelectionDialog) {
+        val artists = mediaMetadata?.artists ?: emptyList()
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showArtistSelectionDialog = false },
+            containerColor = OmniColors.SurfaceRaised,
+            titleContentColor = OmniColors.TextPrimary,
+            title = { Text("Select Artist", fontWeight = FontWeight.Bold) },
+            text = {
+                androidx.compose.foundation.lazy.LazyColumn {
+                    items(artists.size) { index ->
+                        val artist = artists[index]
+                        Text(
+                            text = artist.name,
+                            color = OmniColors.TextPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    onClick = {
+                                        showArtistSelectionDialog = false
+                                        showOptionsSheet = false
+                                        artist.id?.let { onNavigateToArtist?.invoke(it) }
+                                    }
+                                )
+                                .padding(vertical = OmniSpacing.medium)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showArtistSelectionDialog = false }) {
+                    Text("Cancel", color = OmniColors.TextSecondary)
+                }
+            }
         )
     }
     }
@@ -1173,6 +1221,8 @@ fun PlayerOptionsBottomSheet(
     onSleepTimer: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
 ) {
+    var showMediaInfoDialog by remember { mutableStateOf(false) }
+    val currentFormat by (playerConnection?.currentFormat ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
     val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -1266,6 +1316,86 @@ fun PlayerOptionsBottomSheet(
 
             Spacer(modifier = Modifier.height(OmniSpacing.medium))
 
+            // Speed slider
+            var speed by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.playbackParameters?.speed ?: 1f) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play_arrow),
+                    contentDescription = "Speed",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Slider(
+                    value = speed,
+                    onValueChange = {
+                        speed = it
+                        playerConnection?.player?.let { player ->
+                            player.playbackParameters = player.playbackParameters.withSpeed(it)
+                        }
+                    },
+                    valueRange = 0.5f..2.0f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = OmniColors.OmniAccentPrimary,
+                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                    )
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Text(
+                    text = String.format("%.1fx", speed),
+                    color = OmniColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(32.dp),
+                    textAlign = TextAlign.End,
+                )
+            }
+
+            // Pitch slider
+            var pitch by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.playbackParameters?.pitch ?: 1f) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_settings), // fallback icon for pitch
+                    contentDescription = "Pitch",
+                    tint = OmniColors.TextSecondary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Slider(
+                    value = pitch,
+                    onValueChange = {
+                        pitch = it
+                        playerConnection?.player?.let { player ->
+                            // using an extension or recreating PlaybackParameters if withPitch doesn't exist
+                            player.playbackParameters = androidx.media3.common.PlaybackParameters(player.playbackParameters.speed, it)
+                        }
+                    },
+                    valueRange = 0.5f..2.0f,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = OmniColors.OmniAccentPrimary,
+                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                    )
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Text(
+                    text = String.format("%.1fx", pitch),
+                    color = OmniColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(32.dp),
+                    textAlign = TextAlign.End,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
             // Options Row 1
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1274,7 +1404,29 @@ fun PlayerOptionsBottomSheet(
                 OptionButton(R.drawable.ic_insights, "Start radio", onNavigateToRadio)
                 OptionButton(R.drawable.ic_list, "Add to playlist", onAddToPlaylist)
                 OptionButton(R.drawable.ic_share, "Copy link", onCopyLink)
-                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether)
+                OptionButton(R.drawable.ic_info, "Media info", { showMediaInfoDialog = true })
+            }
+
+            if (showMediaInfoDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showMediaInfoDialog = false },
+                    containerColor = OmniColors.SurfaceRaised,
+                    titleContentColor = OmniColors.TextPrimary,
+                    textContentColor = OmniColors.TextSecondary,
+                    title = { Text("Media Information", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column {
+                            Text("Codec: ${currentFormat?.codecs ?: "Unknown"}")
+                            Text("Bitrate: ${currentFormat?.bitrate?.let { "${it / 1000} kbps" } ?: "Unknown"}")
+                            Text("Sample Rate: ${currentFormat?.sampleRate?.let { "${it / 1000} kHz" } ?: "Unknown"}")
+                        }
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = { showMediaInfoDialog = false }) {
+                            Text("Close", color = OmniColors.OmniAccentPrimary)
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(OmniSpacing.medium))
@@ -1303,6 +1455,31 @@ fun PlayerOptionsBottomSheet(
                 OptionButton(R.drawable.ic_list, "Queue", onOpenQueue)
             }
 
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+
+            // Options Row 3 — listen together & extras
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether) // reusing share icon for now
+                
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                OptionButton(R.drawable.ic_download, "Download") {
+                    val videoId = currentMetadata?.id
+                    val title = currentMetadata?.title
+                    if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
+                        downloadsViewModel.startDownload(videoId, title, null) { _, msg ->
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.size(72.dp))
+                Spacer(modifier = Modifier.size(72.dp))
+                Spacer(modifier = Modifier.size(72.dp)) // padding out the rest of the row for 5-item alignment
+            }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
