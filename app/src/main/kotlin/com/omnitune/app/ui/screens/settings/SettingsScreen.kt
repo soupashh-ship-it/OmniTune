@@ -147,7 +147,7 @@ fun SettingsScreen(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_settings,
                     title = "Appearance",
-                    subtitle = "Theme, layout, player design",
+                    subtitle = "Dynamic colors, OLED mode, font",
                     accentColor = OmniColors.OmniAccentPrimary,
                     onClick = { onNavigateToCategory("appearance") },
                 ),

@@ -24,10 +24,12 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.size.Scale
 import coil3.size.Size
+import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniDynamicSongPalette
 import com.omnitune.app.ui.theme.PlayerColorExtractor
+import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -115,6 +117,7 @@ fun rememberPlayerGradient(
 ): PlayerGradientState {
     val context = LocalContext.current
     val dynamicAccents = LocalOmniAccents.current
+    val dynamicSongColors by rememberPreference(DynamicSongColorsKey, true)
 
     val candidates = remember(thumbnailUrl, videoId) {
         buildList {
@@ -132,8 +135,8 @@ fun rememberPlayerGradient(
     var extractedPalette by remember { mutableStateOf<OmniDynamicSongPalette?>(null) }
     var isFromArtwork by remember { mutableStateOf(false) }
 
-    LaunchedEffect(candidates, dynamicAccents.primary) {
-        if (candidates.isEmpty()) {
+    LaunchedEffect(candidates, dynamicAccents.primary, dynamicSongColors) {
+        if (!dynamicSongColors || candidates.isEmpty()) {
             extractedColors = emptyList()
             extractedPalette = null
             isFromArtwork = false
@@ -156,7 +159,7 @@ fun rememberPlayerGradient(
     }
 
     val fallbackPalette = OmniDynamicSongPalette.fallback(dynamicAccents.primary)
-    val targetPalette = if (isFromArtwork) extractedPalette ?: fallbackPalette else fallbackPalette
+    val targetPalette = if (dynamicSongColors && isFromArtwork) extractedPalette ?: fallbackPalette else fallbackPalette
     val colorAnimation = spring<Color>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessLow,
@@ -174,12 +177,12 @@ fun rememberPlayerGradient(
         gradientEnd = animateColorAsState(targetPalette.gradientEnd, colorAnimation, label = "song_gradient_end").value,
     )
 
-    val displayColors = if (isFromArtwork && extractedColors.isNotEmpty()) {
+    val displayColors = if (dynamicSongColors && isFromArtwork && extractedColors.isNotEmpty()) {
         extractedColors
     } else {
         PlayerFallbackGradient
     }
-    val accentGlow = if (isFromArtwork) animatedPalette.accent.copy(alpha = 0.24f) else FallbackGlow.copy(alpha = 0.16f)
+    val accentGlow = if (dynamicSongColors && isFromArtwork) animatedPalette.accent.copy(alpha = 0.24f) else FallbackGlow.copy(alpha = 0.16f)
 
     return PlayerGradientState(
         backgroundBrush = Brush.verticalGradient(
@@ -194,7 +197,7 @@ fun rememberPlayerGradient(
         dominantColor = displayColors.firstOrNull() ?: animatedPalette.backgroundSecondary,
         dynamicAccentColor = animatedPalette.accent,
         palette = animatedPalette,
-        isFromArtwork = isFromArtwork,
+        isFromArtwork = dynamicSongColors && isFromArtwork,
     )
 }
 

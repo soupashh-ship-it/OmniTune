@@ -128,6 +128,7 @@ fun OmniTuneTheme(
         primary = colorScheme.primary,
         secondary = colorScheme.secondary,
         tertiary = colorScheme.tertiary,
+        pureBlack = darkTheme && pureBlack,
     )
 
     val dynamicAccents = remember(colorScheme) {

@@ -17,6 +17,7 @@ import java.time.ZoneOffset
 
 val PureBlackKey = booleanPreferencesKey("pureBlack")
 val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")
+val DynamicSongColorsKey = booleanPreferencesKey("dynamicSongColors")
 val CustomThemeColorKey = stringPreferencesKey("customThemeColor")
 val RandomThemeOnStartupKey = booleanPreferencesKey("randomThemeOnStartup")
 val DarkModeKey = stringPreferencesKey("darkMode")
@@ -419,6 +420,7 @@ val HistoryDuration = floatPreferencesKey("historyDuration")
 
 val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
+val OmniPlayerBackgroundStyleKey = stringPreferencesKey("omniPlayerBackgroundStyle")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
@@ -593,3 +595,8 @@ val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // defaul
 val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
 
 enum class LyricsPosition { LEFT, CENTER, RIGHT }
+
+enum class OmniPlayerBackgroundStyle {
+    DYNAMIC_GRADIENT,
+    SOLID_DARK,
+}

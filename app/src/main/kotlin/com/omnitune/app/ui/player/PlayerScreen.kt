@@ -88,6 +88,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
+import com.omnitune.app.constants.OmniPlayerBackgroundStyle
+import com.omnitune.app.constants.OmniPlayerBackgroundStyleKey
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -100,6 +102,7 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniSoftBorder
+import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.formatDurationMs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
@@ -139,15 +142,23 @@ fun PlayerScreen(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
         videoId = mediaMetadata?.id,
     )
+    val playerBackgroundStyle by rememberEnumPreference(
+        OmniPlayerBackgroundStyleKey,
+        OmniPlayerBackgroundStyle.DYNAMIC_GRADIENT,
+    )
     val dynamicPalette = gradientState.palette
     val dynamicAccent = dynamicPalette.accent
+    val playerBackgroundModifier = when (playerBackgroundStyle) {
+        OmniPlayerBackgroundStyle.DYNAMIC_GRADIENT -> Modifier.background(gradientState.backgroundBrush)
+        OmniPlayerBackgroundStyle.SOLID_DARK -> Modifier.background(OmniColors.OmniBackgroundBase)
+    }
 
 
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(gradientState.backgroundBrush)
+            .then(playerBackgroundModifier)
     ) {
 
         BoxWithConstraints(

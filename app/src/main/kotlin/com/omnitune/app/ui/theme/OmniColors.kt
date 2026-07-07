@@ -106,7 +106,7 @@ object OmniColors {
      * Call this from OmniTuneTheme when the color scheme changes.
      * Updates the accent colors to match the current MaterialTheme color scheme.
      */
-    fun updateFromTheme(primary: Color, secondary: Color, tertiary: Color) {
+    fun updateFromTheme(primary: Color, secondary: Color, tertiary: Color, pureBlack: Boolean = false) {
         OmniAccentPrimary = primary
         OmniAccentSecondary = secondary
         OmniAccentTertiary = tertiary
@@ -135,20 +135,29 @@ object OmniColors {
         HotGradientColors = listOf(Hot, primary)
         OmniPulseGradientColors = listOf(secondary, primary, tertiary)
 
-        // Tint backgrounds/surfaces with a visible hint of the primary color
-        val blend = { color: Color ->
-            Color(
-                red = (color.red * 0.85f + primary.red * 0.15f),
-                green = (color.green * 0.85f + primary.green * 0.15f),
-                blue = (color.blue * 0.85f + primary.blue * 0.15f),
-                alpha = color.alpha,
-            )
+        if (pureBlack) {
+            OmniBackgroundGradientTop = Color.Black
+            OmniBackgroundElevated = Color(0xFF050507)
+            OmniBackgroundBase = Color.Black
+            Background = Color.Black
+            Surface = Color(0xFF050507)
+            SurfaceElevated = Color(0xFF08090D)
+        } else {
+            // Tint backgrounds/surfaces with a visible hint of the primary color
+            val blend = { color: Color ->
+                Color(
+                    red = (color.red * 0.85f + primary.red * 0.15f),
+                    green = (color.green * 0.85f + primary.green * 0.15f),
+                    blue = (color.blue * 0.85f + primary.blue * 0.15f),
+                    alpha = color.alpha,
+                )
+            }
+            OmniBackgroundGradientTop = blend(Color(0xFF0A0D16))
+            OmniBackgroundElevated = blend(Color(0xFF0D1019))
+            OmniBackgroundBase = blend(Color(0xFF06080F))
+            Background = blend(Color(0xFF06080F))
+            Surface = blend(Color(0xFF0C101A))
+            SurfaceElevated = blend(Color(0xFF0D1019))
         }
-        OmniBackgroundGradientTop = blend(Color(0xFF0A0D16))
-        OmniBackgroundElevated = blend(Color(0xFF0D1019))
-        OmniBackgroundBase = blend(Color(0xFF06080F))
-        Background = blend(Color(0xFF06080F))
-        Surface = blend(Color(0xFF0C101A))
-        SurfaceElevated = blend(Color(0xFF0D1019))
     }
 }

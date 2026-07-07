@@ -20,7 +20,7 @@ import android.util.Log
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.playback.PlayerConnection
-import com.omnitune.app.constants.DynamicThemeKey
+import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.constants.PureBlackKey
 import com.omnitune.app.constants.DarkModeKey
 import com.omnitune.app.constants.UseSystemFontKey
@@ -117,9 +117,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
 
-            val dynamicTheme by remember {
-                context.dataStore.data.map { it[DynamicThemeKey] ?: false }
-            }.collectAsState(initial = false)
+            val dynamicSongColors by remember {
+                context.dataStore.data.map { it[DynamicSongColorsKey] ?: true }
+            }.collectAsState(initial = true)
 
             val pureBlack by remember {
                 context.dataStore.data.map { it[PureBlackKey] ?: false }
@@ -142,13 +142,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Extract theme color from current song artwork via Coil (Velune-style)
+            // Extract a restrained theme accent from current song artwork.
             var themeColor by remember { mutableStateOf(DefaultThemeColor) }
 
-            LaunchedEffect(playerConnection, dynamicTheme) {
+            LaunchedEffect(playerConnection, dynamicSongColors) {
                 val pc = playerConnection
-                if (pc == null) {
-                    Log.d("OmniTuneColor", "playerConnection is null, using default")
+                if (!dynamicSongColors || pc == null) {
+                    Log.d("OmniTuneColor", "Dynamic song colors disabled or playerConnection is null, using default")
                     themeColor = DefaultThemeColor
                     return@LaunchedEffect
                 }
@@ -179,7 +179,6 @@ class MainActivity : ComponentActivity() {
                             if (bitmap != null) {
                                 Log.d("OmniTuneColor", "Bitmap obtained, extracting theme color...")
                                 val extractedColor = bitmap.extractThemeColor()
-                                // Boost saturation for more exciting/vibrant colors (Velune-style)
                                 val boostedColor = extractedColor.boostSaturation()
                                 Log.d("OmniTuneColor", "Extracted color: #" + Integer.toHexString(extractedColor.toArgb()) + " boosted: #" + Integer.toHexString(boostedColor.toArgb()))
                                 withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -205,7 +204,7 @@ class MainActivity : ComponentActivity() {
 
             OmniTuneTheme(
                 darkTheme = darkTheme,
-                dynamicColor = dynamicTheme,
+                dynamicColor = false,
                 pureBlack = pureBlack,
                 themeColor = themeColor,
                 useSystemFont = useSystemFont,

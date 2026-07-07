@@ -490,10 +490,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
             composable("settings/appearance") { 
                 SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { 
-                    AppearanceSettings(
-                        onNavigateToThemeCreator = { navController.navigate(Screens.ThemeCreator.route) },
-                        onNavigateToCustomizeBackground = { navController.navigate(Screens.CustomizeBackground.route) }
-                    ) 
+                    AppearanceSettings()
                 } 
             }
             composable("settings/updates") { 
