@@ -19,6 +19,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -228,6 +229,9 @@ fun MiniPlayer(
                     )
                 },
         ) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val showPreviousControl = canSkipPrevious && maxWidth >= 390.dp
+
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -262,7 +266,7 @@ fun MiniPlayer(
 
                 playerConnection?.let { pc ->
                     Spacer(modifier = Modifier.width(OmniSpacing.micro))
-                    if (canSkipPrevious) {
+                    if (showPreviousControl) {
                         MiniControlButton(
                             icon = R.drawable.ic_skip_previous,
                             contentDescription = "Previous",
@@ -317,6 +321,22 @@ fun MiniPlayer(
                                         )
                                     },
                                 )
+                                if (!showPreviousControl && canSkipPrevious) {
+                                    DropdownMenuItem(
+                                        text = { Text("Previous") },
+                                        onClick = {
+                                            showMenu = false
+                                            pc.seekToPrevious()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_skip_previous),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        },
+                                    )
+                                }
                                 if (meta.album != null) {
                                     DropdownMenuItem(
                                         text = { Text("Go to album") },
@@ -381,6 +401,7 @@ fun MiniPlayer(
                         }
                     }
                 }
+            }
             }
 
             LinearProgressIndicator(
