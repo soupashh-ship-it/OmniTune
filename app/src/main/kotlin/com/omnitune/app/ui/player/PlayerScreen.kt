@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -152,12 +151,20 @@ fun PlayerScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
         ) {
-            val compactPlayer = maxHeight < 900.dp
-            val verticalPadding = if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
-            val mediumGap = if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
-            val largeGap = if (compactPlayer) OmniSpacing.small else OmniSpacing.large
-            val artworkHeight = if (compactPlayer) 305.dp else 330.dp
-            val artworkWidthFraction = if (compactPlayer) 0.84f else 0.86f
+            val ultraCompactPlayer = maxHeight < 720.dp
+            val compactPlayer = maxHeight < 860.dp
+            val horizontalPadding = if (maxWidth < 380.dp) OmniSpacing.medium else OmniSpacing.section
+            val verticalPadding = if (ultraCompactPlayer) OmniSpacing.micro else if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
+            val mediumGap = if (ultraCompactPlayer) OmniSpacing.micro else if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
+            val largeGap = if (ultraCompactPlayer) OmniSpacing.compact else if (compactPlayer) OmniSpacing.small else OmniSpacing.large
+            val bottomPadding = if (ultraCompactPlayer) OmniSpacing.large else OmniSpacing.hero
+            val artworkHeight = when {
+                maxHeight < 680.dp -> 220.dp
+                maxHeight < 760.dp -> 248.dp
+                compactPlayer -> 286.dp
+                else -> 330.dp
+            }
+            val artworkWidthFraction = if (maxWidth < 380.dp) 0.90f else if (compactPlayer) 0.84f else 0.86f
 
             Box(
                 modifier = Modifier
@@ -168,8 +175,8 @@ fun PlayerScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = OmniSpacing.section)
-                        .padding(top = verticalPadding, bottom = OmniSpacing.hero),
+                        .padding(horizontal = horizontalPadding)
+                        .padding(top = verticalPadding, bottom = bottomPadding),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     PlayerTopBar(
@@ -588,7 +595,7 @@ private fun MetadataBlock(
                     style = OmniTextStyles.screenTitle,
                     color = OmniColors.TextPrimary,
                     fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -757,12 +764,15 @@ private fun PlayerControlRow(
                     }
                 }
             },
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier
+                .size(40.dp)
+                .clip(OmniShapes.Pill)
+                .background(if (shuffleEnabled) accentColor.copy(alpha = 0.16f) else Color.Transparent)
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_shuffle),
                 contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-                tint = OmniColors.TextPrimary.copy(alpha = if (shuffleEnabled) 1f else 0.4f),
+                tint = if (shuffleEnabled) accentColor else OmniColors.TextPrimary.copy(alpha = 0.4f),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -771,8 +781,8 @@ private fun PlayerControlRow(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(OmniColors.TextPrimary.copy(alpha = 0.08f))
+                .clip(OmniShapes.Medium)
+                .background(OmniColors.TextPrimary.copy(alpha = if (canSkipPrevious) 0.08f else 0.04f))
                 .clickable(enabled = canSkipPrevious) { playerConnection?.seekToPrevious() },
             contentAlignment = Alignment.Center
         ) {
@@ -801,8 +811,8 @@ private fun PlayerControlRow(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(OmniColors.TextPrimary.copy(alpha = 0.08f))
+                .clip(OmniShapes.Medium)
+                .background(OmniColors.TextPrimary.copy(alpha = if (canSkipNext) 0.08f else 0.04f))
                 .clickable(enabled = canSkipNext) { playerConnection?.seekToNext() },
             contentAlignment = Alignment.Center
         ) {
@@ -817,7 +827,10 @@ private fun PlayerControlRow(
         // Repeat Button (Icon only)
         IconButton(
             onClick = { playerConnection?.toggleRepeatMode() },
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier
+                .size(40.dp)
+                .clip(OmniShapes.Pill)
+                .background(if (repeatMode != REPEAT_MODE_OFF) accentColor.copy(alpha = 0.16f) else Color.Transparent)
         ) {
             Icon(
                 painter = painterResource(
@@ -828,7 +841,7 @@ private fun PlayerControlRow(
                     }
                 ),
                 contentDescription = "Repeat",
-                tint = OmniColors.TextPrimary.copy(alpha = if (repeatMode == REPEAT_MODE_OFF) 0.4f else 1f),
+                tint = if (repeatMode == REPEAT_MODE_OFF) OmniColors.TextPrimary.copy(alpha = 0.4f) else accentColor,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -966,7 +979,7 @@ private fun PlayerActionsRow(
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(OmniShapes.Small)
                 .clickable(onClick = onOpenQueue)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -982,7 +995,7 @@ private fun PlayerActionsRow(
 
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(OmniShapes.Small)
                 .clickable { showLyricsSheet = true }
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
