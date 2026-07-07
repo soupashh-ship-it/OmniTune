@@ -1,10 +1,7 @@
 /*
- * Velune - by Nikhil
- * Nikhil
- * Licensed Under GPL-3.0
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
  */
-
-
 
 package com.omnitune.app.ui.theme
 
@@ -46,20 +43,19 @@ object PlayerColorExtractor {
         // Build list of available distinct colors
         val availableColors = mutableListOf<Color>()
         
-        // Helper to add unique enhanced color
         fun addIfUnique(color: Color?, enhancement: Float) {
-            if (color != null && !isSimilarToAny(color, availableColors)) {
+            if (color != null && isUsableArtworkColor(color) && !isSimilarToAny(color, availableColors)) {
                 availableColors.add(enhanceColorVividness(color, enhancement))
             }
         }
 
-        // Add colors with priority, aiming for up to 6 distinct colors
+        // Favor expressive swatches first, then fall back to softer and dominant tones.
         addIfUnique(vibrantColor, 1.3f)
-        addIfUnique(lightVibrantColor, 1.25f)
         addIfUnique(darkVibrantColor, 1.2f)
-        addIfUnique(dominantColor, 1.1f)
         addIfUnique(mutedColor, 1.0f)
         addIfUnique(darkMutedColor, 0.9f)
+        addIfUnique(dominantColor, 1.1f)
+        addIfUnique(lightVibrantColor, 1.1f)
         addIfUnique(lightMutedColor, 1.0f)
         
         val fallbackSeed =
@@ -102,19 +98,12 @@ object PlayerColorExtractor {
         return@withContext availableColors
     }
 
-    /**
-     * Determines if a color is vibrant enough for use in player UI
-     * 
-     * @param color The color to analyze
-     * @return true if the color has sufficient saturation and brightness
-     */
-    private fun isColorVibrant(color: Color): Boolean {
-        val argb = color.toArgb()
+    private fun isUsableArtworkColor(color: Color): Boolean {
         val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(argb, hsv)
-        val saturation = hsv[1] // HSV[1] is saturation
-        val brightness = hsv[2] // HSV[2] is brightness
-        return saturation > 0.25f && brightness > 0.2f && brightness < 0.82f
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        val saturation = hsv[1]
+        val brightness = hsv[2]
+        return saturation >= 0.16f && brightness in 0.10f..0.92f
     }
     
     /**

@@ -6,6 +6,9 @@
 package com.omnitune.app.ui.player
 
 import android.content.Context
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,9 +26,11 @@ import coil3.size.Scale
 import coil3.size.Size
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
+import com.omnitune.app.ui.theme.OmniDynamicSongPalette
 import com.omnitune.app.ui.theme.PlayerColorExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Fallback gradient colors — used while loading or when extraction fails.
@@ -40,6 +45,7 @@ val PlayerFallbackGradient: List<Color>
     )
 
 private val FallbackGlow = Color(0xFF8B8FFF).copy(alpha = 0.30f)
+private val songPaletteCache = ConcurrentHashMap<String, ArtworkColors>()
 
 /**
  * Loads the artwork bitmap from [urls] (trying each in order) and extracts
@@ -47,32 +53,49 @@ private val FallbackGlow = Color(0xFF8B8FFF).copy(alpha = 0.30f)
  */
 private data class ArtworkColors(
     val gradient: List<Color>,
-    val accentColor: Color,
+    val palette: OmniDynamicSongPalette,
 )
 
 private suspend fun loadArtworkColors(
     context: Context,
     urls: List<String>,
+    fallbackAccent: Color,
 ): ArtworkColors? {
+    val cacheKey = urls.joinToString(separator = "|")
+    songPaletteCache[cacheKey]?.let { return it }
+
     for (url in urls) {
         try {
             val request = ImageRequest.Builder(context)
                 .data(url)
-                .size(Size(200, 200))
+                .size(Size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE))
                 .scale(Scale.FILL)
                 .memoryCacheKey("palette:$url")
                 .build()
-            val result = context.imageLoader.execute(request)
+            val result = withContext(Dispatchers.IO) {
+                context.imageLoader.execute(request)
+            }
             val bitmap = (result.image as? BitmapImage)?.bitmap ?: continue
             val palette = withContext(Dispatchers.Default) {
-                androidx.palette.graphics.Palette.from(bitmap).generate()
+                androidx.palette.graphics.Palette.from(bitmap)
+                    .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
+                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
+                    .generate()
             }
             val gradient = PlayerColorExtractor.extractGradientColors(
                 palette = palette,
                 fallbackColor = OmniColors.OmniBackgroundBase.toArgb()
             )
-            val accent = gradient.firstOrNull() ?: Color(0xFF8B8FFF)
-            return ArtworkColors(gradient, accent)
+            val colors = ArtworkColors(
+                gradient = gradient,
+                palette = OmniDynamicSongPalette.fromArtworkColors(
+                    colors = gradient,
+                    fallbackAccent = fallbackAccent,
+                ),
+            )
+            songPaletteCache[cacheKey] = colors
+            songPaletteCache[url] = colors
+            return colors
         } catch (_: Exception) {
             continue
         }
@@ -91,7 +114,7 @@ fun rememberPlayerGradient(
     videoId: String?,
 ): PlayerGradientState {
     val context = LocalContext.current
-    val _dynamicAccents = LocalOmniAccents.current // Force recomposition when accent colors change
+    val dynamicAccents = LocalOmniAccents.current
 
     val candidates = remember(thumbnailUrl, videoId) {
         buildList {
@@ -106,46 +129,71 @@ fun rememberPlayerGradient(
     }
 
     var extractedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
-    var extractedAccent by remember { mutableStateOf(Color(0xFF8B8FFF)) }
+    var extractedPalette by remember { mutableStateOf<OmniDynamicSongPalette?>(null) }
     var isFromArtwork by remember { mutableStateOf(false) }
 
-    LaunchedEffect(candidates) {
+    LaunchedEffect(candidates, dynamicAccents.primary) {
         if (candidates.isEmpty()) {
             extractedColors = emptyList()
-            extractedAccent = Color(0xFF8B8FFF)
+            extractedPalette = null
             isFromArtwork = false
             return@LaunchedEffect
         }
         val colors = loadArtworkColors(
             context = context,
             urls = candidates,
+            fallbackAccent = dynamicAccents.primary,
         )
         if (colors != null) {
-            android.util.Log.d("OmniGradient", "Extraction SUCCESS - gradient: " + colors.gradient.size + " colors, accent: #" + Integer.toHexString(colors.accentColor.toArgb()))
             extractedColors = colors.gradient
-            extractedAccent = colors.accentColor
+            extractedPalette = colors.palette
             isFromArtwork = true
         } else {
-            android.util.Log.d("OmniGradient", "Extraction FAILED - null result")
             extractedColors = emptyList()
-            extractedAccent = Color(0xFF8B8FFF)
+            extractedPalette = null
             isFromArtwork = false
         }
     }
 
-    val displayColors = if (isFromArtwork) extractedColors else PlayerFallbackGradient
+    val fallbackPalette = OmniDynamicSongPalette.fallback(dynamicAccents.primary)
+    val targetPalette = if (isFromArtwork) extractedPalette ?: fallbackPalette else fallbackPalette
+    val colorAnimation = spring<Color>(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessLow,
+    )
+    val animatedPalette = targetPalette.copy(
+        background = animateColorAsState(targetPalette.background, colorAnimation, label = "song_background").value,
+        backgroundSecondary = animateColorAsState(targetPalette.backgroundSecondary, colorAnimation, label = "song_background_secondary").value,
+        surface = animateColorAsState(targetPalette.surface, colorAnimation, label = "song_surface").value,
+        surfaceElevated = animateColorAsState(targetPalette.surfaceElevated, colorAnimation, label = "song_surface_elevated").value,
+        accent = animateColorAsState(targetPalette.accent, colorAnimation, label = "song_accent").value,
+        accentSoft = animateColorAsState(targetPalette.accentSoft, colorAnimation, label = "song_accent_soft").value,
+        miniPlayerSurface = animateColorAsState(targetPalette.miniPlayerSurface, colorAnimation, label = "song_mini_surface").value,
+        playerControlSurface = animateColorAsState(targetPalette.playerControlSurface, colorAnimation, label = "song_control_surface").value,
+        gradientStart = animateColorAsState(targetPalette.gradientStart, colorAnimation, label = "song_gradient_start").value,
+        gradientEnd = animateColorAsState(targetPalette.gradientEnd, colorAnimation, label = "song_gradient_end").value,
+    )
 
-    val accentGlow = if (isFromArtwork) {
-        extractedColors.first().copy(alpha = 0.15f)
+    val displayColors = if (isFromArtwork && extractedColors.isNotEmpty()) {
+        extractedColors
     } else {
-        FallbackGlow.copy(alpha = 0.16f)
+        PlayerFallbackGradient
     }
+    val accentGlow = if (isFromArtwork) animatedPalette.accent.copy(alpha = 0.24f) else FallbackGlow.copy(alpha = 0.16f)
 
     return PlayerGradientState(
-        backgroundBrush = Brush.verticalGradient(displayColors),
+        backgroundBrush = Brush.verticalGradient(
+            listOf(
+                animatedPalette.gradientStart,
+                animatedPalette.backgroundSecondary,
+                animatedPalette.background,
+                animatedPalette.gradientEnd,
+            )
+        ),
         accentGlow = accentGlow,
-        dominantColor = displayColors.firstOrNull() ?: Color(0xFF06080F),
-        dynamicAccentColor = extractedAccent,
+        dominantColor = displayColors.firstOrNull() ?: animatedPalette.backgroundSecondary,
+        dynamicAccentColor = animatedPalette.accent,
+        palette = animatedPalette,
         isFromArtwork = isFromArtwork,
     )
 }
@@ -161,5 +209,6 @@ data class PlayerGradientState(
     val accentGlow: Color,
     val dominantColor: Color,
     val dynamicAccentColor: Color = Color(0xFF8B8FFF),
+    val palette: OmniDynamicSongPalette = OmniDynamicSongPalette.fallback(),
     val isFromArtwork: Boolean = false,
 )
