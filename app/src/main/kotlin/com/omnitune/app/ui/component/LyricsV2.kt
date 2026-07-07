@@ -76,6 +76,8 @@ import com.omnitune.app.constants.LyricsScrollKey
 import com.omnitune.app.constants.LyricsTextPositionKey
 import com.omnitune.app.constants.LyricsTextSizeKey
 import com.omnitune.app.constants.LyricsLineSpacingKey
+import com.omnitune.app.constants.OmniLyricsPresentation
+import com.omnitune.app.constants.OmniLyricsPresentationKey
 import com.omnitune.app.constants.LyricsRomanizeJapaneseKey
 import com.omnitune.app.constants.LyricsRomanizeKoreanKey
 import com.omnitune.app.constants.PlayerBackgroundStyle
@@ -145,8 +147,22 @@ fun LyricsV2(
     // ── Preferences ──
     val (lyricsClick) = rememberPreference(LyricsClickKey, defaultValue = true)
     val (lyricsScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
-    val (lyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
-    val (lyricsLineSpacing) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
+    val (storedLyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
+    val (storedLyricsLineSpacing) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
+    val lyricsPresentation by rememberEnumPreference(
+        OmniLyricsPresentationKey,
+        OmniLyricsPresentation.DEFAULT,
+    )
+    val lyricsTextSize = when (lyricsPresentation) {
+        OmniLyricsPresentation.DEFAULT -> storedLyricsTextSize
+        OmniLyricsPresentation.COMPACT -> 22f
+        OmniLyricsPresentation.LARGE -> 32f
+    }
+    val lyricsLineSpacing = when (lyricsPresentation) {
+        OmniLyricsPresentation.DEFAULT -> storedLyricsLineSpacing
+        OmniLyricsPresentation.COMPACT -> 1.05f
+        OmniLyricsPresentation.LARGE -> 1.45f
+    }
     val (romanizeJapanese) = rememberPreference(LyricsRomanizeJapaneseKey, defaultValue = true)
     val (romanizeKorean) = rememberPreference(LyricsRomanizeKoreanKey, defaultValue = true)
     val (useSystemFont) = rememberPreference(UseSystemFontKey, defaultValue = false)

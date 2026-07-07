@@ -40,11 +40,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
+import com.omnitune.app.constants.OmniLibraryDesign
+import com.omnitune.app.constants.OmniLibraryDesignKey
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.utils.rememberEnumPreference
 
 @Composable
 fun LibraryScreen(
@@ -60,6 +63,8 @@ fun LibraryScreen(
 ) {
     val showLiked by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowLikedPlaylistKey, true)
     val showDownloaded by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowDownloadedPlaylistKey, true)
+    val libraryDesign by rememberEnumPreference(OmniLibraryDesignKey, OmniLibraryDesign.DEFAULT)
+    val compactLibrary = libraryDesign == OmniLibraryDesign.COMPACT_LIST
     val uiState by viewModel.uiState.collectAsState()
     val totalCount = uiState.librarySongCount + uiState.libraryAlbumCount + uiState.libraryArtistCount + uiState.playlistCount
     val hasQuickRows = uiState.likedCount > 0 || uiState.downloadCount > 0 || uiState.recentlyPlayed.isNotEmpty()
@@ -68,12 +73,12 @@ fun LibraryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .padding(horizontal = OmniSpacing.section),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
+            .padding(horizontal = if (compactLibrary) OmniSpacing.medium else OmniSpacing.section),
+        verticalArrangement = Arrangement.spacedBy(if (compactLibrary) OmniSpacing.compact else OmniSpacing.medium),
     ) {
         item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
+            Spacer(modifier = Modifier.height(if (compactLibrary) OmniSpacing.medium else OmniSpacing.large))
             LibraryHeader(totalCount = totalCount, onSearch = onNavigateToSearch)
         }
 
@@ -83,6 +88,7 @@ fun LibraryScreen(
                 songCount = uiState.librarySongCount,
                 albumCount = uiState.libraryAlbumCount,
                 artistCount = uiState.libraryArtistCount,
+                compact = compactLibrary,
                 onPlaylists = onNavigateToPlaylists,
                 onSongs = onNavigateToSongs,
                 onAlbums = onNavigateToAlbums,
@@ -103,6 +109,7 @@ fun LibraryScreen(
                             title = "Liked",
                             detail = countLabel(uiState.likedCount, "song"),
                             accent = OmniColors.Hot,
+                            compact = compactLibrary,
                             onClick = onNavigateToLiked,
                         )
                     }
@@ -116,6 +123,7 @@ fun LibraryScreen(
                             title = "Downloaded",
                             detail = countLabel(uiState.downloadCount, "song"),
                             accent = OmniColors.Downloaded,
+                            compact = compactLibrary,
                             onClick = onNavigateToDownloads,
                         )
                     }
@@ -128,6 +136,7 @@ fun LibraryScreen(
                         title = "Recently played",
                         detail = countLabel(uiState.recentlyPlayed.size, "song"),
                         accent = OmniColors.OmniAccentSecondary,
+                        compact = compactLibrary,
                         onClick = onNavigateToRecentlyPlayed,
                     )
                 }
@@ -148,6 +157,7 @@ fun LibraryScreen(
                 title = "Playlists",
                 detail = countLabel(uiState.playlistCount, "playlist"),
                 accent = OmniColors.OmniAccentPrimary,
+                compact = compactLibrary,
                 onClick = onNavigateToPlaylists,
             )
         }
@@ -157,6 +167,7 @@ fun LibraryScreen(
                 title = "Songs",
                 detail = countLabel(uiState.librarySongCount, "song"),
                 accent = OmniColors.OmniAccentSecondary,
+                compact = compactLibrary,
                 onClick = onNavigateToSongs,
             )
         }
@@ -166,6 +177,7 @@ fun LibraryScreen(
                 title = "Artists",
                 detail = countLabel(uiState.libraryArtistCount, "artist"),
                 accent = OmniColors.OmniAccentTertiary,
+                compact = compactLibrary,
                 onClick = onNavigateToArtists,
             )
         }
@@ -175,6 +187,7 @@ fun LibraryScreen(
                 title = "Albums",
                 detail = countLabel(uiState.libraryAlbumCount, "album"),
                 accent = OmniColors.OmniAccentWarm,
+                compact = compactLibrary,
                 onClick = onNavigateToAlbums,
             )
         }
@@ -184,6 +197,7 @@ fun LibraryScreen(
                 title = "Find music",
                 detail = "Search OmniTune",
                 accent = OmniColors.OmniAccentSecondary,
+                compact = compactLibrary,
                 onClick = onNavigateToSearch,
             )
         }
@@ -228,6 +242,7 @@ private fun LibraryCategoryTabs(
     songCount: Int,
     albumCount: Int,
     artistCount: Int,
+    compact: Boolean,
     onPlaylists: () -> Unit,
     onSongs: () -> Unit,
     onAlbums: () -> Unit,
@@ -237,10 +252,10 @@ private fun LibraryCategoryTabs(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
     ) {
-        LibraryTabChip("Playlists", playlistCount.toString(), onPlaylists, Modifier.weight(1f))
-        LibraryTabChip("Songs", songCount.toString(), onSongs, Modifier.weight(1f))
-        LibraryTabChip("Albums", albumCount.toString(), onAlbums, Modifier.weight(1f))
-        LibraryTabChip("Artists", artistCount.toString(), onArtists, Modifier.weight(1f))
+        LibraryTabChip("Playlists", playlistCount.toString(), onPlaylists, Modifier.weight(1f), compact)
+        LibraryTabChip("Songs", songCount.toString(), onSongs, Modifier.weight(1f), compact)
+        LibraryTabChip("Albums", albumCount.toString(), onAlbums, Modifier.weight(1f), compact)
+        LibraryTabChip("Artists", artistCount.toString(), onArtists, Modifier.weight(1f), compact)
     }
 }
 
@@ -250,6 +265,7 @@ private fun LibraryTabChip(
     count: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -261,7 +277,10 @@ private fun LibraryTabChip(
                 shape = OmniShapes.Medium,
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
+            .padding(
+                horizontal = if (compact) OmniSpacing.micro else OmniSpacing.compact,
+                vertical = if (compact) OmniSpacing.compact else OmniSpacing.small,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -288,6 +307,7 @@ private fun LibraryRouteRow(
     title: String,
     detail: String,
     accent: Color,
+    compact: Boolean = false,
     onClick: () -> Unit,
 ) {
     Row(
@@ -296,11 +316,11 @@ private fun LibraryRouteRow(
             .clip(OmniShapes.Medium)
             .background(OmniColors.SurfaceSubtle.copy(alpha = 0.46f))
             .clickable(onClick = onClick)
-            .padding(OmniSpacing.medium),
+            .padding(if (compact) OmniSpacing.compact else OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LibraryIconTile(painter = painter, accent = accent)
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        LibraryIconTile(painter = painter, accent = accent, size = if (compact) 40.dp else 48.dp)
+        Spacer(modifier = Modifier.width(if (compact) OmniSpacing.compact else OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -369,10 +389,11 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
 private fun LibraryIconTile(
     painter: Painter,
     accent: Color,
+    size: androidx.compose.ui.unit.Dp = 48.dp,
 ) {
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(size)
             .clip(OmniShapes.Small)
             .background(accent.copy(alpha = 0.14f)),
         contentAlignment = Alignment.Center,

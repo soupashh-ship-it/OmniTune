@@ -88,8 +88,15 @@ import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
+import com.omnitune.app.constants.HidePlayerThumbnailKey
+import com.omnitune.app.constants.OmniPlayerButtonColorMode
+import com.omnitune.app.constants.OmniPlayerButtonColorModeKey
 import com.omnitune.app.constants.OmniPlayerBackgroundStyle
 import com.omnitune.app.constants.OmniPlayerBackgroundStyleKey
+import com.omnitune.app.constants.OmniPlayerDesignStyle
+import com.omnitune.app.constants.OmniPlayerDesignStyleKey
+import com.omnitune.app.constants.OmniSliderStyle
+import com.omnitune.app.constants.OmniSliderStyleKey
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -104,6 +111,7 @@ import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniSoftBorder
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.formatDurationMs
+import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -146,11 +154,34 @@ fun PlayerScreen(
         OmniPlayerBackgroundStyleKey,
         OmniPlayerBackgroundStyle.DYNAMIC_GRADIENT,
     )
+    val playerDesignStyle by rememberEnumPreference(
+        OmniPlayerDesignStyleKey,
+        OmniPlayerDesignStyle.DEFAULT,
+    )
+    val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
+    val buttonColorMode by rememberEnumPreference(
+        OmniPlayerButtonColorModeKey,
+        OmniPlayerButtonColorMode.DYNAMIC,
+    )
+    val sliderStyle by rememberEnumPreference(
+        OmniSliderStyleKey,
+        OmniSliderStyle.DEFAULT,
+    )
     val dynamicPalette = gradientState.palette
     val dynamicAccent = dynamicPalette.accent
-    val playerBackgroundModifier = when (playerBackgroundStyle) {
-        OmniPlayerBackgroundStyle.DYNAMIC_GRADIENT -> Modifier.background(gradientState.backgroundBrush)
-        OmniPlayerBackgroundStyle.SOLID_DARK -> Modifier.background(OmniColors.OmniBackgroundBase)
+    val controlAccent = when (buttonColorMode) {
+        OmniPlayerButtonColorMode.DYNAMIC -> dynamicAccent
+        OmniPlayerButtonColorMode.DEFAULT -> LocalOmniAccents.current.primary
+        OmniPlayerButtonColorMode.MONOCHROME -> OmniColors.TextPrimary
+    }
+    val playerBackgroundModifier = when {
+        playerBackgroundStyle == OmniPlayerBackgroundStyle.SOLID_DARK ->
+            Modifier.background(OmniColors.OmniBackgroundBase)
+        playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE ->
+            Modifier
+                .background(gradientState.backgroundBrush)
+                .background(dynamicPalette.gradientStart.copy(alpha = 0.20f))
+        else -> Modifier.background(gradientState.backgroundBrush)
     }
 
 
@@ -170,17 +201,44 @@ fun PlayerScreen(
             val ultraCompactPlayer = maxHeight < 720.dp
             val compactPlayer = maxHeight < 860.dp
             val horizontalPadding = if (maxWidth < 380.dp) OmniSpacing.medium else OmniSpacing.section
-            val verticalPadding = if (ultraCompactPlayer) OmniSpacing.micro else if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
-            val mediumGap = if (ultraCompactPlayer) OmniSpacing.micro else if (compactPlayer) OmniSpacing.compact else OmniSpacing.medium
-            val largeGap = if (ultraCompactPlayer) OmniSpacing.compact else if (compactPlayer) OmniSpacing.small else OmniSpacing.large
-            val bottomPadding = if (ultraCompactPlayer) OmniSpacing.large else OmniSpacing.hero
-            val artworkHeight = when {
+            val compactDesign = playerDesignStyle == OmniPlayerDesignStyle.COMPACT
+            val immersiveDesign = playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE
+            val verticalPadding = when {
+                ultraCompactPlayer || compactDesign -> OmniSpacing.micro
+                compactPlayer -> OmniSpacing.compact
+                else -> OmniSpacing.medium
+            }
+            val mediumGap = when {
+                ultraCompactPlayer || compactDesign -> OmniSpacing.micro
+                compactPlayer -> OmniSpacing.compact
+                else -> OmniSpacing.medium
+            }
+            val largeGap = when {
+                hidePlayerThumbnail -> OmniSpacing.medium
+                ultraCompactPlayer || compactDesign -> OmniSpacing.compact
+                compactPlayer -> OmniSpacing.small
+                immersiveDesign -> OmniSpacing.hero
+                else -> OmniSpacing.large
+            }
+            val bottomPadding = if (ultraCompactPlayer || compactDesign) OmniSpacing.large else OmniSpacing.hero
+            val baseArtworkHeight = when {
                 maxHeight < 680.dp -> 220.dp
                 maxHeight < 760.dp -> 248.dp
                 compactPlayer -> 286.dp
                 else -> 330.dp
             }
-            val artworkWidthFraction = if (maxWidth < 380.dp) 0.90f else if (compactPlayer) 0.84f else 0.86f
+            val artworkHeight = when {
+                compactDesign -> (baseArtworkHeight - 44.dp).coerceAtLeast(188.dp)
+                immersiveDesign -> (baseArtworkHeight + 28.dp).coerceAtMost(370.dp)
+                else -> baseArtworkHeight
+            }
+            val artworkWidthFraction = when {
+                maxWidth < 380.dp -> 0.90f
+                compactDesign -> 0.78f
+                immersiveDesign -> 0.92f
+                compactPlayer -> 0.84f
+                else -> 0.86f
+            }
 
             Box(
                 modifier = Modifier
@@ -201,13 +259,15 @@ fun PlayerScreen(
                         hasQueue = playerConnection != null,
                     )
                     Spacer(modifier = Modifier.height(mediumGap))
-                    ArtworkHero(
-                        mediaMetadata = mediaMetadata,
-                        isPlaying = isPlaying,
-                        height = artworkHeight,
-                        widthFraction = artworkWidthFraction,
-                        accentColor = dynamicAccent,
-                    )
+                    if (!hidePlayerThumbnail) {
+                        ArtworkHero(
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            height = artworkHeight,
+                            widthFraction = artworkWidthFraction,
+                            accentColor = dynamicAccent,
+                        )
+                    }
                     Spacer(modifier = Modifier.height(largeGap))
                     MetadataBlock(
                         playerConnection = playerConnection,
@@ -229,7 +289,8 @@ fun PlayerScreen(
                     PlayerSeekBar(
                         playerConnection = playerConnection,
                         isSeeking = isSeeking,
-                        accentColor = dynamicAccent,
+                        accentColor = controlAccent,
+                        sliderStyle = sliderStyle,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
                     PlayerControlRow(
@@ -238,7 +299,7 @@ fun PlayerScreen(
                         shuffleEnabled = shuffleEnabled,
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
-                        accentColor = dynamicAccent,
+                        accentColor = controlAccent,
                         controlSurface = dynamicPalette.playerControlSurface,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
@@ -247,7 +308,7 @@ fun PlayerScreen(
                         onOpenQueue = onOpenQueue,
                         onShowSleepTimer = { showSleepTimerDialog = true },
                         onShowOptions = { showOptionsSheet = true },
-                        accentColor = dynamicAccent,
+                        accentColor = controlAccent,
                     )
                 }
             }
@@ -656,6 +717,7 @@ private fun PlayerSeekBar(
     playerConnection: PlayerConnection?,
     isSeeking: androidx.compose.runtime.MutableFloatState,
     accentColor: Color = LocalOmniAccents.current.primary,
+    sliderStyle: OmniSliderStyle = OmniSliderStyle.DEFAULT,
 ) {
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
     val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
@@ -699,6 +761,16 @@ private fun PlayerSeekBar(
     } else {
         currentPosition
     }
+    val sliderAmplitude = when (sliderStyle) {
+        OmniSliderStyle.DEFAULT -> if (isPlaying) 2.dp else 0.dp
+        OmniSliderStyle.THIN -> 0.dp
+        OmniSliderStyle.ROUNDED -> if (isPlaying) 1.dp else 0.dp
+    }
+    val sliderStrokeWidth = when (sliderStyle) {
+        OmniSliderStyle.DEFAULT -> 6.dp
+        OmniSliderStyle.THIN -> 3.dp
+        OmniSliderStyle.ROUNDED -> 8.dp
+    }
 
     Column(
         modifier = Modifier
@@ -722,8 +794,8 @@ private fun PlayerSeekBar(
                 inactiveTrackColor = OmniColors.OmniGlassStrong,
             ),
             squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
-                amplitude = if (isPlaying) 2.dp else 0.dp,
-                strokeWidth = 6.dp
+                amplitude = sliderAmplitude,
+                strokeWidth = sliderStrokeWidth,
             ),
             modifier = Modifier
                 .fillMaxWidth()

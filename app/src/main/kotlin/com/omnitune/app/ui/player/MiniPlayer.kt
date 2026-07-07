@@ -73,6 +73,13 @@ import androidx.media3.common.Player.STATE_BUFFERING
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
+import com.omnitune.app.constants.OmniMiniPlayerDesign
+import com.omnitune.app.constants.OmniMiniPlayerDesignKey
+import com.omnitune.app.constants.OmniPlayerButtonColorMode
+import com.omnitune.app.constants.OmniPlayerButtonColorModeKey
+import com.omnitune.app.constants.OmniSliderStyle
+import com.omnitune.app.constants.OmniSliderStyleKey
+import com.omnitune.app.constants.SwipeSensitivityKey
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniChrome
@@ -86,6 +93,8 @@ import com.omnitune.app.ui.theme.OmniGlassDefaults
 import com.omnitune.app.ui.theme.OmniGlassSurface
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.theme.omniPressScaleBounce
+import com.omnitune.app.utils.rememberEnumPreference
+import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -114,6 +123,19 @@ fun MiniPlayer(
     val layoutDirection = LocalLayoutDirection.current
     val coroutineScope = rememberCoroutineScope()
     var showMenu by remember { mutableStateOf(false) }
+    val miniPlayerDesign by rememberEnumPreference(
+        OmniMiniPlayerDesignKey,
+        OmniMiniPlayerDesign.DEFAULT,
+    )
+    val buttonColorMode by rememberEnumPreference(
+        OmniPlayerButtonColorModeKey,
+        OmniPlayerButtonColorMode.DYNAMIC,
+    )
+    val sliderStyle by rememberEnumPreference(
+        OmniSliderStyleKey,
+        OmniSliderStyle.DEFAULT,
+    )
+    val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
 
     var position by remember { mutableFloatStateOf(0f) }
     var duration by remember { mutableFloatStateOf(0f) }
@@ -154,7 +176,6 @@ fun MiniPlayer(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessLow,
     )
-    val swipeSensitivity = 0.73f
     val autoSwipeThreshold = (600 / (1f + exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
     val bodyInteraction = remember { MutableInteractionSource() }
 
@@ -163,6 +184,27 @@ fun MiniPlayer(
         videoId = mediaMetadata?.id,
     )
     val songPalette = miniGradient.palette
+    val compactMiniPlayer = miniPlayerDesign == OmniMiniPlayerDesign.COMPACT
+    val miniArtworkSize = if (compactMiniPlayer) 42.dp else OmniChrome.MiniPlayerArtwork
+    val miniContentHeight = if (compactMiniPlayer) 50.dp else OmniChrome.MiniPlayerContentHeight
+    val miniButtonSize = if (compactMiniPlayer) 36.dp else OmniChrome.MiniPlayerButton
+    val miniIconSize = if (compactMiniPlayer) 21.dp else 24.dp
+    val miniProgressHeight = when (sliderStyle) {
+        OmniSliderStyle.DEFAULT -> 2.dp
+        OmniSliderStyle.THIN -> 1.dp
+        OmniSliderStyle.ROUNDED -> 3.dp
+    }
+    val miniProgressCap = if (sliderStyle == OmniSliderStyle.ROUNDED) StrokeCap.Round else StrokeCap.Square
+    val controlAccent = when (buttonColorMode) {
+        OmniPlayerButtonColorMode.DYNAMIC -> songPalette.accent
+        OmniPlayerButtonColorMode.DEFAULT -> OmniColors.OmniAccentPrimary
+        OmniPlayerButtonColorMode.MONOCHROME -> OmniColors.TextPrimary
+    }
+    val controlOnAccent = when (buttonColorMode) {
+        OmniPlayerButtonColorMode.DYNAMIC -> songPalette.onAccent
+        OmniPlayerButtonColorMode.DEFAULT -> OmniColors.OmniAccentOnPrimary
+        OmniPlayerButtonColorMode.MONOCHROME -> Color.Black
+    }
     val miniGlassStyle = OmniGlassDefaults.miniPlayerStyle(
         isDark = true,
         isPureBlack = pureBlack,
@@ -188,7 +230,7 @@ fun MiniPlayer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(playerConnection, canSkipNext, canSkipPrevious, layoutDirection) {
+                .pointerInput(playerConnection, canSkipNext, canSkipPrevious, layoutDirection, swipeSensitivity) {
                     detectHorizontalDragGestures(
                         onDragStart = {
                             dragStartTime = System.currentTimeMillis()
@@ -252,7 +294,7 @@ fun MiniPlayer(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .height(OmniChrome.MiniPlayerContentHeight)
+                        .height(miniContentHeight)
                         .padding(horizontal = OmniSpacing.micro),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -260,8 +302,9 @@ fun MiniPlayer(
                         mediaMetadata = mediaMetadata,
                         isPlaying = isPlaying,
                         accentColor = songPalette.accent,
+                        artworkSize = miniArtworkSize,
                     )
-                    Spacer(modifier = Modifier.width(OmniSpacing.small))
+                    Spacer(modifier = Modifier.width(if (compactMiniPlayer) OmniSpacing.compact else OmniSpacing.small))
                     MiniMediaInfo(
                         mediaMetadata = mediaMetadata,
                         modifier = Modifier.weight(1f),
@@ -275,14 +318,18 @@ fun MiniPlayer(
                             icon = R.drawable.ic_skip_previous,
                             contentDescription = "Previous",
                             onClick = { pc.seekToPrevious() },
+                            buttonSize = miniButtonSize,
+                            iconSize = miniIconSize,
                         )
                     }
                     MiniPlayPauseButton(
                         isPlaying = isPlaying,
                         isLoading = isLoading,
                         playbackState = playbackState,
-                        accentColor = songPalette.accent,
-                        onAccent = songPalette.onAccent,
+                        accentColor = controlAccent,
+                        onAccent = controlOnAccent,
+                        buttonSize = miniButtonSize,
+                        iconSize = miniIconSize,
                         onClick = {
                             if (playbackState == Player.STATE_ENDED || !isPlaying) {
                                 pc.playOrResolveCurrent()
@@ -296,6 +343,8 @@ fun MiniPlayer(
                             icon = R.drawable.ic_skip_next,
                             contentDescription = "Next",
                             onClick = { pc.seekToNext() },
+                            buttonSize = miniButtonSize,
+                            iconSize = miniIconSize,
                         )
                     }
                     Spacer(modifier = Modifier.width(OmniSpacing.micro))
@@ -304,6 +353,8 @@ fun MiniPlayer(
                             icon = R.drawable.ic_more_vert,
                             contentDescription = "More options",
                             onClick = { showMenu = true },
+                            buttonSize = miniButtonSize,
+                            iconSize = miniIconSize,
                         )
                         DropdownMenu(
                             expanded = showMenu,
@@ -414,11 +465,11 @@ fun MiniPlayer(
                 progress = { progress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(miniProgressHeight)
                     .align(Alignment.BottomCenter),
-                color = songPalette.accent,
+                color = controlAccent,
                 trackColor = songPalette.playerControlSurface.copy(alpha = 0.42f),
-                strokeCap = StrokeCap.Square,
+                strokeCap = miniProgressCap,
             )
         }
     }
@@ -429,6 +480,7 @@ private fun MiniArtwork(
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
     accentColor: Color,
+    artworkSize: androidx.compose.ui.unit.Dp = OmniChrome.MiniPlayerArtwork,
 ) {
     val context = LocalContext.current
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
@@ -449,7 +501,7 @@ private fun MiniArtwork(
 
     Box(
         modifier = Modifier
-            .size(OmniChrome.MiniPlayerArtwork)
+            .size(artworkSize)
             .shadow(
                 elevation = 6.dp,
                 shape = OmniShapes.ArtworkSmall,
@@ -543,6 +595,8 @@ private fun MiniPlayPauseButton(
     playbackState: Int,
     accentColor: Color,
     onAccent: Color,
+    buttonSize: androidx.compose.ui.unit.Dp = OmniChrome.MiniPlayerButton,
+    iconSize: androidx.compose.ui.unit.Dp = 24.dp,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -550,7 +604,7 @@ private fun MiniPlayPauseButton(
         onClick = onClick,
         interactionSource = interactionSource,
         modifier = Modifier
-            .size(OmniChrome.MiniPlayerButton)
+            .size(buttonSize)
             .clip(OmniShapes.Pill)
             .background(accentColor.copy(alpha = 0.88f))
             .omniPressScaleBounce(interactionSource),
@@ -558,7 +612,7 @@ private fun MiniPlayPauseButton(
         if (isLoading) {
             OmniTuneLoader(
                 modifier = Modifier.size(22.dp),
-                color = accentColor,
+                color = onAccent,
                 size = 22.dp,
             )
         } else {
@@ -572,7 +626,7 @@ private fun MiniPlayPauseButton(
                 ),
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = onAccent,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(iconSize),
             )
         }
     }
@@ -583,16 +637,18 @@ private fun MiniControlButton(
     icon: Int,
     contentDescription: String,
     onClick: () -> Unit,
+    buttonSize: androidx.compose.ui.unit.Dp = OmniChrome.MiniPlayerButton,
+    iconSize: androidx.compose.ui.unit.Dp = 24.dp,
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(OmniChrome.MiniPlayerButton),
+        modifier = Modifier.size(buttonSize),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = OmniColors.TextSecondary,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(iconSize),
         )
     }
 }

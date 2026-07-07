@@ -421,6 +421,12 @@ val HistoryDuration = floatPreferencesKey("historyDuration")
 val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
 val OmniPlayerBackgroundStyleKey = stringPreferencesKey("omniPlayerBackgroundStyle")
+val OmniPlayerDesignStyleKey = stringPreferencesKey("omniPlayerDesignStyle")
+val OmniMiniPlayerDesignKey = stringPreferencesKey("omniMiniPlayerDesign")
+val OmniLibraryDesignKey = stringPreferencesKey("omniLibraryDesign")
+val OmniPlayerButtonColorModeKey = stringPreferencesKey("omniPlayerButtonColorMode")
+val OmniSliderStyleKey = stringPreferencesKey("omniSliderStyle")
+val OmniLyricsPresentationKey = stringPreferencesKey("omniLyricsPresentation")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
@@ -599,4 +605,38 @@ enum class LyricsPosition { LEFT, CENTER, RIGHT }
 enum class OmniPlayerBackgroundStyle {
     DYNAMIC_GRADIENT,
     SOLID_DARK,
+}
+
+enum class OmniPlayerDesignStyle {
+    DEFAULT,
+    COMPACT,
+    IMMERSIVE,
+}
+
+enum class OmniMiniPlayerDesign {
+    DEFAULT,
+    COMPACT,
+}
+
+enum class OmniLibraryDesign {
+    DEFAULT,
+    COMPACT_LIST,
+}
+
+enum class OmniPlayerButtonColorMode {
+    DYNAMIC,
+    DEFAULT,
+    MONOCHROME,
+}
+
+enum class OmniSliderStyle {
+    DEFAULT,
+    THIN,
+    ROUNDED,
+}
+
+enum class OmniLyricsPresentation {
+    DEFAULT,
+    COMPACT,
+    LARGE,
 }
