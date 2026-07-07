@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.BackHandler
 import androidx.media3.exoplayer.offline.Download
@@ -138,6 +139,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val currentRoute = navBackStackEntry?.destination?.route
     val topLevelScreens = Screens.MainScreens.map { it.route }
     val context = LocalContext.current
+    val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
@@ -165,12 +167,13 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val dockHeight = OmniChrome.BottomDockHeight
     val chromeSpacing = OmniSpacing.compact
     val chromeBottomMargin = OmniChrome.BottomDockBottomMargin
+    val systemBottomPadding = with(density) { WindowInsets.systemBars.getBottom(this).toDp() }
 
     val shellBottomPaddingTarget = when {
         showPlayerOverlay || currentRoute == "player" || currentRoute == "queue" -> 0.dp
-        showMiniPlayer && showBottomBar -> mpHeight + chromeSpacing + dockHeight + chromeBottomMargin
-        showBottomBar -> dockHeight + chromeBottomMargin
-        showMiniPlayer -> mpHeight + chromeSpacing
+        showMiniPlayer && showBottomBar -> systemBottomPadding + mpHeight + chromeSpacing + dockHeight + chromeBottomMargin
+        showBottomBar -> systemBottomPadding + dockHeight + chromeBottomMargin
+        showMiniPlayer -> systemBottomPadding + mpHeight + chromeSpacing
         else -> 0.dp
     }
     val isPlayerRoute = currentRoute == "player" || currentRoute == "queue"
