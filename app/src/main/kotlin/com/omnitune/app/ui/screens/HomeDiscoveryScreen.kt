@@ -129,7 +129,7 @@ fun HomeDiscoveryRoute(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = OmniSpacing.large),
+                .padding(horizontal = OmniSpacing.screenHorizontalCompact),
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.large),
         ) {
             item(contentType = "header") {
@@ -145,6 +145,15 @@ fun HomeDiscoveryRoute(
 
             item(contentType = "mood-chips") {
                 MoodChipRow(chips = uiState.moodChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) })
+            }
+
+            if (mediaMetadata != null) {
+                item(key = "resume-playback", contentType = "resume-playback") {
+                    ContinueListeningCard(
+                        mediaMetadata = mediaMetadata!!,
+                        onClick = onResumePlayback,
+                    )
+                }
             }
 
             item(contentType = "hero") {
@@ -343,6 +352,83 @@ private fun HomeTopHeader(
         ) {
             HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
             HeaderIconButton(icon = R.drawable.ic_settings, contentDescription = "Settings", onClick = onSettings)
+        }
+    }
+}
+
+@Composable
+private fun ContinueListeningCard(
+    mediaMetadata: MediaMetadata,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LocalOmniAccents.current.primary.copy(alpha = 0.16f),
+                        OmniColors.SurfacePanel,
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Large,
+            )
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.cardPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DiscoveryArtwork(
+            thumbnailUrl = mediaMetadata.thumbnailUrl,
+            contentDescription = mediaMetadata.title,
+            title = mediaMetadata.title,
+            artworkKey = mediaMetadata.id,
+            modifier = Modifier.size(64.dp),
+            imageSize = SHELF_IMAGE_SIZE,
+            shape = OmniShapes.ArtworkMedium,
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Continue listening",
+                style = OmniTextStyles.caption,
+                color = LocalOmniAccents.current.secondary,
+                maxLines = 1,
+            )
+            Text(
+                text = mediaMetadata.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                style = OmniTextStyles.metadata,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(OmniShapes.Pill)
+                .background(LocalOmniAccents.current.primary.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_play_arrow),
+                contentDescription = "Open player",
+                tint = LocalOmniAccents.current.primary,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
@@ -642,10 +728,16 @@ private fun QuickPickRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(OmniShapes.Small)
+            .height(OmniChrome.ComfortableRowHeight)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.46f))
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Medium,
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.compact),
+            .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DiscoveryArtwork(
@@ -715,10 +807,16 @@ private fun SongShelfRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(OmniShapes.Small)
+            .height(OmniChrome.ComfortableRowHeight)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Medium,
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.compact),
+            .padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         DiscoveryArtwork(
@@ -789,6 +887,7 @@ private fun TextDiscoveryShelf(
                         .width(176.dp)
                         .height(72.dp)
                         .clip(OmniShapes.Small)
+                        .background(OmniColors.SurfaceSubtle.copy(alpha = 0.38f))
                         .clickable { onItemClick(item) }
                         .padding(OmniSpacing.small),
                     verticalArrangement = Arrangement.Center,
@@ -820,8 +919,9 @@ private fun ShelfArtworkCard(
 
     Column(
         modifier = Modifier
-            .width(144.dp)
-            .clip(OmniShapes.Small)
+            .width(152.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.24f))
             .clickable(onClick = onClick),
     ) {
         if (item.thumbnailUrls.size >= 2) {
@@ -849,9 +949,10 @@ private fun ShelfArtworkCard(
                 shape = OmniShapes.ArtworkSmall,
             )
         }
-        Spacer(modifier = Modifier.height(OmniSpacing.small))
-        Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.padding(top = OmniSpacing.small, start = OmniSpacing.micro, end = OmniSpacing.micro, bottom = OmniSpacing.micro)) {
+            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
