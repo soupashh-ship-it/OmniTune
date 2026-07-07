@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -288,6 +289,7 @@ private fun DownloadItemRow(
             OmniShapes.Large,
         )
         .then(if (state.playable) Modifier.clickable(onClick = onPlay) else Modifier)
+        .animateContentSize()
         .defaultMinSize(minHeight = 82.dp)
         .padding(OmniSpacing.medium)
 

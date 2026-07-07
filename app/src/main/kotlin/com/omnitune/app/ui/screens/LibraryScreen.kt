@@ -5,6 +5,7 @@
 
 package com.omnitune.app.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -338,6 +339,7 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
                 color = OmniColors.SurfaceHairline,
                 shape = OmniShapes.Large,
             )
+            .animateContentSize()
             .padding(OmniSpacing.large),
     ) {
         Text(
