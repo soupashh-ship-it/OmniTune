@@ -51,6 +51,7 @@ fun CustomizeBackground(
     navController: NavController,
 ) {
     val context = LocalContext.current
+    val saveLabel = stringResource(R.string.save)
 
     val (imageUri, onImageUriChange) = rememberPreference(PlayerCustomImageUriKey, "")
     val (blur, onBlurChange) = rememberPreference(PlayerCustomBlurKey, 0f)
@@ -203,7 +204,7 @@ fun CustomizeBackground(
 
             FilledTonalButton(
                 onClick = {
-                    Toast.makeText(context, context.getString(R.string.save), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, saveLabel, Toast.LENGTH_SHORT).show()
                     navController.navigateUp()
                 },
                 modifier = Modifier.fillMaxWidth()

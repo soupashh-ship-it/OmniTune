@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -123,6 +124,7 @@ fun SongMenu(
     isFromCache: Boolean = false,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
@@ -256,7 +258,11 @@ fun SongMenu(
                         YouTube.addToPlaylist(browseId, song.id)
                     }
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.added_to_playlist, playlist.playlist.name), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            playlistAddMessage(resources, playlistNames = listOf(playlist.playlist.name)),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 }
             },
@@ -266,7 +272,11 @@ fun SongMenu(
                     database.insert(com.omnitune.app.db.entities.PlaylistEntity(id = id, name = name))
                     database.addSongToPlaylist(database.getPlaylistByIdBlocking(id)!!, listOf(song.id))
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, context.getString(R.string.added_to_playlist, name), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            playlistAddMessage(resources, playlistNames = listOf(name)),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 }
             }

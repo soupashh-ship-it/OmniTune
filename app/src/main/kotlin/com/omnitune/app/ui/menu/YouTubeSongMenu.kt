@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import androidx.compose.ui.res.painterResource
@@ -106,6 +107,7 @@ fun YouTubeSongMenu(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
@@ -166,10 +168,7 @@ fun YouTubeSongMenu(
         },  
         onDismiss = { showChoosePlaylistDialog = false },
         onAddComplete = { _, playlistNames ->
-            val message = when {
-                playlistNames.size == 1 -> context.getString(R.string.added_to_playlist, playlistNames.first())
-                else -> context.getString(R.string.added_to_n_playlists, playlistNames.size)
-            }
+            val message = playlistAddMessage(resources, playlistNames = playlistNames)
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         },
     )

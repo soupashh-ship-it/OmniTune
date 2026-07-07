@@ -15,7 +15,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -369,12 +368,12 @@ fun LyricsV2(
     }
 
     // ── Render ──
-    BoxWithConstraints(
+    Box(
         contentAlignment = Alignment.TopCenter,
         modifier = modifier
             .fillMaxSize()
             .padding(bottom = 12.dp)
-    ) {
+    ) lyricsContent@{
         if (lyrics == LYRICS_NOT_FOUND) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -387,7 +386,7 @@ fun LyricsV2(
                     textAlign = TextAlign.Center,
                 )
             }
-            return@BoxWithConstraints
+            return@lyricsContent
         }
 
         if (lyrics == null) {
@@ -396,7 +395,7 @@ fun LyricsV2(
                     TextPlaceholder()
                 }
             }
-            return@BoxWithConstraints
+            return@lyricsContent
         }
 
         if (entriesWithWords.isEmpty()) {
@@ -411,7 +410,7 @@ fun LyricsV2(
                     textAlign = TextAlign.Center,
                 )
             }
-            return@BoxWithConstraints
+            return@lyricsContent
         }
 
         LazyColumn(

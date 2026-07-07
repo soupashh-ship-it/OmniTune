@@ -51,10 +51,10 @@
     <string name="view_artist">View Artist</string>
     <string name="refetch">Refetch</string>
     <string name="already_in_playlist">Already in Playlist</string>
-    <string name="added_to_playlist">Added to Playlist</string>
-    <string name="added_n_songs_to_playlist">Added %d songs to Playlist</string>
+    <string name="added_to_playlist">Added to %s</string>
+    <string name="added_n_songs_to_playlist">Added %1$d songs to %2$s</string>
     <string name="added_to_n_playlists">Added to %d Playlists</string>
-    <string name="added_n_songs_to_n_playlists">Added %d songs to %d Playlists</string>
+    <string name="added_n_songs_to_n_playlists">Added %1$d songs to %2$d Playlists</string>
     <string name="playlist_is_empty">Playlist is empty</string>
     <string name="remove_download_playlist_confirm">Remove download?</string>
     <string name="all_time">All Time</string>
