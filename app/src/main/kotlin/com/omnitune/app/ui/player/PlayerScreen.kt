@@ -1426,16 +1426,33 @@ fun PlayerOptionsBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(OmniSpacing.medium))
-            // Options Row 1
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                OptionButton(R.drawable.ic_insights, "Start radio", onNavigateToRadio)
-                OptionButton(R.drawable.ic_list, "Add to playlist", onAddToPlaylist)
-                OptionButton(R.drawable.ic_share, "Copy link", onCopyLink)
-                OptionButton(R.drawable.ic_info, "Media info", { showMediaInfoDialog = true })
+
+            val context = LocalContext.current
+            val downloadsViewModel: DownloadsViewModel = hiltViewModel()
+            val optionItems = buildList {
+                add(PlayerOption(R.drawable.ic_insights, "Start radio", onNavigateToRadio))
+                add(PlayerOption(R.drawable.ic_list, "Add to playlist", onAddToPlaylist))
+                add(PlayerOption(R.drawable.ic_share, "Copy link", onCopyLink))
+                add(PlayerOption(R.drawable.ic_info, "Media info") { showMediaInfoDialog = true })
+                if (onNavigateToAlbum != null) add(PlayerOption(R.drawable.ic_album, "Go to album", onNavigateToAlbum))
+                if (onNavigateToArtist != null) add(PlayerOption(R.drawable.ic_artist, "Go to artist", onNavigateToArtist))
+                if (onShare != null) add(PlayerOption(R.drawable.ic_share, "Share", onShare))
+                add(PlayerOption(R.drawable.ic_bedtime, "Sleep timer", onSleepTimer))
+                add(PlayerOption(R.drawable.ic_list, "Queue", onOpenQueue))
+                add(PlayerOption(R.drawable.ic_share, "Listen together", onListenTogether))
+                add(
+                    PlayerOption(R.drawable.ic_download, "Download") {
+                        val videoId = currentMetadata?.id
+                        val title = currentMetadata?.title
+                        if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
+                            downloadsViewModel.startDownload(videoId, title, null) { _, msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
             }
+            OptionGrid(options = optionItems)
 
             if (showMediaInfoDialog) {
                 androidx.compose.material3.AlertDialog(
@@ -1458,83 +1475,73 @@ fun PlayerOptionsBottomSheet(
                     }
                 )
             }
-
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-
-            // Options Row 2 — navigation & share
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                if (onNavigateToAlbum != null) {
-                    OptionButton(R.drawable.ic_album, "Go to album", onNavigateToAlbum)
-                } else {
-                    Spacer(modifier = Modifier.size(72.dp))
-                }
-                if (onNavigateToArtist != null) {
-                    OptionButton(R.drawable.ic_artist, "Go to artist", onNavigateToArtist)
-                } else {
-                    Spacer(modifier = Modifier.size(72.dp))
-                }
-                if (onShare != null) {
-                    OptionButton(R.drawable.ic_share, "Share", onShare)
-                } else {
-                    Spacer(modifier = Modifier.size(72.dp))
-                }
-                OptionButton(R.drawable.ic_bedtime, "Sleep timer", onSleepTimer)
-                OptionButton(R.drawable.ic_list, "Queue", onOpenQueue)
-            }
-
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-
-            // Options Row 3 — listen together & extras
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                OptionButton(R.drawable.ic_share, "Listen together", onListenTogether) // reusing share icon for now
-                
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-                OptionButton(R.drawable.ic_download, "Download") {
-                    val videoId = currentMetadata?.id
-                    val title = currentMetadata?.title
-                    if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
-                        downloadsViewModel.startDownload(videoId, title, null) { _, msg ->
-                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.size(72.dp))
-                Spacer(modifier = Modifier.size(72.dp))
-                Spacer(modifier = Modifier.size(72.dp)) // padding out the rest of the row for 5-item alignment
-            }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
+private data class PlayerOption(
+    val icon: Int,
+    val label: String,
+    val onClick: () -> Unit,
+)
+
 @Composable
-private fun OptionButton(icon: Int, label: String, onClick: () -> Unit) {
+private fun OptionGrid(options: List<PlayerOption>) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+        options.chunked(4).forEach { rowOptions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                rowOptions.forEach { option ->
+                    OptionButton(
+                        icon = option.icon,
+                        label = option.label,
+                        onClick = option.onClick,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                repeat(4 - rowOptions.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OptionButton(
+    icon: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
             .clip(OmniShapes.Medium)
             .clickable(onClick = onClick)
-            .padding(8.dp)
+            .padding(vertical = OmniSpacing.compact, horizontal = OmniSpacing.micro)
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(52.dp)
                 .clip(OmniShapes.Large)
                 .background(OmniColors.SurfaceRaised),
             contentAlignment = Alignment.Center
         ) {
             Icon(painterResource(icon), contentDescription = null, tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp))
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(label, color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
+        Spacer(modifier = Modifier.height(OmniSpacing.compact))
+        Text(
+            text = label,
+            color = OmniColors.TextSecondary,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
