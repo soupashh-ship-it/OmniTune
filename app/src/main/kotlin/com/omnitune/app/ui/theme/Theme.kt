@@ -89,7 +89,7 @@ fun OmniTuneTheme(
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
     val appFontFamily = remember {
-        if (useSystemFont) FontFamily.Default else InterFontFamily
+        if (useSystemFont) FontFamily.Default else AppFontFamily
     }
     val typography = remember(appFontFamily) {
         omniTypography(fontFamily = appFontFamily)
@@ -326,9 +326,7 @@ fun Bitmap.extractThemeColor(): Color {
 }
 
 /**
- * Boost saturation of a color to make it more vibrant and exciting.
- * Velune-style: multiplies saturation by 1.3x, ensures minimum saturation 0.55,
- * and keeps brightness in the optimal range.
+ * Boost saturation of an artwork color while keeping brightness controlled.
  */
 fun Color.boostSaturation(factor: Float = 1.3f, minSaturation: Float = 0.55f): Color {
     val hsv = FloatArray(3)

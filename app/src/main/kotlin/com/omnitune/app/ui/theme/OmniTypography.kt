@@ -128,7 +128,7 @@ fun omniTypography(fontFamily: FontFamily = FontFamily.Default) = Typography(
 
 object OmniTextStyles {
     val heroTitle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
@@ -136,7 +136,7 @@ object OmniTextStyles {
         color = OmniColors.TextPrimary,
     )
     val screenTitle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
@@ -144,7 +144,7 @@ object OmniTextStyles {
         color = OmniColors.TextPrimary,
     )
     val sectionTitle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
@@ -152,7 +152,7 @@ object OmniTextStyles {
         color = OmniColors.TextPrimary,
     )
     val songTitle = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
         lineHeight = 22.sp,
@@ -160,7 +160,7 @@ object OmniTextStyles {
         color = OmniColors.TextPrimary,
     )
     val metadata = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,
@@ -168,7 +168,7 @@ object OmniTextStyles {
         color = OmniColors.TextSecondary,
     )
     val caption = TextStyle(
-        fontFamily = InterFontFamily,
+        fontFamily = AppFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 10.sp,
         lineHeight = 13.sp,

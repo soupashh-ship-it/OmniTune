@@ -21,7 +21,9 @@ import androidx.compose.ui.Alignment
 
 object OmniMotion {
     const val FastFadeMillis = 140
+    const val PressMillis = 110
     const val ScreenTransitionMillis = 220
+    const val SectionTransitionMillis = 320
     const val ThumbnailFadeMillis = 180
 
     /** Snappy spring for press-scale on buttons and cards. */

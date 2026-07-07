@@ -62,6 +62,13 @@ import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 
 object OmniChrome {
+    val IconSmall = 18.dp
+    val IconMedium = 20.dp
+    val IconLarge = 24.dp
+    val IconTouchTarget = 44.dp
+    val CompactRowHeight = 60.dp
+    val ComfortableRowHeight = 72.dp
+    val SearchBarHeight = 62.dp
     val MiniPlayerHeight = 66.dp
     val MiniPlayerContentHeight = 60.dp
     val MiniPlayerArtwork = 50.dp
@@ -266,7 +273,7 @@ fun OmniIconButton(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(OmniChrome.IconMedium),
         )
     }
 }
@@ -290,7 +297,7 @@ fun OmniMusicRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 60.dp)
+            .defaultMinSize(minHeight = OmniChrome.CompactRowHeight)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(OmniShapes.Small)
             .background(bgColor)
@@ -311,7 +318,7 @@ fun OmniMusicRow(
             .padding(horizontal = OmniSpacing.compact, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OmniThumbnail(thumbnailUrl = thumbnailUrl, placeholderIcon = placeholderIcon, size = 44.dp)
+        OmniThumbnail(thumbnailUrl = thumbnailUrl, placeholderIcon = placeholderIcon, size = OmniChrome.IconTouchTarget)
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -346,7 +353,7 @@ fun OmniMusicRow(
                     painter = painterResource(trailingIcon),
                     contentDescription = null,
                     tint = OmniColors.TextSecondary,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(OmniChrome.IconSmall),
                 )
             }
         }

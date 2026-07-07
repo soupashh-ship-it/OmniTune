@@ -48,5 +48,5 @@ val AppFontFamily: FontFamily = try {
     FontFamily.Default
 }
 
-/** Backward-compatible alias for existing references. */
+/** Backward-compatible alias for older references. */
 val InterFontFamily = AppFontFamily
