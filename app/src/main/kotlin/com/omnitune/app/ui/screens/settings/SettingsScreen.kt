@@ -123,7 +123,7 @@ fun SettingsScreen(
 
     val categories = listOf(
         SettingsCategory(
-            title = "ACCOUNT & SOCIAL",
+            title = "Account and Social",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_settings, // Use generic if needed, or specific
@@ -142,7 +142,7 @@ fun SettingsScreen(
             )
         ),
         SettingsCategory(
-            title = "UI & DISPLAY",
+            title = "UI and Display",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_settings,
@@ -154,7 +154,7 @@ fun SettingsScreen(
             ),
         ),
         SettingsCategory(
-            title = "PLAYBACK & AUDIO",
+            title = "Playback and Audio",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_play_arrow,
@@ -173,7 +173,7 @@ fun SettingsScreen(
             ),
         ),
         SettingsCategory(
-            title = "CONTENT & PRIVACY",
+            title = "Content and Privacy",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_insights,
@@ -192,7 +192,7 @@ fun SettingsScreen(
             ),
         ),
         SettingsCategory(
-            title = "STORAGE",
+            title = "Storage",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_download,
@@ -204,7 +204,7 @@ fun SettingsScreen(
             ),
         ),
         SettingsCategory(
-            title = "INTEGRATIONS",
+            title = "Integrations",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_favorite,
@@ -216,7 +216,7 @@ fun SettingsScreen(
             ),
         ),
         SettingsCategory(
-            title = "SYSTEM",
+            title = "System",
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_download,

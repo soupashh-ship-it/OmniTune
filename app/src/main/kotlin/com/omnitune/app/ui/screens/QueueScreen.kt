@@ -96,7 +96,7 @@ fun QueueScreen(
     downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
 ) {
-    Timber.tag("QueueNav").i("QueueScreen entered: playerConnection=%s mediaMetadata=%s", playerConnection, playerConnection?.mediaMetadata?.value)
+    Timber.tag("QueueNav").i("QueueScreen entered: playerConnection=%s", playerConnection)
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -176,8 +176,7 @@ fun QueueScreen(
                     },
                     onRemoveSelected = {
                         playerConnection?.let { pc ->
-                            selectedIndices.sortedDescending().forEach { idx ->
-                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                            selectedIndices.sortedDescending().forEach { windowIndex ->
                                 pc.removeMediaItem(windowIndex)
                             }
                             selectedIndices.clear()
@@ -189,8 +188,7 @@ fun QueueScreen(
                     },
                     onDownloadSelected = {
                         playerConnection?.let { pc ->
-                            selectedIndices.forEach { idx ->
-                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                            selectedIndices.forEach { windowIndex ->
                                 val mediaItem = pc.getMediaItemAt(windowIndex)
                                 val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                                 val videoId = meta?.id ?: return@forEach
@@ -428,8 +426,7 @@ fun QueueScreen(
                     playerConnection?.let { pc ->
                         scope.launch {
                             var addedCount = 0
-                            selectedIndices.forEach { idx ->
-                                val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                            selectedIndices.forEach { windowIndex ->
                                 val mediaItem = pc.getMediaItemAt(windowIndex)
                                 val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                                 if (meta != null) {
@@ -448,9 +445,8 @@ fun QueueScreen(
                 onCreatePlaylist = { name ->
                     playerConnection?.let { pc ->
                         scope.launch {
-                            val firstMeta = selectedIndices.firstOrNull()?.let { idx ->
-                                val windowIndex = upcomingIndices.getOrNull(idx)
-                                windowIndex?.let { pc.getMediaItemAt(it).localConfiguration?.tag as? MediaMetadata }
+                            val firstMeta = selectedIndices.firstOrNull()?.let { windowIndex ->
+                                pc.getMediaItemAt(windowIndex).localConfiguration?.tag as? MediaMetadata
                             }
                             if (firstMeta != null) {
                                 libraryViewModel.ensureSongExists(firstMeta)
@@ -463,8 +459,7 @@ fun QueueScreen(
                                 val newPlaylist = playlists.find { it.playlist.name == name }
                                 
                                 if (newPlaylist != null) {
-                                    selectedIndices.drop(1).forEach { idx ->
-                                        val windowIndex = upcomingIndices.getOrNull(idx) ?: return@forEach
+                                    selectedIndices.drop(1).forEach { windowIndex ->
                                         val mediaItem = pc.getMediaItemAt(windowIndex)
                                         val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                                         if (meta != null) {
