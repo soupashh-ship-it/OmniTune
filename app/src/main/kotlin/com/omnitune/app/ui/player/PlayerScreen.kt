@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -138,12 +139,16 @@ fun PlayerScreen(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
         videoId = mediaMetadata?.id,
     )
-    val dynamicAccent = gradientState.accentGlow
+    val dynamicPalette = gradientState.palette
+    val dynamicAccent = dynamicPalette.accent
 
 
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Background is now handled globally by OmniShell
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(gradientState.backgroundBrush)
+    ) {
 
         BoxWithConstraints(
             modifier = Modifier
@@ -223,6 +228,7 @@ fun PlayerScreen(
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
                         accentColor = dynamicAccent,
+                        controlSurface = dynamicPalette.playerControlSurface,
                     )
                     Spacer(modifier = Modifier.height(largeGap))
                     PlayerActionsRow(
@@ -514,7 +520,7 @@ private fun ArtworkHero(
                 loading = {
                     OmniTuneLoader(
                         modifier = Modifier.size(48.dp),
-                        color = LocalOmniAccents.current.primary,
+                        color = accentColor,
                         size = 48.dp,
                     )
                 },
@@ -534,7 +540,7 @@ private fun ArtworkHero(
                     ) {
                         OmniTuneLoader(
                             modifier = Modifier.size(32.dp),
-                            color = LocalOmniAccents.current.primary,
+                            color = accentColor,
                             size = 32.dp,
                         )
                     }
@@ -742,6 +748,7 @@ private fun PlayerControlRow(
     repeatMode: Int,
     playerConnection: PlayerConnection?,
     accentColor: Color = LocalOmniAccents.current.primary,
+    controlSurface: Color = OmniColors.OmniGlassSubtle,
 ) {
     val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
     val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
@@ -782,7 +789,7 @@ private fun PlayerControlRow(
             modifier = Modifier
                 .size(52.dp)
                 .clip(OmniShapes.Medium)
-                .background(OmniColors.TextPrimary.copy(alpha = if (canSkipPrevious) 0.08f else 0.04f))
+                .background(controlSurface.copy(alpha = if (canSkipPrevious) 0.86f else 0.48f))
                 .clickable(enabled = canSkipPrevious) { playerConnection?.seekToPrevious() },
             contentAlignment = Alignment.Center
         ) {
@@ -797,6 +804,7 @@ private fun PlayerControlRow(
         PlayPauseButton(
             isPlaying = isPlaying,
             playbackState = playbackState,
+            accentColor = accentColor,
             onClick = {
                 val pc = playerConnection ?: return@PlayPauseButton
                 if (playbackState == Player.STATE_ENDED || !isPlaying) {
@@ -812,7 +820,7 @@ private fun PlayerControlRow(
             modifier = Modifier
                 .size(52.dp)
                 .clip(OmniShapes.Medium)
-                .background(OmniColors.TextPrimary.copy(alpha = if (canSkipNext) 0.08f else 0.04f))
+                .background(controlSurface.copy(alpha = if (canSkipNext) 0.86f else 0.48f))
                 .clickable(enabled = canSkipNext) { playerConnection?.seekToNext() },
             contentAlignment = Alignment.Center
         ) {
@@ -852,6 +860,7 @@ private fun PlayerControlRow(
 private fun PlayPauseButton(
     isPlaying: Boolean,
     playbackState: Int,
+    accentColor: Color = LocalOmniAccents.current.primary,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -868,7 +877,7 @@ private fun PlayPauseButton(
                 spotColor = Color.Black.copy(alpha = 0.3f),
             )
             .clip(CircleShape)
-            .background(Color.White)
+            .background(accentColor)
             .omniPressScale(interactionSource),
     ) {
         Icon(
@@ -882,7 +891,7 @@ private fun PlayPauseButton(
                 }
             ),
             contentDescription = if (isPlaying) "Pause" else "Play",
-            tint = Color.Black,
+            tint = if (accentColor.luminance() > 0.52f) Color.Black else Color.White,
             modifier = Modifier.size(36.dp),
         )
     }
@@ -990,7 +999,7 @@ private fun PlayerActionsRow(
         }
 
         IconButton(onClick = onShowSleepTimer) {
-            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) LocalOmniAccents.current.primary else OmniColors.TextSecondary)
+            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) accentColor else OmniColors.TextSecondary)
         }
 
         Row(

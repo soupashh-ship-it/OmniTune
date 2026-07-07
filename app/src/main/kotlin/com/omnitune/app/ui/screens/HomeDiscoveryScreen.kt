@@ -76,6 +76,7 @@ import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerHeroBanner
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
+import com.omnitune.app.ui.player.rememberPlayerGradient
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniMotion
@@ -361,6 +362,11 @@ private fun ContinueListeningCard(
     mediaMetadata: MediaMetadata,
     onClick: () -> Unit,
 ) {
+    val songPalette = rememberPlayerGradient(
+        thumbnailUrl = mediaMetadata.thumbnailUrl,
+        videoId = mediaMetadata.id,
+    ).palette
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -368,14 +374,15 @@ private fun ContinueListeningCard(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        LocalOmniAccents.current.primary.copy(alpha = 0.16f),
+                        songPalette.accent.copy(alpha = 0.18f),
+                        songPalette.surface,
                         OmniColors.SurfacePanel,
                     ),
                 ),
             )
             .border(
                 width = 1.dp,
-                color = OmniColors.SurfaceHairline,
+                color = songPalette.accent.copy(alpha = 0.18f),
                 shape = OmniShapes.Large,
             )
             .clickable(onClick = onClick)
@@ -396,7 +403,7 @@ private fun ContinueListeningCard(
             Text(
                 text = "Continue listening",
                 style = OmniTextStyles.caption,
-                color = LocalOmniAccents.current.secondary,
+                color = songPalette.accent,
                 maxLines = 1,
             )
             Text(
@@ -420,13 +427,13 @@ private fun ContinueListeningCard(
             modifier = Modifier
                 .size(42.dp)
                 .clip(OmniShapes.Pill)
-                .background(LocalOmniAccents.current.primary.copy(alpha = 0.18f)),
+                .background(songPalette.accent.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_play_arrow),
                 contentDescription = "Open player",
-                tint = LocalOmniAccents.current.primary,
+                tint = songPalette.accent,
                 modifier = Modifier.size(22.dp),
             )
         }

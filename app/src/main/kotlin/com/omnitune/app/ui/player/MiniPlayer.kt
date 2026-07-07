@@ -162,26 +162,26 @@ fun MiniPlayer(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
         videoId = mediaMetadata?.id,
     )
+    val songPalette = miniGradient.palette
+    val miniGlassStyle = OmniGlassDefaults.miniPlayerStyle(
+        isDark = true,
+        isPureBlack = pureBlack,
+    ).copy(
+        surfaceTint = songPalette.miniPlayerSurface,
+        surfaceAlpha = if (pureBlack) 0.88f else 0.96f,
+        overlayColor = songPalette.backgroundSecondary,
+        overlayAlpha = if (pureBlack) 0.18f else 0.42f,
+        borderColor = songPalette.accent,
+        borderAlpha = if (miniGradient.isFromArtwork) 0.16f else 0.05f,
+        shadowSpot = songPalette.accent.copy(alpha = if (miniGradient.isFromArtwork) 0.10f else 0.04f),
+    )
 
     OmniGlassSurface(
         shape = OmniShapes.Dock,
-        style = OmniGlassDefaults.miniPlayerStyle(
-            isDark = true,
-            isPureBlack = pureBlack,
-        ),
+        style = miniGlassStyle,
         modifier = modifier
             .fillMaxWidth()
             .height(OmniChrome.MiniPlayerHeight)
-            .then(
-                if (miniGradient.isFromArtwork) {
-                    Modifier.background(
-                        miniGradient.dominantColor.copy(alpha = 0.06f),
-                        OmniShapes.Dock,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
             .padding(horizontal = OmniSpacing.small),
     ) {
@@ -242,7 +242,7 @@ fun MiniPlayer(
                         interactionSource = bodyInteraction,
                         indication = androidx.compose.material3.ripple(
                             bounded = true,
-                            color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
+                            color = songPalette.accent.copy(alpha = 0.12f),
                         ),
                         onClick = onClick,
                     )
@@ -256,7 +256,11 @@ fun MiniPlayer(
                         .padding(horizontal = OmniSpacing.micro),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    MiniArtwork(mediaMetadata = mediaMetadata, isPlaying = isPlaying)
+                    MiniArtwork(
+                        mediaMetadata = mediaMetadata,
+                        isPlaying = isPlaying,
+                        accentColor = songPalette.accent,
+                    )
                     Spacer(modifier = Modifier.width(OmniSpacing.small))
                     MiniMediaInfo(
                         mediaMetadata = mediaMetadata,
@@ -277,6 +281,8 @@ fun MiniPlayer(
                         isPlaying = isPlaying,
                         isLoading = isLoading,
                         playbackState = playbackState,
+                        accentColor = songPalette.accent,
+                        onAccent = songPalette.onAccent,
                         onClick = {
                             if (playbackState == Player.STATE_ENDED || !isPlaying) {
                                 pc.playOrResolveCurrent()
@@ -410,8 +416,8 @@ fun MiniPlayer(
                     .fillMaxWidth()
                     .height(2.dp)
                     .align(Alignment.BottomCenter),
-                color = OmniColors.OmniAccentPrimary,
-                trackColor = OmniColors.OmniGlassStrong.copy(alpha = 0.45f),
+                color = songPalette.accent,
+                trackColor = songPalette.playerControlSurface.copy(alpha = 0.42f),
                 strokeCap = StrokeCap.Square,
             )
         }
@@ -422,6 +428,7 @@ fun MiniPlayer(
 private fun MiniArtwork(
     mediaMetadata: MediaMetadata?,
     isPlaying: Boolean,
+    accentColor: Color,
 ) {
     val context = LocalContext.current
     val thumbnailUrl = mediaMetadata?.thumbnailUrl
@@ -447,13 +454,13 @@ private fun MiniArtwork(
                 elevation = 6.dp,
                 shape = OmniShapes.ArtworkSmall,
                 ambientColor = Color.Black.copy(alpha = 0.32f),
-                spotColor = OmniColors.OmniAccentGlow.copy(alpha = 0.08f),
+                spotColor = accentColor.copy(alpha = 0.10f),
             )
             .clip(OmniShapes.ArtworkSmall)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
+                        accentColor.copy(alpha = 0.12f),
                         OmniColors.OmniGlassStrong,
                     )
                 )
@@ -534,6 +541,8 @@ private fun MiniPlayPauseButton(
     isPlaying: Boolean,
     isLoading: Boolean,
     playbackState: Int,
+    accentColor: Color,
+    onAccent: Color,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -543,13 +552,13 @@ private fun MiniPlayPauseButton(
         modifier = Modifier
             .size(OmniChrome.MiniPlayerButton)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.18f))
+            .background(accentColor.copy(alpha = 0.88f))
             .omniPressScaleBounce(interactionSource),
     ) {
         if (isLoading) {
             OmniTuneLoader(
                 modifier = Modifier.size(22.dp),
-                color = OmniColors.OmniAccentPrimary,
+                color = accentColor,
                 size = 22.dp,
             )
         } else {
@@ -562,7 +571,7 @@ private fun MiniPlayPauseButton(
                     }
                 ),
                 contentDescription = if (isPlaying) "Pause" else "Play",
-                tint = OmniColors.TextPrimary,
+                tint = onAccent,
                 modifier = Modifier.size(24.dp),
             )
         }
