@@ -7,6 +7,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +65,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniFloatingSurface
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -123,8 +125,13 @@ fun SearchTopBar(
         OmniFloatingSurface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp),
-            shape = OmniShapes.Large,
+                .height(OmniChrome.SearchBarHeight)
+                .border(
+                    width = 1.dp,
+                    color = OmniColors.SurfaceHairline,
+                    shape = OmniShapes.ExtraLarge,
+                ),
+            shape = OmniShapes.ExtraLarge,
         ) {
             TextField(
                 value = query,

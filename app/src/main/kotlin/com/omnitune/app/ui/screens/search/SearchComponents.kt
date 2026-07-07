@@ -64,6 +64,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -85,11 +86,34 @@ fun SectionLabel(
     title: String,
     count: Int,
 ) {
-    OmniSectionHeader(
-        title = title,
-        action = "$count",
-        modifier = Modifier.padding(top = OmniSpacing.compact),
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = OmniSpacing.compact, bottom = OmniSpacing.micro),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Box(
+            modifier = Modifier
+                .clip(OmniShapes.Pill)
+                .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.14f))
+                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = count.toString(),
+                style = OmniTextStyles.caption,
+                color = OmniColors.OmniAccentPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
 }
 
 
@@ -124,7 +148,7 @@ fun SearchResultRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(74.dp)
+            .height(OmniChrome.ComfortableRowHeight)
             .clip(OmniShapes.Medium)
             .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
             .then(
@@ -150,7 +174,7 @@ fun SearchResultRow(
     ) {
         Box(
             modifier = Modifier
-                .size(62.dp)
+                .size(56.dp)
                 .clip(artworkShape)
                 .background(OmniColors.SurfaceQuiet),
             contentAlignment = Alignment.Center,
