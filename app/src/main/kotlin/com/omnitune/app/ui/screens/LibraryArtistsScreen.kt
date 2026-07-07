@@ -49,6 +49,7 @@ import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -129,7 +130,7 @@ fun LibraryArtistsScreen(
                 ) { artist ->
                     ArtistRow(artist = artist, onClick = { onNavigateToArtist(artist.id) })
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
+                item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }
             }
         }
     }

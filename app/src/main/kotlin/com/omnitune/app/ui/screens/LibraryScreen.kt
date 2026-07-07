@@ -331,6 +331,13 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
+            .border(
+                width = 1.dp,
+                color = OmniColors.SurfaceHairline,
+                shape = OmniShapes.Large,
+            )
             .padding(OmniSpacing.large),
     ) {
         Text(

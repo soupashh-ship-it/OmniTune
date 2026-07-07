@@ -54,6 +54,7 @@ import com.omnitune.app.R
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.app.db.entities.TagEntity
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -226,7 +227,7 @@ fun LibraryPlaylistsScreen(
                         onAssignFolder = { showFolderPickerFor = playlist.id },
                     )
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
+                item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }
             }
         }
     }

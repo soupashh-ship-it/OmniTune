@@ -53,6 +53,7 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -102,7 +103,7 @@ fun LibrarySongsScreen(
                         onClick = { onPlaySong(song) },
                     )
                 }
-                item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(104.dp)) }
+                item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }
             }
         }
     }

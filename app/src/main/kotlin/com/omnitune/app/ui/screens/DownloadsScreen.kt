@@ -45,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -110,6 +111,7 @@ fun DownloadsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                contentPadding = PaddingValues(bottom = OmniChrome.BottomContentPadding),
             ) {
                 items(
                     items = uiState.downloads,
@@ -123,7 +125,6 @@ fun DownloadsScreen(
                         onRemove = { downloadToRemove = download },
                     )
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
     }
@@ -329,7 +330,7 @@ private fun DownloadItemRow(
             if (state.progress != null) {
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
                 val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = state.progress ?: 0f,
+                    targetValue = state.progress,
                     animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.LinearEasing),
                     label = "progressAnim"
                 )
