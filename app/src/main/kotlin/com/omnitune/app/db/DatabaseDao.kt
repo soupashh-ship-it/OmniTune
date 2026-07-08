@@ -72,7 +72,7 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 @Dao
-interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventDao, SongDao, ArtistDao, AlbumDao, PlaylistDao {
+interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventDao, SongDao, ArtistDao, AlbumDao, PlaylistDao, BackupDao {
 
     @Transaction
     fun insert(
