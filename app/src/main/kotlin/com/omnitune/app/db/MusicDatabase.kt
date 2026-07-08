@@ -57,7 +57,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 4
+private const val CURRENT_VERSION = 5
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -175,9 +175,23 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceType` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceId` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceTitle` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSeedSongId` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackGenre` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackMood` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackArtist` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackAllowAutoplay` INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackShuffledCollection` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
             val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(DatabaseCallback())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))

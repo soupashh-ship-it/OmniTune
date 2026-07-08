@@ -6,6 +6,7 @@
 package com.omnitune.app.playback.continuation
 
 import androidx.media3.common.MediaItem
+import com.omnitune.app.db.entities.QueueEntity
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
 import kotlinx.coroutines.runBlocking
@@ -172,6 +173,64 @@ class AutoplayRecommendationResolverTest {
         assertNull(LikedSongsPlaybackPlanner.nextLoopIndex(0))
     }
 
+    @Test
+    fun `playback context can inherit verified genre and mood from seed metadata`() {
+        val seed = track("song_1", "Song", "Artist").copy(
+            genre = "Afrobeats",
+            mood = "Focus",
+        )
+        val context = PlaybackContext().withSeedMetadata(seed)
+
+        assertEquals("song_1", context.seedSongId)
+        assertEquals("Afrobeats", context.genre)
+        assertEquals("Focus", context.mood)
+    }
+
+    @Test
+    fun `queue playback context restores source metadata safely`() {
+        val sessionItems = listOf(mediaItem("song_1", "Song", "Artist"))
+        val context = QueuePlaybackContextMapper.fromEntity(
+            queue = QueueEntity(
+                id = 1,
+                title = "Saved Queue",
+                mediaIdList = "song_1",
+                startIndex = 0,
+                position = 12L,
+                playbackSourceType = PlaybackSourceType.HOME_DISCOVERY.name,
+                playbackSourceTitle = "Mood Shelf",
+                playbackSeedSongId = "song_1",
+                playbackGenre = null,
+                playbackMood = "Focus",
+                playbackArtist = "Artist",
+                playbackAllowAutoplay = true,
+                playbackShuffledCollection = false,
+            ),
+            sessionItems = sessionItems,
+        )
+
+        assertEquals(PlaybackSourceType.HOME_DISCOVERY, context.sourceType)
+        assertEquals("Mood Shelf", context.sourceTitle)
+        assertEquals("Focus", context.mood)
+        assertEquals("Artist", context.artist)
+        assertEquals(sessionItems, context.sessionItems)
+    }
+
+    @Test
+    fun `invalid restored source type falls back to unknown`() {
+        val context = QueuePlaybackContextMapper.fromEntity(
+            queue = QueueEntity(
+                title = "Saved Queue",
+                mediaIdList = "song_1",
+                startIndex = 0,
+                position = 0L,
+                playbackSourceType = "REMOVED_SOURCE",
+            ),
+            sessionItems = emptyList(),
+        )
+
+        assertEquals(PlaybackSourceType.UNKNOWN, context.sourceType)
+    }
+
     private fun track(id: String, title: String, artist: String): MediaMetadata =
         MediaMetadata(
             id = id,
@@ -209,4 +268,3 @@ class AutoplayRecommendationResolverTest {
         override suspend fun quickPicks(seed: MediaMetadata): List<MediaItem> = quickPickSongs
     }
 }
-

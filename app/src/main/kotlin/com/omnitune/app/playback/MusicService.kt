@@ -65,8 +65,10 @@ import com.omnitune.app.playback.continuation.OmniAutoplayRecommendationProvider
 import com.omnitune.app.playback.continuation.PlaybackContinuationPolicy
 import com.omnitune.app.playback.continuation.PlaybackContext
 import com.omnitune.app.playback.continuation.PlaybackSourceType
+import com.omnitune.app.playback.continuation.QueuePlaybackContextMapper
 import com.omnitune.app.playback.continuation.TasteSignalClassifier
 import com.omnitune.app.playback.continuation.TasteSignal
+import com.omnitune.app.playback.continuation.withSeedItem
 import com.omnitune.app.playback.ScrobblingManager
 
 @AndroidEntryPoint
@@ -287,7 +289,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
                                 title = savedQueue.title,
                                 items = mediaItems,
                                 startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
-                                position = savedQueue.position
+                                position = savedQueue.position,
+                                playbackContext = QueuePlaybackContextMapper.fromEntity(savedQueue, mediaItems),
                             )
                             withContext(Dispatchers.Main) {
                                 restoreQueueMetadataOnly(queue)
@@ -457,6 +460,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         scope.launch {
             val initialStatus = queue.getInitialStatus()
+            currentPlaybackContext = queue.playbackContext.withSeedItem(
+                initialStatus.items.getOrNull(initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex.coerceAtLeast(0))),
+            )
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
@@ -1159,7 +1165,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     title = queueTitle,
                     mediaIdList = mediaIds.joinToString(","),
                     startIndex = currentIndex,
-                    position = currentPos.coerceAtLeast(0L)
+                    position = currentPos.coerceAtLeast(0L),
+                    playbackSourceType = currentPlaybackContext.sourceType.name,
+                    playbackSourceId = currentPlaybackContext.sourceId,
+                    playbackSourceTitle = currentPlaybackContext.sourceTitle,
+                    playbackSeedSongId = currentPlaybackContext.seedSongId,
+                    playbackGenre = currentPlaybackContext.genre,
+                    playbackMood = currentPlaybackContext.mood,
+                    playbackArtist = currentPlaybackContext.artist,
+                    playbackAllowAutoplay = currentPlaybackContext.allowAutoplay,
+                    playbackShuffledCollection = currentPlaybackContext.shuffledCollection,
                 )
                 database.saveQueue(entity)
                 Timber.tag("OmniTuneQueue").i("Queue saved: count=$count, index=$currentIndex, pos=$currentPos")

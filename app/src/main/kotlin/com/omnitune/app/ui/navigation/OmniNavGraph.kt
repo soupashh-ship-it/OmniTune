@@ -44,6 +44,7 @@ import androidx.navigation.navArgument
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.extensions.withPlaybackMetadata
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.queues.ListQueue
@@ -56,7 +57,10 @@ import com.omnitune.app.ui.screens.EqualizerScreen
 import com.omnitune.app.ui.screens.HistoryScreen
 import com.omnitune.app.ui.screens.HomeDefaultCatalog
 import com.omnitune.app.ui.screens.HomeAllGenresScreen
+import com.omnitune.app.ui.screens.HomeCatalogSource
+import com.omnitune.app.ui.screens.HomeCollectionMetadata
 import com.omnitune.app.ui.screens.HomeCollectionRoute
+import com.omnitune.app.ui.screens.HomeCollectionType
 import com.omnitune.app.ui.screens.HomeDiscoveryRoute
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryArtistsScreen
@@ -107,6 +111,8 @@ private data class PendingSongQueue(
     val songs: List<SongItem>,
     val index: Int,
     val sourceType: PlaybackSourceType,
+    val verifiedGenre: String? = null,
+    val verifiedMood: String? = null,
 )
 
 private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): String {
@@ -117,12 +123,24 @@ private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): Stri
         ?: base
 }
 
+private fun HomeCollectionMetadata.verifiedGenreForPlayback(): String? =
+    title.takeIf {
+        collectionType == HomeCollectionType.Genre && source == HomeCatalogSource.ProviderBrowse
+    }
+
+private fun HomeCollectionMetadata.verifiedMoodForPlayback(): String? =
+    title.takeIf {
+        collectionType == HomeCollectionType.Mood
+    }
+
 private fun playSongList(
     context: android.content.Context,
     queueTitle: String,
     songs: List<SongItem>,
     index: Int,
     sourceType: PlaybackSourceType,
+    verifiedGenre: String? = null,
+    verifiedMood: String? = null,
     playerConnection: PlayerConnection?,
     onPlayerNotReady: (PendingSongQueue) -> Unit,
 ) {
@@ -130,11 +148,16 @@ private fun playSongList(
     Timber.tag("OmniTunePlaybackTrace").i("$queueTitle play requested: ${songItem.title} (${songItem.id})")
     val connection = playerConnection ?: run {
         Timber.tag("OmniTunePlaybackTrace").w("$queueTitle play queued: player connection not ready")
-        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index, sourceType))
+        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index, sourceType, verifiedGenre, verifiedMood))
         Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
         return
     }
-    val mediaItems = songs.map { it.toMediaItem() }
+    val mediaItems = songs.map {
+        it.toMediaItem().withPlaybackMetadata(
+            genre = verifiedGenre,
+            mood = verifiedMood,
+        )
+    }
     connection.playQueue(
         ListQueue(
             title = queueTitle,
@@ -145,6 +168,8 @@ private fun playSongList(
                 sourceTitle = queueTitle,
                 seedSongId = songs.getOrNull(index)?.id,
                 artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
+                genre = verifiedGenre,
+                mood = verifiedMood,
                 sessionItems = mediaItems,
             ),
         ),
@@ -172,10 +197,15 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         val queueData = pendingSongQueue
         val connection = localPlayerConnection
         if (queueData != null && connection != null) {
-            val (title, songs, index, sourceType) = queueData
+            val (title, songs, index, sourceType, verifiedGenre, verifiedMood) = queueData
             Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
             pendingSongQueue = null
-            val mediaItems = songs.map { it.toMediaItem() }
+            val mediaItems = songs.map {
+                it.toMediaItem().withPlaybackMetadata(
+                    genre = verifiedGenre,
+                    mood = verifiedMood,
+                )
+            }
             connection.playQueue(
                 ListQueue(
                     title = title,
@@ -186,6 +216,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                         sourceTitle = title,
                         seedSongId = songs.getOrNull(index)?.id,
                         artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
+                        genre = verifiedGenre,
+                        mood = verifiedMood,
                         sessionItems = mediaItems,
                     ),
                 ),
@@ -492,7 +524,13 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     navArgument("collectionId") { type = NavType.StringType },
                     navArgument("artworkUrl") { type = NavType.StringType; nullable = true; defaultValue = null },
                 ),
-            ) {
+            ) { backStackEntry ->
+                val collectionId = backStackEntry.arguments?.getString("collectionId")
+                    ?.let(Uri::decode)
+                    .orEmpty()
+                val collection = remember(collectionId) {
+                    HomeDefaultCatalog.findCollection(collectionId)
+                }
                 HomeCollectionRoute(
                     onBack = { navController.popBackStack() },
                     onSearch = { query -> navController.navigate("${Screens.Search.route}?query=${Uri.encode(query)}") },
@@ -515,6 +553,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             songs = songs,
                             index = index,
                             sourceType = PlaybackSourceType.HOME_DISCOVERY,
+                            verifiedGenre = collection?.verifiedGenreForPlayback(),
+                            verifiedMood = collection?.verifiedMoodForPlayback(),
                             playerConnection = localPlayerConnection,
                             onPlayerNotReady = { pendingSongQueue = it },
                         )

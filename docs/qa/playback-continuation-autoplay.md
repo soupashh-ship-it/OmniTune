@@ -26,7 +26,7 @@ The resolver uses this order:
 6. Quick Picks/general discovery
 7. Stop safely
 
-Current OmniTune song metadata does not include genre or mood fields, so current runtime behavior does not claim same-genre recommendations. Those branches are implemented for future verified metadata only.
+OmniTune now carries optional verified genre and mood fields through playback context. These are only populated from trusted source context, such as explicit mood collections and provider-backed genre collections. Generic search results, generic Quick Picks, artist starts, and local library starts still do not claim genre/mood when none is available.
 
 ## Candidate Validation
 
@@ -56,6 +56,21 @@ Added `Settings -> Playback -> Autoplay similar songs`.
 
 Default: enabled.
 
+## Persistent Queue Restore
+
+The persistent queue now saves and restores playback source context:
+
+- source type
+- source title
+- seed song ID
+- verified genre, when available
+- verified mood/tag, when available
+- artist seed
+- autoplay permission
+- shuffled collection state
+
+Older saved queues migrate forward safely with `UNKNOWN` playback source context.
+
 ## Verification
 
 - `.\gradlew.bat assembleDebug`: PASS
@@ -72,12 +87,13 @@ Default: enabled.
 | Track without genre and without artist | Title/current track only | RELATED_TITLE_SEARCH, then CURRENT_SESSION_POOL when related is empty | Unit-test fake related/session candidate | PASS |
 | Quick Picks track | Source context and provider metadata | Existing queue first, then artist/related/discovery after queue end | Runtime pending | Build-covered |
 | Search result track | Search source context and session items | Existing search queue first, then artist/related/session/discovery | Runtime pending | Build-covered |
+| Mood collection track | Verified source mood | VERIFIED_MOOD_OR_TAG | Unit/context coverage | PASS |
+| Restored persistent queue | Saved source context | Restored context before continuation | Unit mapper coverage | PASS |
 | Autoplay disabled | Setting disabled | NONE | None | Unit policy PASS |
 | Manual queue present | Next item exists | NONE | None | Unit policy PASS |
 | Candidate stream resolve failure | Candidate ID available, stream fails | Retry next candidate, stop after 3 failures | Unit retry policy PASS |
 
 ## Known Limitations
 
-- Genre and mood continuation are dormant until OmniTune receives reliable genre or mood/tag metadata.
 - Runtime verification requires a connected Android device or emulator.
-- Persistent queue restore does not restore old playback source context after process death; it resumes as a normal queue to avoid stale autoplay assumptions.
+- Genre is only active for provider-backed genre context or future verified track/provider metadata; generic curated labels and search queries are not treated as genre.
