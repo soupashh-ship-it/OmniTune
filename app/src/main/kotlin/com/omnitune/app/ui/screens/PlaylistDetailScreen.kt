@@ -84,6 +84,8 @@ import android.widget.Toast
 fun PlaylistDetailScreen(
     onBack: () -> Unit = {},
     onAddSongs: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
+    onNavigateToAlbum: (String) -> Unit = {},
     onPlaySong: (com.omnitune.app.db.entities.Song) -> Unit = {},
     viewModel: PlaylistDetailViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
     libraryViewModel: LibraryViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
@@ -94,6 +96,9 @@ fun PlaylistDetailScreen(
     val songs by viewModel.songs.collectAsState()
     val downloadsState by downloadsViewModel.uiState.collectAsState()
     var showAssignTagsDialog by remember { mutableStateOf(false) }
+    var showPlaylistMenu by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val playerConnection = LocalPlayerConnection.current
 
     // Selection state
@@ -112,11 +117,9 @@ fun PlaylistDetailScreen(
     val completedDownloadCount = downloadableSongs.count {
         songDownloadStates[it.song.id]?.state == Download.STATE_COMPLETED
     }
-    val activeDownloadCount = downloadableSongs.count {
-        val state = songDownloadStates[it.song.id]?.state
-        state == Download.STATE_DOWNLOADING || state == Download.STATE_QUEUED || state == Download.STATE_RESTARTING
-    }
     val allDownloadsComplete = downloadableSongs.isNotEmpty() && completedDownloadCount == downloadableSongs.size
+    val totalDurationSeconds = songs.sumOf { it.song.song.duration.coerceAtLeast(0) }
+    val durationLabel = formatPlaylistDuration(totalDurationSeconds)
 
     Column(
         modifier = Modifier
@@ -190,10 +193,6 @@ fun PlaylistDetailScreen(
                 }
                 Spacer(modifier = Modifier.width(OmniSpacing.compact))
             }
-
-            var showPlaylistMenu by remember { mutableStateOf(false) }
-            var showRenameDialog by remember { mutableStateOf(false) }
-            var showDeleteDialog by remember { mutableStateOf(false) }
 
             if (playlist?.playlist?.isEditable == true) {
                 Box {
@@ -397,22 +396,34 @@ fun PlaylistDetailScreen(
             }
         }
 
+        Text(
+            text = playlist?.playlist?.name ?: "Playlist",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OmniSpacing.small),
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = OmniSpacing.medium),
-            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            horizontalArrangement = Arrangement.Center,
         ) {
             PlaylistInfoPill(
                 icon = R.drawable.ic_list,
                 label = "${songs.size} songs",
             )
-            if (songs.isNotEmpty()) {
-                PlaylistInfoPill(
-                    icon = R.drawable.ic_drag_handle,
-                    label = "Custom order",
-                )
-            }
+            Spacer(modifier = Modifier.width(OmniSpacing.medium))
+            PlaylistInfoPill(
+                icon = R.drawable.ic_history,
+                label = durationLabel,
+            )
         }
 
         // Play All / Shuffle buttons
@@ -421,74 +432,44 @@ fun PlaylistDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = OmniSpacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Button(
+                PlaylistRoundAction(
+                    icon = R.drawable.ic_close,
+                    contentDescription = "Delete playlist",
+                    tint = OmniColors.Error,
+                    onClick = { showDeleteDialog = true },
+                    enabled = playlist?.playlist?.isEditable == true,
+                )
+                PlaylistRoundAction(
+                    icon = R.drawable.ic_play_arrow,
+                    contentDescription = "Play playlist",
                     onClick = {
-                        val p = playlist ?: return@Button
+                        val p = playlist ?: return@PlaylistRoundAction
                         playerConnection?.playQueue(
                             PlaylistPlaybackPlanner
                                 .ordered(p.id, p.playlist.name, songs)
                                 .toQueue(),
                         )
                     },
-                    modifier = Modifier.weight(1f),
-                    shape = OmniShapes.Medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_play_arrow),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                    Text("Play All")
-                }
-                Button(
+                    prominent = true,
+                )
+                PlaylistRoundAction(
+                    icon = R.drawable.ic_shuffle,
+                    contentDescription = "Shuffle playlist",
                     onClick = {
-                        val p = playlist ?: return@Button
+                        val p = playlist ?: return@PlaylistRoundAction
                         playerConnection?.playQueue(
                             PlaylistPlaybackPlanner
                                 .shuffled(p.id, p.playlist.name, songs)
                                 .toQueue(),
                         )
                     },
-                    modifier = Modifier.weight(1f),
-                    shape = OmniShapes.Medium,
-                    colors = ButtonDefaults.buttonColors(containerColor = OmniColors.GlassSurface),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_shuffle),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                    Text("Shuffle")
-                }
-                if (playlist?.playlist?.isEditable == true) {
-                    Button(
-                        onClick = onAddSongs,
-                        modifier = Modifier.weight(1f),
-                        shape = OmniShapes.Medium,
-                        colors = ButtonDefaults.buttonColors(containerColor = OmniColors.GlassSurface),
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_add),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                        Text("Add")
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = OmniSpacing.medium),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-            ) {
-                Button(
+                    prominent = true,
+                )
+                PlaylistRoundAction(
+                    icon = R.drawable.ic_download,
+                    contentDescription = "Download playlist",
                     onClick = {
                         val missing = downloadableSongs.filter {
                             songDownloadStates[it.song.id]?.state != Download.STATE_COMPLETED &&
@@ -509,31 +490,29 @@ fun PlaylistDetailScreen(
                         }
                     },
                     enabled = downloadableSongs.isNotEmpty() && !allDownloadsComplete,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = OmniShapes.Medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (allDownloadsComplete) {
-                            OmniColors.OmniGlassMedium
-                        } else {
-                            OmniColors.GlassSurface
-                        },
-                    ),
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_download),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                    Text(
-                        when {
-                            allDownloadsComplete -> "Downloaded"
-                            activeDownloadCount > 0 -> "Downloading $activeDownloadCount"
-                            completedDownloadCount > 0 -> "Download missing songs"
-                            else -> "Download playlist"
-                        },
-                    )
-                }
+                )
+                PlaylistRoundAction(
+                    icon = R.drawable.ic_settings,
+                    contentDescription = "Edit playlist",
+                    onClick = { showRenameDialog = true },
+                    enabled = playlist?.playlist?.isEditable == true,
+                )
+            }
+            Button(
+                onClick = onAddSongs,
+                enabled = playlist?.playlist?.isEditable == true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .padding(bottom = OmniSpacing.medium),
+                shape = OmniShapes.Pill,
+                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+            ) {
+                Icon(
+                    painterResource(R.drawable.ic_search),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
 
@@ -581,6 +560,27 @@ fun PlaylistDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                item(contentType = "custom_order_header") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = OmniSpacing.large, bottom = OmniSpacing.small),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Custom order",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = OmniColors.TextPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.ic_drag_handle),
+                            contentDescription = null,
+                            tint = OmniColors.TextSecondary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
                 itemsIndexed(
                     items = songs,
                     key = { _, item -> item.map.songId },
@@ -681,6 +681,12 @@ fun PlaylistDetailScreen(
                                 }
                             },
                             onRemove = if (isEditable) { { viewModel.removeSong(playlistSong.song.id) } } else null,
+                            onViewArtist = playlistSong.song.artists.firstOrNull { it.id.isNotBlank() }?.let { artist ->
+                                { onNavigateToArtist(artist.id) }
+                            },
+                            onViewAlbum = playlistSong.song.song.albumId?.let { albumId ->
+                                { onNavigateToAlbum(albumId) }
+                            },
                             showDragHandle = isEditable && !selectionMode,
                         )
                     }
@@ -746,6 +752,40 @@ fun PlaylistDetailScreen(
 }
 
 @Composable
+private fun PlaylistRoundAction(
+    icon: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    prominent: Boolean = false,
+    tint: androidx.compose.ui.graphics.Color = if (prominent) OmniColors.OmniBackgroundBase else OmniColors.TextPrimary,
+) {
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .size(if (prominent) 72.dp else 58.dp)
+            .clip(CircleShape)
+            .background(
+                when {
+                    !enabled -> OmniColors.OmniGlassMedium.copy(alpha = 0.45f)
+                    prominent -> OmniColors.OmniAccentPrimary
+                    else -> OmniColors.OmniGlassMedium
+                },
+            )
+            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = contentDescription,
+            tint = if (enabled) tint else OmniColors.TextMuted,
+            modifier = Modifier.size(if (prominent) 28.dp else 24.dp),
+        )
+    }
+}
+
+@Composable
 private fun PlaylistInfoPill(
     icon: Int,
     label: String,
@@ -773,6 +813,18 @@ private fun PlaylistInfoPill(
     }
 }
 
+private fun formatPlaylistDuration(totalSeconds: Int): String {
+    if (totalSeconds <= 0) return "0:00"
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}
+
 @Composable
 private fun PlaylistSongRow(
     index: Int,
@@ -782,6 +834,8 @@ private fun PlaylistSongRow(
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     onRemove: (() -> Unit)? = null,
+    onViewArtist: (() -> Unit)? = null,
+    onViewAlbum: (() -> Unit)? = null,
     showDragHandle: Boolean = false,
 ) {
     Row(
@@ -885,6 +939,8 @@ private fun PlaylistSongRow(
                 onPlayNext = { playerConnection?.playNext(playlistSong.song.toMediaItem()) },
                 onAddToQueue = { playerConnection?.addToQueue(playlistSong.song.toMediaItem()) },
                 onRemoveFromPlaylist = onRemove,
+                onViewArtist = onViewArtist,
+                onViewAlbum = onViewAlbum,
             )
         }
     }

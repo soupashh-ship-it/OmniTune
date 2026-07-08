@@ -3,8 +3,6 @@ package com.omnitune.app.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +19,6 @@ import com.omnitune.app.R
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
-import com.omnitune.app.db.entities.Playlist
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +34,15 @@ fun TrackOptionsBottomSheet(
     onMoreLikeThis: (() -> Unit)? = null,
     onAddToPlaylist: () -> Unit,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onStartRadio: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
+    onDownload: (() -> Unit)? = null,
+    downloadLabel: String = "Download",
+    onToggleLibrary: (() -> Unit)? = null,
+    libraryLabel: String = "Add to library",
+    onViewArtist: (() -> Unit)? = null,
+    onViewAlbum: (() -> Unit)? = null,
+    onDetails: (() -> Unit)? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -83,78 +89,160 @@ fun TrackOptionsBottomSheet(
                 }
             }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = OmniSpacing.small),
-                color = OmniColors.OmniGlassBorderSubtle
+            NewActionGrid(
+                actions = buildList {
+                    onStartRadio?.let { action ->
+                        add(trackAction(R.drawable.ic_insights, "Start radio", action, onDismissRequest))
+                    }
+                    onPlayNext?.let { action ->
+                        add(trackAction(R.drawable.ic_skip_next, "Play next", action, onDismissRequest))
+                    }
+                    onAddToQueue?.let { action ->
+                        add(trackAction(R.drawable.ic_list, "Add to queue", action, onDismissRequest))
+                    }
+                    add(NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = null,
+                                tint = OmniColors.TextSecondary,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        },
+                        text = "Add to playlist",
+                        onClick = {
+                            onDismissRequest()
+                            onAddToPlaylist()
+                        },
+                    ))
+                    onShare?.let { action ->
+                        add(trackAction(R.drawable.ic_share, "Share", action, onDismissRequest))
+                    }
+                    add(trackAction(
+                        icon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
+                        text = if (isLiked) "Unlike" else "Like",
+                        action = onToggleLike,
+                        onDismissRequest = onDismissRequest,
+                    ))
+                },
+                modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
             )
 
-            // Actions
-            TrackOptionRow(
-                icon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
-                label = if (isLiked) "Unlike" else "Like",
-                tint = if (isLiked) OmniColors.Hot else OmniColors.TextPrimary,
-                onClick = {
-                    onToggleLike()
-                    onDismissRequest()
+            onToggleLibrary?.let {
+                TrackOptionGroup {
+                    TrackOptionRow(
+                        icon = R.drawable.ic_add,
+                        label = libraryLabel,
+                        onClick = {
+                            it()
+                            onDismissRequest()
+                        },
+                    )
                 }
-            )
-
-            if (onPlayNext != null) {
-                TrackOptionRow(
-                    icon = R.drawable.ic_skip_next,
-                    label = "Play next",
-                    onClick = {
-                        onPlayNext()
-                        onDismissRequest()
-                    }
-                )
             }
 
-            if (onAddToQueue != null) {
-                TrackOptionRow(
-                    icon = R.drawable.ic_list,
-                    label = "Add to queue",
-                    onClick = {
-                        onAddToQueue()
-                        onDismissRequest()
-                    }
-                )
-            }
-
-            if (onMoreLikeThis != null) {
-                TrackOptionRow(
-                    icon = R.drawable.ic_album,
-                    label = "More like this",
-                    onClick = {
-                        onMoreLikeThis()
-                        onDismissRequest()
-                    }
-                )
-            }
-
-            if (onRemoveFromPlaylist != null) {
-                TrackOptionRow(
-                    icon = R.drawable.ic_close,
-                    label = "Remove from this playlist",
-                    onClick = {
-                        onRemoveFromPlaylist()
-                        onDismissRequest()
-                    }
-                )
-            }
-
-            TrackOptionRow(
-                icon = R.drawable.ic_add,
-                label = "Add to playlist",
-                onClick = {
-                    onDismissRequest()
-                    onAddToPlaylist()
+            TrackOptionGroup {
+                onRemoveFromPlaylist?.let {
+                    TrackOptionRow(
+                        icon = R.drawable.ic_close,
+                        label = "Remove from playlist",
+                        tint = OmniColors.Error,
+                        onClick = {
+                            it()
+                            onDismissRequest()
+                        },
+                    )
+                    HorizontalDivider(color = OmniColors.OmniGlassBorderSubtle, modifier = Modifier.padding(start = 56.dp))
                 }
-            )
+                onDownload?.let {
+                    TrackOptionRow(
+                        icon = R.drawable.ic_download,
+                        label = downloadLabel,
+                        onClick = {
+                            it()
+                            onDismissRequest()
+                        },
+                    )
+                }
+            }
+
+            if (onViewArtist != null || onViewAlbum != null) {
+                TrackOptionGroup {
+                    onViewArtist?.let {
+                        TrackOptionRow(
+                            icon = R.drawable.ic_artist,
+                            label = "View artist",
+                            onClick = {
+                                it()
+                                onDismissRequest()
+                            },
+                        )
+                    }
+                    if (onViewArtist != null && onViewAlbum != null) {
+                        HorizontalDivider(color = OmniColors.OmniGlassBorderSubtle, modifier = Modifier.padding(start = 56.dp))
+                    }
+                    onViewAlbum?.let {
+                        TrackOptionRow(
+                            icon = R.drawable.ic_album,
+                            label = "View album",
+                            onClick = {
+                                it()
+                                onDismissRequest()
+                            },
+                        )
+                    }
+                }
+            }
+
+            onDetails?.let {
+                TrackOptionGroup {
+                    TrackOptionRow(
+                        icon = R.drawable.ic_info,
+                        label = "Details",
+                        onClick = {
+                            it()
+                            onDismissRequest()
+                        },
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(OmniSpacing.large))
         }
     }
+}
+
+private fun trackAction(
+    icon: Int,
+    text: String,
+    action: () -> Unit,
+    onDismissRequest: () -> Unit,
+) = NewAction(
+    icon = {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = OmniColors.TextSecondary,
+            modifier = Modifier.size(28.dp),
+        )
+    },
+    text = text,
+    onClick = {
+        action()
+        onDismissRequest()
+    },
+)
+
+@Composable
+private fun TrackOptionGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = OmniSpacing.section, vertical = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(OmniColors.OmniGlassMedium),
+        content = content,
+    )
 }
 
 @Composable

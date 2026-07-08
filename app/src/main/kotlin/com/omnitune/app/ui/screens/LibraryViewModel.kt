@@ -143,6 +143,15 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
+    fun toggleLibrary(songId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val song = database.getSongById(songId)
+            if (song != null) {
+                database.upsert(song.song.toggleLibrary())
+            }
+        }
+    }
+
     suspend fun addToPlaylist(playlist: com.omnitune.app.db.entities.Playlist, songId: String): Boolean {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val isDuplicate = database.checkInPlaylist(playlist.playlist.id, songId) > 0

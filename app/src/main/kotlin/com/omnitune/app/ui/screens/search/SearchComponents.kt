@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -129,6 +130,7 @@ fun SearchResultRow(
     onAddToQueue: (() -> Unit)? = null,
     statusText: String = "Info",
     mediaMetadata: com.omnitune.app.models.MediaMetadata? = null,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -216,6 +218,10 @@ fun SearchResultRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+
+        if (trailingContent != null) {
+            trailingContent()
         }
 
         if (onPlayNext != null || onAddToQueue != null) {

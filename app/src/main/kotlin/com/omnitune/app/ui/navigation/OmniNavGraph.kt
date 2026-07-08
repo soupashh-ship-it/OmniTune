@@ -427,6 +427,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             navController.navigate("playlist/$playlistId/add")
                         }
                     },
+                    onNavigateToArtist = { navController.navigate("artist/$it") },
+                    onNavigateToAlbum = { navController.navigate("album/$it") },
                     onPlaySong = { song ->
                         localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem())))
                     },
