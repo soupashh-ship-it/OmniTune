@@ -1,6 +1,7 @@
 # OmniTune Unreleased
 
 ### Improvements
+* Remastered playlists with create/edit/delete support, playlist detail pages, artwork collage covers, add-song search, suggestions, shuffle/play actions, playlist downloads, and persistent custom order.
 * Improved Home mood and genre categories so Chill, Gaming, Workout, Focus, Romantic, Sad, Party, and related categories load more relevant songs instead of generic random results.
 * Added category-specific query profiles, relevance scoring, duplicate removal, and safer fallback behavior for Home discovery category pages.
 * Hindi/Bollywood searches are now limited to relevant Hindi/Bollywood categories instead of acting as a broad fallback for every mood.

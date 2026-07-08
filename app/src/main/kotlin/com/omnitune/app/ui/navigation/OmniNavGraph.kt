@@ -68,6 +68,7 @@ import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
 import com.omnitune.app.ui.screens.LibraryScreen
 import com.omnitune.app.ui.screens.LibrarySongsScreen
 import com.omnitune.app.ui.screens.LikedSongsScreen
+import com.omnitune.app.ui.screens.PlaylistAddSongsScreen
 import com.omnitune.app.ui.screens.PlaylistDetailScreen
 import com.omnitune.app.ui.screens.QueueScreen
 import com.omnitune.app.ui.screens.RecentlyPlayedScreen
@@ -417,9 +418,22 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("library_playlists") {
                 LibraryPlaylistsScreen(onBack = { navController.popBackStack() }, onNavigateToPlaylist = { navController.navigate("playlist/$it") })
             }
-            composable("playlist/{playlistId}") {
-                PlaylistDetailScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
-                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+            composable("playlist/{playlistId}") { backStackEntry ->
+                val playlistId = backStackEntry.arguments?.getString("playlistId").orEmpty()
+                PlaylistDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onAddSongs = {
+                        if (playlistId.isNotBlank()) {
+                            navController.navigate("playlist/$playlistId/add")
+                        }
+                    },
+                    onPlaySong = { song ->
+                        localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem())))
+                    },
+                )
+            }
+            composable("playlist/{playlistId}/add") {
+                PlaylistAddSongsScreen(onBack = { navController.popBackStack() })
             }
             composable("playlist_cache") {
                 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

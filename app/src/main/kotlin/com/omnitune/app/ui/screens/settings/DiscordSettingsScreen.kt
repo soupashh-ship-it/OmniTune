@@ -2,7 +2,7 @@
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0
  *
- * Based on Velune Discord settings
+ * OmniTune Discord settings
  */
 
 package com.omnitune.app.ui.screens.settings

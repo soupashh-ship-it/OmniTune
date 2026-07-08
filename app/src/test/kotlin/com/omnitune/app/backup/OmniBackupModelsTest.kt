@@ -34,7 +34,8 @@ class OmniBackupModelsTest {
                 BackupPlaylist(id = "playlist_1", name = "Favorites"),
             ),
             playlistSongs = listOf(
-                BackupPlaylistSong(playlistId = "playlist_1", songId = "song_1", position = 0),
+                BackupPlaylistSong(playlistId = "playlist_1", songId = "song_2", position = 0),
+                BackupPlaylistSong(playlistId = "playlist_1", songId = "song_1", position = 1),
             ),
             history = listOf(
                 BackupHistoryItem(songId = "song_1", timestampEpochMillis = 1_725_000_001_000L, playTime = 180_000),
@@ -57,7 +58,8 @@ class OmniBackupModelsTest {
         assertEquals("OmniTune", decoded.appName)
         assertEquals("Track One", decoded.songs.single().title)
         assertTrue(decoded.songs.single().liked)
-        assertEquals("song_1", decoded.playlistSongs.single().songId)
+        assertEquals(listOf("song_2", "song_1"), decoded.playlistSongs.sortedBy { it.position }.map { it.songId })
+        assertEquals(listOf(0, 1), decoded.playlistSongs.sortedBy { it.position }.map { it.position })
         assertEquals(4, decoded.stats.single().count)
         assertEquals("Road trip", decoded.tags.single().name)
         assertEquals("tag_1", decoded.playlistTags.single().tagId)

@@ -45,11 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.app.db.entities.TagEntity
@@ -58,6 +60,7 @@ import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun LibraryPlaylistsScreen(
@@ -84,6 +87,12 @@ fun LibraryPlaylistsScreen(
         // ── Create playlist dialog ──────────────────────────────────
         if (showCreateDialog) {
             var playlistName by remember { mutableStateOf("") }
+            val trimmedName = playlistName.trim()
+            val nameError = when {
+                playlistName.isNotBlank() && trimmedName.isBlank() -> "Playlist name cannot be empty"
+                trimmedName.length > 80 -> "Playlist name must be 80 characters or fewer"
+                else -> null
+            }
             AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
                 title = { Text("New Playlist", fontWeight = FontWeight.Bold) },
@@ -92,6 +101,7 @@ fun LibraryPlaylistsScreen(
                         value = playlistName,
                         onValueChange = { playlistName = it },
                         singleLine = true,
+                        isError = nameError != null,
                         placeholder = { Text("Playlist name") },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = OmniColors.OmniAccentPrimary,
@@ -100,18 +110,28 @@ fun LibraryPlaylistsScreen(
                             unfocusedTextColor = OmniColors.TextPrimary
                         )
                     )
+                    if (nameError != null) {
+                        Text(
+                            text = nameError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OmniColors.Error,
+                            modifier = Modifier.padding(top = OmniSpacing.compact),
+                        )
+                    }
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            if (playlistName.isNotBlank()) {
-                                viewModel.createPlaylist(playlistName.trim())
+                            if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
+                                viewModel.createPlaylist(trimmedName) { playlistId ->
+                                    onNavigateToPlaylist(playlistId)
+                                }
                                 showCreateDialog = false
                             }
                         },
-                        enabled = playlistName.isNotBlank()
+                        enabled = trimmedName.isNotBlank() && trimmedName.length <= 80
                     ) {
-                        Text("Create", color = if (playlistName.isNotBlank()) OmniColors.Hot else OmniColors.TextSecondary)
+                        Text("Create", color = if (trimmedName.isNotBlank() && trimmedName.length <= 80) OmniColors.Hot else OmniColors.TextSecondary)
                     }
                 },
                 dismissButton = {
@@ -477,12 +497,7 @@ private fun PlaylistRow(
                 .background(OmniColors.Hot.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painterResource(R.drawable.ic_list),
-                contentDescription = null,
-                tint = OmniColors.Hot,
-                modifier = Modifier.size(24.dp),
-            )
+            PlaylistArtwork(playlist = playlist)
         }
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Column(modifier = Modifier.weight(1f)) {
@@ -495,7 +510,9 @@ private fun PlaylistRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = countLabel(playlist.songCount, "song"),
+                text = playlist.playlist.lastUpdateTime?.let {
+                    "${countLabel(playlist.songCount, "song")} • Updated ${it.format(DateTimeFormatter.ofPattern("MMM d"))}"
+                } ?: countLabel(playlist.songCount, "song"),
                 style = MaterialTheme.typography.bodySmall,
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
@@ -613,6 +630,48 @@ private fun LibraryEmptyState(icon: Int, text: String) {
         contentAlignment = Alignment.Center,
     ) {
         EmptyPlaceholder(icon = icon, text = text)
+    }
+}
+
+@Composable
+private fun PlaylistArtwork(playlist: Playlist) {
+    val thumbnails = playlist.thumbnails.take(4)
+    if (thumbnails.isEmpty()) {
+        Icon(
+            painterResource(R.drawable.ic_list),
+            contentDescription = null,
+            tint = OmniColors.Hot,
+            modifier = Modifier.size(24.dp),
+        )
+        return
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (thumbnails.size == 1) {
+            AsyncImage(
+                model = thumbnails.first(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            val positions = listOf(
+                Alignment.TopStart,
+                Alignment.TopEnd,
+                Alignment.BottomStart,
+                Alignment.BottomEnd,
+            )
+            thumbnails.forEachIndexed { index, thumbnail ->
+                AsyncImage(
+                    model = thumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .align(positions[index])
+                        .size(29.dp),
+                )
+            }
+        }
     }
 }
 

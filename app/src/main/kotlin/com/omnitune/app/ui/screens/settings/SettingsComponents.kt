@@ -439,7 +439,7 @@ fun Enum<*>.displayName(): String {
         .replaceFirstChar { it.uppercase() }
 }
 
-// ─── Velune-style preference components ──────────────────────────────
+// ─── OmniTune preference components ──────────────────────────────────
 
 @Composable
 fun OmniPreferenceIcon(
