@@ -57,7 +57,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 5
+private const val CURRENT_VERSION = 6
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -131,7 +131,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = CURRENT_VERSION + 1,
+    version = CURRENT_VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
