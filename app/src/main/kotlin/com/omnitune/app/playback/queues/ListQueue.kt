@@ -7,12 +7,14 @@ package com.omnitune.app.playback.queues
 
 import androidx.media3.common.MediaItem
 import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.playback.continuation.PlaybackContext
 
 class ListQueue(
     val title: String? = null,
     val items: List<MediaItem>,
     val startIndex: Int = 0,
     val position: Long = 0L,
+    override val playbackContext: PlaybackContext = PlaybackContext.Unknown,
 ) : Queue {
     override val preloadItem: MediaMetadata? = null
 

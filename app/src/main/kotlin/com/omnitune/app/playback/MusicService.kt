@@ -32,6 +32,8 @@ import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.ShuffleEnabledKey
+import com.omnitune.app.constants.AutoplaySimilarSongsKey
+import com.omnitune.app.db.entities.SongSkipEntity
 import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -55,9 +57,17 @@ import com.omnitune.app.constants.EnableDiscordRPCKey
 import com.omnitune.app.discord.DiscordPresenceManager
 import com.omnitune.app.discord.SongPresenceData
 import com.omnitune.app.discord.getPresenceIntervalMillis
+import com.omnitune.app.playback.continuation.AutoplayCandidate
+import com.omnitune.app.playback.continuation.AutoplayRecommendationResolver
+import com.omnitune.app.playback.continuation.AutoplayRetryPolicy
+import com.omnitune.app.playback.continuation.LikedSongsPlaybackPlanner
+import com.omnitune.app.playback.continuation.OmniAutoplayRecommendationProvider
+import com.omnitune.app.playback.continuation.PlaybackContinuationPolicy
+import com.omnitune.app.playback.continuation.PlaybackContext
+import com.omnitune.app.playback.continuation.PlaybackSourceType
+import com.omnitune.app.playback.continuation.TasteSignalClassifier
+import com.omnitune.app.playback.continuation.TasteSignal
 import com.omnitune.app.playback.ScrobblingManager
-import com.omnitune.app.utils.dataStore
-import kotlinx.coroutines.flow.first
 
 @AndroidEntryPoint
 class MusicService : MediaLibraryService(), Player.Listener {
@@ -100,6 +110,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_PAUSE = PlaybackNotificationManager.ACTION_PAUSE
         private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
+        private const val MAX_RECENT_AUTOPLAY_IDS = 40
     }
 
     private var sessionManager: SessionManager? = null
@@ -151,6 +162,17 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
 
     private var currentQueue: Queue = EmptyQueue
+    private lateinit var autoplayResolver: AutoplayRecommendationResolver
+    private var currentPlaybackContext: PlaybackContext = PlaybackContext.Unknown
+    private var autoplayContinuationJob: Job? = null
+    private val recentlyAutoplayedIds = ArrayDeque<String>()
+    private val failedAutoplayCandidateIds = linkedSetOf<String>()
+    private var lastTransitionMediaId: String? = null
+    private var lastTransitionMetadata: MediaMetadata? = null
+    private var lastTransitionStartedAtMs: Long = 0L
+    private var lastTransitionDurationMs: Long? = null
+    private var lastTransitionSourceType: PlaybackSourceType = PlaybackSourceType.UNKNOWN
+    private var lastPositiveAutoplaySeed: MediaMetadata? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return if (intent?.action == null) {
@@ -198,6 +220,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         Timber.tag("MusicService").i("MusicService created")
 
         lyricsPrefetcher = LyricsPrefetcher(database, lyricsHelper, scope)
+        autoplayResolver = AutoplayRecommendationResolver(
+            OmniAutoplayRecommendationProvider(database),
+        )
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
         StreamUrlResolver.clearMemoryCache("service startup")
@@ -353,6 +378,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         val restoredIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
         currentQueue = queue
+        currentPlaybackContext = queue.playbackContext
         queueTitle = initialStatus.title
         player.playWhenReady = false
         player.stop()
@@ -418,6 +444,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
         StartupTracker.reset()
         currentQueue = queue
+        currentPlaybackContext = queue.playbackContext
+        failedAutoplayCandidateIds.clear()
         queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
@@ -552,7 +580,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     title = queueTitle,
                     items = items,
                     startIndex = index.coerceIn(0, items.lastIndex.coerceAtLeast(0)),
-                    position = position
+                    position = position,
+                    playbackContext = currentPlaybackContext,
                 ),
                 playWhenReady = true
             )
@@ -645,6 +674,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     fun stopAndClearPlayback() {
         currentQueue = EmptyQueue
+        currentPlaybackContext = PlaybackContext.Unknown
+        failedAutoplayCandidateIds.clear()
+        recentlyAutoplayedIds.clear()
         queueTitle = null
         _waitingForNetworkConnection.value = false
         _currentMediaMetadata.value = null
@@ -740,6 +772,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
             saveQueueState()
         }
         playbackRecoveryCoordinator.onPlaybackStateChanged(state)
+        if (state == Player.STATE_ENDED) {
+            handlePlaybackEnded()
+        }
     }
 
     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -764,6 +799,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        recordTasteSignalForPreviousTransition(
+            completed = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+        )
         playbackRecoveryCoordinator.resetRetry(mediaItem?.mediaId ?: "")
         crossfadePlaybackCoordinator?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
@@ -772,6 +810,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         logMediaControlState("item-transition")
         postMediaNotificationFallback("item-transition")
         startPlaybackTracker(mediaItem)
+        beginTasteWindow(mediaItem)
         saveQueueState()
         preResolveNextTracks()
 
@@ -859,6 +898,179 @@ class MusicService : MediaLibraryService(), Player.Listener {
             playbackNotificationManager.postFallback(reason, force)
         }
     }
+
+    private fun handlePlaybackEnded() {
+        recordTasteSignalForPreviousTransition(completed = true)
+        if (autoplayContinuationJob?.isActive == true) return
+        autoplayContinuationJob = scope.launch {
+            if (!::player.isInitialized || player.hasNextMediaItem()) return@launch
+            if (loopLikedSongsIfNeeded()) return@launch
+            continueWithAutoplayIfAllowed()
+        }
+    }
+
+    private fun loopLikedSongsIfNeeded(): Boolean {
+        if (currentPlaybackContext.sourceType != PlaybackSourceType.LIKED_SONGS) return false
+        if (player.mediaItemCount <= 0) return false
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) return true
+
+        val count = player.mediaItemCount
+        val currentItems = (0 until count).map { index ->
+            player.getMediaItemAt(index).withOriginalVideoIdUri()
+        }
+        val loopItems = if (currentPlaybackContext.shuffledCollection && currentItems.size > 1) {
+            currentItems.shuffled()
+        } else {
+            currentItems
+        }
+        val loopIndex = LikedSongsPlaybackPlanner.nextLoopIndex(loopItems.size) ?: return false
+
+        player.setMediaItems(loopItems, loopIndex, 0L)
+        player.prepare()
+        player.playWhenReady = true
+        Timber.tag("OmniTuneContinuation").i(
+            "Looped Liked Songs queue: count=${loopItems.size}, shuffled=${currentPlaybackContext.shuffledCollection}",
+        )
+        return true
+    }
+
+    private suspend fun continueWithAutoplayIfAllowed() {
+        val prefs = this@MusicService.dataStore.data.first()
+        val autoplayEnabled = prefs[AutoplaySimilarSongsKey] ?: true
+        if (!PlaybackContinuationPolicy.shouldRunAutoplay(
+                autoplayEnabled = autoplayEnabled,
+                playbackContext = currentPlaybackContext,
+                hasNextItem = player.hasNextMediaItem(),
+            )
+        ) {
+            Timber.tag("OmniTuneContinuation").i("Autoplay skipped: enabled=$autoplayEnabled context=${currentPlaybackContext.sourceType}")
+            return
+        }
+
+        val currentTrack = lastPositiveAutoplaySeed ?: _currentMediaMetadata.value ?: player.currentMediaItem?.metadata ?: return
+        val recentlyPlayedIds = recentlyAutoplayedIds.toSet()
+
+        repeat(AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS) {
+            val candidate = withContext(Dispatchers.IO) {
+                autoplayResolver.getNextAutoplayCandidate(
+                    currentTrack = currentTrack,
+                    playbackContext = currentPlaybackContext,
+                    recentlyPlayedIds = recentlyPlayedIds,
+                    failedCandidateIds = failedAutoplayCandidateIds,
+                )
+            } ?: run {
+                Timber.tag("OmniTuneContinuation").i("Autoplay stopped: no valid candidate")
+                return
+            }
+
+            val resolved = resolveAutoplayCandidate(candidate)
+            if (resolved != null) {
+                rememberAutoplayCandidate(resolved.mediaId)
+                val meta = resolved.metadata
+                playQueue(
+                    ListQueue(
+                        title = "Autoplay Radio",
+                        items = listOf(resolved),
+                        playbackContext = PlaybackContext(
+                            sourceType = PlaybackSourceType.AUTOPLAY_RADIO,
+                            sourceTitle = "Autoplay Radio",
+                            seedSongId = currentTrack.id,
+                            artist = meta?.artists?.firstOrNull()?.name ?: currentTrack.artists.firstOrNull()?.name,
+                            allowAutoplay = true,
+                        ),
+                    ),
+                    playWhenReady = true,
+                )
+                Timber.tag("OmniTuneContinuation").i(
+                    "Autoplay selected ${resolved.mediaId} via ${candidate.source}: ${candidate.reason}",
+                )
+                return
+            }
+
+            failedAutoplayCandidateIds.add(candidate.mediaItem.mediaId)
+            Timber.tag("OmniTuneContinuation").w(
+                "Autoplay candidate failed stream resolution: ${candidate.mediaItem.mediaId} via ${candidate.source}",
+            )
+        }
+
+        Timber.tag("OmniTuneContinuation").w(
+            "Autoplay stopped after ${AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS} failed candidates",
+        )
+    }
+
+    private suspend fun resolveAutoplayCandidate(candidate: AutoplayCandidate): MediaItem? =
+        withContext(Dispatchers.IO) {
+            val item = candidate.mediaItem.withOriginalVideoIdUri()
+            if (StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) {
+                StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+            } else {
+                item
+            }
+        }
+
+    private fun rememberAutoplayCandidate(mediaId: String) {
+        if (mediaId.isBlank()) return
+        recentlyAutoplayedIds.addLast(mediaId)
+        while (recentlyAutoplayedIds.size > MAX_RECENT_AUTOPLAY_IDS) {
+            recentlyAutoplayedIds.removeFirst()
+        }
+    }
+
+    private fun beginTasteWindow(mediaItem: MediaItem?) {
+        val meta = mediaItem?.metadata
+        lastTransitionMediaId = mediaItem?.mediaId
+        lastTransitionMetadata = meta
+        lastTransitionStartedAtMs = System.currentTimeMillis()
+        lastTransitionSourceType = currentPlaybackContext.sourceType
+        lastTransitionDurationMs = meta?.duration
+            ?.takeIf { it > 0 }
+            ?.let { it * 1000L }
+            ?: player.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+    }
+
+    private fun recordTasteSignalForPreviousTransition(completed: Boolean) {
+        val mediaId = lastTransitionMediaId ?: return
+        val sourceType = lastTransitionSourceType
+        val listenedMs = System.currentTimeMillis() - lastTransitionStartedAtMs
+        val durationMs = lastTransitionDurationMs
+        val positive = TasteSignalClassifier.isPositiveListen(listenedMs, durationMs)
+        val skippedQuickly = TasteSignalClassifier.isQuickSkip(listenedMs, completed)
+        val signal = TasteSignal(
+            songId = mediaId,
+            sourceType = sourceType,
+            listenedMillis = listenedMs,
+            durationMillis = durationMs,
+            completed = completed,
+            skippedQuickly = skippedQuickly,
+            positive = positive,
+        )
+
+        if (sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
+            if (signal.positive) {
+                lastPositiveAutoplaySeed = lastTransitionMetadata
+                Timber.tag("OmniTuneContinuation").i("Positive autoplay signal for $mediaId after ${listenedMs}ms")
+            }
+            if (signal.skippedQuickly) {
+                failedAutoplayCandidateIds.add(mediaId)
+                scope.launch(Dispatchers.IO) {
+                    val existing = database.getSkip(mediaId)
+                    database.upsertSkip(
+                        existing?.copy(
+                            skipCount = existing.skipCount + 1,
+                            lastSkippedAt = System.currentTimeMillis(),
+                        ) ?: SongSkipEntity(songId = mediaId, skipCount = 1),
+                    )
+                }
+                Timber.tag("OmniTuneContinuation").i("Quick skip signal for autoplay candidate $mediaId")
+            }
+        }
+
+        lastTransitionMediaId = null
+        lastTransitionMetadata = null
+        lastTransitionStartedAtMs = 0L
+        lastTransitionDurationMs = null
+    }
+
     private fun startPlaybackTracker(mediaItem: MediaItem?) {
         playbackTrackerJob?.cancel()
         val mediaId = mediaItem?.mediaId ?: return
