@@ -20,6 +20,32 @@ interface EventDao {
     @Query("DELETE FROM event")
     fun clearListenHistory()
 
+    @Query(
+        """
+        SELECT IFNULL(SUM(playTime), 0)
+        FROM event
+        WHERE timestamp > :fromTimeStamp
+          AND timestamp <= :toTimeStamp
+        """,
+    )
+    fun totalListeningTime(
+        fromTimeStamp: Long,
+        toTimeStamp: Long,
+    ): Flow<Long>
+
+    @Query(
+        """
+        SELECT COUNT(1)
+        FROM event
+        WHERE timestamp > :fromTimeStamp
+          AND timestamp <= :toTimeStamp
+        """,
+    )
+    fun totalListenEvents(
+        fromTimeStamp: Long,
+        toTimeStamp: Long,
+    ): Flow<Long>
+
     @Transaction
     fun insertRecentEvent(songId: String, playTime: Long) {
         insert(Event(songId = songId, timestamp = LocalDateTime.now(), playTime = playTime))

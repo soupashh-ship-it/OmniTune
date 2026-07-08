@@ -92,12 +92,18 @@ constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val totalListeningTime = topSongsStats.map { songs ->
-        songs.sumOf { stat -> stat.timeListened ?: 0L }
+    val totalListeningTime = selectedYear.flatMapLatest { year ->
+        database.totalListeningTime(
+            fromTimeStamp = getYearStartTimestamp(year),
+            toTimeStamp = getYearEndTimestamp(year),
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, 0L)
 
-    val totalSongsPlayed = topSongsStats.map { songs ->
-        songs.sumOf { stat -> stat.songCountListened.toLong() }
+    val totalSongsPlayed = selectedYear.flatMapLatest { year ->
+        database.totalListenEvents(
+            fromTimeStamp = getYearStartTimestamp(year),
+            toTimeStamp = getYearEndTimestamp(year),
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, 0L)
 
     init {

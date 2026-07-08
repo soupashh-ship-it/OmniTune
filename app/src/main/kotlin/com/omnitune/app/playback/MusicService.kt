@@ -113,6 +113,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
         private const val MAX_RECENT_AUTOPLAY_IDS = 40
+        private const val MIN_LISTEN_HISTORY_MS = 10_000L
     }
 
     private var sessionManager: SessionManager? = null
@@ -150,7 +151,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // OMNITUNE: Playback tracking
     private var lastRecordedMediaId: String? = null
-    private var lastRecordedRecentMediaId: String? = null
     private var playbackTrackerJob: Job? = null
 
     private val _currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
@@ -846,20 +846,25 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (isPlaying) {
             val mediaItem = player.currentMediaItem
             val mediaId = mediaItem?.mediaId
-            if (mediaId != null && mediaId != lastRecordedRecentMediaId) {
-                lastRecordedRecentMediaId = mediaId
+            if (mediaId != null) {
                 val meta = mediaItem.metadata
                 if (meta != null) {
-                    val durationMs = if (player.duration == androidx.media3.common.C.TIME_UNSET) 0L else player.duration
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         database.insert(meta)
-                        database.insertRecentEvent(mediaId, durationMs)
-                        timber.log.Timber.tag("OmniTuneRecent").d("Recorded recent play: ${meta.title}")
+                        timber.log.Timber.tag("OmniTuneRecent").d("Ensured song metadata for active play: ${meta.title}")
                     }
                 } else {
                     timber.log.Timber.tag("OmniTuneRecent").w("Metadata is null for $mediaId, skipping recent play record")
                 }
             }
+            if (lastTransitionMediaId == null) {
+                beginTasteWindow(mediaItem)
+            }
+        } else if (
+            player.playbackState == Player.STATE_READY &&
+            player.currentPosition >= MIN_LISTEN_HISTORY_MS
+        ) {
+            recordTasteSignalForPreviousTransition(completed = false)
         }
     }
 
@@ -1037,18 +1042,33 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private fun recordTasteSignalForPreviousTransition(completed: Boolean) {
         val mediaId = lastTransitionMediaId ?: return
         val sourceType = lastTransitionSourceType
-        val listenedMs = System.currentTimeMillis() - lastTransitionStartedAtMs
+        val wallClockListenedMs = System.currentTimeMillis() - lastTransitionStartedAtMs
+        val playerPositionMs = player.currentPosition
+            .takeIf { player.currentMediaItem?.mediaId == mediaId && it > 0L }
+        val listenedMs = playerPositionMs ?: wallClockListenedMs
         val durationMs = lastTransitionDurationMs
+        val actualListenedMs = durationMs
+            ?.takeIf { it > 0L }
+            ?.let { listenedMs.coerceAtMost(it) }
+            ?: listenedMs
         val positive = TasteSignalClassifier.isPositiveListen(listenedMs, durationMs)
         val skippedQuickly = TasteSignalClassifier.isQuickSkip(listenedMs, completed)
         val signal = TasteSignal(
             songId = mediaId,
             sourceType = sourceType,
-            listenedMillis = listenedMs,
+            listenedMillis = actualListenedMs,
             durationMillis = durationMs,
             completed = completed,
             skippedQuickly = skippedQuickly,
             positive = positive,
+        )
+
+        recordListeningEventIfNeeded(
+            mediaId = mediaId,
+            metadata = lastTransitionMetadata,
+            listenedMs = actualListenedMs,
+            positive = positive,
+            completed = completed,
         )
 
         if (sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
@@ -1075,6 +1095,28 @@ class MusicService : MediaLibraryService(), Player.Listener {
         lastTransitionMetadata = null
         lastTransitionStartedAtMs = 0L
         lastTransitionDurationMs = null
+    }
+
+    private fun recordListeningEventIfNeeded(
+        mediaId: String,
+        metadata: MediaMetadata?,
+        listenedMs: Long,
+        positive: Boolean,
+        completed: Boolean,
+    ) {
+        if (listenedMs < MIN_LISTEN_HISTORY_MS) return
+        if (!positive && !completed) return
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                metadata?.let { database.insert(it) }
+                database.insertRecentEvent(mediaId, listenedMs)
+                database.incrementTotalPlayTime(mediaId, listenedMs)
+                Timber.tag("OmniTuneRecent").d("Recorded listening event: mediaId=$mediaId listenedMs=$listenedMs")
+            } catch (e: Exception) {
+                Timber.tag("OmniTuneRecent").w(e, "Failed to record listening event for $mediaId")
+            }
+        }
     }
 
     private fun startPlaybackTracker(mediaItem: MediaItem?) {

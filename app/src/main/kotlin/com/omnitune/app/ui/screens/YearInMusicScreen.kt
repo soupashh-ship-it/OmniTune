@@ -57,7 +57,11 @@ fun YearInMusicScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Total Listening Time", color = OmniColors.TextSecondary)
-                    Text("${totalListeningTime / 60} minutes", color = OmniColors.TextPrimary, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        formatListeningTime(totalListeningTime),
+                        color = OmniColors.TextPrimary,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
                 }
             }
             
@@ -75,5 +79,19 @@ fun YearInMusicScreen(
                 Text("Back to Stats")
             }
         }
+    }
+}
+
+internal fun formatListeningTime(durationMs: Long): String {
+    val totalMinutes = (durationMs.coerceAtLeast(0L) / 60_000L)
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
+        hours > 0 -> "${hours}h"
+        totalMinutes == 1L -> "1 minute"
+        totalMinutes > 0 -> "$totalMinutes minutes"
+        else -> "0 minutes"
     }
 }
