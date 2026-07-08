@@ -92,6 +92,9 @@ import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.constants.PureBlackKey
+import com.omnitune.app.playback.continuation.PlaybackContext
+import com.omnitune.app.playback.continuation.PlaybackSourceType
+import com.omnitune.app.playback.continuation.LikedSongsPlaybackPlanner
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.Dispatchers
@@ -103,6 +106,7 @@ private data class PendingSongQueue(
     val title: String,
     val songs: List<SongItem>,
     val index: Int,
+    val sourceType: PlaybackSourceType,
 )
 
 private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): String {
@@ -118,6 +122,7 @@ private fun playSongList(
     queueTitle: String,
     songs: List<SongItem>,
     index: Int,
+    sourceType: PlaybackSourceType,
     playerConnection: PlayerConnection?,
     onPlayerNotReady: (PendingSongQueue) -> Unit,
 ) {
@@ -125,12 +130,25 @@ private fun playSongList(
     Timber.tag("OmniTunePlaybackTrace").i("$queueTitle play requested: ${songItem.title} (${songItem.id})")
     val connection = playerConnection ?: run {
         Timber.tag("OmniTunePlaybackTrace").w("$queueTitle play queued: player connection not ready")
-        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index))
+        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index, sourceType))
         Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
         return
     }
     val mediaItems = songs.map { it.toMediaItem() }
-    connection.playQueue(ListQueue(title = queueTitle, items = mediaItems, startIndex = index))
+    connection.playQueue(
+        ListQueue(
+            title = queueTitle,
+            items = mediaItems,
+            startIndex = index,
+            playbackContext = PlaybackContext(
+                sourceType = sourceType,
+                sourceTitle = queueTitle,
+                seedSongId = songs.getOrNull(index)?.id,
+                artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
+                sessionItems = mediaItems,
+            ),
+        ),
+    )
 }
 
 @Composable
@@ -154,11 +172,24 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         val queueData = pendingSongQueue
         val connection = localPlayerConnection
         if (queueData != null && connection != null) {
-            val (title, songs, index) = queueData
+            val (title, songs, index, sourceType) = queueData
             Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
             pendingSongQueue = null
             val mediaItems = songs.map { it.toMediaItem() }
-            connection.playQueue(ListQueue(title = title, items = mediaItems, startIndex = index))
+            connection.playQueue(
+                ListQueue(
+                    title = title,
+                    items = mediaItems,
+                    startIndex = index,
+                    playbackContext = PlaybackContext(
+                        sourceType = sourceType,
+                        sourceTitle = title,
+                        seedSongId = songs.getOrNull(index)?.id,
+                        artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
+                        sessionItems = mediaItems,
+                    ),
+                ),
+            )
         }
     }
 
@@ -210,13 +241,27 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToAllGenres = { navController.navigate("all_genres") },
                     onResumePlayback = { navController.navigate("player") },
                     onNavigateToExplore = { route -> navController.navigate(route) },
-                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
+                    onPlaySong = { song ->
+                        localPlayerConnection?.playQueue(
+                            ListQueue(
+                                title = "Home",
+                                items = listOf(song.toMediaItem()),
+                                playbackContext = PlaybackContext(
+                                    sourceType = PlaybackSourceType.HOME_DISCOVERY,
+                                    sourceTitle = "Home",
+                                    seedSongId = song.id,
+                                    artist = song.artists.firstOrNull()?.name,
+                                ),
+                            ),
+                        )
+                    },
                     onPlayProviderSong = { song ->
                         playSongList(
                             context = context,
                             queueTitle = "Home",
                             songs = listOf(song),
                             index = 0,
+                            sourceType = PlaybackSourceType.HOME_DISCOVERY,
                             playerConnection = localPlayerConnection,
                             onPlayerNotReady = { pendingSongQueue = it },
                         )
@@ -228,13 +273,29 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                                 queueTitle = "Quick Picks",
                                 songs = songs,
                                 index = 0,
+                                sourceType = PlaybackSourceType.QUICK_PICKS,
                                 playerConnection = localPlayerConnection,
                                 onPlayerNotReady = { pendingSongQueue = it },
                             )
                         }
                     },
                     onPlaySongs = { songs ->
-                        if (songs.isNotEmpty()) localPlayerConnection?.playQueue(ListQueue(title = "Home", items = songs.map { it.toMediaItem() }))
+                        if (songs.isNotEmpty()) {
+                            val mediaItems = songs.map { it.toMediaItem() }
+                            localPlayerConnection?.playQueue(
+                                ListQueue(
+                                    title = "Home",
+                                    items = mediaItems,
+                                    playbackContext = PlaybackContext(
+                                        sourceType = PlaybackSourceType.HOME_DISCOVERY,
+                                        sourceTitle = "Home",
+                                        seedSongId = songs.firstOrNull()?.id,
+                                        artist = songs.firstOrNull()?.artists?.firstOrNull()?.name,
+                                        sessionItems = mediaItems,
+                                    ),
+                                ),
+                            )
+                        }
                     },
                 )
             }
@@ -349,8 +410,33 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 )
             }
             composable("liked_songs") {
-                LikedSongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
-                    localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                LikedSongsScreen(
+                    onBack = { navController.popBackStack() },
+                    onPlaySongs = { songs, index, shuffled ->
+                        val (plannedSongs, startIndex) = LikedSongsPlaybackPlanner.orderedQueue(
+                            items = songs,
+                            selectedIndex = index,
+                            shuffled = shuffled,
+                        )
+                        val mediaItems = plannedSongs.map { it.toMediaItem() }
+                        localPlayerConnection?.playQueue(
+                            ListQueue(
+                                title = "Liked Songs",
+                                items = mediaItems,
+                                startIndex = startIndex,
+                                playbackContext = PlaybackContext(
+                                    sourceType = PlaybackSourceType.LIKED_SONGS,
+                                    sourceTitle = "Liked Songs",
+                                    seedSongId = plannedSongs.getOrNull(startIndex)?.id,
+                                    artist = plannedSongs.getOrNull(startIndex)?.artists?.firstOrNull()?.name,
+                                    allowAutoplay = false,
+                                    shuffledCollection = shuffled,
+                                    sessionItems = mediaItems,
+                                ),
+                            ),
+                        )
+                    },
+                )
             }
             composable("recently_played") {
                 RecentlyPlayedScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
@@ -376,6 +462,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             queueTitle = "Search Results",
                             songs = songs,
                             index = index,
+                            sourceType = PlaybackSourceType.SEARCH_RESULTS,
                             playerConnection = localPlayerConnection,
                             onPlayerNotReady = { pendingSongQueue = it }
                         )
@@ -427,6 +514,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                             queueTitle = "Home Collection",
                             songs = songs,
                             index = index,
+                            sourceType = PlaybackSourceType.HOME_DISCOVERY,
                             playerConnection = localPlayerConnection,
                             onPlayerNotReady = { pendingSongQueue = it },
                         )

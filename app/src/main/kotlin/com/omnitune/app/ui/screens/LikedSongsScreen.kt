@@ -24,9 +24,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -48,20 +51,23 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
+import com.omnitune.app.constants.LikedSongsShuffleKey
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.utils.rememberPreference
 
 @Composable
 fun LikedSongsScreen(
     onBack: () -> Unit = {},
-    onPlaySong: (Song) -> Unit = {},
+    onPlaySongs: (List<Song>, Int, Boolean) -> Unit = { _, _, _ -> },
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val likedSongs by viewModel.likedSongs.collectAsState()
+    var shuffleLikedSongs by rememberPreference(LikedSongsShuffleKey, false)
 
     Column(
         modifier = Modifier
@@ -84,6 +90,18 @@ fun LikedSongsScreen(
                 text = "No liked songs yet",
             )
         } else {
+            LikedSongsPlaybackActions(
+                shuffleEnabled = shuffleLikedSongs,
+                onPlayAll = {
+                    shuffleLikedSongs = false
+                    onPlaySongs(likedSongs, 0, false)
+                },
+                onShuffle = {
+                    shuffleLikedSongs = true
+                    onPlaySongs(likedSongs, 0, true)
+                },
+            )
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
@@ -95,11 +113,64 @@ fun LikedSongsScreen(
                 ) { song ->
                     LibrarySongRow(
                         song = song,
-                        onClick = { onPlaySong(song) },
+                        onClick = {
+                            val index = likedSongs.indexOfFirst { it.song.id == song.song.id }.coerceAtLeast(0)
+                            onPlaySongs(likedSongs, index, shuffleLikedSongs)
+                        },
                     )
                 }
                 item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }
             }
+        }
+    }
+}
+
+@Composable
+private fun LikedSongsPlaybackActions(
+    shuffleEnabled: Boolean,
+    onPlayAll: () -> Unit,
+    onShuffle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Button(
+            onClick = onPlayAll,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = OmniColors.OmniAccentPrimary,
+                contentColor = OmniColors.TextOnAccent,
+            ),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_play_arrow),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            Text("Play all")
+        }
+        OutlinedButton(
+            onClick = onShuffle,
+            modifier = Modifier.weight(1f),
+            border = BorderStroke(
+                1.dp,
+                if (shuffleEnabled) OmniColors.OmniAccentPrimary else OmniColors.OmniGlassBorderSubtle,
+            ),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_shuffle),
+                contentDescription = null,
+                tint = if (shuffleEnabled) OmniColors.OmniAccentPrimary else OmniColors.TextSecondary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            Text(
+                text = if (shuffleEnabled) "Shuffle on" else "Shuffle play",
+                color = if (shuffleEnabled) OmniColors.OmniAccentPrimary else OmniColors.TextPrimary,
+            )
         }
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.omnitune.app.R
 import com.omnitune.app.constants.AutoSkipNextOnErrorKey
+import com.omnitune.app.constants.AutoplaySimilarSongsKey
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
 import com.omnitune.app.constants.PlaybackQualityModeKey
 import com.omnitune.app.constants.SkipSilenceKey
@@ -40,6 +41,7 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     var permShuffle by rememberPreference(com.omnitune.app.constants.PermanentShuffleKey, false)
     var autoDownloadLike by rememberPreference(com.omnitune.app.constants.AutoDownloadOnLikeKey, false)
     var autoSkipError by rememberPreference(com.omnitune.app.constants.AutoSkipNextOnErrorKey, true)
+    var autoplaySimilarSongs by rememberPreference(AutoplaySimilarSongsKey, true)
     
     var stopOnClear by rememberPreference(com.omnitune.app.constants.StopMusicOnTaskClearKey, false)
     var artistSeparators by rememberPreference(com.omnitune.app.constants.ArtistSeparatorsKey, ", ; / &")
@@ -151,6 +153,13 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
             iconRes = R.drawable.ic_settings,
             checked = autoSkipError,
             onCheckedChange = { autoSkipError = it }
+        )
+        OmniSwitchPreference(
+            title = "Autoplay similar songs",
+            description = "Continue with related music after your queue or collection ends",
+            iconRes = R.drawable.ic_settings,
+            checked = autoplaySimilarSongs,
+            onCheckedChange = { autoplaySimilarSongs = it }
         )
     }
 
