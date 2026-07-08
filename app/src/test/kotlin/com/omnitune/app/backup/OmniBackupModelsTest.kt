@@ -42,6 +42,12 @@ class OmniBackupModelsTest {
             stats = listOf(
                 BackupStatsItem(songId = "song_1", year = 2026, month = 7, count = 4),
             ),
+            tags = listOf(
+                BackupTag(id = "tag_1", name = "Road trip"),
+            ),
+            playlistTags = listOf(
+                BackupPlaylistTag(playlistId = "playlist_1", tagId = "tag_1"),
+            ),
         )
 
         val encoded = json.encodeToString(snapshot)
@@ -53,6 +59,8 @@ class OmniBackupModelsTest {
         assertTrue(decoded.songs.single().liked)
         assertEquals("song_1", decoded.playlistSongs.single().songId)
         assertEquals(4, decoded.stats.single().count)
+        assertEquals("Road trip", decoded.tags.single().name)
+        assertEquals("tag_1", decoded.playlistTags.single().tagId)
     }
 
     @Test
