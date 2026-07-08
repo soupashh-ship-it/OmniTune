@@ -1,9 +1,11 @@
 package com.omnitune.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,14 +14,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -38,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -51,12 +58,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.media3.exoplayer.offline.Download
@@ -75,11 +80,10 @@ import com.omnitune.app.ui.screens.playlist.PlaylistSuggestionsSection
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import com.omnitune.app.ui.screens.LibraryViewModel
-import android.widget.Toast
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlaylistDetailScreen(
     onBack: () -> Unit = {},
@@ -95,21 +99,19 @@ fun PlaylistDetailScreen(
     val playlist by viewModel.playlist.collectAsState()
     val songs by viewModel.songs.collectAsState()
     val downloadsState by downloadsViewModel.uiState.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
+    val lazyListState = rememberLazyListState()
+
     var showAssignTagsDialog by remember { mutableStateOf(false) }
     var showPlaylistMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val playerConnection = LocalPlayerConnection.current
-
-    // Selection state
     var selectionMode by remember { mutableStateOf(false) }
     var selectedSongs by remember { mutableStateOf(setOf<String>()) }
-
-    // Drag reorder state
-    val lazyListState = rememberLazyListState()
     var draggedItemIndex by remember { mutableIntStateOf(-1) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var itemHeights by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+
     val songDownloadStates = remember(downloadsState.downloads) {
         downloadsState.downloads.associateBy { it.request.id }
     }
@@ -120,450 +122,262 @@ fun PlaylistDetailScreen(
     val allDownloadsComplete = downloadableSongs.isNotEmpty() && completedDownloadCount == downloadableSongs.size
     val totalDurationSeconds = songs.sumOf { it.song.song.duration.coerceAtLeast(0) }
     val durationLabel = formatPlaylistDuration(totalDurationSeconds)
+    val toolbarTitleVisible by remember {
+        derivedStateOf {
+            lazyListState.firstVisibleItemIndex > 0 || lazyListState.firstVisibleItemScrollOffset > 420
+        }
+    }
+    val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+    val isEditable = playlist?.playlist?.isEditable == true
 
-    Column(
+    fun queueMissingDownloads() {
+        val missing = downloadableSongs.filter {
+            songDownloadStates[it.song.id]?.state != Download.STATE_COMPLETED &&
+                songDownloadStates[it.song.id]?.state != Download.STATE_DOWNLOADING &&
+                songDownloadStates[it.song.id]?.state != Download.STATE_QUEUED &&
+                songDownloadStates[it.song.id]?.state != Download.STATE_RESTARTING
+        }
+        if (missing.isEmpty()) {
+            Toast.makeText(context, "Playlist is already downloaded or queued", Toast.LENGTH_SHORT).show()
+        } else {
+            missing.forEach { playlistSong ->
+                downloadsViewModel.startDownload(
+                    videoId = playlistSong.song.id,
+                    title = playlistSong.song.song.title,
+                )
+            }
+            Toast.makeText(context, "Queued ${missing.size} playlist downloads", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
-            .padding(horizontal = OmniSpacing.section),
+            .background(OmniColors.BackgroundGradient),
     ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = OmniSpacing.medium, bottom = OmniSpacing.large),
-            verticalAlignment = Alignment.CenterVertically,
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = OmniSpacing.section,
+                top = 92.dp,
+                end = OmniSpacing.section,
+                bottom = bottomPadding,
+            ),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(OmniColors.OmniGlassMedium)
-                    .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_arrow_back),
-                    contentDescription = "Back",
-                    tint = OmniColors.TextPrimary,
-                )
-            }
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = playlist?.playlist?.name ?: "Playlist",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = OmniColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "${songs.size} songs",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OmniColors.TextSecondary,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                val pid = playlist?.playlist?.id
-                if (pid != null) {
-                    val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
-                    PlaylistTagChips(
-                        tags = tags,
-                        editable = playlist?.playlist?.isEditable == true,
-                        onRemoveTag = { tag -> libraryViewModel.removePlaylistTag(pid, tag.id) }
-                    )
-                }
-            }
-
-            if (playlist?.playlist?.isEditable == true) {
-                IconButton(
-                    onClick = onAddSongs,
+            item(key = "playlist_hero", contentType = "playlist_hero") {
+                Column(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(OmniColors.OmniGlassMedium),
+                        .fillMaxWidth()
+                        .animateItem(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(
-                        painterResource(R.drawable.ic_search),
-                        contentDescription = "Add songs",
-                        tint = OmniColors.TextSecondary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(OmniSpacing.compact))
-            }
-
-            if (playlist?.playlist?.isEditable == true) {
-                Box {
-                    IconButton(
-                        onClick = { showPlaylistMenu = true },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(OmniColors.OmniGlassMedium),
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_more_vert),
-                            contentDescription = "More options",
-                            tint = OmniColors.TextSecondary,
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                    androidx.compose.material3.DropdownMenu(
-                        expanded = showPlaylistMenu,
-                        onDismissRequest = { showPlaylistMenu = false },
-                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
-                    ) {
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text("Rename playlist") },
-                            onClick = {
-                                showPlaylistMenu = false
-                                showRenameDialog = true
-                            },
-                        )
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text("Assign tags") },
-                            onClick = {
-                                showPlaylistMenu = false
-                                showAssignTagsDialog = true
-                            },
-                        )
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text("Delete playlist", color = OmniColors.Error) },
-                            onClick = {
-                                showPlaylistMenu = false
-                                showDeleteDialog = true
-                            },
-                        )
-                    }
-                }
-
-                if (showRenameDialog) {
-                    var newName by remember { mutableStateOf(playlist?.playlist?.name ?: "") }
-                    val trimmedName = newName.trim()
-                    val nameError = when {
-                        newName.isNotBlank() && trimmedName.isBlank() -> "Playlist name cannot be empty"
-                        trimmedName.length > 80 -> "Playlist name must be 80 characters or fewer"
-                        else -> null
-                    }
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = { showRenameDialog = false },
-                        title = { Text("Rename playlist", fontWeight = FontWeight.Bold) },
-                        text = {
-                            Column {
-                                androidx.compose.material3.OutlinedTextField(
-                                    value = newName,
-                                    onValueChange = { newName = it },
-                                    singleLine = true,
-                                    isError = nameError != null,
-                                    placeholder = { Text("Playlist name") },
-                                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = OmniColors.OmniAccentPrimary,
-                                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                                        focusedTextColor = OmniColors.TextPrimary,
-                                        unfocusedTextColor = OmniColors.TextPrimary
-                                    )
-                                )
-                                if (nameError != null) {
-                                    Text(
-                                        text = nameError,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = OmniColors.Error,
-                                        modifier = Modifier.padding(top = OmniSpacing.compact),
-                                    )
-                                }
-                            }
-                        },
-                        confirmButton = {
-                            androidx.compose.material3.TextButton(
-                                onClick = {
-                                    if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
-                                        viewModel.renamePlaylist(trimmedName)
-                                        showRenameDialog = false
-                                    }
-                                },
-                                enabled = trimmedName.isNotBlank() && trimmedName.length <= 80,
-                            ) {
-                                Text(
-                                    "Rename",
-                                    color = if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
-                                        OmniColors.Hot
-                                    } else {
-                                        OmniColors.TextSecondary
-                                    },
-                                )
-                            }
-                        },
-                        dismissButton = {
-                            androidx.compose.material3.TextButton(onClick = { showRenameDialog = false }) {
-                                Text("Cancel", color = OmniColors.TextPrimary)
-                            }
-                        },
-                        containerColor = OmniColors.OmniBackgroundElevated,
-                        titleContentColor = OmniColors.TextPrimary,
-                    )
-                }
-
-                if (showDeleteDialog) {
-                    androidx.compose.material3.AlertDialog(
-                        onDismissRequest = { showDeleteDialog = false },
-                        title = { Text("Delete playlist?", fontWeight = FontWeight.Bold) },
-                        text = { Text("This removes the playlist, not the songs from your library.") },
-                        confirmButton = {
-                            androidx.compose.material3.TextButton(
-                                onClick = {
-                                    viewModel.deletePlaylist()
-                                    showDeleteDialog = false
-                                    onBack()
-                                }
-                            ) {
-                                Text("Delete", color = OmniColors.Error)
-                            }
-                        },
-                        dismissButton = {
-                            androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
-                                Text("Cancel", color = OmniColors.TextPrimary)
-                            }
-                        },
-                        containerColor = OmniColors.OmniBackgroundElevated,
-                        titleContentColor = OmniColors.TextPrimary,
-                        textContentColor = OmniColors.TextSecondary,
-                    )
-                }
-
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(OmniColors.Hot.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_list),
-                        contentDescription = null,
-                        tint = OmniColors.Hot,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-        }
-
-        // Artwork header
-        val thumbs = playlist?.thumbnails
-        if (!thumbs.isNullOrEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .padding(bottom = OmniSpacing.large),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (thumbs.size == 1) {
-                    AsyncImage(
-                        model = thumbs[0],
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(180.dp)
-                            .clip(RoundedCornerShape(OmniSpacing.small))
-                            .background(OmniColors.GlassSurface),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
+                    val thumbs = playlist?.thumbnails.orEmpty()
                     Box(
                         modifier = Modifier
-                            .size(180.dp)
-                            .clip(RoundedCornerShape(OmniSpacing.small))
-                            .background(OmniColors.GlassSurface),
+                            .fillMaxWidth()
+                            .padding(top = 6.dp, bottom = 18.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        val positions = listOf(
-                            Alignment.TopStart, Alignment.TopEnd,
-                            Alignment.BottomStart, Alignment.BottomEnd,
+                        Box(
+                            modifier = Modifier
+                                .size(216.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(OmniColors.GlassSurface)
+                                .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), RoundedCornerShape(18.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            when {
+                                thumbs.size == 1 -> {
+                                    AsyncImage(
+                                        model = thumbs[0],
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                }
+                                thumbs.size > 1 -> {
+                                    val positions = listOf(
+                                        Alignment.TopStart,
+                                        Alignment.TopEnd,
+                                        Alignment.BottomStart,
+                                        Alignment.BottomEnd,
+                                    )
+                                    thumbs.take(4).forEachIndexed { index, url ->
+                                        AsyncImage(
+                                            model = url,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .align(positions.getOrElse(index) { Alignment.Center })
+                                                .size(108.dp),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Icon(
+                                        painterResource(R.drawable.ic_list),
+                                        contentDescription = null,
+                                        tint = OmniColors.TextMuted,
+                                        modifier = Modifier.size(72.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = playlist?.playlist?.name ?: "Playlist",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = OmniColors.TextPrimary,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 28.dp),
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        PlaylistInfoPill(
+                            icon = R.drawable.ic_list,
+                            label = "${songs.size} songs",
                         )
-                        thumbs.take(4).forEachIndexed { i, url ->
-                            AsyncImage(
-                                model = url,
+                        PlaylistInfoPill(
+                            icon = R.drawable.ic_history,
+                            label = durationLabel,
+                        )
+                    }
+
+                    val pid = playlist?.playlist?.id
+                    if (pid != null) {
+                        val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
+                        if (tags.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            PlaylistTagChips(
+                                tags = tags,
+                                editable = isEditable,
+                                onRemoveTag = { tag -> libraryViewModel.removePlaylistTag(pid, tag.id) },
+                            )
+                        }
+                    }
+
+                    if (songs.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(22.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            PlaylistRoundAction(
+                                icon = R.drawable.ic_close,
+                                contentDescription = "Delete playlist",
+                                tint = OmniColors.Error,
+                                onClick = { showDeleteDialog = true },
+                                enabled = isEditable,
+                            )
+                            PlaylistRoundAction(
+                                icon = R.drawable.ic_play_arrow,
+                                contentDescription = "Play playlist",
+                                onClick = {
+                                    val p = playlist ?: return@PlaylistRoundAction
+                                    playerConnection?.playQueue(
+                                        PlaylistPlaybackPlanner
+                                            .ordered(p.id, p.playlist.name, songs)
+                                            .toQueue(),
+                                    )
+                                },
+                                prominent = true,
+                            )
+                            PlaylistRoundAction(
+                                icon = R.drawable.ic_shuffle,
+                                contentDescription = "Shuffle playlist",
+                                onClick = {
+                                    val p = playlist ?: return@PlaylistRoundAction
+                                    playerConnection?.playQueue(
+                                        PlaylistPlaybackPlanner
+                                            .shuffled(p.id, p.playlist.name, songs)
+                                            .toQueue(),
+                                    )
+                                },
+                                prominent = true,
+                            )
+                            PlaylistRoundAction(
+                                icon = R.drawable.ic_download,
+                                contentDescription = "Download playlist",
+                                onClick = ::queueMissingDownloads,
+                                enabled = downloadableSongs.isNotEmpty() && !allDownloadsComplete,
+                            )
+                            PlaylistRoundAction(
+                                icon = R.drawable.ic_settings,
+                                contentDescription = "Edit playlist",
+                                onClick = { showRenameDialog = true },
+                                enabled = isEditable,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = onAddSongs,
+                            enabled = isEditable,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = OmniShapes.Pill,
+                            colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+                        ) {
+                            Icon(
+                                painterResource(R.drawable.ic_search),
                                 contentDescription = null,
-                                modifier = Modifier
-                                    .align(positions.getOrElse(i) { Alignment.Center })
-                                    .size(90.dp),
-                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
                 }
             }
-        }
 
-        Text(
-            text = playlist?.playlist?.name ?: "Playlist",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = OmniSpacing.small),
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = OmniSpacing.medium),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            PlaylistInfoPill(
-                icon = R.drawable.ic_list,
-                label = "${songs.size} songs",
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            PlaylistInfoPill(
-                icon = R.drawable.ic_history,
-                label = durationLabel,
-            )
-        }
-
-        // Play All / Shuffle buttons
-        if (songs.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = OmniSpacing.medium),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                PlaylistRoundAction(
-                    icon = R.drawable.ic_close,
-                    contentDescription = "Delete playlist",
-                    tint = OmniColors.Error,
-                    onClick = { showDeleteDialog = true },
-                    enabled = playlist?.playlist?.isEditable == true,
-                )
-                PlaylistRoundAction(
-                    icon = R.drawable.ic_play_arrow,
-                    contentDescription = "Play playlist",
-                    onClick = {
-                        val p = playlist ?: return@PlaylistRoundAction
-                        playerConnection?.playQueue(
-                            PlaylistPlaybackPlanner
-                                .ordered(p.id, p.playlist.name, songs)
-                                .toQueue(),
-                        )
-                    },
-                    prominent = true,
-                )
-                PlaylistRoundAction(
-                    icon = R.drawable.ic_shuffle,
-                    contentDescription = "Shuffle playlist",
-                    onClick = {
-                        val p = playlist ?: return@PlaylistRoundAction
-                        playerConnection?.playQueue(
-                            PlaylistPlaybackPlanner
-                                .shuffled(p.id, p.playlist.name, songs)
-                                .toQueue(),
-                        )
-                    },
-                    prominent = true,
-                )
-                PlaylistRoundAction(
-                    icon = R.drawable.ic_download,
-                    contentDescription = "Download playlist",
-                    onClick = {
-                        val missing = downloadableSongs.filter {
-                            songDownloadStates[it.song.id]?.state != Download.STATE_COMPLETED &&
-                                songDownloadStates[it.song.id]?.state != Download.STATE_DOWNLOADING &&
-                                songDownloadStates[it.song.id]?.state != Download.STATE_QUEUED &&
-                                songDownloadStates[it.song.id]?.state != Download.STATE_RESTARTING
-                        }
-                        if (missing.isEmpty()) {
-                            Toast.makeText(context, "Playlist is already downloaded or queued", Toast.LENGTH_SHORT).show()
-                        } else {
-                            missing.forEach { playlistSong ->
-                                downloadsViewModel.startDownload(
-                                    videoId = playlistSong.song.id,
-                                    title = playlistSong.song.song.title,
-                                )
-                            }
-                            Toast.makeText(context, "Queued ${missing.size} playlist downloads", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    enabled = downloadableSongs.isNotEmpty() && !allDownloadsComplete,
-                )
-                PlaylistRoundAction(
-                    icon = R.drawable.ic_settings,
-                    contentDescription = "Edit playlist",
-                    onClick = { showRenameDialog = true },
-                    enabled = playlist?.playlist?.isEditable == true,
-                )
-            }
-            Button(
-                onClick = onAddSongs,
-                enabled = playlist?.playlist?.isEditable == true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(58.dp)
-                    .padding(bottom = OmniSpacing.medium),
-                shape = OmniShapes.Pill,
-                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_search),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
-
-        if (showAssignTagsDialog) {
-            val pid = playlist?.playlist?.id
-            if (pid != null) {
-                AssignTagsDialog(
-                    database = viewModel.db,
-                    playlistId = pid,
-                    onDismiss = { showAssignTagsDialog = false },
-                )
-            }
-        }
-
-        if (songs.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                EmptyPlaceholder(
-                    icon = R.drawable.ic_list,
-                    text = "No songs in this playlist yet",
-                )
-                if (playlist?.playlist?.isEditable == true) {
-                    Button(
-                        onClick = onAddSongs,
-                        shape = OmniShapes.Medium,
-                        colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+            if (songs.isEmpty()) {
+                item(key = "empty_playlist", contentType = "empty_playlist") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem()
+                            .padding(top = OmniSpacing.large),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Icon(
-                            painterResource(R.drawable.ic_add),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                        EmptyPlaceholder(
+                            icon = R.drawable.ic_list,
+                            text = "No songs in this playlist yet",
                         )
-                        Spacer(modifier = Modifier.width(OmniSpacing.compact))
-                        Text("Add songs")
+                        if (isEditable) {
+                            Button(
+                                onClick = onAddSongs,
+                                shape = OmniShapes.Medium,
+                                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+                            ) {
+                                Icon(
+                                    painterResource(R.drawable.ic_add),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                                Text("Add songs")
+                            }
+                        }
                     }
                 }
-            }
-        } else {
-            val isEditable = playlist?.playlist?.isEditable == true
-
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                item(contentType = "custom_order_header") {
+            } else {
+                item(key = "custom_order_header", contentType = "custom_order_header") {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .animateItem()
                             .padding(top = OmniSpacing.large, bottom = OmniSpacing.small),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -573,12 +387,14 @@ fun PlaylistDetailScreen(
                             color = OmniColors.TextPrimary,
                             modifier = Modifier.weight(1f),
                         )
-                        Icon(
-                            painter = painterResource(R.drawable.ic_drag_handle),
-                            contentDescription = null,
-                            tint = OmniColors.TextSecondary,
-                            modifier = Modifier.size(22.dp),
-                        )
+                        if (isEditable) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_drag_handle),
+                                contentDescription = "Drag songs to reorder",
+                                tint = OmniColors.TextSecondary,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
                     }
                 }
                 itemsIndexed(
@@ -587,10 +403,10 @@ fun PlaylistDetailScreen(
                     contentType = { _, _ -> "playlist_song" },
                 ) { index, playlistSong ->
                     val isDragging = draggedItemIndex == index && dragOffset != 0f
-                    val density = LocalDensity.current
 
                     Box(
                         modifier = Modifier
+                            .animateItem()
                             .zIndex(if (isDragging) 1f else 0f)
                             .graphicsLayer {
                                 translationY = if (isDragging) dragOffset else 0f
@@ -614,9 +430,8 @@ fun PlaylistDetailScreen(
                                             onDragEnd = {
                                                 if (draggedItemIndex >= 0) {
                                                     val fromIdx = draggedItemIndex
-                                                    val totalDrag = dragOffset
                                                     val itemH = itemHeights[fromIdx]?.coerceAtLeast(1) ?: 1
-                                                    val shiftCount = (totalDrag / itemH).roundToInt()
+                                                    val shiftCount = (dragOffset / itemH).roundToInt()
                                                     val toIdx = (fromIdx + shiftCount).coerceIn(0, songs.lastIndex)
                                                     if (toIdx != fromIdx) {
                                                         viewModel.moveSong(fromIdx, toIdx)
@@ -631,7 +446,9 @@ fun PlaylistDetailScreen(
                                             },
                                         )
                                     }
-                                } else Modifier
+                                } else {
+                                    Modifier
+                                },
                             ),
                     ) {
                         PlaylistSongRow(
@@ -671,11 +488,12 @@ fun PlaylistDetailScreen(
                                         selectionMode = true
                                         selectedSongs = setOf(id)
                                     } else {
-                                        if (id in selectedSongs) {
-                                            selectedSongs = selectedSongs - id
-                                            if (selectedSongs.isEmpty()) selectionMode = false
+                                        selectedSongs = if (id in selectedSongs) {
+                                            (selectedSongs - id).also {
+                                                if (it.isEmpty()) selectionMode = false
+                                            }
                                         } else {
-                                            selectedSongs = selectedSongs + id
+                                            selectedSongs + id
                                         }
                                     }
                                 }
@@ -691,63 +509,276 @@ fun PlaylistDetailScreen(
                         )
                     }
                 }
-                item(contentType = "playlist_suggestions") {
+                item(key = "playlist_suggestions", contentType = "playlist_suggestions") {
                     PlaylistSuggestionsSection(
-                        modifier = Modifier.padding(top = OmniSpacing.large),
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(top = OmniSpacing.large),
                         viewModel = viewModel,
                     )
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
+        }
 
-            // Selection action bar
-            AnimatedVisibility(
-                visible = selectionMode,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it },
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = OmniSpacing.section, vertical = OmniSpacing.compact)
+                .zIndex(2f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(OmniColors.OmniGlassMedium)
+                    .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
             ) {
-                Row(
+                Icon(
+                    painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = "Back",
+                    tint = OmniColors.TextPrimary,
+                )
+            }
+            Text(
+                text = playlist?.playlist?.name ?: "Playlist",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = OmniSpacing.medium)
+                    .graphicsLayer { alpha = if (toolbarTitleVisible) 1f else 0f },
+            )
+            if (isEditable) {
+                IconButton(
+                    onClick = onAddSongs,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(OmniColors.OmniBackgroundElevated)
-                        .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
-                    verticalAlignment = Alignment.CenterVertically,
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(OmniColors.OmniGlassMedium),
                 ) {
-                    Text(
-                        text = "${selectedSongs.size} selected",
-                        color = OmniColors.TextPrimary,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
+                    Icon(
+                        painterResource(R.drawable.ic_search),
+                        contentDescription = "Add songs",
+                        tint = OmniColors.TextSecondary,
+                        modifier = Modifier.size(22.dp),
                     )
-                    TextButton(onClick = {
-                        selectedSongs = if (selectedSongs.size == songs.size) emptySet()
-                        else songs.map { it.song.id }.toSet()
-                    }) {
-                        Text(
-                            if (selectedSongs.size == songs.size) "Deselect All" else "Select All",
-                            color = OmniColors.OmniAccentPrimary,
+                }
+                Spacer(modifier = Modifier.width(OmniSpacing.compact))
+                Box {
+                    IconButton(
+                        onClick = { showPlaylistMenu = true },
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(OmniColors.OmniGlassMedium),
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.ic_more_vert),
+                            contentDescription = "More options",
+                            tint = OmniColors.TextSecondary,
+                            modifier = Modifier.size(24.dp),
                         )
                     }
-                    if (selectedSongs.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(OmniSpacing.small))
-                        TextButton(onClick = {
-                            viewModel.removeSongs(selectedSongs.toList())
-                            selectedSongs = emptySet()
-                            selectionMode = false
-                        }) {
-                            Text("Remove", color = OmniColors.Error)
-                        }
-                        Spacer(modifier = Modifier.width(OmniSpacing.small))
-                        TextButton(onClick = {
-                            selectionMode = false
-                            selectedSongs = emptySet()
-                        }) {
-                            Text("Cancel", color = OmniColors.TextSecondary)
-                        }
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = showPlaylistMenu,
+                        onDismissRequest = { showPlaylistMenu = false },
+                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                    ) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Rename playlist") },
+                            onClick = {
+                                showPlaylistMenu = false
+                                showRenameDialog = true
+                            },
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Assign tags") },
+                            onClick = {
+                                showPlaylistMenu = false
+                                showAssignTagsDialog = true
+                            },
+                        )
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("Delete playlist", color = OmniColors.Error) },
+                            onClick = {
+                                showPlaylistMenu = false
+                                showDeleteDialog = true
+                            },
+                        )
+                    }
+                }
+            } else {
+                Icon(
+                    painterResource(R.drawable.ic_list),
+                    contentDescription = null,
+                    tint = OmniColors.Hot,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(OmniColors.Hot.copy(alpha = 0.16f))
+                        .padding(12.dp),
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = selectionMode,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .zIndex(3f),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(OmniColors.OmniBackgroundElevated)
+                    .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "${selectedSongs.size} selected",
+                    color = OmniColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = {
+                    selectedSongs = if (selectedSongs.size == songs.size) emptySet() else songs.map { it.song.id }.toSet()
+                }) {
+                    Text(
+                        if (selectedSongs.size == songs.size) "Deselect All" else "Select All",
+                        color = OmniColors.OmniAccentPrimary,
+                    )
+                }
+                if (selectedSongs.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(OmniSpacing.small))
+                    TextButton(onClick = {
+                        viewModel.removeSongs(selectedSongs.toList())
+                        selectedSongs = emptySet()
+                        selectionMode = false
+                    }) {
+                        Text("Remove", color = OmniColors.Error)
+                    }
+                    Spacer(modifier = Modifier.width(OmniSpacing.small))
+                    TextButton(onClick = {
+                        selectionMode = false
+                        selectedSongs = emptySet()
+                    }) {
+                        Text("Cancel", color = OmniColors.TextSecondary)
                     }
                 }
             }
         }
+    }
+
+    if (showAssignTagsDialog) {
+        val pid = playlist?.playlist?.id
+        if (pid != null) {
+            AssignTagsDialog(
+                database = viewModel.db,
+                playlistId = pid,
+                onDismiss = { showAssignTagsDialog = false },
+            )
+        }
+    }
+
+    if (showRenameDialog) {
+        var newName by remember { mutableStateOf(playlist?.playlist?.name ?: "") }
+        val trimmedName = newName.trim()
+        val nameError = when {
+            newName.isNotBlank() && trimmedName.isBlank() -> "Playlist name cannot be empty"
+            trimmedName.length > 80 -> "Playlist name must be 80 characters or fewer"
+            else -> null
+        }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename playlist", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        singleLine = true,
+                        isError = nameError != null,
+                        placeholder = { Text("Playlist name") },
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OmniColors.OmniAccentPrimary,
+                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
+                            focusedTextColor = OmniColors.TextPrimary,
+                            unfocusedTextColor = OmniColors.TextPrimary,
+                        ),
+                    )
+                    if (nameError != null) {
+                        Text(
+                            text = nameError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OmniColors.Error,
+                            modifier = Modifier.padding(top = OmniSpacing.compact),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
+                            viewModel.renamePlaylist(trimmedName)
+                            showRenameDialog = false
+                        }
+                    },
+                    enabled = trimmedName.isNotBlank() && trimmedName.length <= 80,
+                ) {
+                    Text(
+                        "Rename",
+                        color = if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
+                            OmniColors.Hot
+                        } else {
+                            OmniColors.TextSecondary
+                        },
+                    )
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancel", color = OmniColors.TextPrimary)
+                }
+            },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+        )
+    }
+
+    if (showDeleteDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete playlist?", fontWeight = FontWeight.Bold) },
+            text = { Text("This removes the playlist, not the songs from your library.") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.deletePlaylist()
+                        showDeleteDialog = false
+                        onBack()
+                    },
+                ) {
+                    Text("Delete", color = OmniColors.Error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = OmniColors.TextPrimary)
+                }
+            },
+            containerColor = OmniColors.OmniBackgroundElevated,
+            titleContentColor = OmniColors.TextPrimary,
+            textContentColor = OmniColors.TextSecondary,
+        )
     }
 }
 
