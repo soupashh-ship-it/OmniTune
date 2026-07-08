@@ -38,6 +38,7 @@ import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.constants.StreamBypassProxyKey
 import com.omnitune.app.constants.UseLoginForBrowse
 import com.omnitune.app.constants.VisitorDataKey
+import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
 import com.omnitune.kugou.KuGou
@@ -109,6 +110,10 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             try {
                 Timber.plant(GlobalLogTree())
             } catch (_: Exception) {}
+        }
+
+        if (OfflineDownloadArchive.applyPending(this)) {
+            Timber.i("Applied pending offline download restore")
         }
 
         initializeCriticalSync()

@@ -5,6 +5,7 @@
 
 package com.omnitune.app.backup
 
+import android.content.Context
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.AlbumArtistMap
@@ -14,21 +15,31 @@ import com.omnitune.app.db.entities.Event
 import com.omnitune.app.db.entities.PlayCountEntity
 import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.PlaylistSongMap
+import com.omnitune.app.db.entities.PlaylistTagMap
 import com.omnitune.app.db.entities.SongAlbumMap
 import com.omnitune.app.db.entities.SongArtistMap
 import com.omnitune.app.db.entities.SongEntity
+import com.omnitune.app.db.entities.TagEntity
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.FilterOutputStream
 import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -36,6 +47,7 @@ import kotlin.math.max
 @Singleton
 class OmniBackupRepository @Inject constructor(
     private val database: MusicDatabase,
+    @ApplicationContext private val context: Context,
 ) {
     private val json = Json {
         prettyPrint = true
@@ -44,7 +56,69 @@ class OmniBackupRepository @Inject constructor(
         explicitNulls = false
     }
 
-    suspend fun exportBackup(outputStream: OutputStream): OmniBackupExportResult = withContext(Dispatchers.IO) {
+    suspend fun exportBackup(
+        outputStream: OutputStream,
+        includeDownloadedAudio: Boolean = false,
+    ): OmniBackupExportResult = withContext(Dispatchers.IO) {
+        val snapshot = createSnapshot()
+        val libraryBytes = json.encodeToString(snapshot).toByteArray(StandardCharsets.UTF_8)
+
+        if (!includeDownloadedAudio) {
+            outputStream.use { stream ->
+                stream.write(libraryBytes)
+                stream.flush()
+            }
+            return@withContext OmniBackupExportResult(
+                counts = snapshot.exportedCounts(),
+                byteCount = libraryBytes.size.toLong(),
+                createdAtEpochMillis = snapshot.createdAtEpochMillis,
+            )
+        }
+
+        var archiveBytes = 0L
+        var audioFileCount = 0
+        var audioBytes = 0L
+        CountingOutputStream(outputStream).use { counting ->
+            ZipOutputStream(BufferedOutputStream(counting)).use { zip ->
+                zip.putNextEntry(ZipEntry(OfflineDownloadArchive.LIBRARY_JSON_ENTRY))
+                zip.write(libraryBytes)
+                zip.closeEntry()
+
+                val downloadDir = OfflineDownloadArchive.downloadDirectory(context)
+                if (downloadDir.exists()) {
+                    downloadDir.walkTopDown()
+                        .filter { it.isFile }
+                        .forEach { file ->
+                            val relativePath = downloadDir.toPath().relativize(file.toPath()).toString()
+                                .replace(File.separatorChar, '/')
+                            zip.putNextEntry(ZipEntry(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX + relativePath))
+                            file.inputStream().use { input -> input.copyTo(zip) }
+                            zip.closeEntry()
+                            audioFileCount++
+                            audioBytes += file.length()
+                        }
+                }
+
+                OfflineDownloadArchive.media3DatabaseFiles(context).forEach { file ->
+                    zip.putNextEntry(ZipEntry(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX + file.name))
+                    file.inputStream().use { input -> input.copyTo(zip) }
+                    zip.closeEntry()
+                }
+            }
+            archiveBytes = counting.bytesWritten
+        }
+
+        OmniBackupExportResult(
+            counts = snapshot.exportedCounts().copy(
+                downloadedAudioFiles = audioFileCount,
+                downloadedAudioBytes = audioBytes,
+            ),
+            byteCount = archiveBytes,
+            createdAtEpochMillis = snapshot.createdAtEpochMillis,
+        )
+    }
+
+    private suspend fun createSnapshot(): OmniBackupSnapshot {
         val createdAt = System.currentTimeMillis()
         val songs = database.backupSongs()
         val artists = database.backupArtists()
@@ -56,8 +130,10 @@ class OmniBackupRepository @Inject constructor(
         val albumArtists = database.backupAlbumArtistMaps()
         val events = database.backupEvents()
         val playCounts = database.backupPlayCounts()
+        val tags = database.backupTags()
+        val playlistTags = database.backupPlaylistTagMaps()
 
-        val snapshot = OmniBackupSnapshot(
+        return OmniBackupSnapshot(
             createdAtEpochMillis = createdAt,
             appVersionName = BuildConfig.VERSION_NAME,
             appVersionCode = BuildConfig.VERSION_CODE.toLong(),
@@ -71,6 +147,8 @@ class OmniBackupRepository @Inject constructor(
                 exportedAlbumCount = albums.size,
                 exportedHistoryItemCount = events.size,
                 exportedStatsRecordCount = playCounts.size,
+                exportedTagCount = tags.size,
+                exportedPlaylistTagCount = playlistTags.size,
             ),
             songs = songs.map { it.toBackupSong() },
             artists = artists.map { it.toBackupArtist() },
@@ -80,20 +158,11 @@ class OmniBackupRepository @Inject constructor(
             songArtists = songArtists.map { it.toBackupSongArtist() },
             songAlbums = songAlbums.map { it.toBackupSongAlbum() },
             albumArtists = albumArtists.map { it.toBackupAlbumArtist() },
+            tags = tags.map { it.toBackupTag() },
+            playlistTags = playlistTags.map { it.toBackupPlaylistTag() },
             history = events.map { it.toBackupHistoryItem() },
             stats = playCounts.map { it.toBackupStatsItem() },
             settings = BackupSettingsSection(),
-        )
-
-        val bytes = json.encodeToString(snapshot).toByteArray(StandardCharsets.UTF_8)
-        outputStream.use { stream ->
-            stream.write(bytes)
-            stream.flush()
-        }
-        OmniBackupExportResult(
-            counts = snapshot.exportedCounts(),
-            byteCount = bytes.size.toLong(),
-            createdAtEpochMillis = createdAt,
         )
     }
 
@@ -101,20 +170,50 @@ class OmniBackupRepository @Inject constructor(
         inputStream: InputStream,
         mode: OmniRestoreMode = OmniRestoreMode.MERGE,
     ): OmniBackupImportResult = withContext(Dispatchers.IO) {
-        require(mode == OmniRestoreMode.MERGE) { "Only merge restore is supported in this build" }
+        val packageResult = readBackupPackage(inputStream)
+        try {
+            validate(packageResult.snapshot)
 
-        val snapshot = readSnapshot(inputStream)
-        validate(snapshot)
+            val hasDownloadPayload = packageResult.stagedDownloadDir
+                ?.let { OfflineDownloadArchive.hasDownloadPayload(it) } == true
+            val counts = database.withTransaction {
+                if (mode == OmniRestoreMode.REPLACE) clearLibraryForReplace()
+                restoreMerge(
+                    snapshot = packageResult.snapshot,
+                    restoreDownloadedAudioState = hasDownloadPayload,
+                )
+            }
 
-        val counts = database.withTransaction {
-            restoreMerge(snapshot)
+            val stagedDownloadDir = packageResult.stagedDownloadDir
+            if (hasDownloadPayload) {
+                OfflineDownloadArchive.markReady(requireNotNull(stagedDownloadDir))
+            } else {
+                stagedDownloadDir?.deleteRecursively()
+            }
+
+            OmniBackupImportResult(
+                counts = counts + packageResult.downloadCounts,
+                formatVersion = packageResult.snapshot.formatVersion,
+                createdAtEpochMillis = packageResult.snapshot.createdAtEpochMillis,
+                offlineAudioRestorePending = hasDownloadPayload,
+            )
+        } catch (e: Exception) {
+            packageResult.stagedDownloadDir?.deleteRecursively()
+            throw e
         }
+    }
 
-        OmniBackupImportResult(
-            counts = counts,
-            formatVersion = snapshot.formatVersion,
-            createdAtEpochMillis = snapshot.createdAtEpochMillis,
-        )
+    private fun readBackupPackage(inputStream: InputStream): BackupPackageReadResult {
+        val buffered = BufferedInputStream(inputStream)
+        buffered.mark(4)
+        val header = ByteArray(4)
+        val read = buffered.read(header)
+        buffered.reset()
+        return if (read >= 2 && header[0] == 'P'.code.toByte() && header[1] == 'K'.code.toByte()) {
+            readZipBackup(buffered)
+        } else {
+            BackupPackageReadResult(snapshot = readSnapshot(buffered))
+        }
     }
 
     private fun readSnapshot(inputStream: InputStream): OmniBackupSnapshot {
@@ -131,6 +230,59 @@ class OmniBackupRepository @Inject constructor(
         }
     }
 
+    private fun readZipBackup(inputStream: InputStream): BackupPackageReadResult {
+        var snapshot: OmniBackupSnapshot? = null
+        var stagedDir: File? = null
+        var audioFileCount = 0
+        var audioBytes = 0L
+
+        ZipInputStream(inputStream).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    when {
+                        entry.name == OfflineDownloadArchive.LIBRARY_JSON_ENTRY -> {
+                            snapshot = json.decodeFromString(zip.readBytes().toString(StandardCharsets.UTF_8))
+                        }
+                        entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
+                            val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
+                            val relative = entry.name.removePrefix(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX)
+                            val target = OfflineDownloadArchive.resolveStagingTarget(stage, "files/$relative")
+                            val copied = target.outputStream().use { output -> zip.copyTo(output) }
+                            audioFileCount++
+                            audioBytes += copied
+                        }
+                        entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX) -> {
+                            val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
+                            val relative = entry.name.removePrefix(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX)
+                            val allowedNames = setOf(
+                                OfflineDownloadArchive.MEDIA3_DATABASE_NAME,
+                                "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-wal",
+                                "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-shm",
+                            )
+                            if (relative in allowedNames) {
+                                val target = OfflineDownloadArchive.resolveStagingTarget(stage, "databases/$relative")
+                                target.outputStream().use { output -> zip.copyTo(output) }
+                            }
+                        }
+                    }
+                }
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+        }
+
+        val finalSnapshot = snapshot ?: throw IllegalArgumentException("Backup archive is missing library.json")
+        return BackupPackageReadResult(
+            snapshot = finalSnapshot,
+            downloadCounts = OmniBackupCounts(
+                downloadedAudioFiles = audioFileCount,
+                downloadedAudioBytes = audioBytes,
+            ),
+            stagedDownloadDir = stagedDir,
+        )
+    }
+
     private fun validate(snapshot: OmniBackupSnapshot) {
         require(snapshot.appName == "OmniTune") { "This backup was not created by OmniTune" }
         require(snapshot.formatVersion in 1..OMNI_BACKUP_FORMAT_VERSION) {
@@ -138,7 +290,10 @@ class OmniBackupRepository @Inject constructor(
         }
     }
 
-    private suspend fun MusicDatabase.restoreMerge(snapshot: OmniBackupSnapshot): OmniBackupCounts {
+    private suspend fun MusicDatabase.restoreMerge(
+        snapshot: OmniBackupSnapshot,
+        restoreDownloadedAudioState: Boolean,
+    ): OmniBackupCounts {
         var counts = OmniBackupCounts()
         val validSongIds = snapshot.songs.map { it.id }.filter { it.isNotBlank() }.toSet()
 
@@ -178,7 +333,7 @@ class OmniBackupRepository @Inject constructor(
                 return@forEach
             }
             val existing = backupSongById(song.id)
-            val merged = song.toSongEntity(existing)
+            val merged = song.toSongEntity(existing, restoreDownloadedAudioState)
             if (existing == null) {
                 insert(merged)
                 counts = counts.copy(
@@ -255,6 +410,38 @@ class OmniBackupRepository @Inject constructor(
                 counts = counts.copy(playlistEntries = counts.playlistEntries + 1)
             }
 
+        val validTagIds = snapshot.tags.map { it.id }.filter { it.isNotBlank() }.toSet()
+        snapshot.tags.forEach { tag ->
+            if (tag.id.isBlank() || tag.name.isBlank()) {
+                counts = counts.copy(skippedInvalidRows = counts.skippedInvalidRows + 1)
+                return@forEach
+            }
+            val existing = backupTagById(tag.id)
+            val entity = tag.toTagEntity(existing)
+            if (existing == null) {
+                insert(entity)
+                counts = counts.copy(tags = counts.tags + 1)
+            } else {
+                update(entity)
+            }
+        }
+
+        snapshot.playlistTags.forEach { map ->
+            val targetPlaylistId = playlistIdMap[map.playlistId] ?: map.playlistId
+            if (targetPlaylistId.isBlank() || map.tagId !in validTagIds) {
+                counts = counts.copy(skippedInvalidRows = counts.skippedInvalidRows + 1)
+                return@forEach
+            }
+            insert(
+                PlaylistTagMap(
+                    playlistId = targetPlaylistId,
+                    tagId = map.tagId,
+                    createdAt = map.createdAtEpochMillis.toLocalDateTimeOrNull() ?: LocalDateTime.now(),
+                ),
+            )
+            counts = counts.copy(playlistTags = counts.playlistTags + 1)
+        }
+
         snapshot.history.forEach { item ->
             val timestamp = item.timestampEpochMillis.toLocalDateTimeOrNull()
             if (item.songId !in validSongIds || timestamp == null || item.playTime < 0) {
@@ -290,6 +477,21 @@ class OmniBackupRepository @Inject constructor(
         }
 
         return counts
+    }
+
+    private suspend fun MusicDatabase.clearLibraryForReplace() {
+        backupClearPlaylistTagMaps()
+        backupClearTags()
+        backupClearEvents()
+        backupClearPlayCounts()
+        backupClearPlaylistSongMaps()
+        backupClearPlaylists()
+        backupClearSongArtistMaps()
+        backupClearSongAlbumMaps()
+        backupClearAlbumArtistMaps()
+        backupClearSongs()
+        backupClearAlbums()
+        backupClearArtists()
     }
 
     private suspend fun MusicDatabase.resolvePlaylistTarget(playlist: BackupPlaylist): PlaylistTarget {
@@ -329,6 +531,12 @@ class OmniBackupRepository @Inject constructor(
         val entity: PlaylistEntity,
         val isNew: Boolean,
     )
+
+    private data class BackupPackageReadResult(
+        val snapshot: OmniBackupSnapshot,
+        val downloadCounts: OmniBackupCounts = OmniBackupCounts(),
+        val stagedDownloadDir: File? = null,
+    )
 }
 
 private fun OmniBackupSnapshot.exportedCounts() = OmniBackupCounts(
@@ -340,6 +548,8 @@ private fun OmniBackupSnapshot.exportedCounts() = OmniBackupCounts(
     albums = albums.size,
     historyItems = history.size,
     statRecords = stats.size,
+    tags = tags.size,
+    playlistTags = playlistTags.size,
 )
 
 private fun SongEntity.toBackupSong() = BackupSong(
@@ -362,7 +572,10 @@ private fun SongEntity.toBackupSong() = BackupSong(
     downloadState = downloadState,
 )
 
-private fun BackupSong.toSongEntity(existing: SongEntity?) = SongEntity(
+private fun BackupSong.toSongEntity(
+    existing: SongEntity?,
+    restoreDownloadedAudioState: Boolean,
+) = SongEntity(
     id = id,
     title = title.ifBlank { existing?.title ?: "Unknown title" },
     duration = if (duration >= 0) duration else existing?.duration ?: -1,
@@ -379,7 +592,7 @@ private fun BackupSong.toSongEntity(existing: SongEntity?) = SongEntity(
     inLibrary = earliest(existing?.inLibrary, inLibraryEpochMillis.toLocalDateTimeOrNull()),
     dateDownload = existing?.dateDownload ?: dateDownloadEpochMillis.toLocalDateTimeOrNull(),
     isLocal = isLocal || (existing?.isLocal == true),
-    downloadState = existing?.downloadState ?: 0,
+    downloadState = existing?.downloadState ?: if (restoreDownloadedAudioState) downloadState else 0,
 )
 
 private fun ArtistEntity.toBackupArtist() = BackupArtist(
@@ -505,6 +718,26 @@ private fun AlbumArtistMap.toBackupAlbumArtist() = BackupAlbumArtist(
     order = order,
 )
 
+private fun TagEntity.toBackupTag() = BackupTag(
+    id = id,
+    name = name,
+    color = color,
+    createdAtEpochMillis = createdAt.toEpochMillisOrNull(),
+)
+
+private fun BackupTag.toTagEntity(existing: TagEntity?) = TagEntity(
+    id = id,
+    name = name.ifBlank { existing?.name ?: "Restored tag" },
+    color = color.ifBlank { existing?.color ?: "#FF6B6B" },
+    createdAt = existing?.createdAt ?: createdAtEpochMillis.toLocalDateTimeOrNull() ?: LocalDateTime.now(),
+)
+
+private fun PlaylistTagMap.toBackupPlaylistTag() = BackupPlaylistTag(
+    playlistId = playlistId,
+    tagId = tagId,
+    createdAtEpochMillis = createdAt.toEpochMillisOrNull(),
+)
+
 private fun Event.toBackupHistoryItem() = BackupHistoryItem(
     songId = songId,
     timestampEpochMillis = timestamp.toEpochMillisOrNull() ?: 0L,
@@ -536,4 +769,25 @@ private fun latest(a: LocalDateTime?, b: LocalDateTime?): LocalDateTime? = when 
     b == null -> a
     a >= b -> a
     else -> b
+}
+
+private class CountingOutputStream(
+    outputStream: OutputStream,
+) : FilterOutputStream(outputStream) {
+    var bytesWritten: Long = 0
+        private set
+
+    override fun write(b: Int) {
+        out.write(b)
+        bytesWritten++
+    }
+
+    override fun write(
+        b: ByteArray,
+        off: Int,
+        len: Int,
+    ) {
+        out.write(b, off, len)
+        bytesWritten += len
+    }
 }

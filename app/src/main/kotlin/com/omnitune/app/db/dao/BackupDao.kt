@@ -14,9 +14,11 @@ import com.omnitune.app.db.entities.Event
 import com.omnitune.app.db.entities.PlayCountEntity
 import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.PlaylistSongMap
+import com.omnitune.app.db.entities.PlaylistTagMap
 import com.omnitune.app.db.entities.SongAlbumMap
 import com.omnitune.app.db.entities.SongArtistMap
 import com.omnitune.app.db.entities.SongEntity
+import com.omnitune.app.db.entities.TagEntity
 import java.time.LocalDateTime
 
 @Dao
@@ -141,6 +143,12 @@ interface BackupDao {
     @Query("SELECT * FROM playCount ORDER BY song, year, month")
     suspend fun backupPlayCounts(): List<PlayCountEntity>
 
+    @Query("SELECT * FROM tag ORDER BY name")
+    suspend fun backupTags(): List<TagEntity>
+
+    @Query("SELECT * FROM playlist_tag_map ORDER BY playlistId, tagId")
+    suspend fun backupPlaylistTagMaps(): List<PlaylistTagMap>
+
     @Query("SELECT * FROM song WHERE id = :id LIMIT 1")
     suspend fun backupSongById(id: String): SongEntity?
 
@@ -155,6 +163,9 @@ interface BackupDao {
 
     @Query("SELECT * FROM playlist WHERE name = :name LIMIT 1")
     suspend fun backupPlaylistByName(name: String): PlaylistEntity?
+
+    @Query("SELECT * FROM tag WHERE id = :id LIMIT 1")
+    suspend fun backupTagById(id: String): TagEntity?
 
     @Query(
         """
@@ -200,4 +211,40 @@ interface BackupDao {
         month: Int,
         count: Int,
     )
+
+    @Query("DELETE FROM playlist_tag_map")
+    suspend fun backupClearPlaylistTagMaps()
+
+    @Query("DELETE FROM tag")
+    suspend fun backupClearTags()
+
+    @Query("DELETE FROM event")
+    suspend fun backupClearEvents()
+
+    @Query("DELETE FROM playCount")
+    suspend fun backupClearPlayCounts()
+
+    @Query("DELETE FROM playlist_song_map")
+    suspend fun backupClearPlaylistSongMaps()
+
+    @Query("DELETE FROM playlist")
+    suspend fun backupClearPlaylists()
+
+    @Query("DELETE FROM song_artist_map")
+    suspend fun backupClearSongArtistMaps()
+
+    @Query("DELETE FROM song_album_map")
+    suspend fun backupClearSongAlbumMaps()
+
+    @Query("DELETE FROM album_artist_map")
+    suspend fun backupClearAlbumArtistMaps()
+
+    @Query("DELETE FROM song")
+    suspend fun backupClearSongs()
+
+    @Query("DELETE FROM album")
+    suspend fun backupClearAlbums()
+
+    @Query("DELETE FROM artist")
+    suspend fun backupClearArtists()
 }

@@ -7,4 +7,5 @@ package com.omnitune.app.backup
 
 enum class OmniRestoreMode {
     MERGE,
+    REPLACE,
 }

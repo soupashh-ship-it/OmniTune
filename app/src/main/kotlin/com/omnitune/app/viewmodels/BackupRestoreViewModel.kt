@@ -59,11 +59,19 @@ class BackupRestoreViewModel @Inject constructor(
         .map { it[LastLibraryBackupAtKey] }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun backup(context: Context, uri: Uri) = viewModelScope.launch {
+    fun backup(
+        context: Context,
+        uri: Uri,
+        includeDownloadedAudio: Boolean,
+    ) = viewModelScope.launch {
         _result.value = BackupRestoreResult.Idle
         _progress.value = BackupRestoreProgress(
             title = "Creating library backup",
-            step = "Collecting library, playlists, history, and stats",
+            step = if (includeDownloadedAudio) {
+                "Collecting library and app-managed offline audio"
+            } else {
+                "Collecting library, playlists, history, and stats"
+            },
             percent = 0,
             indeterminate = true,
         )
@@ -71,7 +79,10 @@ class BackupRestoreViewModel @Inject constructor(
         try {
             val outputStream = context.contentResolver.openOutputStream(uri)
                 ?: throw IllegalStateException("Could not open backup destination")
-            val exportResult = backupRepository.exportBackup(outputStream)
+            val exportResult = backupRepository.exportBackup(
+                outputStream = outputStream,
+                includeDownloadedAudio = includeDownloadedAudio,
+            )
 
             dataStore.edit { prefs ->
                 prefs[LastLibraryBackupAtKey] = exportResult.createdAtEpochMillis
@@ -80,7 +91,11 @@ class BackupRestoreViewModel @Inject constructor(
             _progress.value = null
             _result.value = BackupRestoreResult.Success(
                 title = "Backup created",
-                message = "Saved ${formatFileSize(exportResult.byteCount)} JSON backup.",
+                message = if (includeDownloadedAudio) {
+                    "Saved ${formatFileSize(exportResult.byteCount)} full backup archive."
+                } else {
+                    "Saved ${formatFileSize(exportResult.byteCount)} JSON backup."
+                },
                 counts = exportResult.counts,
             )
         } catch (e: Exception) {
@@ -91,11 +106,19 @@ class BackupRestoreViewModel @Inject constructor(
         }
     }
 
-    fun restore(context: Context, uri: Uri) = viewModelScope.launch {
+    fun restore(
+        context: Context,
+        uri: Uri,
+        replaceExisting: Boolean,
+    ) = viewModelScope.launch {
         _result.value = BackupRestoreResult.Idle
         _progress.value = BackupRestoreProgress(
             title = "Importing library backup",
-            step = "Validating JSON and merging records",
+            step = if (replaceExisting) {
+                "Validating backup and replacing library records"
+            } else {
+                "Validating backup and merging records"
+            },
             percent = 0,
             indeterminate = true,
         )
@@ -103,12 +126,26 @@ class BackupRestoreViewModel @Inject constructor(
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
                 ?: throw IllegalStateException("Could not open backup file")
-            val importResult = backupRepository.importBackup(inputStream, OmniRestoreMode.MERGE)
+            val importResult = backupRepository.importBackup(
+                inputStream = inputStream,
+                mode = if (replaceExisting) OmniRestoreMode.REPLACE else OmniRestoreMode.MERGE,
+            )
 
             _progress.value = null
             _result.value = BackupRestoreResult.Success(
                 title = "Backup imported",
-                message = "Merged OmniTune backup format v${importResult.formatVersion}.",
+                message = buildString {
+                    append(
+                        if (replaceExisting) {
+                            "Replaced library with OmniTune backup format v${importResult.formatVersion}."
+                        } else {
+                            "Merged OmniTune backup format v${importResult.formatVersion}."
+                        },
+                    )
+                    if (importResult.offlineAudioRestorePending) {
+                        append(" Offline audio will be applied after app restart.")
+                    }
+                },
                 counts = importResult.counts,
             )
         } catch (e: Exception) {

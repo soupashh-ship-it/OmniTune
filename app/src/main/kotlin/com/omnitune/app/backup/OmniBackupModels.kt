@@ -26,6 +26,8 @@ data class OmniBackupSnapshot(
     val songArtists: List<BackupSongArtist> = emptyList(),
     val songAlbums: List<BackupSongAlbum> = emptyList(),
     val albumArtists: List<BackupAlbumArtist> = emptyList(),
+    val tags: List<BackupTag> = emptyList(),
+    val playlistTags: List<BackupPlaylistTag> = emptyList(),
     val history: List<BackupHistoryItem> = emptyList(),
     val stats: List<BackupStatsItem> = emptyList(),
     val settings: BackupSettingsSection? = null,
@@ -41,6 +43,8 @@ data class BackupLibrarySection(
     val exportedAlbumCount: Int = 0,
     val exportedHistoryItemCount: Int = 0,
     val exportedStatsRecordCount: Int = 0,
+    val exportedTagCount: Int = 0,
+    val exportedPlaylistTagCount: Int = 0,
 )
 
 @Serializable
@@ -144,6 +148,21 @@ data class BackupAlbumArtist(
     val albumId: String,
     val artistId: String,
     val order: Int = 0,
+)
+
+@Serializable
+data class BackupTag(
+    val id: String,
+    val name: String,
+    val color: String = "#FF6B6B",
+    val createdAtEpochMillis: Long? = null,
+)
+
+@Serializable
+data class BackupPlaylistTag(
+    val playlistId: String,
+    val tagId: String,
+    val createdAtEpochMillis: Long? = null,
 )
 
 @Serializable

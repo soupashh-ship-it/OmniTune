@@ -14,6 +14,10 @@ data class OmniBackupCounts(
     val albums: Int = 0,
     val historyItems: Int = 0,
     val statRecords: Int = 0,
+    val tags: Int = 0,
+    val playlistTags: Int = 0,
+    val downloadedAudioFiles: Int = 0,
+    val downloadedAudioBytes: Long = 0,
     val skippedDuplicates: Int = 0,
     val skippedInvalidRows: Int = 0,
 ) {
@@ -26,6 +30,10 @@ data class OmniBackupCounts(
         albums = albums + other.albums,
         historyItems = historyItems + other.historyItems,
         statRecords = statRecords + other.statRecords,
+        tags = tags + other.tags,
+        playlistTags = playlistTags + other.playlistTags,
+        downloadedAudioFiles = downloadedAudioFiles + other.downloadedAudioFiles,
+        downloadedAudioBytes = downloadedAudioBytes + other.downloadedAudioBytes,
         skippedDuplicates = skippedDuplicates + other.skippedDuplicates,
         skippedInvalidRows = skippedInvalidRows + other.skippedInvalidRows,
     )
@@ -41,4 +49,5 @@ data class OmniBackupImportResult(
     val counts: OmniBackupCounts,
     val formatVersion: Int,
     val createdAtEpochMillis: Long,
+    val offlineAudioRestorePending: Boolean = false,
 )

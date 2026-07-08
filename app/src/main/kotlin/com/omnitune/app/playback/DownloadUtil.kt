@@ -11,6 +11,7 @@ import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
+import com.omnitune.app.backup.OfflineDownloadArchive
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
@@ -32,12 +33,7 @@ class DownloadUtil @Inject constructor(
     }
 
     val downloadCache: SimpleCache by lazy {
-        val externalMusicDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC)
-        val downloadDir = if (externalMusicDir != null) {
-            File(externalMusicDir, "downloads")
-        } else {
-            File(context.filesDir, "downloads")
-        }
+        val downloadDir = OfflineDownloadArchive.downloadDirectory(context)
         if (!downloadDir.exists()) downloadDir.mkdirs()
         SimpleCache(downloadDir, NoOpCacheEvictor(), databaseProvider)
     }
