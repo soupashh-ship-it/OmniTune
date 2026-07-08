@@ -9,6 +9,8 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.discovery.MoodGenreCategories
+import com.omnitune.app.discovery.MoodGenreResolver
 import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.isInternetAvailable
@@ -63,6 +65,7 @@ class HomeCollectionViewModel @Inject constructor(
     private val collectionId: String = checkNotNull(savedStateHandle["collectionId"])
     private val initialArtworkUrl: String? = savedStateHandle["artworkUrl"]
     private val metadata = HomeDefaultCatalog.findCollection(collectionId)
+    private val moodGenreResolver = MoodGenreResolver()
 
     private val _uiState = MutableStateFlow(
         HomeCollectionUiState(
@@ -77,7 +80,7 @@ class HomeCollectionViewModel @Inject constructor(
     }
 
     fun retry() {
-        collectionCache.remove(collectionId)
+        metadata?.let { collectionCache.remove(it.cacheKey()) } ?: collectionCache.remove(collectionId)
         load(forceRefresh = true)
     }
 
@@ -89,7 +92,7 @@ class HomeCollectionViewModel @Inject constructor(
         if (_uiState.value.isLoading) return
 
         if (!forceRefresh) {
-            collectionCache[collectionId]?.let { cached ->
+            collectionCache[collection.cacheKey()]?.let { cached ->
                 _uiState.update { current ->
                     current.copy(
                         songs = cached.songs,
@@ -119,7 +122,7 @@ class HomeCollectionViewModel @Inject constructor(
                     val songs = result
                     val headerArtworkUrl = songs.firstOrNull()?.thumbnail?.resize(544, 544)
                     if (songs.isNotEmpty()) {
-                        collectionCache[collectionId] = CachedCollection(
+                        collectionCache[collection.cacheKey()] = CachedCollection(
                             songs = songs,
                             headerArtworkUrl = headerArtworkUrl,
                         )
@@ -147,6 +150,12 @@ class HomeCollectionViewModel @Inject constructor(
     }
 
     private suspend fun loadCollectionSongs(collection: HomeCollectionMetadata): Result<List<SongItem>> {
+        val category = MoodGenreCategories.forCollection(collection)
+        if (category != null) {
+            return moodGenreResolver.loadCategorySongs(category, collection.maxItems)
+                .map { result -> result.songs }
+        }
+
         val providerId = collection.providerId
         if (!providerId.isNullOrBlank()) {
             return when (collection.actionType) {
@@ -284,4 +293,13 @@ class HomeCollectionViewModel @Inject constructor(
 
             allSongs.distinctBy { it.id }.take(collection.maxItems)
         }
+
+    private fun HomeCollectionMetadata.cacheKey(): String {
+        val category = MoodGenreCategories.forCollection(this)
+        return if (category != null) {
+            "category:${category.id}:v${category.queryVersion}"
+        } else {
+            id
+        }
+    }
 }
