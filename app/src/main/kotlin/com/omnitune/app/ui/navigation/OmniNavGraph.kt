@@ -271,7 +271,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
-                    onNavigateToAllGenres = { navController.navigate("all_genres") },
+                    onNavigateToAllGenres = { navController.navigate(Screens.MoodAndGenres.route) },
                     onResumePlayback = { navController.navigate("player") },
                     onNavigateToExplore = { route -> navController.navigate(route) },
                     onPlaySong = { song ->
@@ -371,7 +371,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 com.omnitune.app.ui.screens.NewReleaseScreen(navController = navController)
             }
             composable(Screens.MoodAndGenres.route) {
-                com.omnitune.app.ui.screens.MoodAndGenresScreen(navController = navController)
+                com.omnitune.app.ui.screens.MoodAndGenresScreen(
+                    onBack = { navController.popBackStack() },
+                    onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) },
+                )
             }
             composable(Screens.YouTubeBrowse.route) {
                 com.omnitune.app.ui.screens.YouTubeBrowseScreen(navController = navController)

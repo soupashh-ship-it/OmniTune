@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -127,6 +128,7 @@ fun HomeDiscoveryRoute(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        HomeAmbientBackground(modifier = Modifier.fillMaxSize())
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -311,6 +313,44 @@ fun HomeDiscoveryRoute(
         }
 
         SupportDevelopmentDialog()
+    }
+}
+
+@Composable
+private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
+    val accents = LocalOmniAccents.current
+    Box(
+        modifier = modifier.background(OmniColors.BackgroundGradient),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            accents.primary.copy(alpha = 0.20f),
+                            accents.secondary.copy(alpha = 0.10f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(90f, 120f),
+                        radius = 620f,
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            accents.tertiary.copy(alpha = 0.14f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(980f, 360f),
+                        radius = 760f,
+                    ),
+                ),
+        )
     }
 }
 

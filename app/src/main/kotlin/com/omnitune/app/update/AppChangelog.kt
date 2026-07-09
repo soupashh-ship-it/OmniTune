@@ -8,31 +8,31 @@ object AppChangelog {
         releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
         source = ChangelogSource.Bundled,
         body = """
-# OmniTune v0.11.3
+# OmniTune v0.11.4
 
-This release polishes the full-screen player and remasters the Settings About page with accurate app metadata, verified links, and a cleaner OmniTune-native layout.
+This release upgrades Home discovery with a deeper Mood and Genres experience, smoother visual polish, and richer personalized listening rails.
 
 ## Fixes & Improvements
 
-- Fixed the full-screen player header so it shows the current song title instead of the app name.
-- Added inline synced lyric subtitles under the main song title when real LRC or TTML lyrics are available.
-- Improved inline lyric readability with album-art-matched accent color, smooth color transitions, and a subtle tinted backing on the active lyric.
-- Kept artist and album metadata as the fallback when lyrics are missing, loading, failed, or unsynced.
-- Added smooth lyric line transitions and a tap target that opens the existing full lyrics sheet.
-- Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.
-- Remastered Settings > About with a premium OmniTune identity card, verified developer and inspiration links, dynamic install/version details, and accurate GPL-3.0 license information.
-- Updated Settings > About with real GitHub avatar images and a working UPI support card for users who want to support OmniTune development.
+- Replaced the placeholder Mood and Genres screen with a real provider-backed catalog powered by YouTube Music mood and genre groups.
+- Added grouped Mood and Genres sections with polished two-column cards, provider accent colors, loading shimmer, retry handling, and mini-player-safe spacing.
+- Connected Home's Mood and Genres "Show all" action to the new deep catalog.
+- Opened mood and genre categories through OmniTune's existing collection flow so categories such as Chill, Workout, and Focus resolve real playable browse content.
+- Restored the personalized "Keep listening" shelf from listening history signals.
+- Improved recent discovery labeling with "Similar to [artist]" shelves when artist metadata is available.
+- Added a subtle dynamic ambient background to Home using OmniTune theme accents.
+- Kept playback, search, queue, downloads, playlists, and Settings paths unchanged.
 
 ## Verification
 
-- `clean assembleDebug`: passed
+- `assembleDebug`: passed
 - `testDebugUnitTest`: passed
 - `lintDebug`: passed
 
 ## Build
 
-- Version: `0.11.3`
-- Version code: `53`
+- Version: `0.11.4`
+- Version code: `54`
         """.trimIndent(),
     )
 }

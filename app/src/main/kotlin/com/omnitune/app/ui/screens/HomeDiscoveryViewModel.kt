@@ -377,7 +377,6 @@ class HomeDiscoveryViewModel @Inject constructor(
                 items = mergeSongs(likedSongs, librarySongs).take(12).map { it.toShelfItem("library") },
             ),
             personalizedSections = recommendations.sections
-                .filter { it.id != "personal_for_you" }
                 .map { section ->
                     section.copy(items = section.items.map { it.withHydration(previews) })
                 },

@@ -67,7 +67,7 @@ object HomeRecommendationEngine {
                 add(
                     HomeSection(
                         id = "personal_for_you",
-                        title = "For You",
+                        title = "Keep listening",
                         items = songs.map { it.toRecommendedShelfItem("for_you", "Based on your listening") },
                     ),
                 )
@@ -82,7 +82,7 @@ object HomeRecommendationEngine {
                     add(
                         HomeSection(
                             id = "more_like_recent",
-                            title = "More like ${song.title.take(32)}",
+                            title = if (artist.isNotBlank()) "Similar to ${artist.take(32)}" else "More like ${song.title.take(32)}",
                             items = listOf(
                                 PlaylistShelfItem(
                                     id = HomeDefaultCatalog.queryCollectionId(query),
