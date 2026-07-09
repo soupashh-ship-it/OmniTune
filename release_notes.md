@@ -1,5 +1,5 @@
-# Unreleased
-**Full Player Polish**
+# OmniTune v0.11.3
+**Full Player and About Screen Polish**
 
 ### Fixes & Improvements
 * Fixed the full-screen player header so it shows the current song title instead of the app name.
@@ -13,6 +13,9 @@
 * `clean assembleDebug`: passed
 * `testDebugUnitTest`: passed
 * `lintDebug`: passed
+
+### Build
+* Version: **0.11.3** (code 53)
 
 ---
 

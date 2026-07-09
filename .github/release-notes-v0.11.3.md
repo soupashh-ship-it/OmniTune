@@ -1,18 +1,8 @@
-package com.omnitune.app.update
-
-import com.omnitune.app.BuildConfig
-
-object AppChangelog {
-    val bundled = ChangelogRelease(
-        versionName = BuildConfig.VERSION_NAME,
-        releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
-        source = ChangelogSource.Bundled,
-        body = """
 # OmniTune v0.11.3
 
-This release polishes the full-screen player and remasters the Settings About page with accurate app metadata, verified links, and a cleaner OmniTune-native layout.
+## Full Player and About Screen Polish
 
-## Fixes & Improvements
+### Fixes & Improvements
 
 - Fixed the full-screen player header so it shows the current song title instead of the app name.
 - Added inline synced lyric subtitles under the main song title when real LRC or TTML lyrics are available.
@@ -21,29 +11,13 @@ This release polishes the full-screen player and remasters the Settings About pa
 - Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.
 - Remastered Settings > About with a premium OmniTune identity card, verified developer and inspiration links, dynamic install/version details, and accurate GPL-3.0 license information.
 
-## Verification
+### Verification
 
 - `clean assembleDebug`: passed
 - `testDebugUnitTest`: passed
 - `lintDebug`: passed
 
-## Build
+### Build
 
 - Version: `0.11.3`
 - Version code: `53`
-        """.trimIndent(),
-    )
-}
-
-data class ChangelogRelease(
-    val versionName: String,
-    val releaseName: String,
-    val source: ChangelogSource,
-    val body: String,
-    val publishedAt: String? = null,
-)
-
-enum class ChangelogSource {
-    Bundled,
-    GitHub,
-}
