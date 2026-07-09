@@ -16,6 +16,7 @@ This release polishes the full-screen player and remasters the Settings About pa
 
 - Fixed the full-screen player header so it shows the current song title instead of the app name.
 - Added inline synced lyric subtitles under the main song title when real LRC or TTML lyrics are available.
+- Improved inline lyric readability with album-art-matched accent color, smooth color transitions, and a subtle tinted backing on the active lyric.
 - Kept artist and album metadata as the fallback when lyrics are missing, loading, failed, or unsynced.
 - Added smooth lyric line transitions and a tap target that opens the existing full lyrics sheet.
 - Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.

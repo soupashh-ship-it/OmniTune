@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -287,6 +288,7 @@ fun PlayerScreen(
                     Spacer(modifier = Modifier.height(largeGap))
                     MetadataBlock(
                         playerConnection = playerConnection,
+                        lyricAccentColor = dynamicPalette.accent,
                         onOpenLyrics = { showLyricsSheet = true },
                         onShare = {
                             showOptionsSheet = false
@@ -666,6 +668,7 @@ private fun ArtworkHero(
 @Composable
 private fun MetadataBlock(
     playerConnection: PlayerConnection?,
+    lyricAccentColor: Color,
     onOpenLyrics: () -> Unit,
     onShare: () -> Unit
 ) {
@@ -729,6 +732,7 @@ private fun MetadataBlock(
                 InlineLyricSubtitle(
                     state = lyricsState,
                     fallbackText = fallbackSubtitle,
+                    accentColor = lyricAccentColor,
                     onOpenLyrics = onOpenLyrics,
                 )
             }
@@ -757,9 +761,39 @@ private fun MetadataBlock(
 private fun InlineLyricSubtitle(
     state: InlineLyricState,
     fallbackText: String,
+    accentColor: Color,
     onOpenLyrics: () -> Unit,
 ) {
     val showLyrics = state.isSynced && state.hasLyrics && !state.currentLine.isNullOrBlank()
+    val targetActiveColor = remember(accentColor) { accentColor.toInlineLyricActiveColor() }
+    val targetNextColor = remember(targetActiveColor) {
+        lerp(OmniColors.TextSecondary, targetActiveColor, 0.42f).copy(alpha = 0.82f)
+    }
+    val targetContainerColor = remember(targetActiveColor) { targetActiveColor.copy(alpha = 0.12f) }
+    val activeColor by animateColorAsState(
+        targetValue = targetActiveColor,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "inline_lyric_active_color",
+    )
+    val nextColor by animateColorAsState(
+        targetValue = targetNextColor,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "inline_lyric_next_color",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = targetContainerColor,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "inline_lyric_container_color",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -767,8 +801,17 @@ private fun InlineLyricSubtitle(
                 if (showLyrics) {
                     Modifier
                         .clip(OmniShapes.Small)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    containerColor,
+                                    containerColor.copy(alpha = 0.05f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                        )
                         .clickable(onClick = onOpenLyrics)
-                        .padding(vertical = 2.dp)
+                        .padding(horizontal = OmniSpacing.small, vertical = 6.dp)
                 } else {
                     Modifier
                 }
@@ -778,7 +821,7 @@ private fun InlineLyricSubtitle(
         Text(
             text = state.currentLine.takeIf { showLyrics } ?: fallbackText,
             style = MaterialTheme.typography.titleMedium,
-            color = if (showLyrics) OmniColors.TextPrimary.copy(alpha = 0.94f) else OmniColors.TextSecondary,
+            color = if (showLyrics) activeColor else OmniColors.TextSecondary,
             maxLines = if (showLyrics) 2 else 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -786,11 +829,20 @@ private fun InlineLyricSubtitle(
             Text(
                 text = state.nextLine,
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary.copy(alpha = 0.72f),
+                color = nextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+private fun Color.toInlineLyricActiveColor(): Color {
+    val lifted = lerp(this, Color.White, if (luminance() < 0.36f) 0.38f else 0.22f)
+    return if (lifted.luminance() < 0.44f) {
+        lerp(lifted, Color.White, 0.24f)
+    } else {
+        lifted
     }
 }
 
