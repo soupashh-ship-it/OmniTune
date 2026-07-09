@@ -47,7 +47,7 @@ class MoodAndGenresViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
-                withTimeout(20_000L) {
+                withTimeout(8_000L) {
                     YouTube.moodAndGenres().getOrThrow()
                 }
             }

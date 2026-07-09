@@ -66,6 +66,13 @@ fun MoodAndGenresScreen(
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val fallbackChips = GenreChipsHolder.chips.filter { chip ->
+        val metadata = HomeDefaultCatalog.findCollection(chip.id)
+        metadata?.source == HomeCatalogSource.ProviderBrowse &&
+            metadata.actionType == HomeActionType.OPEN_BROWSE &&
+            !metadata.providerId.isNullOrBlank()
+    }
+    val showFallbackChips = uiState.groups.isEmpty() && fallbackChips.isNotEmpty()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -91,13 +98,23 @@ fun MoodAndGenresScreen(
                 MoodGenresHero(totalCategories = uiState.totalCategories)
             }
 
-            if (uiState.isLoading) {
+            if (uiState.isLoading && !showFallbackChips) {
                 item(contentType = "loading") {
                     MoodGenresLoading()
                 }
             }
 
-            uiState.error?.let { error ->
+            if (showFallbackChips) {
+                item(key = "cached_categories", contentType = "cached-group") {
+                    MoodChipBrowseGroup(
+                        title = if (uiState.isLoading) "Mood and Genres" else "Recently loaded categories",
+                        chips = fallbackChips,
+                        onBrowse = onBrowse,
+                    )
+                }
+            }
+
+            uiState.error?.takeUnless { showFallbackChips }?.let { error ->
                 item(contentType = "error") {
                     MoodGenresError(message = error, onRetry = viewModel::retry)
                 }
@@ -201,6 +218,111 @@ private fun MoodGenresHero(totalCategories: Int) {
                 text = if (totalCategories > 0) "$totalCategories playable categories" else "Loading categories",
                 style = OmniTextStyles.metadata,
                 color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MoodChipBrowseGroup(
+    title: String,
+    chips: List<MoodChip>,
+    onBrowse: (String, String?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+        OmniSectionHeader(title = title)
+        chips.chunked(2).forEachIndexed { rowIndex, row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                row.forEachIndexed { columnIndex, chip ->
+                    val index = rowIndex * 2 + columnIndex
+                    val metadata = HomeDefaultCatalog.findCollection(chip.id)
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(delayMillis = OmniMotion.listItemDelayMs(index, 18, 12))) +
+                            slideInVertically(
+                                animationSpec = spring(dampingRatio = 0.82f),
+                                initialOffsetY = { it / 5 },
+                            ),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        MoodChipBrowseButton(
+                            chip = chip,
+                            index = index,
+                            onClick = {
+                                val providerId = metadata?.providerId
+                                if (!providerId.isNullOrBlank()) {
+                                    onBrowse(providerId, metadata.browseParams)
+                                }
+                            },
+                        )
+                    }
+                }
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoodChipBrowseButton(
+    chip: MoodChip,
+    index: Int,
+    onClick: () -> Unit,
+) {
+    val fallbackAccents = listOf(
+        LocalOmniAccents.current.secondary,
+        LocalOmniAccents.current.primary,
+        OmniColors.OmniAccentTertiary,
+        OmniColors.Hot,
+        OmniColors.Warning,
+    )
+    val accent = fallbackAccents[index % fallbackAccents.size]
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 58.dp)
+            .clip(OmniShapes.Medium)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        OmniColors.SurfaceSubtle.copy(alpha = 0.88f),
+                        accent.copy(alpha = 0.12f),
+                    ),
+                ),
+            )
+            .border(1.dp, accent.copy(alpha = 0.12f), OmniShapes.Medium)
+            .clickable(onClick = onClick)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(OmniShapes.Pill)
+                .background(accent),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = chip.label,
+                style = OmniTextStyles.songTitle,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Browse",
+                style = OmniTextStyles.caption,
+                color = OmniColors.TextTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

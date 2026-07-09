@@ -84,13 +84,14 @@ import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.utils.resize
 import com.omnitune.app.utils.dataStore
 import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
-private const val HERO_IMAGE_SIZE = 480
+private const val HERO_IMAGE_SIZE = 960
 private const val SHELF_IMAGE_SIZE = 160
 private const val SUPPORT_REPO_URL = "https://github.com/soupashh-ship-it/OmniTune"
 private const val SUPPORT_PROMPT_LAUNCH_THRESHOLD = 3
@@ -645,17 +646,6 @@ private fun HeroCard(
                 .align(Alignment.BottomStart)
                 .padding(OmniSpacing.large),
         ) {
-            Text(
-                text = if (item.song != null || item.providerSong != null) "Play" else "Open",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = LocalOmniAccents.current.secondary,
-                modifier = Modifier
-                    .clip(OmniShapes.Pill)
-                    .background(LocalOmniAccents.current.secondary.copy(alpha = 0.12f))
-                    .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
-            )
-            Spacer(modifier = Modifier.height(OmniSpacing.small))
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleLarge,
@@ -1304,11 +1294,12 @@ private fun DiscoveryArtwork(
     val context = LocalContext.current
     val model = remember(thumbnailUrl, imageSize) {
         thumbnailUrl?.takeIf { it.isNotBlank() }?.let {
+            val artworkUrl = it.resize(imageSize, imageSize)
             ImageRequest.Builder(context)
-                .data(it)
+                .data(artworkUrl)
                 .size(imageSize, imageSize)
-                .memoryCacheKey(it)
-                .diskCacheKey(it)
+                .memoryCacheKey(artworkUrl)
+                .diskCacheKey(artworkUrl)
                 .crossfade(OmniMotion.ThumbnailFadeMillis)
                 .build()
         }

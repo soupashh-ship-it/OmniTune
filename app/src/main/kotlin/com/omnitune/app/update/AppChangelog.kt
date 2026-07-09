@@ -8,22 +8,16 @@ object AppChangelog {
         releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
         source = ChangelogSource.Bundled,
         body = """
-# OmniTune v0.11.4
+# OmniTune v0.11.5
 
-This release upgrades Home discovery with a deeper Mood and Genres experience, smoother visual polish, and richer personalized listening rails.
+This hotfix improves Mood and Genres reliability and cleans up the Home carousel artwork above Quick Picks.
 
 ## Fixes & Improvements
 
-- Replaced the placeholder Mood and Genres screen with a real provider-backed catalog powered by YouTube Music mood and genre groups.
-- Added grouped Mood and Genres sections with polished two-column cards, provider accent colors, loading shimmer, retry handling, and mini-player-safe spacing.
-- Connected Home's Mood and Genres "Show all" action to the new deep catalog.
-- Added a real YouTube Browse screen so categories such as Chill, Workout, and Focus open provider shelves directly instead of falling back to old search presets.
-- Made Home's visible Mood and Genres cards provider-backed so the six-card grid no longer routes to the old static playlist/search behavior when real categories are loaded.
-- Added timeout-backed loading and retry states so Mood and Genres cannot sit on an endless spinner when the provider stalls.
-- Restored the personalized "Keep listening" shelf from listening history signals.
-- Improved recent discovery labeling with "Similar to [artist]" shelves when artist metadata is available.
-- Added a subtle dynamic ambient background to Home using OmniTune theme accents.
-- Kept playback, search, queue, downloads, playlists, and Settings paths unchanged.
+- Fixed Mood and Genres "Show all" so it renders already-loaded Home provider categories immediately instead of waiting indefinitely for a fresh provider request.
+- Improved Home carousel artwork quality by requesting larger YouTube thumbnails and caching the high-resolution artwork URL.
+- Removed the "Play" / "Open" badge from Home carousel artwork so the cards show cleaner cover art above Quick Picks.
+- Kept the direct YouTube Browse category flow from 0.11.4 unchanged.
 
 ## Verification
 
@@ -33,8 +27,8 @@ This release upgrades Home discovery with a deeper Mood and Genres experience, s
 
 ## Build
 
-- Version: `0.11.4`
-- Version code: `54`
+- Version: `0.11.5`
+- Version code: `55`
         """.trimIndent(),
     )
 }
