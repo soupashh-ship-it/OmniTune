@@ -21,6 +21,7 @@ This release polishes the full-screen player and remasters the Settings About pa
 - Added smooth lyric line transitions and a tap target that opens the existing full lyrics sheet.
 - Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.
 - Remastered Settings > About with a premium OmniTune identity card, verified developer and inspiration links, dynamic install/version details, and accurate GPL-3.0 license information.
+- Updated Settings > About with real GitHub avatar images and a working UPI support card for users who want to support OmniTune development.
 
 ## Verification
 

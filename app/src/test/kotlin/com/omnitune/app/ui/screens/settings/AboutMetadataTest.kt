@@ -20,9 +20,15 @@ class AboutMetadataTest {
     }
 
     @Test
-    fun discordAndSupportRowsStayHiddenWithoutRealDestinations() {
+    fun discordRowStaysHiddenWithoutRealDestination() {
         assertNull(AboutDestinations.discordUrl)
         assertNull(AboutDestinations.supportUrl)
+    }
+
+    @Test
+    fun supportUpiUsesConfiguredOmniTuneDestination() {
+        assertEquals("shashankbisht352612@oksbi", AboutDestinations.supportUpi?.upiId)
+        assertEquals("Shashank Bisht", AboutDestinations.supportUpi?.payeeName)
     }
 
     @Test
@@ -44,5 +50,19 @@ class AboutMetadataTest {
     @Test
     fun invalidInstallDateReturnsUnknown() {
         assertEquals("Unknown", formatInstallDate(0L, Locale.US))
+    }
+
+    @Test
+    fun upiPaymentUriEncodesPayeeAndNote() {
+        val destination = UpiPaymentDestination(
+            upiId = "omnitune@example",
+            payeeName = "Omni Tune",
+            note = "Support OmniTune development",
+        )
+
+        assertEquals(
+            "upi://pay?pa=omnitune@example&pn=Omni%20Tune&tn=Support%20OmniTune%20development&cu=INR",
+            buildUpiPaymentUri(destination),
+        )
     }
 }

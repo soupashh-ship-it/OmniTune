@@ -5,7 +5,6 @@
 
 package com.omnitune.app.ui.screens.settings
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -38,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.R
 import com.omnitune.app.ui.theme.OmniColors
@@ -100,6 +103,18 @@ fun AboutSettings() {
                         iconRes = R.drawable.ic_info,
                     ),
                     onOpen = { open(it) },
+                )
+            }
+
+            AboutDestinations.supportUpi?.let { destination ->
+                SupportDeveloperCard(
+                    onPay = {
+                        if (!context.openUpiPayment(destination)) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("No UPI app found on this device.")
+                            }
+                        }
+                    },
                 )
             }
 
@@ -165,14 +180,6 @@ private fun AboutIdentityCard() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
         ) {
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher),
-                contentDescription = "OmniTune",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(OmniShapes.Large),
-            )
             Text(
                 text = "OMNITUNE",
                 style = MaterialTheme.typography.displaySmall,
@@ -243,6 +250,7 @@ private fun AboutExternalLinkRow(
         subtitle = entry.subtitle,
         iconRes = entry.iconRes,
         initials = entry.initials,
+        imageUrl = entry.imageUrl,
         modifier = modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = androidx.compose.material3.ripple(
@@ -266,6 +274,7 @@ private fun AboutInfoRow(
         subtitle = subtitle,
         iconRes = iconRes,
         initials = null,
+        imageUrl = null,
         modifier = modifier,
     )
 }
@@ -276,6 +285,7 @@ private fun AboutBaseRow(
     subtitle: String,
     iconRes: Int?,
     initials: String?,
+    imageUrl: String?,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -286,7 +296,7 @@ private fun AboutBaseRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
-        AboutLeadingMark(iconRes = iconRes, initials = initials)
+        AboutLeadingMark(iconRes = iconRes, initials = initials, imageUrl = imageUrl)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -312,6 +322,7 @@ private fun AboutBaseRow(
 private fun AboutLeadingMark(
     iconRes: Int?,
     initials: String?,
+    imageUrl: String?,
 ) {
     Box(
         modifier = Modifier
@@ -328,6 +339,14 @@ private fun AboutLeadingMark(
         contentAlignment = Alignment.Center,
     ) {
         when {
+            !imageUrl.isNullOrBlank() -> AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape),
+            )
             iconRes != null -> Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
@@ -340,6 +359,81 @@ private fun AboutLeadingMark(
                 fontWeight = FontWeight.ExtraBold,
                 color = OmniColors.TextPrimary,
             )
+        }
+    }
+}
+
+@Composable
+private fun SupportDeveloperCard(
+    onPay: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        shape = OmniShapes.Large,
+        colors = CardDefaults.cardColors(containerColor = OmniColors.SurfacePanel),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.16f),
+                            OmniColors.OmniGlassStrong.copy(alpha = 0.42f),
+                        ),
+                    ),
+                )
+                .padding(OmniSpacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "Like my work?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    text = "If you enjoy OmniTune, consider buying me a chai.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Button(
+                onClick = onPay,
+                shape = OmniShapes.Medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.92f),
+                    contentColor = if (OmniColors.OmniAccentPrimary.luminance() > 0.52f) Color.Black else Color.White,
+                ),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = OmniSpacing.medium,
+                    vertical = 0.dp,
+                ),
+                modifier = Modifier.height(40.dp),
+            ) {
+                Icon(
+                    painter = painterResource(android.R.drawable.ic_menu_send),
+                    contentDescription = "UPI",
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "UPI",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
