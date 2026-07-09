@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 data class MoodAndGenresUiState(
@@ -45,7 +46,11 @@ class MoodAndGenresViewModel @Inject constructor() : ViewModel() {
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            YouTube.moodAndGenres()
+            runCatching {
+                withTimeout(20_000L) {
+                    YouTube.moodAndGenres().getOrThrow()
+                }
+            }
                 .onSuccess { groups ->
                     _uiState.update {
                         it.copy(

@@ -62,7 +62,7 @@ import com.omnitune.innertube.pages.MoodAndGenres
 @Composable
 fun MoodAndGenresScreen(
     onBack: () -> Unit,
-    onChipClick: (MoodChip) -> Unit,
+    onBrowse: (String, String?) -> Unit,
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -108,7 +108,7 @@ fun MoodAndGenresScreen(
                     MoodGenresGroup(
                         group = group,
                         groupIndex = groupIndex,
-                        onChipClick = onChipClick,
+                        onBrowse = onBrowse,
                     )
                 }
             }
@@ -212,7 +212,7 @@ private fun MoodGenresHero(totalCategories: Int) {
 private fun MoodGenresGroup(
     group: MoodAndGenres,
     groupIndex: Int,
-    onChipClick: (MoodChip) -> Unit,
+    onBrowse: (String, String?) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         OmniSectionHeader(title = group.title)
@@ -236,7 +236,7 @@ private fun MoodGenresGroup(
                             item = item,
                             sectionTitle = group.title,
                             index = index,
-                            onClick = { onChipClick(item.toMoodChip(group.title)) },
+                            onClick = { onBrowse(item.endpoint.browseId, item.endpoint.params) },
                         )
                     }
                 }
@@ -379,23 +379,6 @@ private fun MoodGenresError(
         }
     }
 }
-
-private fun MoodAndGenres.Item.toMoodChip(sectionTitle: String): MoodChip =
-    MoodChip(
-        id = HomeDefaultCatalog.providerCollectionId(
-            kind = "browse",
-            providerId = endpoint.browseId,
-            title = title,
-            subtitle = sectionTitle,
-            params = endpoint.params,
-        ),
-        label = title,
-        query = title,
-        artworkKey = "mood_${endpoint.browseId}",
-        collectionType = HomeCollectionType.Mood,
-        source = HomeCatalogSource.ProviderBrowse,
-        actionType = HomeActionType.OPEN_BROWSE,
-    )
 
 private fun Long.toProviderColor(): Color {
     if (this == 0L) return Color.Unspecified

@@ -354,6 +354,21 @@ class HomeDiscoveryViewModel @Inject constructor(
         }
         val quickPickSongsForPlayAll = shuffledQuickPicks.mapNotNull { it.song }
 
+        val providerMoodChips = providerFeed.chips
+        val providerGenreChips = providerFeed.moodSections.flatMap { section ->
+            section.items.map { item ->
+                MoodChip(
+                    id = item.id,
+                    label = item.title,
+                    query = item.query ?: item.title,
+                    artworkKey = item.artworkKey ?: item.id,
+                    collectionType = item.collectionType,
+                    actionType = item.actionType,
+                    source = item.source,
+                )
+            }
+        }.distinctBy { it.id }
+
         return HomeDiscoveryUiState(
             recentSongs = recentSongs,
             carouselItems = buildCarouselItems(shuffledQuickPicks, likedSongs, offlineSongs, providerFeed, previews),
@@ -385,20 +400,8 @@ class HomeDiscoveryViewModel @Inject constructor(
             exploreSections = providerFeed.exploreSections.withHydration(previews),
             shelfSections = HomeDefaultCatalog.shelves
                 .map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) },
-            moodChips = (providerFeed.chips + HomeDefaultCatalog.moodChips).distinctBy { it.id },
-            genreChips = (providerFeed.moodSections.flatMap { section ->
-                section.items.map { item ->
-                    MoodChip(
-                        id = item.id,
-                        label = item.title,
-                        query = item.query ?: item.title,
-                        artworkKey = item.artworkKey ?: item.id,
-                        collectionType = item.collectionType,
-                        actionType = item.actionType,
-                        source = item.source,
-                    )
-                }
-            } + HomeDefaultCatalog.genreGrid).distinctBy { it.id },
+            moodChips = (providerMoodChips.ifEmpty { HomeDefaultCatalog.moodChips }).distinctBy { it.id },
+            genreChips = providerGenreChips,
             playAllQuickPicks = quickPickSongsForPlayAll,
             isLoading = false,
             isHydratingQuickPicks = isHydratingQuickPicks,

@@ -100,6 +100,7 @@ private const val SUPPORT_SNOOZE_DAYS = 5L
 fun HomeDiscoveryRoute(
     onNavigateToSearch: () -> Unit,
     onNavigateToCollection: (String, String?) -> Unit,
+    onNavigateToBrowse: (String, String?) -> Unit = { _, _ -> },
     onNavigateToLibrary: () -> Unit,
     onNavigateToDownloads: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -126,6 +127,20 @@ fun HomeDiscoveryRoute(
             }
         } else null
     }
+    val onMoodChipClick: (MoodChip) -> Unit = remember(onNavigateToBrowse, onNavigateToCollection) {
+        { chip ->
+            val metadata = HomeDefaultCatalog.findCollection(chip.id)
+            if (
+                metadata?.source == HomeCatalogSource.ProviderBrowse &&
+                metadata.actionType == HomeActionType.OPEN_BROWSE &&
+                !metadata.providerId.isNullOrBlank()
+            ) {
+                onNavigateToBrowse(metadata.providerId, metadata.browseParams)
+            } else {
+                onNavigateToCollection(chip.id, null)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         HomeAmbientBackground(modifier = Modifier.fillMaxSize())
@@ -147,7 +162,7 @@ fun HomeDiscoveryRoute(
             }
 
             item(contentType = "mood-chips") {
-                MoodChipRow(chips = uiState.moodChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) })
+                MoodChipRow(chips = uiState.moodChips, onChipClick = onMoodChipClick)
             }
 
             if (mediaMetadata != null) {
@@ -279,8 +294,15 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            item(contentType = "mood-grid") {
-                MoodGenreGrid(chips = uiState.genreChips, onChipClick = { chip -> onNavigateToCollection(chip.id, null) }, onShowAll = onShowAllGenres)
+            if (uiState.genreChips.isNotEmpty() || uiState.isProviderLoading) {
+                item(contentType = "mood-grid") {
+                    MoodGenreGrid(
+                        chips = uiState.genreChips,
+                        isLoading = uiState.genreChips.isEmpty() && uiState.isProviderLoading,
+                        onChipClick = onMoodChipClick,
+                        onShowAll = onShowAllGenres,
+                    )
+                }
             }
 
             if (uiState.downloadSection.items.isNotEmpty()) {
@@ -1006,6 +1028,7 @@ private fun ShelfArtworkCard(
 @Composable
 private fun MoodGenreGrid(
     chips: List<MoodChip>,
+    isLoading: Boolean = false,
     onChipClick: (MoodChip) -> Unit,
     onShowAll: (() -> Unit)? = null,
 ) {
@@ -1015,6 +1038,15 @@ private fun MoodGenreGrid(
             action = if (chips.size > 6 && onShowAll != null) "Show all" else null,
             onAction = { onShowAll?.invoke() },
         )
+        if (isLoading) {
+            repeat(3) {
+                Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
+                    MoodGenreSkeletonCard(modifier = Modifier.weight(1f))
+                    MoodGenreSkeletonCard(modifier = Modifier.weight(1f))
+                }
+            }
+            return@Column
+        }
         chips.take(6).chunked(2).forEachIndexed { rowIndex, row ->
             Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), modifier = Modifier.fillMaxWidth()) {
                 row.forEachIndexed { columnIndex, chip ->
@@ -1031,6 +1063,16 @@ private fun MoodGenreGrid(
             }
         }
     }
+}
+
+@Composable
+private fun MoodGenreSkeletonCard(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .heightIn(min = 62.dp)
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.58f)),
+    )
 }
 
 @Composable

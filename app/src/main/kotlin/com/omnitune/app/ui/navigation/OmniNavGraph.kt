@@ -124,6 +124,14 @@ private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): Stri
         ?: base
 }
 
+private fun youtubeBrowseRoute(browseId: String, params: String?): String {
+    val base = "${Screens.YouTubeBrowse.route}/${Uri.encode(browseId)}"
+    return params
+        ?.takeIf { it.isNotBlank() }
+        ?.let { "$base?params=${Uri.encode(it)}" }
+        ?: base
+}
+
 private fun HomeCollectionMetadata.verifiedGenreForPlayback(): String? =
     title.takeIf {
         collectionType == HomeCollectionType.Genre && source == HomeCatalogSource.ProviderBrowse
@@ -268,6 +276,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 HomeDiscoveryRoute(
                     onNavigateToSearch = { navController.navigate(Screens.Search.route) },
                     onNavigateToCollection = { collectionId, artworkUrl -> navController.navigate(homeCollectionRoute(collectionId, artworkUrl)) },
+                    onNavigateToBrowse = { browseId, params -> navController.navigate(youtubeBrowseRoute(browseId, params)) },
                     onNavigateToLibrary = { navController.navigate(Screens.Library.route) },
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
@@ -373,10 +382,16 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable(Screens.MoodAndGenres.route) {
                 com.omnitune.app.ui.screens.MoodAndGenresScreen(
                     onBack = { navController.popBackStack() },
-                    onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) },
+                    onBrowse = { browseId, params -> navController.navigate(youtubeBrowseRoute(browseId, params)) },
                 )
             }
-            composable(Screens.YouTubeBrowse.route) {
+            composable(
+                route = "${Screens.YouTubeBrowse.route}/{browseId}?params={params}",
+                arguments = listOf(
+                    navArgument("browseId") { type = NavType.StringType },
+                    navArgument("params") { type = NavType.StringType; nullable = true; defaultValue = null },
+                ),
+            ) {
                 com.omnitune.app.ui.screens.YouTubeBrowseScreen(navController = navController)
             }
             composable(Screens.Account.route) {

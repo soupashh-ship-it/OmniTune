@@ -7,7 +7,9 @@ This release upgrades Home discovery with a deeper Mood and Genres experience, s
 - Replaced the placeholder Mood and Genres screen with a real provider-backed catalog powered by YouTube Music mood and genre groups.
 - Added grouped Mood and Genres sections with polished two-column cards, provider accent colors, loading shimmer, retry handling, and mini-player-safe spacing.
 - Connected Home's Mood and Genres `Show all` action to the new deep catalog.
-- Opened mood and genre categories through OmniTune's existing collection flow so categories such as Chill, Workout, Focus, and Genres resolve real playable browse content.
+- Added a real YouTube Browse screen so categories such as Chill, Workout, Focus, and Genres open provider shelves directly instead of falling back to old search presets.
+- Made Home's visible Mood and Genres cards provider-backed so the six-card grid no longer routes to the old static playlist/search behavior when real categories are loaded.
+- Added timeout-backed loading and retry states so Mood and Genres cannot sit on an endless spinner when the provider stalls.
 - Restored the personalized `Keep listening` shelf from listening history signals.
 - Improved recent discovery labeling with `Similar to [artist]` shelves when artist metadata is available.
 - Added a subtle dynamic ambient background to Home using OmniTune theme accents.
