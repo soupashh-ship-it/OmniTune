@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
@@ -49,14 +50,14 @@ object PlayerColorExtractor {
             }
         }
 
-        // Favor expressive swatches first, then fall back to softer and dominant tones.
-        addIfUnique(vibrantColor, 1.3f)
-        addIfUnique(darkVibrantColor, 1.2f)
-        addIfUnique(mutedColor, 1.0f)
-        addIfUnique(darkMutedColor, 0.9f)
-        addIfUnique(dominantColor, 1.1f)
-        addIfUnique(lightVibrantColor, 1.1f)
-        addIfUnique(lightMutedColor, 1.0f)
+        // Prefer dark-safe expressive swatches, then gently recover softer colors.
+        addIfUnique(darkVibrantColor, 1.18f)
+        addIfUnique(vibrantColor, 1.14f)
+        addIfUnique(darkMutedColor, 1.06f)
+        addIfUnique(mutedColor, 1.08f)
+        addIfUnique(dominantColor, 1.04f)
+        addIfUnique(lightVibrantColor, 0.96f)
+        addIfUnique(lightMutedColor, 0.98f)
         
         val fallbackSeed =
             Color(fallbackColor).takeUnless { isNearGray(it) } ?: DefaultThemeColor
@@ -103,7 +104,7 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
         val saturation = hsv[1]
         val brightness = hsv[2]
-        return saturation >= 0.16f && brightness in 0.10f..0.92f
+        return saturation >= 0.22f && brightness in 0.12f..0.88f && color.luminance() in 0.03f..0.74f
     }
     
     /**
@@ -119,9 +120,8 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(argb, hsv)
         
         // Increase saturation for more vivid colors
-        hsv[1] = (hsv[1] * saturationFactor).coerceAtMost(1.0f)
-        hsv[1] = hsv[1].coerceAtLeast(0.55f)
-        hsv[2] = (hsv[2] * 1.02f).coerceIn(0.32f, 0.88f)
+        hsv[1] = (hsv[1] * saturationFactor).coerceIn(0.46f, 0.84f)
+        hsv[2] = (hsv[2] * 0.98f).coerceIn(0.30f, 0.78f)
 
         return Color(android.graphics.Color.HSVToColor(hsv))
     }

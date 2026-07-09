@@ -97,6 +97,8 @@ import com.omnitune.app.constants.OmniPlayerDesignStyle
 import com.omnitune.app.constants.OmniPlayerDesignStyleKey
 import com.omnitune.app.constants.OmniSliderStyle
 import com.omnitune.app.constants.OmniSliderStyleKey
+import com.omnitune.app.lyrics.InlineLyricState
+import com.omnitune.app.lyrics.InlineLyrics
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -169,6 +171,7 @@ fun PlayerScreen(
     )
     val dynamicPalette = gradientState.palette
     val dynamicAccent = dynamicPalette.accent
+    val headerTitle = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "Now playing"
     val controlAccent = when (buttonColorMode) {
         OmniPlayerButtonColorMode.DYNAMIC -> dynamicAccent
         OmniPlayerButtonColorMode.DEFAULT -> LocalOmniAccents.current.primary
@@ -180,8 +183,20 @@ fun PlayerScreen(
         playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE ->
             Modifier
                 .background(gradientState.backgroundBrush)
-                .background(dynamicPalette.gradientStart.copy(alpha = 0.20f))
-        else -> Modifier.background(gradientState.backgroundBrush)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(dynamicPalette.accent.copy(alpha = 0.18f), Color.Transparent),
+                    )
+                )
+                .background(dynamicPalette.gradientStart.copy(alpha = 0.18f))
+        else ->
+            Modifier
+                .background(gradientState.backgroundBrush)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(dynamicPalette.accent.copy(alpha = 0.12f), Color.Transparent),
+                    )
+                )
     }
 
 
@@ -254,6 +269,7 @@ fun PlayerScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     PlayerTopBar(
+                        title = headerTitle,
                         onDismiss = onDismiss,
                         onOpenQueue = onOpenQueue,
                         hasQueue = playerConnection != null,
@@ -271,6 +287,7 @@ fun PlayerScreen(
                     Spacer(modifier = Modifier.height(largeGap))
                     MetadataBlock(
                         playerConnection = playerConnection,
+                        onOpenLyrics = { showLyricsSheet = true },
                         onShare = {
                             showOptionsSheet = false
                             val videoId = mediaMetadata?.id
@@ -376,6 +393,12 @@ fun PlayerScreen(
             },
         )
     }
+    if (showLyricsSheet) {
+        LyricsBottomSheet(
+            playerConnection = playerConnection,
+            onDismissRequest = { showLyricsSheet = false }
+        )
+    }
     if (showSleepTimerDialog) {
         SleepTimerDialog(
             onDismiss = { showSleepTimerDialog = false },
@@ -464,6 +487,7 @@ fun PlayerScreen(
 
 @Composable
 private fun PlayerTopBar(
+    title: String,
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
     hasQueue: Boolean,
@@ -490,10 +514,11 @@ private fun PlayerTopBar(
                 maxLines = 1,
             )
             Text(
-                text = "OmniTune",
+                text = title,
                 style = MaterialTheme.typography.labelLarge,
                 color = OmniColors.TextSecondary,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         GlassIconButton(
@@ -641,10 +666,12 @@ private fun ArtworkHero(
 @Composable
 private fun MetadataBlock(
     playerConnection: PlayerConnection?,
+    onOpenLyrics: () -> Unit,
     onShare: () -> Unit
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
     val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
+    val currentLyrics by (playerConnection?.currentLyrics ?: flowOf(null)).collectAsState(initial = null)
     val liked = currentSong?.song?.liked == true || mediaMetadata?.liked == true
     val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
     val artist = mediaMetadata
@@ -653,6 +680,23 @@ private fun MetadataBlock(
         ?.takeIf { it.isNotBlank() }
         ?: "Unknown artist"
     val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
+    val fallbackSubtitle = artist + (if (album != null) " • $album" else "")
+    val lyricsText = currentLyrics?.lyrics
+    val syncedEntries = remember(mediaMetadata?.id, lyricsText) {
+        InlineLyrics.parseSyncedEntries(lyricsText)
+    }
+    var lyricPositionMs by remember(mediaMetadata?.id) { mutableLongStateOf(0L) }
+
+    LaunchedEffect(playerConnection, mediaMetadata?.id) {
+        while (true) {
+            lyricPositionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
+            delay(250)
+        }
+    }
+
+    val inlineLyricState = remember(syncedEntries, lyricPositionMs) {
+        InlineLyrics.stateFor(syncedEntries, lyricPositionMs)
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = OmniSpacing.small),
@@ -678,16 +722,14 @@ private fun MetadataBlock(
                 )
             }
             AnimatedContent(
-                targetState = artist + (if (album != null) " • $album" else ""),
+                targetState = inlineLyricState,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "player_artist",
-            ) { currentArtist ->
-                Text(
-                    text = currentArtist,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                label = "player_inline_lyrics",
+            ) { lyricsState ->
+                InlineLyricSubtitle(
+                    state = lyricsState,
+                    fallbackText = fallbackSubtitle,
+                    onOpenLyrics = onOpenLyrics,
                 )
             }
         }
@@ -706,6 +748,47 @@ private fun MetadataBlock(
                 contentDescription = if (liked) "Unlike" else "Like",
                 tint = if (liked) OmniColors.Hot else OmniColors.TextSecondary,
                 modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InlineLyricSubtitle(
+    state: InlineLyricState,
+    fallbackText: String,
+    onOpenLyrics: () -> Unit,
+) {
+    val showLyrics = state.isSynced && state.hasLyrics && !state.currentLine.isNullOrBlank()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (showLyrics) {
+                    Modifier
+                        .clip(OmniShapes.Small)
+                        .clickable(onClick = onOpenLyrics)
+                        .padding(vertical = 2.dp)
+                } else {
+                    Modifier
+                }
+            ),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = state.currentLine.takeIf { showLyrics } ?: fallbackText,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (showLyrics) OmniColors.TextPrimary.copy(alpha = 0.94f) else OmniColors.TextSecondary,
+            maxLines = if (showLyrics) 2 else 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (showLyrics && !state.nextLine.isNullOrBlank()) {
+            Text(
+                text = state.nextLine,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary.copy(alpha = 0.72f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

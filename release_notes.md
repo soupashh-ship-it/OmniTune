@@ -1,3 +1,20 @@
+# Unreleased
+**Full Player Polish**
+
+### Fixes & Improvements
+* Fixed the full-screen player header so it shows the current song title instead of the app name.
+* Added inline synced lyric subtitles under the main song title when real LRC or TTML lyrics are available.
+* Kept artist and album metadata as the fallback when lyrics are missing, loading, failed, or unsynced.
+* Added smooth lyric line transitions and a tap target that opens the existing full lyrics sheet.
+* Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.
+
+### Verification
+* `clean assembleDebug`: passed
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+
+---
+
 # OmniTune v0.11.2
 **Playlist Motion and Changelog Fix**
 

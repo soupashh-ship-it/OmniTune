@@ -39,19 +39,23 @@ data class OmniDynamicSongPalette(
         }
 
         fun fromArtworkColors(colors: List<Color>, fallbackAccent: Color = OmniColors.OmniAccentPrimary): OmniDynamicSongPalette {
-            val seed = colors.firstOrNull { it.isUsableSongColor() } ?: fallbackAccent
+            val seed = colors
+                .filter { it.isUsableSongColor() }
+                .maxByOrNull { it.songColorScore() }
+                ?: fallbackAccent
             return fromAccent(seed.toReadableAccent())
         }
 
         private fun fromAccent(accent: Color): OmniDynamicSongPalette {
-            val backdrop = accent.toDarkTone(value = 0.18f, saturationMin = 0.34f)
-            val deepBackdrop = accent.toDarkTone(value = 0.075f, saturationMin = 0.30f)
-            val background = lerp(OmniColors.OmniBackgroundBase, deepBackdrop, 0.42f)
-            val backgroundSecondary = lerp(OmniColors.OmniBackgroundElevated, backdrop, 0.36f)
-            val surface = lerp(OmniColors.Surface, backdrop, 0.20f).copy(alpha = 0.94f)
-            val surfaceElevated = lerp(OmniColors.SurfaceRaised, backdrop, 0.24f).copy(alpha = 0.96f)
-            val miniSurface = lerp(OmniColors.OmniGlassDock, backdrop, 0.28f).copy(alpha = 0.96f)
-            val controlSurface = lerp(Color(0xFF121826), backdrop, 0.36f).copy(alpha = 0.90f)
+            val backdrop = accent.toDarkTone(value = 0.21f, saturationMin = 0.42f)
+            val deepBackdrop = accent.toDarkTone(value = 0.085f, saturationMin = 0.36f)
+            val ink = Color(0xFF05070D)
+            val background = lerp(ink, deepBackdrop, 0.58f)
+            val backgroundSecondary = lerp(Color(0xFF111827), backdrop, 0.46f)
+            val surface = lerp(Color(0xFF121722), backdrop, 0.24f).copy(alpha = 0.95f)
+            val surfaceElevated = lerp(Color(0xFF172031), backdrop, 0.30f).copy(alpha = 0.97f)
+            val miniSurface = lerp(Color(0xE6111724), backdrop, 0.34f).copy(alpha = 0.97f)
+            val controlSurface = lerp(Color(0xFF151C2B), backdrop, 0.44f).copy(alpha = 0.92f)
 
             return OmniDynamicSongPalette(
                 background = background,
@@ -65,8 +69,8 @@ data class OmniDynamicSongPalette(
                 textSecondary = OmniColors.TextSecondary,
                 miniPlayerSurface = miniSurface,
                 playerControlSurface = controlSurface,
-                gradientStart = lerp(backgroundSecondary, backdrop, 0.46f).copy(alpha = 0.98f),
-                gradientEnd = Color(0xFF03050A),
+                gradientStart = lerp(backgroundSecondary, accent.toDarkTone(value = 0.30f, saturationMin = 0.48f), 0.42f).copy(alpha = 0.98f),
+                gradientEnd = ink,
             )
         }
     }
@@ -76,18 +80,29 @@ private fun Color.isUsableSongColor(): Boolean {
     val hsv = toHsv()
     val brightness = hsv[2]
     val saturation = hsv[1]
-    if (brightness < 0.10f || brightness > 0.92f) return false
-    if (saturation < 0.16f) return false
+    if (brightness < 0.12f || brightness > 0.88f) return false
+    if (saturation < 0.24f) return false
+    if (luminance() < 0.025f || luminance() > 0.74f) return false
     val tooCloseToBase = kotlin.math.abs(red - OmniColors.OmniBackgroundBase.red) < 0.04f &&
         kotlin.math.abs(green - OmniColors.OmniBackgroundBase.green) < 0.04f &&
         kotlin.math.abs(blue - OmniColors.OmniBackgroundBase.blue) < 0.04f
     return !tooCloseToBase
 }
 
+private fun Color.songColorScore(): Float {
+    val hsv = toHsv()
+    val saturation = hsv[1]
+    val brightness = hsv[2]
+    val brightnessComfort = 1f - kotlin.math.abs(brightness - 0.46f)
+    val colorfulness = saturation.coerceIn(0f, 1f)
+    val darkSafety = if (brightness <= 0.62f) 0.18f else -0.10f
+    return colorfulness * 0.62f + brightnessComfort * 0.30f + darkSafety
+}
+
 private fun Color.toReadableAccent(): Color {
     val hsv = toHsv()
-    hsv[1] = hsv[1].coerceIn(0.42f, 0.86f)
-    hsv[2] = hsv[2].coerceIn(0.58f, 0.78f)
+    hsv[1] = hsv[1].coerceIn(0.48f, 0.82f)
+    hsv[2] = hsv[2].coerceIn(0.56f, 0.74f)
     return Color(AndroidColor.HSVToColor(hsv))
 }
 
