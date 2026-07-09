@@ -53,7 +53,7 @@ fun UpdatesSettings(
         )
         OmniPreferenceEntry(
             title = "Changelog",
-            description = "View new features and improvements",
+            description = "View the latest changes and fixes",
             iconRes = R.drawable.ic_info,
             accent = OmniColors.OmniAccentTertiary,
             onClick = onNavigateToChangelog,
