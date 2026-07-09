@@ -7,6 +7,7 @@
 * Kept artist and album metadata as the fallback when lyrics are missing, loading, failed, or unsynced.
 * Added smooth lyric line transitions and a tap target that opens the existing full lyrics sheet.
 * Refined album-art-based dynamic song colors with stronger swatch filtering, dark-safe tone mapping, richer player gradients, and readable control surfaces.
+* Remastered Settings > About with a premium OmniTune identity card, verified developer and inspiration links, dynamic install/version details, and accurate GPL-3.0 license information.
 
 ### Verification
 * `clean assembleDebug`: passed
