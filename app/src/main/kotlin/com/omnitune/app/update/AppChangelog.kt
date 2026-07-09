@@ -8,27 +8,28 @@ object AppChangelog {
         releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
         source = ChangelogSource.Bundled,
         body = """
-# OmniTune v0.11.5
+# OmniTune v0.11.6
 
-This hotfix improves Mood and Genres reliability and cleans up the Home carousel artwork above Quick Picks.
+This hotfix ships the Settings visual refresh and improves Home artwork sharpness for the large carousel above Quick Picks.
 
 ## Fixes & Improvements
 
-- Fixed Mood and Genres "Show all" so it renders already-loaded Home provider categories immediately instead of waiting indefinitely for a fresh provider request.
-- Improved Home carousel artwork quality by requesting larger YouTube thumbnails and caching the high-resolution artwork URL.
-- Removed the "Play" / "Open" badge from Home carousel artwork so the cards show cleaner cover art above Quick Picks.
-- Kept the direct YouTube Browse category flow from 0.11.4 unchanged.
+- Remastered the Settings hub with a cleaner OmniTune identity row, flatter settings list, lighter section structure, and less bulky card styling.
+- Preserved all existing Settings destinations while improving readability, spacing, chevrons, icon treatment, and mini-player-safe bottom padding.
+- Fixed Home carousel thumbnail upgrades for `i.ytimg.com` URLs so large artwork above Quick Picks can load `maxresdefault` images instead of staying on lower-resolution defaults.
+- Fixed `yt3.ggpht.com` artwork resizing so the requested size replaces the old size parameter instead of appending a broken suffix.
+- Added focused tests for YouTube thumbnail URL upgrades.
 
 ## Verification
 
-- `assembleDebug`: passed
+- `clean assembleDebug`: passed
 - `testDebugUnitTest`: passed
 - `lintDebug`: passed
 
 ## Build
 
-- Version: `0.11.5`
-- Version code: `55`
+- Version: `0.11.6`
+- Version code: `56`
         """.trimIndent(),
     )
 }

@@ -4,9 +4,7 @@ package com.omnitune.app.ui.screens.settings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,8 +23,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
@@ -57,13 +51,6 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import kotlinx.coroutines.delay
-
-private data class SettingsQuickAction(
-    val icon: Int,
-    val label: String,
-    val onClick: () -> Unit,
-    val accentColor: Color,
-)
 
 private data class SettingsCategory(
     val title: String,
@@ -84,53 +71,23 @@ fun SettingsScreen(
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToCategory: (String) -> Unit = {},
 ) {
-    var heroVisible by remember { mutableStateOf(false) }
-    var actionsVisible by remember { mutableStateOf(false) }
-    var categoriesVisible by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(50); heroVisible = true
-        delay(150); actionsVisible = true
-        delay(200); categoriesVisible = true
+        delay(40)
+        contentVisible = true
     }
-
-    val quickActions = listOf(
-        SettingsQuickAction(
-            icon = R.drawable.ic_settings,
-            label = "Appearance",
-            onClick = { onNavigateToCategory("appearance") },
-            accentColor = OmniColors.OmniAccentPrimary,
-        ),
-        SettingsQuickAction(
-            icon = R.drawable.ic_play_arrow,
-            label = "Playback & Audio",
-            onClick = { onNavigateToCategory("playback") },
-            accentColor = OmniColors.ActivePlayback,
-        ),
-        SettingsQuickAction(
-            icon = R.drawable.ic_download,
-            label = "Storage",
-            onClick = { onNavigateToCategory("storage") },
-            accentColor = OmniColors.Downloaded,
-        ),
-        SettingsQuickAction(
-            icon = R.drawable.ic_notification_play,
-            label = "Content & Privacy",
-            onClick = { onNavigateToCategory("content") },
-            accentColor = OmniColors.Warning,
-        ),
-    )
 
     val categories = listOf(
         SettingsCategory(
             title = "Account and Social",
             items = listOf(
                 SettingsCategoryItem(
-                    icon = R.drawable.ic_settings, // Use generic if needed, or specific
+                    icon = R.drawable.ic_settings,
                     title = "OmniTune Account",
                     subtitle = "Manage your OmniTune account",
                     accentColor = OmniColors.OmniAccentPrimary,
-                    onClick = { onNavigateToCategory("account_settings") }, // Wait, how do I navigate to AccountSettings?
+                    onClick = { onNavigateToCategory("account_settings") },
                 ),
                 SettingsCategoryItem(
                     icon = R.drawable.ic_share,
@@ -138,8 +95,8 @@ fun SettingsScreen(
                     subtitle = "Sync playback with friends",
                     accentColor = OmniColors.OmniAccentSecondary,
                     onClick = { onNavigateToCategory("music_together") },
-                )
-            )
+                ),
+            ),
         ),
         SettingsCategory(
             title = "UI and Display",
@@ -158,7 +115,7 @@ fun SettingsScreen(
             items = listOf(
                 SettingsCategoryItem(
                     icon = R.drawable.ic_play_arrow,
-                    title = "Playback",
+                    title = "Playback & Audio",
                     subtitle = "Quality, crossfade, equalizer",
                     accentColor = OmniColors.ActivePlayback,
                     onClick = { onNavigateToCategory("playback") },
@@ -213,6 +170,13 @@ fun SettingsScreen(
                     accentColor = OmniColors.HotLight,
                     onClick = { onNavigateToCategory("scrobbling") },
                 ),
+                SettingsCategoryItem(
+                    icon = R.drawable.ic_favorite,
+                    title = "Discord RPC",
+                    subtitle = "Rich Presence integration",
+                    accentColor = OmniColors.Hot,
+                    onClick = { onNavigateToCategory("discord") },
+                ),
             ),
         ),
         SettingsCategory(
@@ -224,13 +188,6 @@ fun SettingsScreen(
                     subtitle = "Check for new versions",
                     accentColor = OmniColors.OmniAccentSecondary,
                     onClick = { onNavigateToCategory("updates") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_favorite,
-                    title = "Discord RPC",
-                    subtitle = "Rich Presence integration",
-                    accentColor = OmniColors.Hot,
-                    onClick = { onNavigateToCategory("discord") },
                 ),
                 SettingsCategoryItem(
                     icon = R.drawable.ic_download,
@@ -261,64 +218,78 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase),
-        contentPadding = PaddingValues(bottom = 32.dp),
+        contentPadding = PaddingValues(bottom = 112.dp),
     ) {
         item { Spacer(Modifier.statusBarsPadding()) }
         item { Spacer(Modifier.height(OmniSpacing.compact)) }
 
         item {
-            AnimatedVisibility(
-                visible = heroVisible,
-                enter = fadeIn(spring(stiffness = Spring.StiffnessLow)) +
-                        slideInVertically(initialOffsetY = { it / 5 }, animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = 0.85f)),
-            ) {
-                SettingsHeroHeader(
-                    onBack = onBack,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
+            SettingsTopBar(
+                onBack = onBack,
+                modifier = Modifier.padding(horizontal = 20.dp),
+            )
         }
 
         item {
             AnimatedVisibility(
-                visible = actionsVisible,
+                visible = contentVisible,
                 enter = fadeIn(spring(stiffness = Spring.StiffnessLow)) +
-                        slideInVertically(initialOffsetY = { it / 6 }, animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = 0.85f)),
+                    slideInVertically(
+                        initialOffsetY = { it / 6 },
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessLow,
+                            dampingRatio = 0.88f,
+                        ),
+                    ),
             ) {
-                SettingsQuickActionsGrid(
-                    actions = quickActions,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                SettingsIdentityRow(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp),
                 )
             }
         }
 
-        items(categories.size) { index ->
-            val category = categories[index]
-            AnimatedVisibility(
-                visible = categoriesVisible,
-                enter = fadeIn(tween(360, delayMillis = index * 80)) +
-                        slideInVertically(initialOffsetY = { it / 5 }, animationSpec = tween(360, delayMillis = index * 80)),
-            ) {
-                SettingsCategorySection(
-                    category = category,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                )
+        categories.forEachIndexed { index, category ->
+            item {
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(
+                        spring(
+                            stiffness = Spring.StiffnessLow,
+                            dampingRatio = 0.9f,
+                        ),
+                    ) + slideInVertically(
+                        initialOffsetY = { it / 8 },
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessLow,
+                            dampingRatio = 0.9f,
+                        ),
+                    ),
+                ) {
+                    SettingsCategorySection(
+                        category = category,
+                        modifier = Modifier.padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = if (index == 0) 2.dp else 16.dp,
+                        ),
+                    )
+                }
             }
         }
-
-        item { Spacer(Modifier.height(80.dp)) }
     }
 }
 
 @Composable
-private fun SettingsHeroHeader(
+private fun SettingsTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         IconButton(
             onClick = onBack,
@@ -330,145 +301,60 @@ private fun SettingsHeroHeader(
                 painter = painterResource(R.drawable.ic_arrow_back),
                 contentDescription = "Back",
                 tint = OmniColors.TextPrimary,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(24.dp),
             )
         }
 
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Medium,
+            color = OmniColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SettingsIdentityRow(
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.15f)),
+                .size(64.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(OmniColors.SurfaceRaised),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_settings),
                 contentDescription = null,
                 tint = OmniColors.OmniAccentPrimary,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(34.dp),
             )
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Settings",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                text = "OmniTune",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Normal,
                 color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "OmniTune v${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.bodySmall,
+                text = "v${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextTertiary,
+                maxLines = 1,
             )
-        }
-    }
-}
-
-@Composable
-private fun SettingsQuickActionsGrid(
-    actions: List<SettingsQuickAction>,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = OmniColors.SurfaceQuiet),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(listOf(OmniColors.OmniAccentPrimary.copy(alpha = 0.18f), OmniColors.OmniAccentSecondary.copy(alpha = 0.12f)))),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_play_arrow),
-                        contentDescription = null,
-                        tint = OmniColors.OmniAccentPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                Text(
-                    text = "Quick actions",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = OmniColors.TextPrimary,
-                )
-            }
-            val rows = actions.chunked(2)
-            rows.forEach { rowActions ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    rowActions.forEach { action ->
-                        SettingsQuickActionTile(
-                            action = action,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (rowActions.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsQuickActionTile(
-    action: SettingsQuickAction,
-    modifier: Modifier = Modifier,
-) {
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "tileScale",
-    )
-
-    Surface(
-        onClick = action.onClick,
-        modifier = modifier
-            .aspectRatio(1.45f),
-        shape = RoundedCornerShape(20.dp),
-        color = OmniColors.SurfaceQuiet,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.linearGradient(listOf(action.accentColor.copy(alpha = 0.12f), Color.Transparent)))
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(action.accentColor.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(action.icon),
-                        contentDescription = null,
-                        tint = action.accentColor,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Text(
-                    text = action.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = OmniColors.TextPrimary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
     }
 }
@@ -481,25 +367,17 @@ private fun SettingsCategorySection(
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = category.title,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextTertiary.copy(alpha = 0.7f),
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+            color = OmniColors.TextTertiary.copy(alpha = 0.62f),
+            modifier = Modifier.padding(bottom = 4.dp),
         )
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = OmniColors.SurfaceQuiet),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                category.items.forEachIndexed { index, item ->
-                    SettingsCategoryRow(
-                        item = item,
-                        showDivider = index < category.items.size - 1,
-                    )
-                }
-            }
+
+        category.items.forEachIndexed { index, item ->
+            SettingsCategoryRow(
+                item = item,
+                showDivider = index < category.items.size - 1,
+            )
         }
     }
 }
@@ -509,80 +387,72 @@ private fun SettingsCategoryRow(
     item: SettingsCategoryItem,
     showDivider: Boolean,
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "rowAlpha",
-    )
-
     Column {
-        Row(
+        Surface(
+            onClick = item.onClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .graphicsLayer { this.alpha = alpha }
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .clip(RoundedCornerShape(18.dp)),
+            color = Color.Transparent,
+            contentColor = OmniColors.TextPrimary,
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Brush.linearGradient(listOf(item.accentColor.copy(alpha = 0.14f), item.accentColor.copy(alpha = 0.08f)))),
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    painter = painterResource(item.icon),
-                    contentDescription = null,
-                    tint = item.accentColor,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-
-            Spacer(Modifier.width(16.dp))
-
-            Surface(
-                onClick = item.onClick,
-                modifier = Modifier.weight(1f),
-                color = Color.Transparent,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = OmniColors.TextPrimary,
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = item.subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OmniColors.TextTertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-
-                    Spacer(Modifier.width(8.dp))
-
+                Box(
+                    modifier = Modifier.size(28.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_arrow_back),
+                        painter = painterResource(item.icon),
                         contentDescription = null,
-                        tint = OmniColors.TextTertiary.copy(alpha = 0.4f),
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer { rotationZ = 180f },
+                        tint = item.accentColor.copy(alpha = 0.9f),
+                        modifier = Modifier.size(23.dp),
                     )
                 }
+
+                Spacer(Modifier.width(22.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Normal,
+                        color = OmniColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OmniColors.TextTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_back),
+                    contentDescription = null,
+                    tint = OmniColors.TextTertiary.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = 180f },
+                )
             }
         }
 
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = 76.dp, end = 18.dp),
-                thickness = 0.4.dp,
-                color = OmniColors.SurfaceHairline.copy(alpha = 0.3f),
+                modifier = Modifier.padding(start = 54.dp, end = 4.dp),
+                thickness = 0.5.dp,
+                color = OmniColors.SurfaceHairline.copy(alpha = 0.42f),
             )
         }
     }
