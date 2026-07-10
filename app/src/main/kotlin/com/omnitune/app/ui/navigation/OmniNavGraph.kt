@@ -342,7 +342,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 )
             }
             composable(Screens.Stats.route) { 
-                StatsScreen(onNavigateToYearInMusic = { navController.navigate(Screens.YearInMusic.route) }) 
+                StatsScreen(
+                    onNavigateToYearInMusic = { navController.navigate(Screens.YearInMusic.route) },
+                    onNavigateToArtist = { navController.navigate("artist/$it") },
+                )
             }
             composable(Screens.History.route) {
                 HistoryScreen(onPlaySong = { song ->

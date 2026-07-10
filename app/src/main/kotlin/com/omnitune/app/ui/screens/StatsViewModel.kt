@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.constants.ArtistSortType
 import com.omnitune.app.constants.SongSortType
+import com.omnitune.app.db.entities.ArtistEntity
 import com.omnitune.app.db.entities.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,7 @@ data class StatsUiState(
     val totalPlayed: Int = 0,
     val minutesListened: Long = 0,
     val topSongs: List<Pair<Song, Int>> = emptyList(),
-    val topArtists: List<Pair<String, Int>> = emptyList(),
+    val topArtists: List<Pair<ArtistEntity, Int>> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
 ) {
@@ -63,11 +64,10 @@ class StatsViewModel @Inject constructor(
                     .sortedByDescending { it.second }
                     .take(5)
                 val calculatedTopArtists = events
-                    .flatMap { event -> event.song.artists.map { it.name } }
-                    .filter { it.isNotBlank() }
-                    .groupingBy { it }
-                    .eachCount()
-                    .toList()
+                    .flatMap { event -> event.song.artists }
+                    .filter { it.name.isNotBlank() }
+                    .groupBy { it.id }
+                    .map { (_, artists) -> artists.first() to artists.size }
                     .sortedByDescending { it.second }
                     .take(5)
 

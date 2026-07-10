@@ -13,6 +13,10 @@ interface EventDao {
     fun events(): Flow<List<EventWithSong>>
 
     @Transaction
+    @Query("SELECT * FROM event WHERE id IN (SELECT MAX(id) FROM event GROUP BY songId) ORDER BY rowId DESC")
+    fun recentEvents(): Flow<List<EventWithSong>>
+
+    @Transaction
     @Query("SELECT * FROM event ORDER BY rowId ASC LIMIT 1")
     fun firstEvent(): Flow<EventWithSong?>
 

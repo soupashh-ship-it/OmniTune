@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
+import com.omnitune.app.db.entities.ArtistEntity
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
@@ -49,6 +50,7 @@ import com.omnitune.app.ui.theme.OmniSpacing
 fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
     onNavigateToYearInMusic: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -176,7 +178,11 @@ fun StatsScreen(
                         OmniPreferenceCard(title = "Top artists") {
                             Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
                                 uiState.topArtists.forEach { (artist, plays) ->
-                                    TopArtistRow(artist = artist, plays = plays)
+                                    TopArtistRow(
+                                        artist = artist,
+                                        plays = plays,
+                                        onClick = { onNavigateToArtist(artist.id) },
+                                    )
                                 }
                             }
                         }
@@ -358,14 +364,16 @@ private fun TopSongRow(
 
 @Composable
 private fun TopArtistRow(
-    artist: String,
+    artist: ArtistEntity,
     plays: Int,
+    onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
             .background(OmniColors.SurfaceSubtle.copy(alpha = 0.44f))
+            .clickable(onClick = onClick)
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -376,17 +384,26 @@ private fun TopArtistRow(
                 .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_artist),
-                contentDescription = null,
-                tint = OmniColors.OmniAccentSecondary,
-                modifier = Modifier.size(22.dp),
-            )
+            if (artist.thumbnailUrl.isNullOrBlank()) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_artist),
+                    contentDescription = null,
+                    tint = OmniColors.OmniAccentSecondary,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                AsyncImage(
+                    model = artist.thumbnailUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
         Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = artist,
+                text = artist.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = OmniColors.TextPrimary,

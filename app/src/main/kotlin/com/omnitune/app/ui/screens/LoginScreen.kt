@@ -36,6 +36,9 @@ import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.dataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 private const val YTM_LOGIN_URL =
@@ -112,6 +115,15 @@ fun LoginScreen(navController: NavController) {
                                             this[InnerTubeCookieKey] = cookies
                                         }
                                         com.omnitune.innertube.YouTube.cookie = cookies
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            com.omnitune.innertube.YouTube.accountInfo().getOrNull()?.let { account ->
+                                                PreferenceStore.launchEdit(context.dataStore) {
+                                                    this[AccountNameKey] = account.name
+                                                    this[AccountEmailKey] = account.email.orEmpty()
+                                                    this[AccountChannelHandleKey] = account.channelHandle.orEmpty()
+                                                }
+                                            }
+                                        }
                                         navController.popBackStack()
                                     }
                                 }

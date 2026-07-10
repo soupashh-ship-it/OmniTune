@@ -32,6 +32,13 @@ data class LibraryUiState(
     val isLoading: Boolean = true,
 )
 
+private data class LibraryCounts(
+    val songs: Int,
+    val artists: Int,
+    val albums: Int,
+    val playlists: Int,
+)
+
 /** Default sort type for liked songs */
 private val LIKED_SONGS_SORT = com.omnitune.app.constants.SongSortType.CREATE_DATE
 
@@ -102,19 +109,33 @@ class LibraryViewModel @Inject constructor(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
         viewModelScope.launch {
+            val libraryCounts = combine(
+                database.songsByRowIdAsc(),
+                libraryArtists,
+                libraryAlbums,
+                playlists,
+            ) { songs, artists, albums, playlists ->
+                LibraryCounts(
+                    songs = songs.size,
+                    artists = artists.size,
+                    albums = albums.size,
+                    playlists = playlists.size,
+                )
+            }
+
             combine(
                 likedSongs,
-                database.events(),
-                database.songsByRowIdAsc(),
-            ) { likedList, events, librarySongs ->
+                database.recentEvents(),
+                libraryCounts,
+            ) { likedList, events, counts ->
                 LibraryUiState(
                     likedCount = likedList.size,
                     likedSongs = likedList,
                     recentlyPlayed = events,
-                    librarySongCount = librarySongs.size,
-                    libraryArtistCount = libraryArtists.value.size,
-                    libraryAlbumCount = libraryAlbums.value.size,
-                    playlistCount = playlists.value.size,
+                    librarySongCount = counts.songs,
+                    libraryArtistCount = counts.artists,
+                    libraryAlbumCount = counts.albums,
+                    playlistCount = counts.playlists,
                     downloadCount = _uiState.value.downloadCount,
                     isLoading = false,
                 )

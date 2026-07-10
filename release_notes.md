@@ -1,3 +1,23 @@
+# OmniTune v0.11.7
+**Library, Stats, and YouTube Music Sync Fixes**
+
+### Fixes & Improvements
+* Fixed Library Recently Played so repeated plays of the same song show as one latest entry.
+* Fixed Library playlist, song, artist, and album counts so they update from the actual library flows.
+* Fixed Stats top artist rows so they show artist artwork and open the artist detail page.
+* Improved YouTube Music sign-in by saving account profile metadata after login.
+* Added a YouTube Music playlist picker in OmniTune Account settings to import selected playlists for sync.
+
+### Verification
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+* `assembleDebug`: passed
+
+### Build
+* Version: **0.11.7** (code 57)
+
+---
+
 # OmniTune v0.11.6
 **Settings Refresh and Home Artwork Hotfix**
 
