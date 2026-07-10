@@ -7,6 +7,7 @@
 * Fixed Stats top artist rows so they show artist artwork and open the artist detail page.
 * Improved YouTube Music sign-in by saving account profile metadata after login.
 * Added a YouTube Music playlist picker in OmniTune Account settings to import selected playlists for sync.
+* Fixed YouTube Music playlist sync failing to open when YouTube omits optional header/card `buttons` fields from browse responses.
 
 ### Verification
 * `testDebugUnitTest`: passed
