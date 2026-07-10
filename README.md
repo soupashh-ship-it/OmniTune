@@ -28,7 +28,7 @@ OmniTune is a modern, lightweight music player for Android that streams music di
 
 Current public release: `v0.7.0 - OmniGlass UI Overhaul`.
 
-The `0.7.x` line ships the OmniGlass UI overhaul and the completed-download playback fix. Work toward `1.0.0` is focused on reliability, claim verification, download/search hardening, and device-specific QA. OmniTune is not claiming universal lock-screen or OEM media-control behavior.
+The `0.11.x` line ships the OmniGlass UI overhaul and the completed-download playback fix. Work toward `1.0.0` is focused on reliability, claim verification, download/search hardening, and device-specific QA. OmniTune is not claiming universal lock-screen or OEM media-control behavior.
 
 ## Features
 
