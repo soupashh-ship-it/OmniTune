@@ -30,10 +30,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import com.omnitune.app.utils.dataStore
-import androidx.core.net.toUri
-import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.offline.DownloadService
-import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.constants.PermanentShuffleKey
 import com.omnitune.app.constants.AutoDownloadOnLikeKey
 
@@ -204,16 +200,7 @@ class PlayerConnection(
                 val prefs = service.dataStore.data.first()
                 val autoDownload = prefs[AutoDownloadOnLikeKey] ?: false
                 if (autoDownload) {
-                    val downloadRequest = DownloadRequest.Builder(meta.id, meta.id.toUri())
-                        .setCustomCacheKey(meta.id)
-                        .setData((meta.title ?: "").toString().toByteArray())
-                        .build()
-                    DownloadService.sendAddDownload(
-                        service,
-                        ExoDownloadService::class.java,
-                        downloadRequest,
-                        false
-                    )
+                    service.downloadUtil.enqueue(meta.id, meta.title)
                 }
             }
         }

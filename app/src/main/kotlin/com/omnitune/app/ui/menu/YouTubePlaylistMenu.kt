@@ -61,9 +61,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import com.omnitune.innertube.YouTube
@@ -659,18 +657,7 @@ fun YouTubePlaylistMenu(
                                                 ?.songs
                                                 .orEmpty()
                                         }
-                                    }.forEach { song ->
-                                        val downloadRequest = DownloadRequest.Builder(song.id, song.id.toUri())
-                                            .setCustomCacheKey(song.id)
-                                            .setData(song.title.toByteArray())
-                                            .build()
-                                        DownloadService.sendAddDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            downloadRequest,
-                                            false
-                                        )
-                                    }
+                                    }.forEach { song -> downloadUtil.enqueue(song.id, song.title) }
                             }
                         }
                     )

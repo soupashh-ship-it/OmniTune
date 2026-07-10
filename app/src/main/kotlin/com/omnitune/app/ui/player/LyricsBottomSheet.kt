@@ -53,7 +53,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.common.Player
 import com.omnitune.app.R
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.playback.PlayerConnection
@@ -211,8 +210,7 @@ private fun LyricsContent(
     lines: List<LyricsLine>,
     playerConnection: PlayerConnection?
 ) {
-    val isSynced = lines.any { it.timestamp > 0L }
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
+    val isSynced = lines.any { it.timestamp >= 0L }
     var currentPosition by remember { mutableLongStateOf(0L) }
     val listState = rememberLazyListState()
 
@@ -233,29 +231,24 @@ private fun LyricsContent(
         }
     }
 
-    if (isSynced) {
-        LaunchedEffect(playerConnection, playbackState) {
+    LaunchedEffect(playerConnection, isSynced) {
+        if (isSynced) {
             while (true) {
-                if (playerConnection != null && playbackState != Player.STATE_ENDED) {
-                    currentPosition = playerConnection.currentPosition
-                }
-                delay(200)
+                currentPosition = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
+                delay(100)
             }
         }
     }
 
     val activeIndex = if (isSynced) {
-        lines.indexOfFirst { line ->
-            val index = lines.indexOf(line)
-            val nextTimestamp = lines.getOrNull(index + 1)?.timestamp ?: Long.MAX_VALUE
-            currentPosition in line.timestamp until nextTimestamp
-        }
+        lines.indexOfLast { it.timestamp <= currentPosition }
     } else -1
 
     val targetScrollIndex = if (activeIndex >= 0 && !isManualScrolling) activeIndex else -1
 
-    LaunchedEffect(targetScrollIndex) {
+    LaunchedEffect(lines, targetScrollIndex) {
         if (targetScrollIndex >= 0) {
+            while (listState.layoutInfo.viewportSize.height == 0) delay(16)
             val firstItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
             val itemHeight = firstItem?.size ?: 0
             val centerOffset = (listState.layoutInfo.viewportSize.height / 2) - (itemHeight / 2)

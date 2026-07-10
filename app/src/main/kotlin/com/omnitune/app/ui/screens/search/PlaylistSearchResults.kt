@@ -14,15 +14,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.offline.DownloadService
 import com.omnitune.app.LocalDatabase
+import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.PlaylistSongMap
 import com.omnitune.app.models.toMediaMetadata
-import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.innertube.YouTube
@@ -48,6 +45,7 @@ fun LazyListScope.playlistSearchResults(
         ) { playlist ->
             val context = LocalContext.current
             val database = LocalDatabase.current
+            val downloadUtil = LocalDownloadUtil.current
             val scope = rememberCoroutineScope()
             val existingPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
             val isSaving = remember(playlist.id) { mutableStateOf(false) }
@@ -168,16 +166,7 @@ fun LazyListScope.playlistSearchResults(
                                     val songs = result.getOrNull().orEmpty()
                                     if (songs.isNotEmpty()) {
                                         songs.forEach { song ->
-                                            val request = DownloadRequest.Builder(song.id, song.id.toUri())
-                                                .setCustomCacheKey(song.id)
-                                                .setData(song.title.toByteArray())
-                                                .build()
-                                            DownloadService.sendAddDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                request,
-                                                false,
-                                            )
+                                            downloadUtil.enqueue(song.id, song.title)
                                         }
                                         Toast.makeText(context, "Queued ${songs.size} playlist downloads", Toast.LENGTH_SHORT).show()
                                     } else {

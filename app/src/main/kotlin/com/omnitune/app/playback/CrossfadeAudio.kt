@@ -192,9 +192,9 @@ internal class CrossfadeAudio(
         val overlap = ensureOverlapPlayer()
         overlap.clearMediaItems()
         overlap.setMediaItem(playableItem)
-        overlap.prepare()
-        overlap.playWhenReady = true
+        overlap.playWhenReady = false
         overlap.volume = 0f
+        overlap.prepare()
 
         overlapNormalizeFactor = fetchNormalizeFactorForMediaId(nextMediaId)
         overlapPrimedIndex = nextIndex
@@ -222,7 +222,8 @@ internal class CrossfadeAudio(
     }
 
     private fun beginOverlapCrossfade(fadeMs: Int, remainingMs: Long) {
-        if (overlapPlayer == null) return
+        val overlap = overlapPlayer ?: return
+        overlap.play()
         crossfadeActive = true
         crossfadeStartElapsedMs = android.os.SystemClock.elapsedRealtime()
         crossfadeActiveDurationMs = min(fadeMs.toLong(), remainingMs).toInt().coerceAtLeast(1)

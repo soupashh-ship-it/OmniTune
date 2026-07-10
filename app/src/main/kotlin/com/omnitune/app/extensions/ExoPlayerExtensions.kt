@@ -8,27 +8,21 @@
 package com.omnitune.app.extensions
 
 import androidx.media3.exoplayer.ExoPlayer
-import timber.log.Timber
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.util.UnstableApi
 
+@UnstableApi
 fun ExoPlayer.setOffloadEnabled(enabled: Boolean) {
-    val candidates =
-        listOf(
-            "experimentalSetOffloadSchedulingEnabled",
-            "setOffloadSchedulingEnabled",
-            "setOffloadEnabled",
-        )
-
-    for (name in candidates) {
-        try {
-            val method = this::class.java.getMethod(name, Boolean::class.javaPrimitiveType)
-            method.invoke(this, enabled)
-            return
-        } catch (_: NoSuchMethodException) {
-        } catch (t: Throwable) {
-            Timber.tag("ExoPlayerExtensions").v(t, "$name reflection failed")
-            return
-        }
+    val mode = if (enabled) {
+        TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED
+    } else {
+        TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_DISABLED
     }
-
-    Timber.tag("ExoPlayerExtensions").v("No offload toggle method found")
+    trackSelectionParameters = trackSelectionParameters.buildUpon()
+        .setAudioOffloadPreferences(
+            TrackSelectionParameters.AudioOffloadPreferences.Builder()
+                .setAudioOffloadMode(mode)
+                .build()
+        )
+        .build()
 }

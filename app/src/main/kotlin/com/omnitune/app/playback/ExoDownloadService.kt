@@ -101,6 +101,11 @@ class ExoDownloadService : DownloadService(
                     newRequest,
                     false
                 )
+                DownloadService.sendResumeDownloads(
+                    this@ExoDownloadService,
+                    ExoDownloadService::class.java,
+                    false,
+                )
             }
         }
     }

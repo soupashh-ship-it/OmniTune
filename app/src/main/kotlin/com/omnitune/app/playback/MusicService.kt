@@ -10,15 +10,12 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadRequest
-import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.omnitune.app.constants.AutoDownloadOnLikeKey
@@ -499,11 +496,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val existing = downloadUtil.downloadManager.downloadIndex.getDownload(mediaId)
             if (existing != null && existing.state != Download.STATE_FAILED) return
 
-            val request = DownloadRequest.Builder(mediaId, mediaId.toUri())
-                .setCustomCacheKey(mediaId)
-                .setData(title.toByteArray())
-                .build()
-            DownloadService.sendAddDownload(this, ExoDownloadService::class.java, request, false)
+            downloadUtil.enqueue(mediaId, title)
         } catch (e: Exception) {
             Timber.tag("MusicService").w(e, "Failed to auto-download liked song $mediaId")
         }

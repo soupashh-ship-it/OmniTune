@@ -48,9 +48,10 @@ object AppModule {
     @androidx.media3.common.util.UnstableApi
     fun provideDownloadUtil(
         @ApplicationContext context: android.content.Context,
-        okHttpClient: okhttp3.OkHttpClient
+        okHttpClient: okhttp3.OkHttpClient,
+        streamExtractor: com.omnitune.app.data.StreamExtractor,
     ): com.omnitune.app.playback.DownloadUtil {
-        return com.omnitune.app.playback.DownloadUtil(context, okHttpClient)
+        return com.omnitune.app.playback.DownloadUtil(context, okHttpClient, streamExtractor)
     }
 
     @Provides

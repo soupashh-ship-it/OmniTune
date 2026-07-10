@@ -84,14 +84,13 @@ import com.omnitune.app.constants.PlayerBackgroundStyle
 import com.omnitune.app.constants.PlayerBackgroundStyleKey
 import com.omnitune.app.constants.UseSystemFontKey
 import com.omnitune.app.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
+import com.omnitune.app.lyrics.InlineLyrics
 import com.omnitune.app.lyrics.LyricsEntry
 import com.omnitune.app.lyrics.LyricsUtils.findCurrentLineIndex
 import com.omnitune.app.lyrics.LyricsUtils.isChinese
 import com.omnitune.app.lyrics.LyricsUtils.isJapanese
 import com.omnitune.app.lyrics.LyricsUtils.isKorean
 import com.omnitune.app.lyrics.LyricsUtils.isTtml
-import com.omnitune.app.lyrics.LyricsUtils.parseLyrics
-import com.omnitune.app.lyrics.LyricsUtils.parseTtml
 import com.omnitune.app.lyrics.LyricsUtils.romanizeJapanese
 import com.omnitune.app.lyrics.LyricsUtils.romanizeKorean
 import com.omnitune.app.lyrics.WordTimestamp
@@ -182,17 +181,16 @@ fun LyricsV2(
     val lyrics = currentLyrics?.lyrics
 
     // ── Parse lyrics into entries ──
-    val isSynced = remember(lyrics) { lyrics != null && (lyrics!!.startsWith("[") || isTtml(lyrics!!)) }
+    val syncedEntries = remember(lyrics) { InlineLyrics.parseSyncedEntries(lyrics) }
+    val isSynced = syncedEntries.isNotEmpty()
     val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
 
     val lyricsEntries: List<LyricsEntry> = remember(lyrics) {
         if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
-        val parsed = when {
-            isTtml(lyrics!!) -> parseTtml(lyrics!!)
-            lyrics!!.startsWith("[") -> parseLyrics(lyrics!!)
-            else -> lyrics!!.lines()
+        val parsed = syncedEntries.ifEmpty {
+            lyrics!!.lines()
                 .filter { it.isNotBlank() }
-                .mapIndexed { index, line ->
+                .map { line ->
                     LyricsEntry(time = -1L, text = line.trim())
                 }
         }
@@ -306,8 +304,8 @@ fun LyricsV2(
 
     // ── Playback position tracking ──
     val leadMs = if (isTtmlFormat) TTML_LEAD_MS else LRC_LEAD_MS
-    var currentPositionMs by remember { mutableLongStateOf(0L) }
-    var currentLineIndex by remember { mutableIntStateOf(0) }
+    var currentPositionMs by remember(lyrics) { mutableLongStateOf(0L) }
+    var currentLineIndex by remember(lyrics) { mutableIntStateOf(0) }
 
     // Frame-accurate position loop
     LaunchedEffect(entriesWithWords, isSynced) {
@@ -329,6 +327,11 @@ fun LyricsV2(
     val listState = rememberLazyListState()
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
+
+    LaunchedEffect(lyrics) {
+        isManualScrolling = false
+        lastManualScrollTime = 0L
+    }
 
     // Detect manual scrolling
     val nestedScrollConnection = remember {
@@ -352,7 +355,7 @@ fun LyricsV2(
     }
 
     // Auto-scroll to active line
-    LaunchedEffect(currentLineIndex, isManualScrolling, lyricsScroll) {
+    LaunchedEffect(lyrics, currentLineIndex, isManualScrolling, lyricsScroll) {
         if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
         if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
 

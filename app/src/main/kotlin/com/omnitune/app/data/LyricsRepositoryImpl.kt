@@ -2,8 +2,8 @@ package com.omnitune.app.data
 
 import com.omnitune.app.db.DatabaseDao
 import com.omnitune.app.db.entities.LyricsEntity
+import com.omnitune.app.lyrics.InlineLyrics
 import com.omnitune.app.lyrics.LyricsHelper
-import com.omnitune.app.lyrics.LyricsUtils
 import com.omnitune.app.models.AppResult
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.MediaMetadata
@@ -29,14 +29,12 @@ class LyricsRepositoryImpl @Inject constructor(
                 duration = duration.toInt()
             )
             val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
-            val lrcText = if (dbLyrics != null && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                dbLyrics
-            } else {
-                val fetched = lyricsHelper.getLyrics(metadata)
-                if (fetched != LyricsEntity.LYRICS_NOT_FOUND) {
-                    databaseDao.upsert(LyricsEntity(id = songId, lyrics = fetched))
-                }
+            val fetched = lyricsHelper.getLyrics(metadata)
+            val lrcText = if (fetched != LyricsEntity.LYRICS_NOT_FOUND) {
+                databaseDao.upsert(LyricsEntity(id = songId, lyrics = fetched))
                 fetched
+            } else {
+                dbLyrics ?: LyricsEntity.LYRICS_NOT_FOUND
             }
             
             if (lrcText == LyricsEntity.LYRICS_NOT_FOUND) {
@@ -50,7 +48,7 @@ class LyricsRepositoryImpl @Inject constructor(
     }
 
     override fun parseLrc(lrcText: String): List<LyricsLine> {
-        val entries = LyricsUtils.parseLyrics(lrcText)
+        val entries = InlineLyrics.parseSyncedEntries(lrcText)
         if (entries.isEmpty() && lrcText.isNotBlank()) {
             // Unsynced lyrics fallback
             return lrcText.lines().map { line ->

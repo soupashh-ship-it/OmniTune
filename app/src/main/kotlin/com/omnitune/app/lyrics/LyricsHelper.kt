@@ -19,7 +19,6 @@ import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -27,7 +26,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.selects.select
 import javax.inject.Inject
 
 class LyricsHelper
@@ -71,13 +69,15 @@ constructor(
         }
 
         val ordered = orderedProviders()
-        val providers = if (preferredProviderOnly) listOf(ordered.first()) else ordered
+        val providers = if (preferredProviderOnly) {
+            listOf(ordered.first())
+        } else {
+            ordered.filterNot { it == YouTubeSubtitleLyricsProvider }
+        }
         val lyrics = helperScope.async {
-            providerGroups(providers).forEach { group ->
-                fetchFirstMeaningful(group, mediaMetadata)?.let { lyrics ->
-                    cache.put(mediaMetadata.id, listOf(LyricsResult("cache", lyrics)))
-                    return@async lyrics
-                }
+            fetchFirstMeaningful(providers, mediaMetadata)?.let { lyrics ->
+                cache.put(mediaMetadata.id, listOf(LyricsResult("cache", lyrics)))
+                return@async lyrics
             }
             LYRICS_NOT_FOUND
         }.await()
@@ -113,32 +113,15 @@ constructor(
             }
         }
 
-        val pending = jobs.toMutableList()
         try {
-            while (pending.isNotEmpty()) {
-                val (job, lyrics) = awaitNext(pending)
-                pending.remove(job)
+            for (job in jobs) {
+                val lyrics = job.await()
                 if (lyrics != null) return@coroutineScope lyrics
             }
             null
         } finally {
-            pending.forEach { it.cancel() }
+            jobs.forEach { it.cancel() }
         }
-    }
-
-    private suspend fun awaitNext(jobs: List<Deferred<String?>>): Pair<Deferred<String?>, String?> =
-        select {
-            jobs.forEach { job ->
-                job.onAwait { lyrics -> job to lyrics }
-            }
-        }
-
-    private fun providerGroups(providers: List<LyricsProvider>): List<List<LyricsProvider>> {
-        if (providers.size <= 1) return listOf(providers)
-        val trusted = listOf(YouTubeLyricsProvider, SimpMusicLyricsProvider).filter { it in providers }
-        val subtitles = listOf(YouTubeSubtitleLyricsProvider).filter { it in providers }
-        val searchBased = providers.filterNot { it in trusted || it in subtitles }
-        return listOf(trusted, searchBased, subtitles).filter { it.isNotEmpty() }
     }
 
     suspend fun getAllLyrics(

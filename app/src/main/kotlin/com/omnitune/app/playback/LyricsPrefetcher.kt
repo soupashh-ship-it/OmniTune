@@ -12,7 +12,6 @@ import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -26,12 +25,6 @@ class LyricsPrefetcher(
 
         scope.launch(Dispatchers.IO) {
             try {
-                val existing = database.lyrics(metadata.id).first()
-                if (existing != null && existing.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                    Timber.tag("MusicService").d("Lyrics already cached for: ${metadata.title}")
-                    return@launch
-                }
-
                 val lyrics = lyricsHelper.getLyrics(metadata)
                 if (lyrics != LyricsEntity.LYRICS_NOT_FOUND && lyrics.isNotBlank()) {
                     database.upsert(LyricsEntity(id = metadata.id, lyrics = lyrics))

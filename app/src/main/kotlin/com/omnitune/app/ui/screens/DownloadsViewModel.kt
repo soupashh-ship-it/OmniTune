@@ -5,10 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
-import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
-import com.omnitune.app.data.StreamExtractor
-import com.omnitune.app.models.StreamQuality
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.ExoDownloadService
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,7 +31,6 @@ data class DownloadsUiState(
 class DownloadsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadUtil: DownloadUtil,
-    private val streamExtractor: StreamExtractor,
     private val database: MusicDatabase
 ) : ViewModel() {
 
@@ -143,33 +139,11 @@ class DownloadsViewModel @Inject constructor(
         resolvedStreamUrl: String? = null,
         onResult: (success: Boolean, message: String) -> Unit = { _, _ -> }
     ) {
-        viewModelScope.launch {
-            try {
-                Timber.d("Starting download resolve for %s", videoId)
-                val streamUrl = resolvedStreamUrl ?: streamExtractor.extractWithFallback(videoId, StreamQuality.HIGH)?.url
-                if (streamUrl != null) {
-                    val request = DownloadRequest.Builder(videoId, android.net.Uri.parse(streamUrl))
-                        .setCustomCacheKey(videoId)
-                        .setData(title.toByteArray(Charsets.UTF_8))
-                        .build()
-
-                    DownloadService.sendAddDownload(
-                        context,
-                        ExoDownloadService::class.java,
-                        request,
-                        false
-                    )
-                    Timber.i("Download request queued for %s", videoId)
-                    refreshDownloads()
-                    onResult(true, "Download queued")
-                } else {
-                    Timber.w("Download failed to resolve stream for %s", videoId)
-                    onResult(false, "Download failed: stream unavailable")
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to start download for $videoId")
-                onResult(false, "Download failed: stream unavailable")
+        downloadUtil.enqueue(videoId, title, resolvedStreamUrl) { success, message ->
+            if (success) {
+                refreshDownloads()
             }
+            onResult(success, message)
         }
     }
 

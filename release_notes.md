@@ -1,3 +1,31 @@
+# OmniTune v0.12.0
+**Lyrics, Crossfade, and Download Root-Cause Fixes**
+
+### Fixes & Improvements
+* Fixed crossfade pausing the current song by preventing the overlap player from requesting competing Android audio focus.
+* Fixed the next song silently running ahead during crossfade preload; it now stays prepared at the beginning and starts only when the fade window opens.
+* Disabled audio offload while crossfade is active so Media3 can mix both decoded audio streams without an offload transition gap.
+* Replaced the obsolete reflective audio-offload toggle with Media3's current track-selection API, so the Audio offload setting now controls real player behavior.
+* Fixed song, album, playlist, search-result, bulk-selection, and auto-like downloads by resolving a playable stream URL before creating the Media3 download request.
+* Added shared download request deduplication, bounded parallel stream resolution, explicit download-manager resume, and fresh-URL retry behavior.
+* Fixed the download service's obsolete restart action so queued downloads can resume correctly when network requirements become available.
+* Fixed synced lyrics detection when LRC metadata appears before timestamps and added TTML timing support to the standard lyrics screen.
+* Fixed lyrics auto-follow when the lyrics screen opens mid-song and when multiple lyric lines contain identical text.
+* Fixed fullscreen lyrics state carrying across song changes by resetting tracking and scrolling for each lyric document.
+* Restored lyrics provider priority while retaining parallel requests, stopped automatic wrong-language YouTube transcript fallback, and kept subtitles available for manual provider selection.
+* Refreshed successful lyrics for the current song so previously cached mismatches are replaced without permanently caching temporary provider failures.
+* Added regression coverage for metadata-prefixed LRC and TTML timing.
+
+### Verification
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+* `assembleDebug`: passed
+
+### Build
+* Version: **0.12.0** (code 60)
+
+---
+
 # OmniTune v0.11.9
 **Playback, Lyrics, and Download Reliability Fixes**
 
