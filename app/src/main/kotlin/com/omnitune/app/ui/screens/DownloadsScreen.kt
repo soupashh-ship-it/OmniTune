@@ -86,6 +86,7 @@ fun DownloadsScreen(
             activeCount = activeCount,
             failedCount = failedCount,
             onBack = onBack,
+            onClearFailed = viewModel::clearFailedDownloads,
         )
 
         if (uiState.downloads.isEmpty()) {
@@ -163,6 +164,7 @@ private fun DownloadsHeader(
     activeCount: Int,
     failedCount: Int,
     onBack: () -> Unit,
+    onClearFailed: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -215,6 +217,21 @@ private fun DownloadsHeader(
         DownloadMetric("Ready", completedCount, OmniColors.Downloaded, Modifier.weight(1f))
         DownloadMetric("Active", activeCount, OmniColors.Warning, Modifier.weight(1f))
         DownloadMetric("Failed", failedCount, OmniColors.Error, Modifier.weight(1f))
+    }
+
+    if (failedCount > 0) {
+        Button(
+            onClick = onClearFailed,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = OmniColors.Error.copy(alpha = 0.18f),
+                contentColor = OmniColors.Error,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OmniSpacing.medium),
+        ) {
+            Text("Clear all failed", fontWeight = FontWeight.Bold)
+        }
     }
 }
 

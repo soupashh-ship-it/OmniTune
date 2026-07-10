@@ -189,4 +189,10 @@ class DownloadsViewModel @Inject constructor(
             false
         )
     }
+
+    fun clearFailedDownloads() {
+        _uiState.value.downloads
+            .filter { it.state == Download.STATE_FAILED }
+            .forEach { removeDownload(it.request.id) }
+    }
 }

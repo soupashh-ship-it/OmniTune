@@ -19,12 +19,15 @@ import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.selects.select
 import javax.inject.Inject
 
 class LyricsHelper
@@ -35,12 +38,12 @@ constructor(
 ) {
     private val baseProviders =
         listOf(
+            YouTubeLyricsProvider,
             SimpMusicLyricsProvider,
             BetterLyricsProvider,
             LrcLibLyricsProvider,
             KuGouLyricsProvider,
             YouTubeSubtitleLyricsProvider,
-            YouTubeLyricsProvider,
         )
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
@@ -48,8 +51,6 @@ constructor(
     private val helperScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun getLyrics(mediaMetadata: MediaMetadata, preferredProviderOnly: Boolean = false): String {
-        currentLyricsJob?.cancel()
-
         val cached = cache.get(mediaMetadata.id)?.firstOrNull()
         if (cached != null) {
             GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
@@ -71,46 +72,73 @@ constructor(
 
         val ordered = orderedProviders()
         val providers = if (preferredProviderOnly) listOf(ordered.first()) else ordered
-        val deferred = helperScope.async {
-            val jobs = providers.filter { it.isEnabled(context) }.map { provider ->
-                async {
-                    try {
-                        kotlinx.coroutines.withTimeoutOrNull(10000L) {
-                            val result = provider.getLyrics(
-                                mediaMetadata.id,
-                                mediaMetadata.title,
-                                mediaMetadata.artists.joinToString { it.name },
-                                mediaMetadata.album?.title,
-                                mediaMetadata.duration,
-                            )
-                            result.onSuccess { lyrics ->
-                                if (isMeaningfulLyrics(lyrics)) {
-                                    return@withTimeoutOrNull lyrics
-                                }
-                            }.onFailure {
-                                reportException(it)
-                            }
-                            null
-                        }
-                    } catch (e: Exception) {
-                        reportException(e)
-                        null
-                    }
-                }
-            }
-
-            for (job in jobs) {
-                val lyrics = job.await()
-                if (lyrics != null) {
-                    jobs.forEach { it.cancel() }
+        val lyrics = helperScope.async {
+            providerGroups(providers).forEach { group ->
+                fetchFirstMeaningful(group, mediaMetadata)?.let { lyrics ->
+                    cache.put(mediaMetadata.id, listOf(LyricsResult("cache", lyrics)))
                     return@async lyrics
                 }
             }
-            return@async LYRICS_NOT_FOUND
-        }
-        currentLyricsJob = deferred
-        val lyrics = deferred.await()
+            LYRICS_NOT_FOUND
+        }.await()
         return lyrics
+    }
+
+    private suspend fun fetchFirstMeaningful(
+        providers: List<LyricsProvider>,
+        mediaMetadata: MediaMetadata,
+    ): String? = coroutineScope {
+        val jobs = providers.filter { it.isEnabled(context) }.map { provider ->
+            async {
+                try {
+                    kotlinx.coroutines.withTimeoutOrNull(6000L) {
+                        provider.getLyrics(
+                            mediaMetadata.id,
+                            mediaMetadata.title,
+                            mediaMetadata.artists.joinToString { it.name },
+                            mediaMetadata.album?.title,
+                            mediaMetadata.duration,
+                        ).fold(
+                            onSuccess = { lyrics -> lyrics.takeIf(::isMeaningfulLyrics) },
+                            onFailure = {
+                                reportException(it)
+                                null
+                            },
+                        )
+                    }
+                } catch (e: Exception) {
+                    reportException(e)
+                    null
+                }
+            }
+        }
+
+        val pending = jobs.toMutableList()
+        try {
+            while (pending.isNotEmpty()) {
+                val (job, lyrics) = awaitNext(pending)
+                pending.remove(job)
+                if (lyrics != null) return@coroutineScope lyrics
+            }
+            null
+        } finally {
+            pending.forEach { it.cancel() }
+        }
+    }
+
+    private suspend fun awaitNext(jobs: List<Deferred<String?>>): Pair<Deferred<String?>, String?> =
+        select {
+            jobs.forEach { job ->
+                job.onAwait { lyrics -> job to lyrics }
+            }
+        }
+
+    private fun providerGroups(providers: List<LyricsProvider>): List<List<LyricsProvider>> {
+        if (providers.size <= 1) return listOf(providers)
+        val trusted = listOf(YouTubeLyricsProvider, SimpMusicLyricsProvider).filter { it in providers }
+        val subtitles = listOf(YouTubeSubtitleLyricsProvider).filter { it in providers }
+        val searchBased = providers.filterNot { it in trusted || it in subtitles }
+        return listOf(trusted, searchBased, subtitles).filter { it.isNotEmpty() }
     }
 
     suspend fun getAllLyrics(
@@ -180,7 +208,7 @@ constructor(
                 PreferredLyricsProvider.SIMPMUSIC -> SimpMusicLyricsProvider
             }
 
-        return listOf(first) + baseProviders.filterNot { provider -> provider == first }
+        return (listOf(first) + baseProviders).distinct()
     }
 
     private fun isMeaningfulLyrics(lyrics: String): Boolean {

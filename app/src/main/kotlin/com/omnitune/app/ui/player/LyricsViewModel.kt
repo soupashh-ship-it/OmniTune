@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +30,7 @@ class LyricsViewModel @Inject constructor(
     val uiState: StateFlow<LyricsUiState> = _uiState.asStateFlow()
 
     private var currentQueryId: String? = null
+    private var loadJob: Job? = null
 
     fun loadLyrics(songId: String, title: String, artist: String, duration: Long) {
         if (currentQueryId == songId && _uiState.value !is LyricsUiState.Error && _uiState.value !is LyricsUiState.NoLyrics) {
@@ -37,7 +39,8 @@ class LyricsViewModel @Inject constructor(
         currentQueryId = songId
         _uiState.value = LyricsUiState.Loading
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             try {
                 val result = lyricsRepository.loadLyrics(
                     songId = songId,
@@ -45,6 +48,7 @@ class LyricsViewModel @Inject constructor(
                     artist = artist,
                     duration = duration
                 )
+                if (currentQueryId != songId) return@launch
                 when (result) {
                     is AppResult.Success -> {
                         if (result.data.isEmpty()) {
@@ -58,6 +62,7 @@ class LyricsViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                if (currentQueryId != songId) return@launch
                 _uiState.value = LyricsUiState.Error(e.message ?: "Unknown error")
             }
         }

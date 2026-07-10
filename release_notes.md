@@ -1,3 +1,26 @@
+# OmniTune v0.11.9
+**Lyrics and Download Reliability Fixes**
+
+### Fixes & Improvements
+* Fixed lyrics race conditions so slower results from a previous song cannot replace the lyrics for the currently playing song.
+* Improved lyrics provider selection by trying ID-based lyrics before weaker title-search fallbacks and leaving YouTube subtitles as the last fallback to reduce wrong-language subtitle matches.
+* Stopped permanently caching temporary lyrics misses, so songs can retry lyrics lookup after provider or network failures.
+* Kept successful lyrics cached for fast repeat loads and added a unit test for stale lyrics result handling.
+* Added a Clear all failed action in Downloads.
+* Fixed failed playlist, album, and song download requests that were queued with raw YouTube IDs by retrying failed downloads with freshly resolved stream URLs.
+* Improved live download status refresh for active downloads across download-aware screens.
+* Increased local download concurrency from 5 to 8 parallel downloads to reduce queue wait time when the network and providers allow it.
+
+### Verification
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+* `assembleDebug`: passed
+
+### Build
+* Version: **0.11.9** (code 59)
+
+---
+
 # OmniTune v0.11.8
 **Settings Wiring and Download Status Fixes**
 

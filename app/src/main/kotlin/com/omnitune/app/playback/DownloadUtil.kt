@@ -52,7 +52,7 @@ class DownloadUtil @Inject constructor(
     val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
         val dataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
-        val executor = java.util.concurrent.Executors.newFixedThreadPool(6)
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(8)
         androidx.media3.exoplayer.offline.DownloadManager(
             context,
             databaseProvider,
@@ -60,7 +60,7 @@ class DownloadUtil @Inject constructor(
             dataSourceFactory,
             executor
         ).apply {
-            maxParallelDownloads = 5
+            maxParallelDownloads = 8
             minRetryCount = 5
         }
     }

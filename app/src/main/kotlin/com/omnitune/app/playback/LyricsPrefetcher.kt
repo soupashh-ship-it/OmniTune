@@ -36,8 +36,6 @@ class LyricsPrefetcher(
                 if (lyrics != LyricsEntity.LYRICS_NOT_FOUND && lyrics.isNotBlank()) {
                     database.upsert(LyricsEntity(id = metadata.id, lyrics = lyrics))
                     Timber.tag("MusicService").d("Fetched and cached lyrics for: ${metadata.title}")
-                } else {
-                    database.upsert(LyricsEntity(id = metadata.id, lyrics = LyricsEntity.LYRICS_NOT_FOUND))
                 }
             } catch (e: Exception) {
                 Timber.tag("MusicService").w(e, "Failed to fetch lyrics for: ${metadata.title}")
