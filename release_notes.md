@@ -1,7 +1,11 @@
 # OmniTune v0.11.9
-**Lyrics and Download Reliability Fixes**
+**Playback, Lyrics, and Download Reliability Fixes**
 
 ### Fixes & Improvements
+* Fixed crossfade for YouTube-backed tracks by resolving the next stream before starting the overlap player, so transitions no longer fade out into a failed/silent next item.
+* Increased crossfade preloading time so the next track has more room to resolve and buffer before the fade begins.
+* Fixed Pause when device volume is 0 by moving the behavior into the playback service instead of the UI-bound player connection, so it works while OmniTune is playing in the background.
+* Fixed Auto-start on Bluetooth connect by handling both Bluetooth connection broadcasts and audio device callbacks, then resuming through the normal playback resolver.
 * Fixed lyrics race conditions so slower results from a previous song cannot replace the lyrics for the currently playing song.
 * Improved lyrics provider selection by trying ID-based lyrics before weaker title-search fallbacks and leaving YouTube subtitles as the last fallback to reduce wrong-language subtitle matches.
 * Stopped permanently caching temporary lyrics misses, so songs can retry lyrics lookup after provider or network failures.

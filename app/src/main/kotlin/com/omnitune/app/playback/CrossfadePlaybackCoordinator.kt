@@ -8,7 +8,9 @@ package com.omnitune.app.playback
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import com.omnitune.app.data.StreamExtractor
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.models.PlaybackQualityMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import okhttp3.OkHttpClient
@@ -17,8 +19,10 @@ class CrossfadePlaybackCoordinator(
     private val context: Context,
     private val player: ExoPlayer,
     private val database: MusicDatabase,
+    private val streamExtractor: StreamExtractor,
     private val okHttpClient: OkHttpClient,
     private val downloadUtil: DownloadUtil,
+    private val playbackQualityModeProvider: suspend () -> PlaybackQualityMode,
     private val crossfadeDurationMs: MutableStateFlow<Int>,
     private val playbackFadeFactor: MutableStateFlow<Float>,
     private val playerVolume: MutableStateFlow<Float>,
@@ -33,6 +37,9 @@ class CrossfadePlaybackCoordinator(
         crossfadeAudio = CrossfadeAudio(
             player = player,
             database = database,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            playbackQualityModeProvider = playbackQualityModeProvider,
             crossfadeDurationMs = crossfadeDurationMs,
             playbackFadeFactor = playbackFadeFactor,
             playerVolume = playerVolume,

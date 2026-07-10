@@ -35,7 +35,6 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.constants.PermanentShuffleKey
-import com.omnitune.app.constants.PauseOnDeviceMuteKey
 import com.omnitune.app.constants.AutoDownloadOnLikeKey
 
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -111,8 +110,6 @@ class PlayerConnection(
     }.stateIn(scope, SharingStarted.Eagerly, 0L)
 
     val discordPresenceRunning: StateFlow<Boolean> = service.discordPresenceManager.isRunning
-
-    private var pausedByMute = false
 
     init {
         player.addListener(this)
@@ -303,24 +300,6 @@ class PlayerConnection(
         } else {
             canSkipPrevious.value = false
             canSkipNext.value = false
-        }
-    }
-
-    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
-        service.scope.launch {
-            val prefs = service.dataStore.data.first()
-            val pauseOnMute = prefs[PauseOnDeviceMuteKey] ?: false
-            if (pauseOnMute) {
-                if (volume == 0 || muted) {
-                    if (player.playWhenReady) {
-                        pausedByMute = true
-                        player.pause()
-                    }
-                } else if (pausedByMute) {
-                    pausedByMute = false
-                    player.play()
-                }
-            }
         }
     }
 

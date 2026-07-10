@@ -172,6 +172,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
     private var saveQueueJob: Job? = null
     private var bluetoothReceiver: android.content.BroadcastReceiver? = null
+    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
+    private var pausedByDeviceMute = false
 
 
     private var currentQueue: Queue = EmptyQueue
@@ -317,25 +319,39 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         }
 
-
-        val filter = android.content.IntentFilter(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+        }
         bluetoothReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
-                if (intent.action == android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED) {
-                    val state = intent.getIntExtra(android.bluetooth.BluetoothProfile.EXTRA_STATE, android.bluetooth.BluetoothProfile.STATE_DISCONNECTED)
-                    if (state == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
-                        scope.launch {
-                            val prefs = this@MusicService.dataStore.data.first()
-                            val autoStart = prefs[com.omnitune.app.constants.AutoStartOnBluetoothKey] ?: false
-                            if (autoStart) {
-                                player.play()
-                            }
-                        }
+                val connected = when (intent.action) {
+                    android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(
+                            android.bluetooth.BluetoothProfile.EXTRA_STATE,
+                            android.bluetooth.BluetoothProfile.STATE_DISCONNECTED,
+                        )
+                        state == android.bluetooth.BluetoothProfile.STATE_CONNECTED
                     }
+                    android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED -> true
+                    else -> false
+                }
+                if (connected) {
+                    handleBluetoothConnected()
                 }
             }
         }
         androidx.core.content.ContextCompat.registerReceiver(this, bluetoothReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>) {
+                if (addedDevices.any { it.isBluetoothOutput() }) {
+                    handleBluetoothConnected()
+                }
+            }
+        }.also { callback ->
+            val audioManager = getSystemService(android.media.AudioManager::class.java)
+            audioManager?.registerAudioDeviceCallback(callback, null)
+        }
 
         connectivityObserver = NetworkConnectivityObserver(this)
 
@@ -424,8 +440,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
             context = this,
             player = player,
             database = database,
+            streamExtractor = streamExtractor,
             okHttpClient = okHttpClient,
             downloadUtil = downloadUtil,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
             crossfadeDurationMs = crossfadeDurationMs,
             playbackFadeFactor = playbackFadeFactor,
             playerVolume = _playerVolume,
@@ -821,6 +839,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
             playbackNotificationManager.release()
         }
         bluetoothReceiver?.let { unregisterReceiver(it) }
+        audioDeviceCallback?.let { callback ->
+            getSystemService(android.media.AudioManager::class.java)?.unregisterAudioDeviceCallback(callback)
+        }
+        audioDeviceCallback = null
 
         scopeJob.cancel()
         player.release()
@@ -939,6 +961,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("metadata", force = true)
     }
 
+    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
+        scope.launch {
+            val pauseOnMute = dataStore.data.first()[com.omnitune.app.constants.PauseOnDeviceMuteKey] ?: false
+            if (!pauseOnMute) {
+                pausedByDeviceMute = false
+                return@launch
+            }
+
+            if (volume == 0 || muted) {
+                if (player.playWhenReady) {
+                    pausedByDeviceMute = true
+                    pausePlayback()
+                }
+            } else if (pausedByDeviceMute) {
+                pausedByDeviceMute = false
+                playOrResolveCurrent()
+            }
+        }
+    }
+
     private fun isDownloadCompleted(mediaId: String?): Boolean {
         val id = mediaId?.takeIf { it.isNotBlank() } ?: return false
         return try {
@@ -973,6 +1015,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (::playbackNotificationManager.isInitialized) {
             playbackNotificationManager.postFallback(reason, force)
         }
+    }
+
+    private fun handleBluetoothConnected() {
+        scope.launch {
+            val autoStart = dataStore.data.first()[com.omnitune.app.constants.AutoStartOnBluetoothKey] ?: false
+            if (!autoStart || !::player.isInitialized || player.mediaItemCount == 0 || player.playWhenReady) {
+                return@launch
+            }
+
+            playOrResolveCurrent()
+            postMediaNotificationFallback("bluetooth-connect", force = true)
+        }
+    }
+
+    private fun android.media.AudioDeviceInfo.isBluetoothOutput(): Boolean {
+        return type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+            (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                (type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                    type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
     }
 
     private fun handlePlaybackEnded() {
