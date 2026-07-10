@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.constants.SkipSilenceKey
 import com.omnitune.app.constants.AudioOffload
+import com.omnitune.app.constants.SeekExtraSeconds
 import com.omnitune.app.extensions.setOffloadEnabled
 
 object PlayerFactory {
@@ -50,6 +51,7 @@ object PlayerFactory {
         val prefs = runBlocking(Dispatchers.IO) { context.dataStore.data.first() }
         val skipSilence = prefs[SkipSilenceKey] ?: false
         val audioOffload = prefs[AudioOffload] ?: true
+        val progressiveSeek = prefs[SeekExtraSeconds] ?: false
 
         return ExoPlayer.Builder(context)
             .setWakeMode(C.WAKE_MODE_NETWORK)
@@ -64,8 +66,8 @@ object PlayerFactory {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
-            .setSeekBackIncrementMs(5_000L)
-            .setSeekForwardIncrementMs(10_000L)
+            .setSeekBackIncrementMs(if (progressiveSeek) 10_000L else 5_000L)
+            .setSeekForwardIncrementMs(if (progressiveSeek) 15_000L else 10_000L)
             .build()
             .apply {
                 skipSilenceEnabled = skipSilence

@@ -24,6 +24,9 @@ interface EventDao {
     @Query("DELETE FROM event")
     fun clearListenHistory()
 
+    @Query("DELETE FROM event WHERE timestamp < :beforeTimestamp")
+    fun deleteEventsBefore(beforeTimestamp: Long)
+
     @Query(
         """
         SELECT IFNULL(SUM(playTime), 0)

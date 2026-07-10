@@ -79,7 +79,11 @@ fun LibraryScreen(
         item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
             Spacer(modifier = Modifier.height(if (compactLibrary) OmniSpacing.medium else OmniSpacing.large))
-            LibraryHeader(totalCount = totalCount, onSearch = onNavigateToSearch)
+            LibraryHeader(
+                totalCount = totalCount,
+                onDownloads = onNavigateToDownloads,
+                onSearch = onNavigateToSearch,
+            )
         }
 
         item(contentType = "tabs") {
@@ -209,6 +213,7 @@ fun LibraryScreen(
 @Composable
 private fun LibraryHeader(
     totalCount: Int,
+    onDownloads: () -> Unit,
     onSearch: () -> Unit,
 ) {
     Row(
@@ -228,11 +233,18 @@ private fun LibraryHeader(
                 color = OmniColors.TextSecondary,
             )
         }
-        IconButtonSurface(
-            painter = painterResource(R.drawable.ic_search),
-            contentDescription = "Search",
-            onClick = onSearch,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+            IconButtonSurface(
+                painter = painterResource(R.drawable.ic_download),
+                contentDescription = "Downloads",
+                onClick = onDownloads,
+            )
+            IconButtonSurface(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = "Search",
+                onClick = onSearch,
+            )
+        }
     }
 }
 

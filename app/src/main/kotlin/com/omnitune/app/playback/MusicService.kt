@@ -10,13 +10,18 @@ import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import com.omnitune.app.constants.AutoDownloadOnLikeKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.metadata
@@ -33,6 +38,7 @@ import com.omnitune.app.utils.dataStore
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.ShuffleEnabledKey
 import com.omnitune.app.constants.AutoplaySimilarSongsKey
+import com.omnitune.app.constants.HistoryDuration
 import com.omnitune.app.db.entities.SongSkipEntity
 import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.AndroidEntryPoint
@@ -40,11 +46,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
+import com.omnitune.app.constants.StopMusicOnTaskClearKey
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -137,6 +147,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val audioNormalizationEnabled = MutableStateFlow(true)
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
+    private var autoDownloadOnLikeJob: Job? = null
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
 
@@ -259,6 +270,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             audioNormalizationEnabled = audioNormalizationEnabled,
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
         ).also { it.start() }
+        startAutoDownloadOnLikeObserver()
         radioQueueManager = RadioQueueManager(
             player = player,
             scope = scope,
@@ -433,14 +445,67 @@ class MusicService : MediaLibraryService(), Player.Listener {
         equalizerController.applyBands(bands)
     }
 
+    private fun startAutoDownloadOnLikeObserver() {
+        autoDownloadOnLikeJob?.cancel()
+        autoDownloadOnLikeJob = scope.launch(Dispatchers.IO) {
+            var knownLikedIds = emptySet<String>()
+            var enabledLastEmission = false
+
+            combine(
+                dataStore.data.map { it[AutoDownloadOnLikeKey] ?: false }.distinctUntilChanged(),
+                database.likedSongsByRowIdAsc(),
+            ) { enabled, songs -> enabled to songs }
+                .collect { (enabled, songs) ->
+                    val likedIds = songs.map { it.song.id }.toSet()
+                    if (!enabled) {
+                        knownLikedIds = likedIds
+                        enabledLastEmission = false
+                        return@collect
+                    }
+                    if (!enabledLastEmission) {
+                        knownLikedIds = likedIds
+                        enabledLastEmission = true
+                        return@collect
+                    }
+
+                    songs
+                        .filter { it.song.id !in knownLikedIds }
+                        .forEach { song -> queueAutoDownload(song.song.id, song.song.title) }
+                    knownLikedIds = likedIds
+                }
+        }
+    }
+
+    private fun queueAutoDownload(mediaId: String, title: String) {
+        try {
+            val existing = downloadUtil.downloadManager.downloadIndex.getDownload(mediaId)
+            if (existing != null && existing.state != Download.STATE_FAILED) return
+
+            val request = DownloadRequest.Builder(mediaId, mediaId.toUri())
+                .setCustomCacheKey(mediaId)
+                .setData(title.toByteArray())
+                .build()
+            DownloadService.sendAddDownload(this, ExoDownloadService::class.java, request, false)
+        } catch (e: Exception) {
+            Timber.tag("MusicService").w(e, "Failed to auto-download liked song $mediaId")
+        }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!player.playWhenReady || player.mediaItemCount == 0) {
-            stopSelf()
+        scope.launch {
+            val stopOnClear = dataStore.data.first()[StopMusicOnTaskClearKey] ?: false
+            if (stopOnClear) {
+                player.pause()
+                player.stop()
+                stopSelf()
+            } else if (!player.playWhenReady || player.mediaItemCount == 0) {
+                stopSelf()
+            }
         }
     }
 
@@ -1111,6 +1176,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
             try {
                 metadata?.let { database.insert(it) }
                 database.insertRecentEvent(mediaId, listenedMs)
+                val historyDays = dataStore.data.first()[HistoryDuration] ?: 30f
+                if (historyDays > 0f) {
+                    val cutoff = System.currentTimeMillis() - historyDays.toLong().coerceAtLeast(1L) * 86_400_000L
+                    database.deleteEventsBefore(cutoff)
+                }
                 database.incrementTotalPlayTime(mediaId, listenedMs)
                 Timber.tag("OmniTuneRecent").d("Recorded listening event: mediaId=$mediaId listenedMs=$listenedMs")
             } catch (e: Exception) {

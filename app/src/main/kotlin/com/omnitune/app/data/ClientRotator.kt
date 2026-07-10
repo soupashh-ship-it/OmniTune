@@ -13,7 +13,9 @@ class ClientRotator @Inject constructor() {
         PlayerStreamClient.ANDROID_VR,
         PlayerStreamClient.IOS,
         PlayerStreamClient.WEB_REMIX,
-        PlayerStreamClient.ANDROID_MUSIC
+        PlayerStreamClient.ANDROID_MUSIC,
+        PlayerStreamClient.MOBILE,
+        PlayerStreamClient.TVHTML5,
     )
 
     fun getNextClient(videoId: String): PlayerStreamClient {

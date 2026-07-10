@@ -4,11 +4,15 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.omnitune.app.constants.AudioQuality
+import com.omnitune.app.constants.NetworkMeteredKey
 import com.omnitune.app.constants.PlayerStreamClient
+import com.omnitune.app.constants.PlayerStreamClientKey
 import com.omnitune.app.models.StreamQuality
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.utils.YTPlayerUtils
+import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,17 +54,24 @@ class StreamExtractor @Inject constructor(
             return StreamResolveResult.Failure(songId, PlaybackResolveError.NoNetwork, emptyList())
         }
 
-        val audioQuality = when (quality) {
-            StreamQuality.LOW -> AudioQuality.LOW
-            StreamQuality.MEDIUM, StreamQuality.HIGH -> AudioQuality.HIGH
-            StreamQuality.BEST -> AudioQuality.HIGHEST
+        val prefs = context.dataStore.data.first()
+        val networkMetered = prefs[NetworkMeteredKey] ?: false
+        val preferredClient = runCatching {
+            PlayerStreamClient.valueOf(prefs[PlayerStreamClientKey] ?: PlayerStreamClient.ANDROID_VR.name)
+        }.getOrDefault(PlayerStreamClient.ANDROID_VR)
+
+        val audioQuality = when {
+            networkMetered -> AudioQuality.LOW
+            quality == StreamQuality.LOW -> AudioQuality.LOW
+            quality == StreamQuality.BEST -> AudioQuality.HIGHEST
+            else -> AudioQuality.HIGH
         }
 
         val attemptedClients = mutableListOf<PlayerStreamClient>()
         var lastFailure: Throwable? = null
         var lastReason: PlaybackResolveError = PlaybackResolveError.NoPlayableFormat
 
-        val clientSequence = clientRotator.getClientSequence(songId)
+        val clientSequence = (listOf(preferredClient) + clientRotator.getClientSequence(songId)).distinct()
         val totalAttempts = clientSequence.size
         Timber.tag("OmniTuneStreamFallback").i("Stream resolve attempt started (total clients: $totalAttempts)")
 
@@ -73,6 +84,7 @@ class StreamExtractor @Inject constructor(
                 audioQuality = audioQuality,
                 connectivityManager = cm,
                 preferredStreamClient = client,
+                networkMetered = networkMetered,
             )
             
             val streamResult = result.fold(

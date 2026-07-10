@@ -1,3 +1,26 @@
+# OmniTune v0.11.8
+**Settings Wiring and Download Status Fixes**
+
+### Fixes & Improvements
+* Added a Downloads icon beside Search in Library so users can open download status for queued, active, completed, and failed downloads.
+* Fixed Playback & Audio settings that were only saved but not applied: network metering now lowers stream quality, Player Client now drives stream resolution, History duration now prunes old listening history, Stop music on task clear now stops active playback, and Progressive seek now changes seek skip increments.
+* Added the missing Playback quality selector to Playback & Audio and wired it to the existing stream quality resolver.
+* Added the missing Equalizer entry in Playback & Audio so the existing equalizer screen is reachable from Settings.
+* Fixed Symbols to split artists so the settings row opens the existing separator editor.
+* Aligned Audio normalization and Audio offload setting defaults with the playback engine defaults.
+* Fixed Auto download on like so newly liked songs are queued from the playback service instead of only from one player button path.
+* Re-audited Appearance settings and confirmed the visible Appearance options are wired to their player, mini-player, library, lyrics, theme, and shortcut consumers.
+
+### Verification
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+* `assembleDebug`: passed
+
+### Build
+* Version: **0.11.8** (code 58)
+
+---
+
 # OmniTune v0.11.7
 **Library, Stats, and YouTube Music Sync Fixes**
 
