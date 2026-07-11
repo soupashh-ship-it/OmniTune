@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +60,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun AboutSettings() {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val installedDate = remember(context) { installedDateLabel(context) }
@@ -108,11 +110,11 @@ fun AboutSettings() {
                     AboutExternalLinkRow(
                         entry = AboutLinkEntry(
                             title = "Discord Server",
-                            subtitle = "Join the community",
+                            subtitle = "Join the community to chat and report bugs",
                             url = url,
                             iconRes = R.drawable.ic_discord,
                         ),
-                        onOpen = { open(it) },
+                        onOpen = { uriHandler.openUri(it) },
                     )
                 }
             }

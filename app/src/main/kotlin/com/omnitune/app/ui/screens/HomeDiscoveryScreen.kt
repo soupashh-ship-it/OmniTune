@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -395,9 +396,10 @@ private fun HomeTopHeader(
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
             // OmniTune app icon
-            androidx.compose.foundation.Image(
+            Icon(
                 painter = painterResource(R.drawable.ic_omnitune_logo),
                 contentDescription = "OmniTune",
+                tint = OmniColors.OmniAccentPrimary,
                 modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
             )
             Text(

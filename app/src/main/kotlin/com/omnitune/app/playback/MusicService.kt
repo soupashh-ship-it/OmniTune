@@ -628,21 +628,38 @@ class MusicService : MediaLibraryService(), Player.Listener {
         preResolveJob = scope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
                 if (player.mediaItemCount == 0) return@launch
-                
-                // Get the actual next index considering shuffle and repeat modes
-                val nextIndex1 = player.nextMediaItemIndex
-                if (nextIndex1 == androidx.media3.common.C.INDEX_UNSET || nextIndex1 == player.currentMediaItemIndex) return@launch
-                
-                val item1 = player.getMediaItemAt(nextIndex1)
-                
+
+                val currentIndex = player.currentMediaItemIndex
+                if (currentIndex == androidx.media3.common.C.INDEX_UNSET) return@launch
+
+                val indicesToResolve = (currentIndex + 1 until player.mediaItemCount)
+                    .take(5)
+                    .filter { index ->
+                        StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(index).localConfiguration?.uri)
+                    }
+
+                if (indicesToResolve.isEmpty()) return@launch
+
+                val items = indicesToResolve.map { index ->
+                    index to player.getMediaItemAt(index)
+                }
+
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    if (StreamUrlResolver.isYouTubeVideoId(item1.localConfiguration?.uri)) {
-                        val resolved = StreamUrlResolver.resolveMediaItem(item1, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                        if (resolved != null) {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                if (StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(nextIndex1).localConfiguration?.uri)) {
-                                    player.replaceMediaItem(nextIndex1, resolved)
-                                    Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $nextIndex1")
+                    val results = items.map { (index, item) ->
+                        index to StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+                    }
+
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        results.forEach { (index, resolved) ->
+                            if (resolved != null) {
+                                try {
+                                    if (index < player.mediaItemCount &&
+                                        StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(index).localConfiguration?.uri)
+                                    ) {
+                                        player.replaceMediaItem(index, resolved)
+                                        Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $index")
+                                    }
+                                } catch (_: Exception) {
                                 }
                             }
                         }

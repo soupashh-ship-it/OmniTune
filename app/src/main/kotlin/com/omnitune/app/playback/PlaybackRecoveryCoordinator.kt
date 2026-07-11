@@ -116,11 +116,11 @@ class PlaybackRecoveryCoordinator(
                 } catch (e: Exception) {
                     Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
                 }
-                fallbackSkip(errorType)
+                fallbackSkip(errorType, isUnresolved)
             }
         } else {
             Timber.tag("MusicService").w("Recovery policy denied retry for $mediaId, error: $errorType")
-            fallbackSkip(errorType)
+            fallbackSkip(errorType, isUnresolved)
         }
     }
 
@@ -133,8 +133,8 @@ class PlaybackRecoveryCoordinator(
         playbackWatchdogJob = null
     }
 
-    private fun fallbackSkip(errorType: PlaybackErrorType) {
-        if (autoSkipNextOnError && errorType.shouldAutoSkipTrack() && player.hasNextMediaItem()) {
+    private fun fallbackSkip(errorType: PlaybackErrorType, isUnresolved: Boolean = false) {
+        if (autoSkipNextOnError && (errorType.shouldAutoSkipTrack() || isUnresolved) && player.hasNextMediaItem()) {
             Timber.tag("MusicService").i("Auto-skipping to next track after error")
             player.seekToNextMediaItem()
             player.prepare()

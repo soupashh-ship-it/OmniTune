@@ -139,7 +139,7 @@ object StreamUrlResolver {
         priorityIndex: Int? = null
     ): List<MediaItem> = coroutineScope {
         val resolved = MutableList<MediaItem?>(items.size) { null }
-        
+
         if (priorityIndex != null && priorityIndex in items.indices) {
             val item = items[priorityIndex]
             if (isYouTubeVideoId(item.localConfiguration?.uri)) {
@@ -149,8 +149,30 @@ object StreamUrlResolver {
             }
         }
 
+        items.forEachIndexed { index, item ->
+            if (resolved[index] == null && isYouTubeVideoId(item.localConfiguration?.uri)) {
+                val videoId = item.localConfiguration?.uri?.toString()?.trim()
+                if (videoId != null && isFastResolvable(videoId, downloadUtil)) {
+                    resolved[index] = resolveMediaItem(item, streamExtractor, downloadUtil, qualityMode) ?: item
+                }
+            }
+        }
+
         items.mapIndexed { index, item ->
             resolved[index] ?: item
         }
+    }
+
+    private fun isFastResolvable(videoId: String, downloadUtil: DownloadUtil?): Boolean {
+        if (streamCache.get(videoId) != null) return true
+        if (downloadUtil != null) {
+            try {
+                val download = downloadUtil.downloadManager.downloadIndex.getDownload(videoId)
+                return download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
+            } catch (_: Exception) {
+                return false
+            }
+        }
+        return false
     }
 }

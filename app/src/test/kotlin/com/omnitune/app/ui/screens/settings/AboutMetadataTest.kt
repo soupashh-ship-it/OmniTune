@@ -20,8 +20,8 @@ class AboutMetadataTest {
     }
 
     @Test
-    fun discordRowStaysHiddenWithoutRealDestination() {
-        assertNull(AboutDestinations.discordUrl)
+    fun discordRowUsesConfiguredDestination() {
+        assertEquals("https://discord.gg/aDhxBnfNpX", AboutDestinations.discordUrl)
         assertNull(AboutDestinations.supportUrl)
     }
 
