@@ -222,6 +222,21 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlist_song_map WHERE songId = :songId")
     fun playlistSongMaps(songId: String): List<PlaylistSongMap>
 
+    @Query(
+        """
+        UPDATE playlist
+        SET isDownloaded = CASE
+            WHEN EXISTS (SELECT 1 FROM playlist_song_map WHERE playlistId = playlist.id)
+             AND NOT EXISTS (
+                SELECT 1 FROM playlist_song_map
+                JOIN song ON song.id = playlist_song_map.songId
+                WHERE playlist_song_map.playlistId = playlist.id AND song.download_state != 2
+             ) THEN 1 ELSE 0 END
+        WHERE id IN (SELECT playlistId FROM playlist_song_map WHERE songId = :songId)
+        """
+    )
+    fun refreshDownloadedPlaylists(songId: String)
+
 
     @Transaction
     @Query("SELECT * FROM playlist_song_map WHERE playlistId = :playlistId AND position >= :from ORDER BY position")

@@ -38,6 +38,7 @@ import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.constants.StreamBypassProxyKey
 import com.omnitune.app.constants.UseLoginForBrowse
 import com.omnitune.app.constants.VisitorDataKey
+import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
@@ -47,6 +48,7 @@ import com.omnitune.app.ui.player.CanvasArtworkPlaybackCache
 import com.omnitune.app.ui.screens.settings.ThemePalettes
 import com.omnitune.app.ui.theme.ThemeSeedPalette
 import com.omnitune.app.ui.theme.ThemeSeedPaletteCodec
+import com.omnitune.app.sync.scheduleYouTubePlaylistSync
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
@@ -313,6 +315,13 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 .collect { sessionKey ->
                     LastFM.sessionKey = sessionKey
                 }
+        }
+
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[YtmSyncKey] ?: false }
+                .distinctUntilChanged()
+                .collect { scheduleYouTubePlaylistSync(this@OmniTuneApp, it) }
         }
     }
 

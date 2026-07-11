@@ -17,6 +17,8 @@ class EqualizerController(
 ) {
     private val appContext = context.applicationContext
     private var systemEqualizer: Equalizer? = null
+    private var enabled = false
+    private var pendingBands: List<EqualizerBand> = emptyList()
 
     fun setupIfNeeded(audioSessionId: Int) {
         if (systemEqualizer != null) return
@@ -24,8 +26,9 @@ class EqualizerController(
         try {
             systemEqualizer?.release()
             systemEqualizer = Equalizer(0, audioSessionId).apply {
-                enabled = true
+                enabled = this@EqualizerController.enabled
             }
+            applyBands(pendingBands)
         } catch (e: Exception) {
             Timber.w(e, "Failed to initialize equalizer")
             Handler(Looper.getMainLooper()).post {
@@ -39,17 +42,27 @@ class EqualizerController(
     }
 
     fun applyBands(bands: List<EqualizerBand>) {
+        pendingBands = bands
         val eq = systemEqualizer ?: return
         try {
+            val range = eq.bandLevelRange
             bands.forEachIndexed { index, band ->
                 if (index < eq.numberOfBands) {
-                    val gainMillibels = (band.gainDb * 100).toInt().toShort()
+                    val gainMillibels = (band.gainDb * 100).toInt()
+                        .coerceIn(range[0].toInt(), range[1].toInt())
+                        .toShort()
                     eq.setBandLevel(index.toShort(), gainMillibels)
                 }
             }
         } catch (e: Exception) {
             Timber.w(e, "Failed to apply EQ bands")
         }
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        this.enabled = enabled
+        runCatching { systemEqualizer?.enabled = enabled }
+            .onFailure { Timber.w(it, "Failed to change equalizer state") }
     }
 
     fun release() {

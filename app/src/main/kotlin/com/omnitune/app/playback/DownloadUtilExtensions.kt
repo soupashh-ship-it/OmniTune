@@ -84,13 +84,13 @@ suspend fun DownloadUtil.enqueueCollection(
             thumbnailUrl = thumbnailUrl ?: existing.thumbnailUrl,
             bookmarkedAt = existing.bookmarkedAt ?: now,
             lastUpdateTime = now,
-            isDownloaded = true,
+            isDownloaded = false,
         ) ?: PlaylistEntity(
             id = playlistId,
             name = name,
             thumbnailUrl = thumbnailUrl,
             bookmarkedAt = now,
-            isDownloaded = true,
+            isDownloaded = false,
         )
 
         if (existing == null) insert(playlist) else update(playlist)

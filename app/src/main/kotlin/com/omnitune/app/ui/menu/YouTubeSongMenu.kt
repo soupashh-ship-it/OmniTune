@@ -72,7 +72,6 @@ import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.LocalDatabase
 import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.LocalPlayerConnection
-import com.omnitune.app.LocalSyncUtils
 import com.omnitune.app.R
 import com.omnitune.app.constants.ArtistSeparatorsKey
 import com.omnitune.app.constants.ListItemHeight
@@ -112,7 +111,6 @@ fun YouTubeSongMenu(
     val librarySong by database.song(song.id).collectAsState(initial = null)
     val download by downloadUtil.getDownload(song.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
-    val syncUtils = LocalSyncUtils.current
     val artists = remember {
         song.artists.mapNotNull {
             it.id?.let { artistId ->
@@ -262,7 +260,6 @@ fun YouTubeSongMenu(
                                 s = librarySong.song.toggleLike()  
                                 update(s)  
                             }  
-                            // syncUtils.likeSong(s)  
                         }  
                     }  
                 },  

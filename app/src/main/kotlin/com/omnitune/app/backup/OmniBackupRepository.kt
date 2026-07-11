@@ -29,6 +29,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -217,7 +218,7 @@ class OmniBackupRepository @Inject constructor(
     }
 
     private fun readSnapshot(inputStream: InputStream): OmniBackupSnapshot {
-        val text = inputStream.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+        val text = inputStream.use { it.readBytesLimited(MAX_LIBRARY_JSON_BYTES).toString(StandardCharsets.UTF_8) }
         if (text.isBlank()) {
             throw IllegalArgumentException("Backup file is empty")
         }
@@ -235,20 +236,30 @@ class OmniBackupRepository @Inject constructor(
         var stagedDir: File? = null
         var audioFileCount = 0
         var audioBytes = 0L
+        var entryCount = 0
 
-        ZipInputStream(inputStream).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
+        try {
+            ZipInputStream(inputStream).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                entryCount++
+                require(entryCount <= MAX_ARCHIVE_ENTRIES) { "Backup archive contains too many entries" }
                 if (!entry.isDirectory) {
                     when {
                         entry.name == OfflineDownloadArchive.LIBRARY_JSON_ENTRY -> {
-                            snapshot = json.decodeFromString(zip.readBytes().toString(StandardCharsets.UTF_8))
+                            snapshot = json.decodeFromString(
+                                zip.readBytesLimited(MAX_LIBRARY_JSON_BYTES).toString(StandardCharsets.UTF_8),
+                            )
                         }
                         entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
                             val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
                             val relative = entry.name.removePrefix(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX)
                             val target = OfflineDownloadArchive.resolveStagingTarget(stage, "files/$relative")
-                            val copied = target.outputStream().use { output -> zip.copyTo(output) }
+                            val remaining = (stage.usableSpace - MIN_FREE_SPACE_BYTES).coerceAtLeast(0L)
+                            require(remaining > 0) { "Not enough storage to restore downloaded audio" }
+                            val copied = target.outputStream().use { output ->
+                                zip.copyToLimited(output, minOf(MAX_AUDIO_ENTRY_BYTES, remaining))
+                            }
                             audioFileCount++
                             audioBytes += copied
                         }
@@ -262,14 +273,18 @@ class OmniBackupRepository @Inject constructor(
                             )
                             if (relative in allowedNames) {
                                 val target = OfflineDownloadArchive.resolveStagingTarget(stage, "databases/$relative")
-                                target.outputStream().use { output -> zip.copyTo(output) }
+                                target.outputStream().use { output -> zip.copyToLimited(output, MAX_DATABASE_ENTRY_BYTES) }
                             }
                         }
                     }
                 }
-                zip.closeEntry()
-                entry = zip.nextEntry
+                    zip.closeEntry()
+                    entry = zip.nextEntry
+                }
             }
+        } catch (error: Exception) {
+            stagedDir?.deleteRecursively()
+            throw error
         }
 
         val finalSnapshot = snapshot ?: throw IllegalArgumentException("Backup archive is missing library.json")
@@ -281,6 +296,32 @@ class OmniBackupRepository @Inject constructor(
             ),
             stagedDownloadDir = stagedDir,
         )
+    }
+
+    private fun InputStream.readBytesLimited(limit: Long): ByteArray {
+        val output = ByteArrayOutputStream()
+        copyToLimited(output, limit)
+        return output.toByteArray()
+    }
+
+    private fun InputStream.copyToLimited(output: OutputStream, limit: Long): Long {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) return total
+            total += read
+            require(total <= limit) { "Backup entry exceeds the allowed size" }
+            output.write(buffer, 0, read)
+        }
+    }
+
+    companion object {
+        private const val MAX_LIBRARY_JSON_BYTES = 64L * 1024 * 1024
+        private const val MAX_DATABASE_ENTRY_BYTES = 512L * 1024 * 1024
+        private const val MAX_AUDIO_ENTRY_BYTES = 2L * 1024 * 1024 * 1024
+        private const val MIN_FREE_SPACE_BYTES = 256L * 1024 * 1024
+        private const val MAX_ARCHIVE_ENTRIES = 100_000
     }
 
     private fun validate(snapshot: OmniBackupSnapshot) {

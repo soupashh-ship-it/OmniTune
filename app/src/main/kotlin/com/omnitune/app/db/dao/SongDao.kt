@@ -532,6 +532,9 @@ interface SongDao {
     @Update
     fun update(song: SongEntity)
 
+    @Query("UPDATE song SET download_state = :state, dateDownload = :downloadedAt WHERE id = :songId")
+    fun updateDownloadState(songId: String, state: Int, downloadedAt: LocalDateTime?)
+
 
     @Upsert
     fun upsert(song: SongEntity)

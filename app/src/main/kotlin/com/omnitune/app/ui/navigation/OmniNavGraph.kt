@@ -76,8 +76,6 @@ import com.omnitune.app.ui.screens.Screens
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_DOWNLOADS
 import com.omnitune.app.ui.screens.Screens.Companion.ROUTE_EQUALIZER
 import com.omnitune.app.ui.screens.search.SearchScreen
-import com.omnitune.app.ui.screens.settings.DiscordSettingsScreen
-import com.omnitune.app.ui.screens.settings.DiscordLoginScreen
 import com.omnitune.app.ui.screens.settings.BackupRestoreScreen
 import com.omnitune.app.ui.screens.settings.AboutSettings
 import com.omnitune.app.ui.screens.settings.AppearanceSettings
@@ -370,18 +368,6 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable(Screens.Changelog.route) {
                 com.omnitune.app.ui.screens.settings.ChangelogScreen(navController = navController)
             }
-            composable(Screens.MusicTogether.route) {
-                com.omnitune.app.ui.screens.settings.MusicTogetherScreen(navController = navController)
-            }
-            composable(Screens.Charts.route) {
-                com.omnitune.app.ui.screens.ChartsScreen(navController = navController)
-            }
-            composable(Screens.Explore.route) {
-                com.omnitune.app.ui.screens.ExploreScreen(navController = navController)
-            }
-            composable(Screens.NewRelease.route) {
-                com.omnitune.app.ui.screens.NewReleaseScreen(navController = navController)
-            }
             composable(Screens.MoodAndGenres.route) {
                 com.omnitune.app.ui.screens.MoodAndGenresScreen(
                     onBack = { navController.popBackStack() },
@@ -397,24 +383,11 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             ) {
                 com.omnitune.app.ui.screens.YouTubeBrowseScreen(navController = navController)
             }
-            composable(Screens.Account.route) {
-                com.omnitune.app.ui.screens.AccountScreen(navController = navController)
-            }
             composable(Screens.Login.route) {
                 com.omnitune.app.ui.screens.LoginScreen(navController = navController)
             }
             composable(Screens.AccountSettings.route) {
                 com.omnitune.app.ui.screens.settings.OmniTuneAccountSettingsScreen(navController = navController)
-            }
-            composable(
-                route = Screens.AutoPlaylist.route + "/{playlistType}",
-                arguments = listOf(androidx.navigation.navArgument("playlistType") { type = androidx.navigation.NavType.StringType })
-            ) { backStackEntry ->
-                val playlistType = backStackEntry.arguments?.getString("playlistType") ?: ""
-                com.omnitune.app.ui.screens.AutoPlaylistScreen(
-                    navController = navController,
-                    playlistType = playlistType
-                )
             }
             composable(Screens.Library.route) {
                 LibraryScreen(onNavigateToSearch = { navController.navigate(Screens.Search.route) }, onNavigateToLiked = { navController.navigate("liked_songs") },
@@ -632,8 +605,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("settings/content") { 
                 SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { 
                     ContentSettings(
-                        onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) },
-                        onNavigateToMusicTogether = { navController.navigate(Screens.MusicTogether.route) }
+                        onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) }
                     ) 
                 } 
             }
@@ -654,8 +626,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 PlayerScreen(
                     playerConnection = localPlayerConnection, 
                     onDismiss = { navController.popBackStack() }, 
-                    onOpenQueue = { navController.navigate("queue") },
-                    onNavigateToListenTogether = { navController.navigate(Screens.MusicTogether.route) }
+                    onOpenQueue = { navController.navigate("queue") }
                 ) 
             }
             composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
@@ -676,8 +647,6 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToCategory = { cat -> 
                         if (cat == "account_settings") {
                             navController.navigate(Screens.AccountSettings.route)
-                        } else if (cat == "music_together") {
-                            navController.navigate(Screens.MusicTogether.route)
                         } else {
                             navController.navigate("settings/$cat") 
                         }
@@ -700,8 +669,6 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             }
             composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
             composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }
-            composable("settings/discord") { SettingsSubScreenScaffold(title = "Discord RPC", onBack = { navController.popBackStack() }) { DiscordSettingsScreen(onNavigateToLogin = { navController.navigate("settings/discord_login") }) } }
-            composable("settings/discord_login") { DiscordLoginScreen(onBack = { navController.popBackStack() }, onLoggedIn = { navController.popBackStack() }) }
             composable("settings/backup_restore") { SettingsSubScreenScaffold(title = "Backup & Restore", onBack = { navController.popBackStack() }) { BackupRestoreScreen() } }
             composable("settings/notifications") { SettingsSubScreenScaffold(title = "Notifications", onBack = { navController.popBackStack() }) { MediaControlsHelp() } }
             composable(ROUTE_DOWNLOADS) {
@@ -739,7 +706,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onBack = { navController.popBackStack() },
                     onApplyBands = { bands ->
                         localPlayerConnection?.applyEqualizerBands(bands)
-                    }
+                    },
+                    onSetEnabled = { enabled -> localPlayerConnection?.setEqualizerEnabled(enabled) },
                 )
             }
         }
@@ -789,7 +757,6 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     playerConnection = localPlayerConnection,
                     onDismiss = { showPlayerOverlay = false },
                     onOpenQueue = { showPlayerOverlay = false; navController.navigate("queue") },
-                    onNavigateToListenTogether = { showPlayerOverlay = false; navController.navigate(Screens.MusicTogether.route) },
                     onNavigateToAlbum = { albumId -> showPlayerOverlay = false; navController.navigate("album/$albumId") },
                     onNavigateToArtist = { artistId -> showPlayerOverlay = false; navController.navigate("artist/$artistId") },
                 )

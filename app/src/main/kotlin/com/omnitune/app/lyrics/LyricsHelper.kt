@@ -191,7 +191,7 @@ constructor(
                 PreferredLyricsProvider.SIMPMUSIC -> SimpMusicLyricsProvider
             }
 
-        return (listOf(first) + baseProviders).distinct()
+        return (listOf(YouTubeLyricsProvider, SimpMusicLyricsProvider, first) + baseProviders).distinct()
     }
 
     private fun isMeaningfulLyrics(lyrics: String): Boolean {

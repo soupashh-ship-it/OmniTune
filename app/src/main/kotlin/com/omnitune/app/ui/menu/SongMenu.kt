@@ -80,7 +80,6 @@ import com.omnitune.innertube.YouTube
 import com.omnitune.app.LocalDatabase
 import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.LocalPlayerConnection
-import com.omnitune.app.LocalSyncUtils
 import com.omnitune.app.R
 import com.omnitune.app.constants.ArtistSeparatorsKey
 import com.omnitune.app.constants.ListItemHeight
@@ -131,7 +130,6 @@ fun SongMenu(
     val download by downloadUtil.getDownload(originalSong.id)
         .collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
-    val syncUtils = LocalSyncUtils.current
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
     // val cacheViewModel = hiltViewModel<CachePlaylistViewModel>() // Not used in OmniTune
 

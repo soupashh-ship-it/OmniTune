@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.map
 fun ContentSettings(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateToPoToken: () -> Unit = {},
-    onNavigateToMusicTogether: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showClearSearchHistoryDialog by remember { mutableStateOf(false) }
@@ -135,13 +134,6 @@ fun ContentSettings(
     }
 
     OmniPreferenceCard(title = "API & Tokens") {
-        OmniPreferenceEntry(
-            title = "Music Together",
-            description = "Listen with friends in real-time",
-            iconRes = R.drawable.ic_play_arrow,
-            accent = OmniColors.OmniAccentPrimary,
-            onClick = onNavigateToMusicTogether,
-        )
         OmniPreferenceEntry(
             title = "YouTube PO Token",
             description = "Bypass YouTube bot protections",

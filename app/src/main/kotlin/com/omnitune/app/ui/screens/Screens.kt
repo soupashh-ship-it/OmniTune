@@ -21,16 +21,10 @@ sealed class Screens(
     object PoToken : Screens("po_token")
 
     
-    object Charts : Screens("charts")
-    object Explore : Screens("explore")
-    object NewRelease : Screens("new_release")
     object MoodAndGenres : Screens("mood_and_genres")
     object YouTubeBrowse : Screens("youtube_browse")
-    object AutoPlaylist : Screens("auto_playlist")
     
-    object MusicTogether : Screens("music_together")
     
-    object Account : Screens("account")
     object Login : Screens("login")
     object AccountSettings : Screens("account_settings")
     

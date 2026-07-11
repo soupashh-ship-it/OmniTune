@@ -73,12 +73,4 @@ fun StorageSettings(
         )
     }
 
-    OmniPreferenceCard(title = "Limits") {
-        OmniPreferenceEntry(
-            title = "Current cache limits",
-            description = "Image cache: 128 MB max\nSong cache: 2 GB max",
-            iconRes = R.drawable.ic_download,
-            accent = OmniColors.OmniAccentMuted,
-        )
-    }
 }

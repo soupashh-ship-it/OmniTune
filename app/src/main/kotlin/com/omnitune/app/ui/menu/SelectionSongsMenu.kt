@@ -53,7 +53,6 @@ import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.playback.downloads
 import com.omnitune.app.ui.component.AddToPlaylistDialog
 import com.omnitune.app.LocalPlayerConnection
-import com.omnitune.app.LocalSyncUtils
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.PlaylistSongMap
 import com.omnitune.app.db.entities.Song
@@ -85,7 +84,6 @@ fun SelectionSongMenu(
     val downloadUtil = LocalDownloadUtil.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current ?: return
-    val syncUtils = LocalSyncUtils.current
 
     val allInLibrary by remember {
         mutableStateOf(
@@ -448,7 +446,6 @@ fun SelectionSongMenu(
                             if ((!allLiked && !song.song.liked) || allLiked) {
                                 val s = song.song.toggleLike()
                                 update(s)
-                                // syncUtils.likeSong(s)
                             }
                         }
                     }

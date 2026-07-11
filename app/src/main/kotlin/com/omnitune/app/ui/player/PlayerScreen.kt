@@ -127,7 +127,6 @@ fun PlayerScreen(
     playerConnection: PlayerConnection?,
     onDismiss: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
-    onNavigateToListenTogether: () -> Unit = {},
     onNavigateToAlbum: ((String) -> Unit)? = null,
     onNavigateToArtist: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -354,10 +353,6 @@ fun PlayerScreen(
                     (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(clip)
                     android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
                 }
-            },
-            onListenTogether = {
-                showOptionsSheet = false
-                onNavigateToListenTogether()
             },
             onNavigateToAlbum = onNavigateToAlbum?.let { navigate -> { showOptionsSheet = false; val id = mediaMetadata?.album?.id; if (id != null) navigate(id) } },
             onNavigateToArtist = onNavigateToArtist?.let { navigate ->
@@ -1484,7 +1479,6 @@ fun PlayerOptionsBottomSheet(
     onNavigateToRadio: () -> Unit = {},
     onAddToPlaylist: () -> Unit = {},
     onCopyLink: () -> Unit = {},
-    onListenTogether: () -> Unit = {},
     onNavigateToAlbum: (() -> Unit)? = null,
     onNavigateToArtist: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null,
@@ -1679,7 +1673,6 @@ fun PlayerOptionsBottomSheet(
                 if (onShare != null) add(PlayerOption(R.drawable.ic_share, "Share", onShare))
                 add(PlayerOption(R.drawable.ic_bedtime, "Sleep timer", onSleepTimer))
                 add(PlayerOption(R.drawable.ic_list, "Queue", onOpenQueue))
-                add(PlayerOption(R.drawable.ic_share, "Listen together", onListenTogether))
                 add(
                     PlayerOption(R.drawable.ic_download, "Download") {
                         val videoId = currentMetadata?.id

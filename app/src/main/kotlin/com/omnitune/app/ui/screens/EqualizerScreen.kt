@@ -25,16 +25,29 @@ import androidx.compose.ui.unit.sp
 import com.omnitune.app.R
 import com.omnitune.app.playback.EqualizerBand
 import com.omnitune.app.playback.EqualizerPresets
+import com.omnitune.app.playback.decodeEqualizerBands
+import com.omnitune.app.playback.encodeEqualizerBands
+import com.omnitune.app.constants.EqualizerBandLevelsMbKey
+import com.omnitune.app.constants.EqualizerEnabledKey
+import com.omnitune.app.constants.EqualizerSelectedProfileIdKey
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.utils.rememberPreference
 
 @Composable
 fun EqualizerScreen(
     onBack: () -> Unit,
     onApplyBands: (List<EqualizerBand>) -> Unit,
-    initialBands: List<EqualizerBand> = EqualizerPresets.FLAT.bands,
+    onSetEnabled: (Boolean) -> Unit,
 ) {
-    var bands by remember { mutableStateOf(initialBands) }
-    var selectedPreset by remember { mutableStateOf(EqualizerPresets.FLAT.name) }
+    var storedBands by rememberPreference(EqualizerBandLevelsMbKey, "")
+    var enabled by rememberPreference(EqualizerEnabledKey, false)
+    var selectedPreset by rememberPreference(EqualizerSelectedProfileIdKey, EqualizerPresets.FLAT.name)
+    var bands by remember { mutableStateOf(decodeEqualizerBands(storedBands) ?: EqualizerPresets.FLAT.bands) }
+
+    LaunchedEffect(Unit) {
+        onSetEnabled(enabled)
+        onApplyBands(bands)
+    }
 
     Column(
         modifier = Modifier
@@ -57,6 +70,21 @@ fun EqualizerScreen(
             Text("Equalizer", fontWeight = FontWeight.Bold, fontSize = 22.sp, color = OmniColors.TextPrimary)
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text("Enabled", color = OmniColors.TextPrimary)
+            Switch(
+                checked = enabled,
+                onCheckedChange = {
+                    enabled = it
+                    onSetEnabled(it)
+                },
+            )
+        }
+
         // Preset chips
         Text("Presets", fontSize = 13.sp, color = OmniColors.TextPrimary.copy(alpha = 0.6f), fontWeight = FontWeight.Medium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -69,6 +97,7 @@ fun EqualizerScreen(
                         .clickable {
                             selectedPreset = preset.name
                             bands = preset.bands
+                            storedBands = encodeEqualizerBands(preset.bands)
                             onApplyBands(preset.bands)
                         }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -97,6 +126,7 @@ fun EqualizerScreen(
                     onValueChange = { newGain ->
                         bands = bands.toMutableList().also { it[i] = band.copy(gainDb = newGain) }
                         selectedPreset = "Custom"
+                        storedBands = encodeEqualizerBands(bands)
                         onApplyBands(bands)
                     },
                     valueRange = -15f..15f,

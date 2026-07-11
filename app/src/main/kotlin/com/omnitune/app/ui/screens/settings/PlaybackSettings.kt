@@ -98,7 +98,7 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
         )
         OmniSwitchPreference(
             title = "Progressive seek",
-            description = "Adds up 5 extra seconds incrementally on each seek skip",
+            description = "Use 10-second back and 15-second forward seek steps",
             iconRes = R.drawable.ic_settings,
             checked = progressiveSeek,
             onCheckedChange = { progressiveSeek = it }

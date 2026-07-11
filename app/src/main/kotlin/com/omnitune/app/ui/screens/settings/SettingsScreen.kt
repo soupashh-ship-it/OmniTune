@@ -89,13 +89,6 @@ fun SettingsScreen(
                     accentColor = OmniColors.OmniAccentPrimary,
                     onClick = { onNavigateToCategory("account_settings") },
                 ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_share,
-                    title = "Listen Together",
-                    subtitle = "Sync playback with friends",
-                    accentColor = OmniColors.OmniAccentSecondary,
-                    onClick = { onNavigateToCategory("music_together") },
-                ),
             ),
         ),
         SettingsCategory(
@@ -169,13 +162,6 @@ fun SettingsScreen(
                     subtitle = "Last.fm, ListenBrainz",
                     accentColor = OmniColors.HotLight,
                     onClick = { onNavigateToCategory("scrobbling") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_favorite,
-                    title = "Discord RPC",
-                    subtitle = "Rich Presence integration",
-                    accentColor = OmniColors.Hot,
-                    onClick = { onNavigateToCategory("discord") },
                 ),
             ),
         ),

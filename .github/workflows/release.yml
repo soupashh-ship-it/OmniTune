@@ -25,6 +25,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify tests and lint
+        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin lintRelease
+
       - name: Decode release keystore
         env:
           OMNITUNE_KEYSTORE_BASE64: ${{ secrets.OMNITUNE_KEYSTORE_BASE64 }}
@@ -38,7 +41,7 @@ jobs:
           OMNITUNE_KEYSTORE_PASSWORD: ${{ secrets.OMNITUNE_KEYSTORE_PASSWORD }}
           OMNITUNE_KEY_ALIAS: ${{ secrets.OMNITUNE_KEY_ALIAS }}
           OMNITUNE_KEY_PASSWORD: ${{ secrets.OMNITUNE_KEY_PASSWORD }}
-        run: ./gradlew clean assembleRelease
+        run: ./gradlew assembleRelease
 
       - name: Prepare release assets
         id: assets

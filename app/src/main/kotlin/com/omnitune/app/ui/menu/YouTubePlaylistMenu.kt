@@ -71,7 +71,6 @@ import com.omnitune.innertube.utils.completed
 import com.omnitune.app.LocalDatabase
 import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.LocalPlayerConnection
-import com.omnitune.app.LocalSyncUtils
 import com.omnitune.app.R
 import com.omnitune.app.constants.ListThumbnailSize
 import com.omnitune.app.constants.ThumbnailCornerRadius
@@ -113,7 +112,6 @@ fun YouTubePlaylistMenu(
     val database = LocalDatabase.current
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val syncUtils = LocalSyncUtils.current
     val importFailedText = stringResource(R.string.import_failed)
     val playlistSyncedText = stringResource(R.string.playlist_synced)
     val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
@@ -579,7 +577,6 @@ fun YouTubePlaylistMenu(
                                         }
                                         
                                         if (newValue) {
-                                            // syncUtils.syncAutoSyncPlaylists()
                                             withContext(Dispatchers.Main) {
                                                 if (snackbarHostState != null) {
                                                     snackbarHostState.showSnackbar(playlistSyncedText)

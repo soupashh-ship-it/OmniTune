@@ -31,19 +31,17 @@ import com.omnitune.app.LocalDatabase
 import com.omnitune.app.R
 import com.omnitune.app.constants.*
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.db.entities.PlaylistEntity
-import com.omnitune.app.db.entities.PlaylistSongMap
-import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.sync.parseSelectedYouTubePlaylists
+import com.omnitune.app.sync.scheduleYouTubePlaylistSync
+import com.omnitune.app.sync.syncYouTubePlaylist
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.utils.completed
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
 
 private const val YTM_PLAYLISTS_BROWSE_ID = "FEmusic_liked_playlists"
 
@@ -57,6 +55,7 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
     var accountHandle by rememberPreference(AccountChannelHandleKey, "")
     var useLoginForBrowse by rememberPreference(UseLoginForBrowse, true)
     var ytmSync by rememberPreference(YtmSyncKey, false)
+    var persistedPlaylistIds by rememberPreference(SelectedYtmPlaylistsKey, "")
     var innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     var isSyncBusy by remember { mutableStateOf(false) }
     var showPlaylistPicker by remember { mutableStateOf(false) }
@@ -88,6 +87,8 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                         accountName = ""
                         accountEmail = ""
                         accountHandle = ""
+                        ytmSync = false
+                        scheduleYouTubePlaylistSync(context, false)
                         com.omnitune.innertube.YouTube.cookie = null
                     }
                 )
@@ -122,7 +123,10 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                 description = if (isLoggedIn) "Import selected YouTube Music playlists" else "Sign in first to sync playlists",
                 iconRes = R.drawable.ic_settings,
                 checked = ytmSync,
-                onCheckedChange = { ytmSync = it }
+                onCheckedChange = {
+                    ytmSync = it
+                    scheduleYouTubePlaylistSync(context, it)
+                }
             )
             OmniPreferenceEntry(
                 title = "Select playlists to sync",
@@ -139,7 +143,8 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                             }.onSuccess { playlists ->
                                 withContext(Dispatchers.Main) {
                                     remotePlaylists = playlists
-                                    selectedPlaylistIds = playlists.filter { it.id == "LM" }.map { it.id }.toSet()
+                                    selectedPlaylistIds = parseSelectedYouTubePlaylists(persistedPlaylistIds)
+                                        .ifEmpty { playlists.filter { it.id == "LM" }.map { it.id }.toSet() }
                                     showPlaylistPicker = true
                                 }
                             }.onFailure { error ->
@@ -215,6 +220,7 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                     enabled = !isSyncBusy && selectedPlaylistIds.isNotEmpty(),
                     onClick = {
                         val selected = remotePlaylists.filter { it.id in selectedPlaylistIds }
+                        persistedPlaylistIds = selectedPlaylistIds.joinToString(",")
                         showPlaylistPicker = false
                         isSyncBusy = true
                         scope.launch(Dispatchers.IO) {
@@ -223,6 +229,7 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                             }.onSuccess { songCount ->
                                 withContext(Dispatchers.Main) {
                                     ytmSync = true
+                                    scheduleYouTubePlaylistSync(context, true)
                                     Toast.makeText(context, "Synced ${selected.size} playlists, $songCount songs", Toast.LENGTH_SHORT).show()
                                 }
                             }.onFailure { error ->
@@ -244,45 +251,4 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
             },
         )
     }
-}
-
-private suspend fun syncYouTubePlaylist(database: MusicDatabase, playlist: PlaylistItem): Int {
-    val songs = YouTube.playlist(playlist.id).completed().getOrThrow().songs.map { it.toMediaMetadata() }
-    val existing = database.playlistByBrowseId(playlist.id).first()?.playlist
-    val now = LocalDateTime.now()
-    val target = existing?.copy(
-        name = playlist.title,
-        browseId = playlist.id,
-        thumbnailUrl = playlist.thumbnail,
-        bookmarkedAt = existing.bookmarkedAt ?: now,
-        lastUpdateTime = now,
-        isEditable = playlist.isEditable,
-        isAutoSync = true,
-        remoteSongCount = playlist.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
-        playEndpointParams = playlist.playEndpoint?.params,
-        shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-        radioEndpointParams = playlist.radioEndpoint?.params,
-    ) ?: PlaylistEntity(
-        name = playlist.title,
-        browseId = playlist.id,
-        thumbnailUrl = playlist.thumbnail,
-        bookmarkedAt = now,
-        lastUpdateTime = now,
-        isEditable = playlist.isEditable,
-        isAutoSync = true,
-        remoteSongCount = playlist.songCountText?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() },
-        playEndpointParams = playlist.playEndpoint?.params,
-        shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-        radioEndpointParams = playlist.radioEndpoint?.params,
-    )
-
-    database.withTransaction {
-        if (existing == null) insert(target) else update(target)
-        clearPlaylist(target.id)
-        songs.forEach(::insert)
-        songs.mapIndexed { index, song ->
-            PlaylistSongMap(songId = song.id, playlistId = target.id, position = index)
-        }.forEach(::insert)
-    }
-    return songs.size
 }

@@ -49,7 +49,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject lateinit var database: MusicDatabase
     @Inject lateinit var downloadUtil: com.omnitune.app.playback.DownloadUtil
-    @Inject lateinit var syncUtils: com.omnitune.app.utils.SyncUtils
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
 
     private val serviceConnection = object : android.content.ServiceConnection {
@@ -60,6 +59,8 @@ class MainActivity : ComponentActivity() {
             }
         }
         override fun onServiceDisconnected(name: android.content.ComponentName?) {
+            playerConnection?.dispose()
+            playerConnection = null
         }
     }
 
@@ -215,7 +216,6 @@ class MainActivity : ComponentActivity() {
                     com.omnitune.app.ui.component.LocalMenuState provides menuState,
                     LocalDatabase provides database,
                     LocalDownloadUtil provides downloadUtil,
-                    LocalSyncUtils provides syncUtils
                 ) {
                     com.omnitune.app.ui.shell.OmniShellBackground {
                         com.omnitune.app.ui.navigation.OmniTuneMainScreen(database = database)
@@ -229,5 +229,11 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         try { unbindService(serviceConnection) } catch (_: Exception) {}
+    }
+
+    override fun onDestroy() {
+        playerConnection?.dispose()
+        playerConnection = null
+        super.onDestroy()
     }
 }

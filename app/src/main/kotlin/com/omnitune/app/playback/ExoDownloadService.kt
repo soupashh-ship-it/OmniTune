@@ -45,6 +45,24 @@ class ExoDownloadService : DownloadService(
     private val serviceScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
     private var retryListenerAttached = false
     private val resolveRetryCounts = ConcurrentHashMap<String, Int>()
+    private val retryListener = object : DownloadManager.Listener {
+        override fun onDownloadChanged(
+            downloadManager: DownloadManager,
+            download: Download,
+            finalException: Exception?,
+        ) {
+            if (download.state == Download.STATE_COMPLETED) {
+                resolveRetryCounts.remove(download.request.id)
+            }
+            if (download.state == Download.STATE_FAILED) {
+                retryWithResolvedStream(download)
+            }
+        }
+
+        override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
+            resolveRetryCounts.remove(download.request.id)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -52,6 +70,10 @@ class ExoDownloadService : DownloadService(
     }
 
     override fun onDestroy() {
+        if (retryListenerAttached) {
+            downloadUtil.downloadManager.removeListener(retryListener)
+            retryListenerAttached = false
+        }
         super.onDestroy()
         serviceScope.cancel()
     }
@@ -60,24 +82,7 @@ class ExoDownloadService : DownloadService(
         val downloadManager = downloadUtil.downloadManager
         if (!retryListenerAttached) {
             retryListenerAttached = true
-            downloadManager.addListener(object : DownloadManager.Listener {
-                override fun onDownloadChanged(
-                    downloadManager: DownloadManager,
-                    download: Download,
-                    finalException: java.lang.Exception?
-                ) {
-                    if (download.state == Download.STATE_COMPLETED) {
-                        resolveRetryCounts.remove(download.request.id)
-                    }
-                    if (download.state == Download.STATE_FAILED) {
-                        retryWithResolvedStream(download)
-                    }
-                }
-
-                override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
-                    resolveRetryCounts.remove(download.request.id)
-                }
-            })
+            downloadManager.addListener(retryListener)
         }
         return downloadManager
     }

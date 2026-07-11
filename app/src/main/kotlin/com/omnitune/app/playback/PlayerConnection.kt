@@ -153,6 +153,10 @@ class PlayerConnection(
         service.applyEqualizerBands(bands)
     }
 
+    fun setEqualizerEnabled(enabled: Boolean) {
+        service.setEqualizerEnabled(enabled)
+    }
+
     fun startRadioSeamlessly() {
         service.startRadioSeamlessly()
     }

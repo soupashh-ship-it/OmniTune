@@ -63,9 +63,9 @@ import javax.inject.Inject
 
 import com.omnitune.app.constants.DiscordTokenKey
 import com.omnitune.app.constants.EnableDiscordRPCKey
+import com.omnitune.app.constants.EqualizerBandLevelsMbKey
+import com.omnitune.app.constants.EqualizerEnabledKey
 import com.omnitune.app.discord.DiscordPresenceManager
-import com.omnitune.app.discord.SongPresenceData
-import com.omnitune.app.discord.getPresenceIntervalMillis
 import com.omnitune.app.playback.continuation.AutoplayCandidate
 import com.omnitune.app.playback.continuation.AutoplayRecommendationResolver
 import com.omnitune.app.playback.continuation.AutoplayRetryPolicy
@@ -149,6 +149,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
     private var autoDownloadOnLikeJob: Job? = null
+    private var equalizerPreferenceJob: Job? = null
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
     private val audioEffectController by lazy { AudioEffectController(this) }
@@ -174,6 +175,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val _queueRestoreCompleted = MutableStateFlow(false)
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
     private var saveQueueJob: Job? = null
+    private var playQueueJob: Job? = null
     private var bluetoothReceiver: android.content.BroadcastReceiver? = null
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
     private var pausedByDeviceMute = false
@@ -294,6 +296,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
         ).also { it.start() }
         startAutoDownloadOnLikeObserver()
+        startEqualizerObserver()
         startBassBoostVirtualizerObserver()
         radioQueueManager = RadioQueueManager(
             player = player,
@@ -383,42 +386,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
         sessionCallback.onToggleLibrary = { toggleLibrary() }
         sessionCallback.onStartRadio = { toggleStartRadio() }
 
-        // Start Discord Rich Presence if configured
+        // The old Discord WebView login stored user session tokens in plaintext.
         scope.launch {
-            try {
-                val prefs = this@MusicService.dataStore.data.first()
-                val enabled = prefs[EnableDiscordRPCKey] ?: false
-                val token = prefs[DiscordTokenKey] ?: ""
-                if (enabled && token.isNotBlank()) {
-                    discordPresenceManager.start(
-                        context = this@MusicService,
-                        token = token,
-                        songProvider = {
-                            val meta = _currentMediaMetadata.value
-                            if (meta != null) {
-                                SongPresenceData(
-                                    title = meta.title,
-                                    videoId = meta.id,
-                                    artist = meta.artists.firstOrNull()?.name ?: "",
-                                    album = meta.album?.title ?: "",
-                                    thumbnail = meta.thumbnailUrl ?: "",
-                                    artistImage = meta.artists.firstOrNull()?.thumbnailUrl ?: "",
-                                    position = player.currentPosition,
-                                    duration = meta.duration.toLong(),
-                                    isPaused = !player.playWhenReady,
-                                )
-                            } else {
-                                SongPresenceData()
-                            }
-                        },
-                        positionProvider = { player.currentPosition },
-                        pauseProvider = { !player.playWhenReady },
-                        intervalProvider = { getPresenceIntervalMillis() },
-                    )
-                }
-            } catch (e: Exception) {
-                Timber.tag("MusicService").e(e, "Failed to start Discord presence")
+            this@MusicService.dataStore.edit {
+                it.remove(DiscordTokenKey)
+                it[EnableDiscordRPCKey] = false
             }
+            discordPresenceManager.stop()
         }
     }
 
@@ -485,6 +459,24 @@ class MusicService : MediaLibraryService(), Player.Listener {
         equalizerController.applyBands(bands)
     }
 
+    fun setEqualizerEnabled(enabled: Boolean) {
+        equalizerController.setEnabled(enabled)
+    }
+
+    private fun startEqualizerObserver() {
+        equalizerPreferenceJob?.cancel()
+        equalizerPreferenceJob = scope.launch {
+            combine(
+                dataStore.data.map { it[EqualizerEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[EqualizerBandLevelsMbKey].orEmpty() }.distinctUntilChanged(),
+            ) { enabled, levels -> enabled to levels }
+                .collect { (enabled, levels) ->
+                    equalizerController.setEnabled(enabled)
+                    decodeEqualizerBands(levels)?.let(equalizerController::applyBands)
+                }
+        }
+    }
+
     private fun startAutoDownloadOnLikeObserver() {
         autoDownloadOnLikeJob?.cancel()
         autoDownloadOnLikeJob = scope.launch(Dispatchers.IO) {
@@ -546,6 +538,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
+        playQueueJob?.cancel()
+        preResolveJob?.cancel()
         StartupTracker.reset()
         currentQueue = queue
         currentPlaybackContext = queue.playbackContext
@@ -622,53 +616,32 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.tag("OmniTunePlaybackTrace").i(
                     "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
                 )
-                preResolveNextTracks()
             }
         }
     }
 
     private var preResolveJob: kotlinx.coroutines.Job? = null
 
-    private fun preResolveNextTracks() {
+    private fun preResolveNextTrack() {
         preResolveJob?.cancel()
         preResolveJob = scope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
-                if (player.mediaItemCount == 0) return@launch
+                val index = player.nextMediaItemIndex
+                if (index == androidx.media3.common.C.INDEX_UNSET) return@launch
+                val item = player.getMediaItemAt(index)
+                if (!StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) return@launch
 
-                val currentIndex = player.currentMediaItemIndex
-                if (currentIndex == androidx.media3.common.C.INDEX_UNSET) return@launch
+                val resolved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+                } ?: return@launch
 
-                val indicesToResolve = (currentIndex + 1 until player.mediaItemCount)
-                    .take(5)
-                    .filter { index ->
-                        StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(index).localConfiguration?.uri)
-                    }
-
-                if (indicesToResolve.isEmpty()) return@launch
-
-                val items = indicesToResolve.map { index ->
-                    index to player.getMediaItemAt(index)
-                }
-
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val results = items.map { (index, item) ->
-                        index to StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                    }
-
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        results.forEach { (index, resolved) ->
-                            if (resolved != null) {
-                                try {
-                                    if (index < player.mediaItemCount &&
-                                        StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(index).localConfiguration?.uri)
-                                    ) {
-                                        player.replaceMediaItem(index, resolved)
-                                        Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $index")
-                                    }
-                                } catch (_: Exception) {
-                                }
-                            }
-                        }
+                if (index < player.mediaItemCount) {
+                    val queuedItem = player.getMediaItemAt(index)
+                    if (queuedItem.mediaId == item.mediaId &&
+                        StreamUrlResolver.isYouTubeVideoId(queuedItem.localConfiguration?.uri)
+                    ) {
+                        player.replaceMediaItem(index, resolved)
+                        Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $index")
                     }
                 }
             } catch (e: Exception) {
@@ -810,44 +783,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun restartDiscordPresence() {
-        scope.launch {
-            try {
-                val prefs = this@MusicService.dataStore.data.first()
-                val enabled = prefs[EnableDiscordRPCKey] ?: false
-                val token = prefs[DiscordTokenKey] ?: ""
-                if (enabled && token.isNotBlank()) {
-                    discordPresenceManager.stop()
-                    discordPresenceManager.start(
-                        context = this@MusicService,
-                        token = token,
-                        songProvider = {
-                            val meta = _currentMediaMetadata.value
-                            if (meta != null) {
-                                SongPresenceData(
-                                    title = meta.title,
-                                    videoId = meta.id,
-                                    artist = meta.artists.firstOrNull()?.name ?: "",
-                                    album = meta.album?.title ?: "",
-                                    thumbnail = meta.thumbnailUrl ?: "",
-                                    artistImage = meta.artists.firstOrNull()?.thumbnailUrl ?: "",
-                                    position = player.currentPosition,
-                                    duration = meta.duration.toLong(),
-                                    isPaused = !player.playWhenReady,
-                                )
-                            } else {
-                                SongPresenceData()
-                            }
-                        },
-                        positionProvider = { player.currentPosition },
-                        pauseProvider = { !player.playWhenReady },
-                        intervalProvider = { getPresenceIntervalMillis() },
-                    )
-                } else {
-                    discordPresenceManager.stop()
-                }
-            } catch (e: Exception) {
-                Timber.tag("MusicService").e(e, "Failed to restart Discord presence")
+        playQueueJob = scope.launch {
+            dataStore.edit {
+                it.remove(DiscordTokenKey)
+                it[EnableDiscordRPCKey] = false
             }
+            discordPresenceManager.stop()
         }
     }
 
@@ -860,6 +801,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
+        equalizerPreferenceJob?.cancel()
+        equalizerPreferenceJob = null
         radioQueueManager = null
         equalizerController.release()
         audioEffectController.release()
@@ -942,7 +885,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         startPlaybackTracker(mediaItem)
         beginTasteWindow(mediaItem)
         saveQueueState()
-        preResolveNextTracks()
         updateVolumeNormalizationFactor(mediaItem?.mediaId)
 
         // Send now-playing update to Last.fm
@@ -968,6 +910,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("is-playing-$isPlaying", force = true)
 
         if (isPlaying) {
+            preResolveNextTrack()
             val mediaItem = player.currentMediaItem
             val mediaId = mediaItem?.mediaId
             if (mediaId != null) {

@@ -47,7 +47,7 @@ data class SongEntity(
     val likedDate: LocalDateTime? = null,
     val totalPlayTime: Long = 0, // in milliseconds
     val inLibrary: LocalDateTime? = null,
-    val dateDownload: LocalDateTime? = LocalDateTime.now(),
+    val dateDownload: LocalDateTime? = null,
     @ColumnInfo(name = "isLocal", defaultValue = "0")
     val isLocal: Boolean = false,
     @ColumnInfo(name = "download_state", defaultValue = "0")
