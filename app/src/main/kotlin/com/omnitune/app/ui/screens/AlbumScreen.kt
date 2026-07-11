@@ -135,7 +135,7 @@ fun AlbumScreen(
                 }
             }
             localAlbum != null && (albumPage == null || songs == null) -> {
-                LocalAlbumContent(localAlbum!!, localSongs, playerConnection)
+                LocalAlbumContent(localAlbum ?: return, localSongs, playerConnection)
             }
             error != null && albumPage == null -> {
                 EmptyPlaceholder(
@@ -144,7 +144,7 @@ fun AlbumScreen(
                 )
             }
             albumPage != null -> {
-                val album = albumPage!!.album
+                val album = albumPage?.album ?: return
                 val songList = songs ?: emptyList()
 
                 LazyColumn(

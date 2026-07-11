@@ -183,12 +183,12 @@ fun LyricsV2(
     // ── Parse lyrics into entries ──
     val syncedEntries = remember(lyrics) { InlineLyrics.parseSyncedEntries(lyrics) }
     val isSynced = syncedEntries.isNotEmpty()
-    val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
+    val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics ?: return@remember false) }
 
     val lyricsEntries: List<LyricsEntry> = remember(lyrics) {
         if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
         val parsed = syncedEntries.ifEmpty {
-            lyrics!!.lines()
+            (lyrics ?: return@remember emptyList()).lines()
                 .filter { it.isNotBlank() }
                 .map { line ->
                     LyricsEntry(time = -1L, text = line.trim())
@@ -507,8 +507,9 @@ fun LyricsV2(
                 ) {
                     if (item.words != null && isSynced) {
                         // ── Word-synced rendering ──
+                        val words = item.words
                         LyricsLineV2(
-                            words = item.words!!,
+                            words = words,
                             isActive = isActive,
                             isPast = isPast,
                             currentPositionMs = currentPositionMs,
@@ -540,7 +541,7 @@ fun LyricsV2(
                     val romanizedText by item.romanizedTextFlow.collectAsState()
                     if (romanizedText != null) {
                         Text(
-                            text = romanizedText!!,
+                            text = romanizedText ?: "",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = (lyricsTextSize * 0.55f).sp,
                                 lineHeight = (lyricsTextSize * 0.75f).sp,

@@ -136,7 +136,7 @@ fun ArtistScreen(
                 }
             }
             localArtist != null && artistPage == null -> {
-                LocalArtistContent(localArtist!!, localSongs, playerConnection)
+                LocalArtistContent(localArtist ?: return, localSongs, playerConnection)
             }
             error != null -> {
                 EmptyPlaceholder(
@@ -145,7 +145,7 @@ fun ArtistScreen(
                 )
             }
             artistPage != null -> {
-                val page = artistPage!!
+                val page = artistPage ?: return
                 val allSongs = page.sections.flatMap { it.items }.filterIsInstance<SongItem>().distinctBy { it.id }
 
                 LazyColumn(

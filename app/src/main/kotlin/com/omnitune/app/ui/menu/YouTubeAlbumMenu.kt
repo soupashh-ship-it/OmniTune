@@ -519,7 +519,8 @@ fun YouTubeAlbumMenu(
                     },
                     modifier = Modifier.clickable {
                         if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                            navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                            val artistId = splitArtists.getOrNull(0)?.originalArtist?.id ?: return@clickable
+                            navController.navigate("artist/$artistId")
                             onDismiss()
                         } else {
                             showSelectArtistDialog = true

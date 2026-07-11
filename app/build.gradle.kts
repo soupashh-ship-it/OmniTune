@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 64
-        versionName = "0.12.4"
+        versionCode = 65
+        versionName = "0.12.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -89,8 +89,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")

@@ -203,7 +203,8 @@ fun QueueScreen(
                 )
             }
 
-            if (playerConnection == null || mediaMetadata == null) {
+            val currentMediaMetadata = mediaMetadata
+            if (playerConnection == null || currentMediaMetadata == null) {
                 QueueEmptyState(text = "No items in queue")
             } else {
                 LazyColumn(
@@ -217,7 +218,7 @@ fun QueueScreen(
                             subtitle = "Current track",
                         )
                         NowPlayingCard(
-                            mediaMetadata = mediaMetadata!!,
+                            mediaMetadata = currentMediaMetadata,
                             format = currentFormat,
                         )
                     }

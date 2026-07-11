@@ -349,13 +349,15 @@ private fun ManageFoldersDialog(
                         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
                     ) {
                         TextButton(onClick = {
-                            viewModel.updateTag(editingTag!!.copy(name = editingName.trim()))
+                            val tag = editingTag ?: return@TextButton
+                            viewModel.updateTag(tag.copy(name = editingName.trim()))
                             editingTag = null
                         }) {
                             Text("Save", color = OmniColors.OmniAccentPrimary)
                         }
                         TextButton(onClick = {
-                            viewModel.deleteTag(editingTag!!)
+                            val tag = editingTag ?: return@TextButton
+                            viewModel.deleteTag(tag)
                             editingTag = null
                         }) {
                             Text("Delete", color = OmniColors.Error)

@@ -269,7 +269,8 @@ fun SongMenu(
                 coroutineScope.launch(Dispatchers.IO) {
                     val id = com.omnitune.app.db.entities.PlaylistEntity.generatePlaylistId()
                     database.insert(com.omnitune.app.db.entities.PlaylistEntity(id = id, name = name))
-                    database.addSongToPlaylist(database.getPlaylistByIdBlocking(id)!!, listOf(song.id))
+                    val playlist = database.getPlaylistByIdBlocking(id) ?: return@launch
+                    database.addSongToPlaylist(playlist, listOf(song.id))
                     withContext(Dispatchers.Main) {
                         Toast.makeText(
                             context,
@@ -729,7 +730,8 @@ fun SongMenu(
                     modifier =
                         Modifier.clickable {
                             if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                                navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                                val artistId = splitArtists.getOrNull(0)?.originalArtist?.id ?: return@clickable
+                                navController.navigate("artist/$artistId")
                                 onDismiss()
                             } else {
                                 showSelectArtistDialog = true

@@ -167,10 +167,11 @@ fun HomeDiscoveryRoute(
                 MoodChipRow(chips = uiState.moodChips, onChipClick = onMoodChipClick)
             }
 
-            if (mediaMetadata != null) {
+            val currentMediaMetadata = mediaMetadata
+            if (currentMediaMetadata != null) {
                 item(key = "resume-playback", contentType = "resume-playback") {
                     ContinueListeningCard(
-                        mediaMetadata = mediaMetadata!!,
+                        mediaMetadata = currentMediaMetadata,
                         onClick = onResumePlayback,
                     )
                 }

@@ -101,7 +101,7 @@ class TogetherOnlineApi(
                 }
             }
         }
-        throw lastException!!
+        throw lastException ?: RuntimeException("Request failed after $maxAttempts attempts")
     }
 
     private fun isRetryable(t: Throwable): Boolean {

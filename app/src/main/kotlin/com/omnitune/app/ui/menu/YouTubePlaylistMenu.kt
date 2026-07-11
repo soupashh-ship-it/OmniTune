@@ -187,7 +187,7 @@ fun YouTubePlaylistMenu(
                         } else {
                             database.transaction {
                                 // Update playlist information including thumbnail before toggling like
-                                val currentPlaylist = dbPlaylist!!.playlist
+                                val currentPlaylist = dbPlaylist?.playlist ?: return@transaction
                                 update(currentPlaylist, playlist)
                                 update(currentPlaylist.toggleLike())
                             }

@@ -160,9 +160,10 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
 
                 if (prefs[ProxyEnabledKey] == true) {
                     try {
+                        val proxyUrl = prefs[ProxyUrlKey] ?: return@launch
                         YouTube.proxy = Proxy(
                             prefs[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
-                            prefs[ProxyUrlKey]!!.toInetSocketAddress()
+                            proxyUrl.toInetSocketAddress()
                         )
                     } catch (e: Exception) {
                         reportException(e)

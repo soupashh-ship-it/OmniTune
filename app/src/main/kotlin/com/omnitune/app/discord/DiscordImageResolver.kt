@@ -31,8 +31,8 @@ class DiscordImageResolver @Inject constructor(
         thumbnailUrl: String?,
         artistUrl: String?,
     ): ResolvedDiscordImages {
-        if (songId == cachedSongId && cachedImages != null) {
-            return cachedImages!!
+        if (songId == cachedSongId) {
+            return cachedImages ?: ResolvedDiscordImages(null, null, null, null)
         }
 
         val thumbnailId = thumbnailUrl?.let { resolveImage(it) }

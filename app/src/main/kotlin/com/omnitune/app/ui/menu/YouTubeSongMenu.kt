@@ -482,8 +482,9 @@ fun YouTubeSongMenu(
                         )
                     },
                     modifier = Modifier.clickable {
-                        if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                            navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                        if (splitArtists.size == 1) {
+                            val artistId = splitArtists[0].originalArtist?.id ?: return@clickable
+                            navController.navigate("artist/$artistId")
                             onDismiss()
                         } else {
                             showSelectArtistDialog = true

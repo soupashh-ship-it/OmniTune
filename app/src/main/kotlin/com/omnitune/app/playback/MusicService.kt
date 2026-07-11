@@ -553,8 +553,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
-        if (queue.preloadItem != null) {
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
+        queue.preloadItem?.let { preload ->
+            player.setMediaItem(preload.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
         }

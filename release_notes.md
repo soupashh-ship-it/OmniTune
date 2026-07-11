@@ -1,3 +1,27 @@
+# OmniTune v0.12.6
+**Code Quality Hardening & Null-Safety Fixes**
+
+### Fixes & Improvements
+* Replaced unsafe `!!` assertions with safe calls and proper early returns across the app, preventing potential crashes from unexpected null values in playback, menu, screen, and UI component code.
+* Fixed incorrect `return` labels in `LyricsV2.kt`, `HomeDiscoveryScreen.kt`, and `QueueScreen.kt` that caused compilation failures during null-safety refactoring.
+* Added `READ_MEDIA_AUDIO` permission manifest entry for Android 13+ audio library access.
+* Enabled ProGuard/R8 minification and resource shrinking for release builds, reducing APK size.
+* Fixed a potential nullable crash in `TogetherOnlineApi` retry logic.
+* Fixed a nullable crash in `DiscordImageResolver` cached image handling.
+* Fixed nullable bound handling in `BottomSheet` dismiss/collapse/expand animations.
+* Fixed nullable proxy URL handling in `OmniTuneApp` proxy configuration.
+* Fixed various nullable artist and label references in menu screens and playlist screen.
+
+### Verification
+* `testDebugUnitTest`: passed
+* `lintDebug`: passed
+* `assembleDebug`: passed
+
+### Build
+* Version: **0.12.6** (code 65)
+
+---
+
 # OmniTune v0.12.0
 **Lyrics, Crossfade, and Download Root-Cause Fixes**
 
