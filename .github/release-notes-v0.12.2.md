@@ -20,8 +20,14 @@ This release improves offline metadata, Library reliability, and automatic lyric
 
 - Lyrics now load automatically in the fullscreen player without opening the Lyrics sheet first.
 - Cached lyrics are displayed immediately without another provider request.
-- Lyrics for the next three queued songs are prefetched using the selected provider.
+- Lyrics fetching now starts only after audio playback begins so it cannot delay stream startup.
 - Prevented lyrics from a previous song replacing the current song's lyrics.
+
+## Playback Reliability
+
+- Fixed slow song startup and repeated queue skipping caused by lyrics requests competing with stream resolution.
+- Removed upcoming-song lyrics network prefetch to keep playback startup responsive.
+- Network and timeout failures now stop for recovery instead of consuming the remaining queue.
 
 ## Verification
 

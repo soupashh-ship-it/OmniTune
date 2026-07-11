@@ -134,7 +134,7 @@ class PlaybackRecoveryCoordinator(
     }
 
     private fun fallbackSkip(errorType: PlaybackErrorType) {
-        if (autoSkipNextOnError && player.hasNextMediaItem()) {
+        if (autoSkipNextOnError && errorType.shouldAutoSkipTrack() && player.hasNextMediaItem()) {
             Timber.tag("MusicService").i("Auto-skipping to next track after error")
             player.seekToNextMediaItem()
             player.prepare()
@@ -151,3 +151,10 @@ class PlaybackRecoveryCoordinator(
         }
     }
 }
+
+internal fun PlaybackErrorType.shouldAutoSkipTrack(): Boolean =
+    this == PlaybackErrorType.Forbidden403 ||
+        this == PlaybackErrorType.NotFound404 ||
+        this == PlaybackErrorType.SignatureExpired ||
+        this == PlaybackErrorType.Error2000 ||
+        this == PlaybackErrorType.BotCheck
