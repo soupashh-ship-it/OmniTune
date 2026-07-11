@@ -104,6 +104,17 @@ fun AboutSettings() {
                     ),
                     onOpen = { open(it) },
                 )
+                AboutDestinations.discordUrl?.let { url ->
+                    AboutExternalLinkRow(
+                        entry = AboutLinkEntry(
+                            title = "Discord Server",
+                            subtitle = "Join the community",
+                            url = url,
+                            iconRes = R.drawable.ic_discord,
+                        ),
+                        onOpen = { open(it) },
+                    )
+                }
             }
 
             AboutDestinations.supportUpi?.let { destination ->

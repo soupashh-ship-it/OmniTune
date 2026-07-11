@@ -195,6 +195,23 @@ class PlaybackNotificationManager(
                 )
             )
             .addAction(notificationAction(R.drawable.ic_notification_next, "Next", ACTION_NEXT, 3))
+            .addAction(
+                notificationAction(
+                    if ((service as? MusicService)?.currentMediaMetadata?.value?.liked == true)
+                        R.drawable.ic_notification_favorite else R.drawable.ic_notification_favorite_border,
+                    "Like",
+                    ACTION_LIKE,
+                    4
+                )
+            )
+            .addAction(
+                notificationAction(
+                    R.drawable.ic_notification_repeat,
+                    "Repeat",
+                    ACTION_REPEAT,
+                    5
+                )
+            )
             .setStyle(
                 Notification.MediaStyle()
                     .setMediaSession(sessionProvider()?.platformToken)
@@ -238,5 +255,7 @@ class PlaybackNotificationManager(
         const val ACTION_PAUSE = "com.omnitune.app.playback.action.PAUSE"
         const val ACTION_NEXT = "com.omnitune.app.playback.action.NEXT"
         const val ACTION_PREVIOUS = "com.omnitune.app.playback.action.PREVIOUS"
+        const val ACTION_LIKE = "com.omnitune.app.playback.action.LIKE"
+        const val ACTION_REPEAT = "com.omnitune.app.playback.action.REPEAT"
     }
 }

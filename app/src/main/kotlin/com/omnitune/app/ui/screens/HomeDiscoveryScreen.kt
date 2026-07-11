@@ -396,7 +396,7 @@ private fun HomeTopHeader(
         ) {
             // OmniTune app icon
             androidx.compose.foundation.Image(
-                painter = painterResource(R.mipmap.ic_launcher),
+                painter = painterResource(R.drawable.ic_omnitune_logo),
                 contentDescription = "OmniTune",
                 modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
             )

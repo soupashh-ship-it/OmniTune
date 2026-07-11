@@ -67,7 +67,7 @@ internal object AboutDestinations {
         ),
     )
 
-    val discordUrl: String? = null
+    val discordUrl: String? = "https://discord.gg/aDhxBnfNpX"
     val supportUrl: String? = null
     val supportUpi: UpiPaymentDestination? = UpiPaymentDestination(
         upiId = "shashankbisht352612@oksbi",

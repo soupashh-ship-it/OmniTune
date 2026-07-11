@@ -44,17 +44,17 @@ class SessionManager(
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleLike)
                 .setDisplayName("Like")
-                .setIconResId(R.drawable.ic_add)
+                .setIconResId(R.drawable.ic_favorite)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleRepeatMode)
                 .setDisplayName("Repeat")
-                .setIconResId(R.drawable.ic_history)
+                .setIconResId(R.drawable.ic_repeat)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleShuffle)
                 .setDisplayName("Shuffle")
-                .setIconResId(R.drawable.ic_sort)
+                .setIconResId(R.drawable.ic_shuffle)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleStartRadio)

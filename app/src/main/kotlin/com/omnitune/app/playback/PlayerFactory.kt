@@ -56,6 +56,7 @@ object PlayerFactory {
         val progressiveSeek = prefs[SeekExtraSeconds] ?: false
 
         return ExoPlayer.Builder(context)
+            .setRenderersFactory(OmnituneRenderersFactory(context))
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)

@@ -119,6 +119,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_PAUSE = PlaybackNotificationManager.ACTION_PAUSE
         private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
+        private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
+        private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
         private const val MAX_RECENT_AUTOPLAY_IDS = 40
         private const val MIN_LISTEN_HISTORY_MS = 10_000L
     }
@@ -221,6 +223,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     player.play()
                 }
                 postMediaNotificationFallback("action-previous", force = true)
+                return START_STICKY
+            }
+            ACTION_LIKE -> {
+                toggleLike()
+                postMediaNotificationFallback("action-like", force = true)
+                return START_STICKY
+            }
+            ACTION_REPEAT -> {
+                if (::player.isInitialized) {
+                    player.repeatMode = when (player.repeatMode) {
+                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                        Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+                        else -> Player.REPEAT_MODE_OFF
+                    }
+                }
+                postMediaNotificationFallback("action-repeat", force = true)
                 return START_STICKY
             }
         }
