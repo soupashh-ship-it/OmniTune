@@ -463,7 +463,7 @@ fun YouTubeSongMenu(
                         },
                         modifier = Modifier.clickable {
                             database.transaction {
-                                insert(song.toMediaMetadata())
+                                insert(song.toMediaMetadata()) { it.copy(inLibrary = java.time.LocalDateTime.now()) }
                             }
                             downloadUtil.enqueue(song.id, song.title)
                         }

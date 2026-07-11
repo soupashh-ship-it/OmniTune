@@ -88,6 +88,7 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
                     thumbnailUrl = existing.thumbnailUrl ?: mediaMetadata.thumbnailUrl,
                     albumId = existing.albumId ?: mediaMetadata.album?.id,
                     albumName = existing.albumName ?: mediaMetadata.album?.title,
+                    inLibrary = incomingSong.inLibrary ?: existing.inLibrary,
                 )
                 if (enriched != existing) update(enriched)
             }

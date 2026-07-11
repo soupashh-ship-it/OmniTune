@@ -69,11 +69,11 @@ object YTPlayerUtils {
      * Clients used for fallback streams in case the streams of the main client do not work.
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        MOBILE,
         ANDROID_MUSIC,
+        IOS_MUSIC,
+        MOBILE,
         ANDROID_VR_NO_AUTH,
         IOS,
-        IOS_MUSIC,
         TVHTML5_SIMPLY_EMBEDDED_PLAYER,
         ANDROID_VR_1_61_48,
         ANDROID_VR_1_43_32,
@@ -463,7 +463,7 @@ object YTPlayerUtils {
             when (effectiveQuality) {
                 AudioQuality.LOW -> 70_000
                 AudioQuality.HIGH -> 160_000
-                AudioQuality.HIGHEST -> 320_000
+                AudioQuality.HIGHEST -> 512_000
                 AudioQuality.AUTO -> null
             }
 

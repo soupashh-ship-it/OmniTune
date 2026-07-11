@@ -12,6 +12,7 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink.DefaultAudioProcessorChain
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
+import androidx.media3.exoplayer.audio.ToFloatPcmAudioProcessor
 
 class OmnituneRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
 
@@ -29,13 +30,13 @@ class OmnituneRenderersFactory(context: Context) : DefaultRenderersFactory(conte
         )
 
         val chain = DefaultAudioProcessorChain(
-            emptyArray(),
+            arrayOf(ToFloatPcmAudioProcessor()),
             silenceSkippingProcessor,
             SonicAudioProcessor(),
         )
 
         return DefaultAudioSink.Builder(context)
-            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableFloatOutput(true)
             .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
             .setAudioProcessorChain(chain)
             .build()

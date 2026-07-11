@@ -34,6 +34,7 @@ class PlaybackPreferenceObserver(
     private val scope: CoroutineScope,
     private val playerVolume: MutableStateFlow<Float>,
     private val playbackFadeFactor: MutableStateFlow<Float>,
+    private val normalizationFactor: MutableStateFlow<Float>,
     private val crossfadeDurationMs: MutableStateFlow<Int>,
     private val audioNormalizationEnabled: MutableStateFlow<Boolean>,
     private val onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
@@ -76,10 +77,10 @@ class PlaybackPreferenceObserver(
             }
         }
 
-        // Combine volumes for crossfade
+        // Combine volumes for crossfade + normalization
         jobs += scope.launch {
-            combine(playerVolume, playbackFadeFactor) { vol, fade ->
-                (vol * fade).coerceIn(0f, 1f)
+            combine(playerVolume, playbackFadeFactor, normalizationFactor) { vol, fade, norm ->
+                (vol * fade * norm).coerceIn(0f, 1f)
             }.collectLatest { finalVolume ->
                 player.volume = finalVolume
             }

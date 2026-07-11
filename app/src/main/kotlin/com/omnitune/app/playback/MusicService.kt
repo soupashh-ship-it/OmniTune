@@ -56,6 +56,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
+import kotlin.math.min
+import kotlin.math.pow
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -149,6 +151,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var autoDownloadOnLikeJob: Job? = null
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
+    private val audioEffectController by lazy { AudioEffectController(this) }
+    private val _volumeNormalizationFactor = MutableStateFlow(1f)
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -284,11 +288,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
             scope = scope,
             playerVolume = _playerVolume,
             playbackFadeFactor = playbackFadeFactor,
+            normalizationFactor = _volumeNormalizationFactor,
             crossfadeDurationMs = crossfadeDurationMs,
             audioNormalizationEnabled = audioNormalizationEnabled,
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
         ).also { it.start() }
         startAutoDownloadOnLikeObserver()
+        startBassBoostVirtualizerObserver()
         radioQueueManager = RadioQueueManager(
             player = player,
             scope = scope,
@@ -856,6 +862,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         playbackPreferenceObserver = null
         radioQueueManager = null
         equalizerController.release()
+        audioEffectController.release()
         if (::playbackRecoveryCoordinator.isInitialized) {
             playbackRecoveryCoordinator.release()
         }
@@ -889,6 +896,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("state-$state")
         if (state == Player.STATE_READY) {
             equalizerController.setupIfNeeded(player.audioSessionId)
+            audioEffectController.setupIfNeeded(player.audioSessionId)
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
@@ -935,6 +943,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         beginTasteWindow(mediaItem)
         saveQueueState()
         preResolveNextTracks()
+        updateVolumeNormalizationFactor(mediaItem?.mediaId)
 
         // Send now-playing update to Last.fm
         meta?.let { m ->
@@ -1330,6 +1339,40 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 }
                 delay(1000)
             }
+        }
+    }
+
+    private fun updateVolumeNormalizationFactor(mediaId: String?) {
+        if (mediaId.isNullOrBlank()) {
+            _volumeNormalizationFactor.value = 1f
+            return
+        }
+        scope.launch {
+            val factor = withContext(Dispatchers.IO) {
+                if (!audioNormalizationEnabled.value) return@withContext 1f
+                val format = database.format(mediaId).first()
+                val loudness = format?.loudnessDb ?: format?.perceptualLoudnessDb ?: return@withContext 1f
+                var f = 10f.pow((-loudness.toFloat()) / 20f)
+                if (f > 1f) f = min(f, 3.16f)
+                f
+            }
+            _volumeNormalizationFactor.value = factor
+        }
+    }
+
+    private fun startBassBoostVirtualizerObserver() {
+        scope.launch {
+            combine(
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostStrengthKey] ?: 500 }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerStrengthKey] ?: 500 }.distinctUntilChanged(),
+            ) { bbEnabled, bbStrength, virtEnabled, virtStrength ->
+                audioEffectController.setBassBoostEnabled(bbEnabled)
+                audioEffectController.setBassBoostStrength(bbStrength)
+                audioEffectController.setVirtualizerEnabled(virtEnabled)
+                audioEffectController.setVirtualizerStrength(virtStrength)
+            }.collect { }
         }
     }
 

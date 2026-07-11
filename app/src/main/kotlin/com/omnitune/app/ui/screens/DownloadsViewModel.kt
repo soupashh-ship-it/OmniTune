@@ -79,7 +79,10 @@ class DownloadsViewModel @Inject constructor(
                 val result = mutableListOf<Download>()
                 try {
                     while (cursor.moveToNext()) {
-                        result.add(cursor.download)
+                        val download = cursor.download
+                        if (download.state != Download.STATE_COMPLETED) {
+                            result.add(download)
+                        }
                     }
                 } finally {
                     cursor.close()

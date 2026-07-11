@@ -55,3 +55,7 @@ page@6c78803ef718b2d15f66e9efe9ef01be.webm
 /job_log.txt
 /jobs.json
 /runs.json
+
+# Agent session memory.gemini/
+
+gradle/gradle-daemon-jvm.properties
