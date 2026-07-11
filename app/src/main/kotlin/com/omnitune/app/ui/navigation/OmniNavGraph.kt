@@ -426,8 +426,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToPlaylists = { navController.navigate("library_playlists") })
             }
             composable("library_songs") {
-                LibrarySongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { song ->
-                    localPlayerConnection?.playQueue(ListQueue(title = "Songs", items = listOf(song.toMediaItem())))
+                LibrarySongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { songs, index ->
+                    localPlayerConnection?.playQueue(
+                        ListQueue(title = "Songs", items = songs.map { it.toMediaItem() }, startIndex = index),
+                    )
                 })
             }
             composable("library_artists") {
@@ -636,13 +638,17 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 } 
             }
             composable("album/{albumId}") {
-                AlbumScreen(albumId = it.arguments?.getString("albumId") ?: "", onBack = { navController.popBackStack() },
-                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) })
+                AlbumScreen(
+                    albumId = it.arguments?.getString("albumId") ?: "",
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable("artist/{artistId}") {
-                ArtistScreen(artistId = it.arguments?.getString("artistId") ?: "", onBack = { navController.popBackStack() },
-                    onPlaySong = { song -> localPlayerConnection?.playQueue(ListQueue(items = listOf(song.toMediaItem()))) },
-                    onNavigateToAlbum = { navController.navigate("album/$it") })
+                ArtistScreen(
+                    artistId = it.arguments?.getString("artistId") ?: "",
+                    onBack = { navController.popBackStack() },
+                    onNavigateToAlbum = { navController.navigate("album/$it") },
+                )
             }
             composable("player") { 
                 PlayerScreen(

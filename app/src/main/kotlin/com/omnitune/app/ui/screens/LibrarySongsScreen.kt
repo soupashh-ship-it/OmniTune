@@ -67,7 +67,7 @@ import javax.inject.Inject
 @Composable
 fun LibrarySongsScreen(
     onBack: () -> Unit = {},
-    onPlaySong: (Song) -> Unit = {},
+    onPlaySong: (List<Song>, Int) -> Unit = { _, _ -> },
     viewModel: LibrarySongsViewModel = hiltViewModel(),
 ) {
     val songs by viewModel.songs.collectAsState()
@@ -98,9 +98,10 @@ fun LibrarySongsScreen(
                     key = { it.song.id },
                     contentType = { "library-song" },
                 ) { song ->
+                    val index = songs.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
                     LibrarySongRow(
                         song = song,
-                        onClick = { onPlaySong(song) },
+                        onClick = { onPlaySong(songs, index) },
                     )
                 }
                 item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }

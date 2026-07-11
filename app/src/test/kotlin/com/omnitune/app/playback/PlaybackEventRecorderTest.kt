@@ -9,6 +9,7 @@ import com.omnitune.app.db.MusicDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -29,6 +30,7 @@ class PlaybackEventRecorderTest {
     private lateinit var database: MusicDatabase
     private lateinit var context: Context
     private val testDispatcher = StandardTestDispatcher()
+    private val scopeJob = SupervisorJob()
 
     @Before
     fun setup() {
@@ -36,11 +38,13 @@ class PlaybackEventRecorderTest {
         player = mock(Player::class.java)
         database = mock(MusicDatabase::class.java)
         context = mock(Context::class.java)
-        recorder = PlaybackEventRecorder(context, player, database, CoroutineScope(testDispatcher))
+        recorder = PlaybackEventRecorder(context, player, database, CoroutineScope(scopeJob + testDispatcher))
     }
 
     @After
     fun tearDown() {
+        scopeJob.cancel()
+        testDispatcher.scheduler.runCurrent()
         Dispatchers.resetMain()
     }
 

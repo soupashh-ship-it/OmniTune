@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +54,8 @@ import com.omnitune.app.ui.theme.OmniSpacing
 
 import androidx.compose.ui.platform.LocalContext
 import com.omnitune.app.LocalPlayerConnection
+import com.omnitune.app.db.entities.Song
+import coil3.compose.AsyncImage
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -125,6 +128,7 @@ fun DownloadsScreen(
                 ) { download ->
                     DownloadItemRow(
                         download = download,
+                        song = uiState.songs[download.request.id],
                         onPlay = { viewModel.playDownload(download, playerConnection, context) },
                         onRetry = { viewModel.retryDownload(download.request.id) },
                         onRemove = { downloadToRemove = download },
@@ -292,11 +296,12 @@ private fun DownloadMetric(
 @Composable
 private fun DownloadItemRow(
     download: Download,
+    song: Song?,
     onPlay: () -> Unit,
     onRetry: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val title = String(download.request.data, Charsets.UTF_8).ifBlank { download.request.id }
+    val title = song?.title ?: String(download.request.data, Charsets.UTF_8).ifBlank { download.request.id }
     val state = downloadPresentation(download)
     val rowModifier = Modifier
         .fillMaxWidth()
@@ -341,12 +346,21 @@ private fun DownloadItemRow(
                 .background(state.accent.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painterResource(if (state.playable) R.drawable.ic_play_arrow else R.drawable.ic_download),
-                contentDescription = null,
-                tint = state.accent,
-                modifier = Modifier.size(24.dp),
-            )
+            if (!song?.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painterResource(if (state.playable) R.drawable.ic_play_arrow else R.drawable.ic_download),
+                    contentDescription = null,
+                    tint = state.accent,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
         Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
@@ -360,12 +374,21 @@ private fun DownloadItemRow(
             )
             Spacer(modifier = Modifier.height(OmniSpacing.micro))
             Text(
-                text = state.label,
+                text = song?.artists?.joinToString(", ") { it.name }?.ifBlank { state.label } ?: state.label,
                 style = MaterialTheme.typography.bodySmall,
-                color = state.accent,
+                color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (song != null) {
+                Text(
+                    text = state.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = state.accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (state.progress != null) {
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
                 val animatedProgress by androidx.compose.animation.core.animateFloatAsState(

@@ -22,6 +22,7 @@ import com.omnitune.app.constants.AutoDownloadOnLikeKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.metadata
+import com.omnitune.app.extensions.mediaItems
 import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
@@ -417,6 +418,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
             initialStatus.position.coerceAtLeast(0L)
         )
         _currentMediaMetadata.value = player.currentMediaItem?.metadata
+        lyricsPrefetcher.prefetch(_currentMediaMetadata.value)
+        lyricsPrefetcher.prefetchUpcoming(
+            queue = player.mediaItems.mapNotNull { it.metadata },
+            currentIndex = restoredIndex,
+        )
         updateNotification()
         Timber.tag("OmniTunePlaybackTrace").i(
             "Restored queue metadata only: items=${initialStatus.items.size}, index=$restoredIndex, current=${player.currentMediaItem?.mediaId}"
@@ -910,6 +916,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         lyricsPrefetcher.prefetch(meta)
+        lyricsPrefetcher.prefetchUpcoming(
+            queue = player.mediaItems.mapNotNull { it.metadata },
+            currentIndex = player.currentMediaItemIndex,
+        )
     }
 
     override fun onPlayerError(error: PlaybackException) {

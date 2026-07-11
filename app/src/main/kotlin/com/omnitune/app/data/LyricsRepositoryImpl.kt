@@ -29,6 +29,9 @@ class LyricsRepositoryImpl @Inject constructor(
                 duration = duration.toInt()
             )
             val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
+            if (!dbLyrics.isNullOrBlank() && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                return AppResult.Success(parseLrc(dbLyrics))
+            }
             val fetched = lyricsHelper.getLyrics(metadata)
             val lrcText = if (fetched != LyricsEntity.LYRICS_NOT_FOUND) {
                 databaseDao.upsert(LyricsEntity(id = songId, lyrics = fetched))

@@ -255,6 +255,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 
                 cleanupDuplicatePlaylistsOnOpen(db)
                 ensurePlaylistBrowseIdIndex(db)
+                repairLibraryRelations(db)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set PRAGMA settings", e)
             }
@@ -314,6 +315,59 @@ private class DatabaseCallback : RoomDatabase.Callback() {
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_playlist_browseId ON playlist (browseId) WHERE browseId IS NOT NULL")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to create browseId index", e)
+        }
+    }
+
+    private fun repairLibraryRelations(db: SupportSQLiteDatabase) {
+        try {
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO album
+                    (id, title, thumbnailUrl, songCount, duration, explicit, lastUpdateTime, isLocal)
+                SELECT albumId,
+                       MAX(albumName),
+                       MAX(thumbnailUrl),
+                       COUNT(*),
+                       SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END),
+                       MAX(explicit),
+                       strftime('%s', 'now') * 1000,
+                       MAX(isLocal)
+                FROM song
+                WHERE albumId IS NOT NULL AND albumId != '' AND albumName IS NOT NULL AND albumName != ''
+                GROUP BY albumId
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO song_album_map (songId, albumId, `index`)
+                SELECT song.id,
+                       song.albumId,
+                       (SELECT COUNT(*) FROM song earlier
+                        WHERE earlier.albumId = song.albumId AND earlier.rowid < song.rowid)
+                FROM song
+                WHERE song.albumId IS NOT NULL AND song.albumId IN (SELECT id FROM album)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO album_artist_map (albumId, artistId, `order`)
+                SELECT DISTINCT song.albumId, song_artist_map.artistId, song_artist_map.position
+                FROM song
+                JOIN song_artist_map ON song_artist_map.songId = song.id
+                WHERE song.albumId IS NOT NULL AND song.albumId IN (SELECT id FROM album)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                UPDATE album
+                SET songCount = (SELECT COUNT(*) FROM song WHERE song.albumId = album.id),
+                    duration = (SELECT SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) FROM song WHERE song.albumId = album.id),
+                    thumbnailUrl = COALESCE(thumbnailUrl, (SELECT MAX(thumbnailUrl) FROM song WHERE song.albumId = album.id))
+                WHERE id IN (SELECT DISTINCT albumId FROM song WHERE albumId IS NOT NULL)
+                """.trimIndent(),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Library relation repair skipped", e)
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,8 +58,14 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.component.SongListItem
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.omnitune.app.R
+import com.omnitune.app.db.entities.ArtistEntity
+import com.omnitune.app.db.entities.Song
+import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.queues.ListQueue
+import com.omnitune.app.playback.queues.YouTubeQueue
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,7 +73,6 @@ import timber.log.Timber
 fun ArtistScreen(
     artistId: String,
     onBack: () -> Unit = {},
-    onPlaySong: (SongItem) -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     viewModel: ArtistDetailViewModel = hiltViewModel(),
 ) {
@@ -74,10 +80,14 @@ fun ArtistScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val isBookmarked by viewModel.isBookmarked.collectAsState()
+    val localArtist by viewModel.artist.collectAsState()
+    val localSongs by viewModel.songs.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
 
     LaunchedEffect(artistId) {
         Timber.tag("ArtistNav").i("ArtistScreen LaunchedEffect: artistId=%s", artistId)
         isLoading = true
+        error = null
         viewModel.loadArtist(artistId)
         YouTube.artist(artistId).fold(
             onSuccess = { page -> artistPage = page },
@@ -88,7 +98,7 @@ fun ArtistScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(artistPage?.artist?.title ?: "Artist") },
+            title = { Text(artistPage?.artist?.title ?: localArtist?.name ?: "Artist") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -117,13 +127,16 @@ fun ArtistScreen(
         )
 
         when {
-            isLoading -> {
+            isLoading && localArtist == null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     OmniTuneLoader(size = 48.dp)
                 }
+            }
+            localArtist != null && artistPage == null -> {
+                LocalArtistContent(localArtist!!, localSongs, playerConnection)
             }
             error != null -> {
                 EmptyPlaceholder(
@@ -133,6 +146,7 @@ fun ArtistScreen(
             }
             artistPage != null -> {
                 val page = artistPage!!
+                val allSongs = page.sections.flatMap { it.items }.filterIsInstance<SongItem>().distinctBy { it.id }
 
                 LazyColumn(
                     modifier = Modifier
@@ -232,12 +246,11 @@ fun ArtistScreen(
                                 }
                                 
                                 Button(
-                                    onClick = { 
-                                        val allSongs = page.sections.flatMap { it.items }.filterIsInstance<SongItem>()
+                                    onClick = {
                                         if (allSongs.isNotEmpty()) {
-                                            val shuffled = allSongs.shuffled()
-                                            // Actually would use playerConnection.playQueue here, handled by parent ideally
-                                            // For now just play the first section
+                                            playerConnection?.playQueue(
+                                                ListQueue(title = page.artist.title, items = allSongs.shuffled().map { it.toMediaItem() }),
+                                            )
                                         }
                                     },
                                     modifier = Modifier.weight(1f).height(50.dp),
@@ -255,7 +268,11 @@ fun ArtistScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             OutlinedButton(
-                                onClick = { /* Start Radio */ },
+                                onClick = {
+                                    allSongs.firstOrNull()?.toMediaMetadata()?.let { song ->
+                                        playerConnection?.playQueue(YouTubeQueue.radio(song))
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth().height(50.dp),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
@@ -294,9 +311,18 @@ fun ArtistScreen(
                                     contentType = { "artist-song" },
                                 ) { item ->
                                     if (item is SongItem) {
+                                        val songIndex = allSongs.indexOfFirst { it.id == item.id }.coerceAtLeast(0)
                                         ArtistSongRow(
                                             song = item,
-                                            onClick = { onPlaySong(item) },
+                                            onClick = {
+                                                playerConnection?.playQueue(
+                                                    ListQueue(
+                                                        title = page.artist.title,
+                                                        items = allSongs.map { it.toMediaItem() },
+                                                        startIndex = songIndex,
+                                                    ),
+                                                )
+                                            },
                                         )
                                         HorizontalDivider(
                                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
@@ -351,6 +377,60 @@ fun ArtistScreen(
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LocalArtistContent(
+    artist: ArtistEntity,
+    songs: List<Song>,
+    playerConnection: PlayerConnection?,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AsyncImage(
+                    model = artist.thumbnailUrl,
+                    contentDescription = artist.name,
+                    modifier = Modifier.size(160.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(artist.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                Text("${songs.size} songs", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = {
+                            if (songs.isNotEmpty()) playerConnection?.playQueue(
+                                ListQueue(title = artist.name, items = songs.shuffled().map { it.toMediaItem() }),
+                            )
+                        },
+                    ) { Text("Shuffle") }
+                    OutlinedButton(
+                        onClick = {
+                            songs.firstOrNull()?.toMediaMetadata()?.let { playerConnection?.playQueue(YouTubeQueue.radio(it)) }
+                        },
+                    ) { Text("Radio") }
+                }
+            }
+        }
+        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+            SongListItem(
+                song = song,
+                modifier = Modifier.clickable {
+                    playerConnection?.playQueue(
+                        ListQueue(title = artist.name, items = songs.map { it.toMediaItem() }, startIndex = index),
+                    )
+                },
+            )
         }
     }
 }

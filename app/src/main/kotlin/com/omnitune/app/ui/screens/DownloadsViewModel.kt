@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.PlayerConnection
 import kotlinx.coroutines.withContext
@@ -24,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 
 data class DownloadsUiState(
     val downloads: List<Download> = emptyList(),
+    val songs: Map<String, Song> = emptyMap(),
 )
 
 @HiltViewModel
@@ -72,7 +74,7 @@ class DownloadsViewModel @Inject constructor(
 
     private fun refreshDownloads() {
         viewModelScope.launch {
-            val list = withContext(Dispatchers.IO) {
+            val (downloads, songs) = withContext(Dispatchers.IO) {
                 val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
                 val result = mutableListOf<Download>()
                 try {
@@ -82,9 +84,11 @@ class DownloadsViewModel @Inject constructor(
                 } finally {
                     cursor.close()
                 }
-                result
+                result to result.mapNotNull { download ->
+                    database.getSongById(download.request.id)?.let { download.request.id to it }
+                }.toMap()
             }
-            _uiState.value = DownloadsUiState(downloads = list)
+            _uiState.value = DownloadsUiState(downloads = downloads, songs = songs)
         }
     }
 
@@ -108,23 +112,17 @@ class DownloadsViewModel @Inject constructor(
                     } else {
                         Timber.i("Diagnostics: Metadata fallback for non-DB-backed download: ${dl.request.id}")
                         val title = String(dl.request.data, Charsets.UTF_8).ifBlank { dl.request.id }
+                        val thumbnailUrl = dl.request.id
+                            .takeIf { it.matches(Regex("^[a-zA-Z0-9_-]{11}$")) }
+                            ?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
                         val downloadMeta = com.omnitune.app.models.MediaMetadata(
                             id = dl.request.id,
                             title = title,
                             artists = emptyList(),
                             duration = 0,
+                            thumbnailUrl = thumbnailUrl,
                         )
-                        androidx.media3.common.MediaItem.Builder()
-                            .setMediaId(dl.request.id)
-                            .setUri(dl.request.id)
-                            .setCustomCacheKey(dl.request.id)
-                            .setTag(downloadMeta)
-                            .setMediaMetadata(
-                                androidx.media3.common.MediaMetadata.Builder()
-                                    .setTitle(title)
-                                    .build()
-                            )
-                            .build()
+                        downloadMeta.toMediaItem()
                     }
                 }
             }

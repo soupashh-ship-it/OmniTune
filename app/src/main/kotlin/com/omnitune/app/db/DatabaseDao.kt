@@ -79,7 +79,19 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
         mediaMetadata: MediaMetadata,
         block: (SongEntity) -> SongEntity = { it },
     ) {
-        if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) return
+        val incomingSong = mediaMetadata.toSongEntity().let(block)
+        if (insert(incomingSong) == -1L) {
+            getSongByIdBlocking(mediaMetadata.id)?.song?.let { existing ->
+                val enriched = existing.copy(
+                    title = mediaMetadata.title.takeIf { it.isNotBlank() } ?: existing.title,
+                    duration = mediaMetadata.duration.takeIf { it > 0 } ?: existing.duration,
+                    thumbnailUrl = existing.thumbnailUrl ?: mediaMetadata.thumbnailUrl,
+                    albumId = existing.albumId ?: mediaMetadata.album?.id,
+                    albumName = existing.albumName ?: mediaMetadata.album?.title,
+                )
+                if (enriched != existing) update(enriched)
+            }
+        }
 
         if (mediaMetadata.setVideoId != null) {
             insert(
@@ -90,16 +102,20 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
             )
         }
 
-        mediaMetadata.artists.forEachIndexed { index, artist ->
-            val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
+        val artistIds = mediaMetadata.artists.mapIndexed { index, artist ->
+            val existingArtist = artist.id?.let(::getArtistById) ?: artistByName(artist.name)
+            val artistId = existingArtist?.id ?: artist.id ?: ArtistEntity.generateArtistId()
             
-            insert(
-                ArtistEntity(
+            if (existingArtist == null) {
+                insert(ArtistEntity(
                     id = artistId,
                     name = artist.name,
                     channelId = artist.id,
-                )
-            )
+                    thumbnailUrl = artist.thumbnailUrl,
+                ))
+            } else if (existingArtist.thumbnailUrl.isNullOrBlank() && !artist.thumbnailUrl.isNullOrBlank()) {
+                update(existingArtist.copy(thumbnailUrl = artist.thumbnailUrl))
+            }
 
             insert(
                 SongArtistMap(
@@ -108,26 +124,52 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
                     position = index,
                 )
             )
+            artistId
+        }
+
+        mediaMetadata.album?.takeIf { it.id.isNotBlank() }?.let { album ->
+            val existingAlbum = getAlbumById(album.id)
+            if (existingAlbum == null) {
+                insert(
+                    AlbumEntity(
+                        id = album.id,
+                        title = album.title,
+                        thumbnailUrl = mediaMetadata.thumbnailUrl,
+                        songCount = 1,
+                        duration = mediaMetadata.duration.coerceAtLeast(0),
+                    ),
+                )
+            } else if (existingAlbum.thumbnailUrl.isNullOrBlank() && !mediaMetadata.thumbnailUrl.isNullOrBlank()) {
+                update(existingAlbum.copy(thumbnailUrl = mediaMetadata.thumbnailUrl))
+            }
+
+            insert(SongAlbumMap(songId = mediaMetadata.id, albumId = album.id, index = 0))
+            artistIds.forEachIndexed { index, artistId ->
+                insert(AlbumArtistMap(albumId = album.id, artistId = artistId, order = index))
+            }
         }
     }
 
     @Transaction
     fun insert(albumPage: AlbumPage) {
-        if (insert(
-                AlbumEntity(
-                    id = albumPage.album.browseId,
-                    playlistId = albumPage.album.playlistId,
-                    title = albumPage.album.title,
-                    year = albumPage.album.year,
-                    thumbnailUrl = albumPage.album.thumbnail,
-                    songCount = albumPage.songs.size,
-                    duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
-                    explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
-                ),
-            ) == -1L
-        ) {
-            return
-        }
+        val existingAlbum = getAlbumById(albumPage.album.browseId)
+        val albumEntity = AlbumEntity(
+            id = albumPage.album.browseId,
+            playlistId = albumPage.album.playlistId,
+            title = albumPage.album.title,
+            year = albumPage.album.year,
+            thumbnailUrl = albumPage.album.thumbnail,
+            songCount = albumPage.songs.size,
+            duration = albumPage.songs.sumOf { song -> song.duration ?: 0 },
+            explicit = albumPage.album.explicit || albumPage.songs.any { it.explicit },
+            themeColor = existingAlbum?.themeColor,
+            bookmarkedAt = existingAlbum?.bookmarkedAt,
+            likedDate = existingAlbum?.likedDate,
+            inLibrary = existingAlbum?.inLibrary,
+            isLocal = existingAlbum?.isLocal ?: false,
+        )
+        if (existingAlbum == null) insert(albumEntity) else update(albumEntity)
+
         albumPage.songs
             .map(SongItem::toMediaMetadata)
             .onEach(::insert)

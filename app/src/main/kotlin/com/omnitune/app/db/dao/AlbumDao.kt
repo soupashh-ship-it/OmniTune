@@ -23,7 +23,7 @@ import java.text.Collator
 @Dao
 interface AlbumDao {
     @Transaction
-    @Query("SELECT song.* FROM song JOIN song_album_map ON song.id = song_album_map.songId WHERE song_album_map.albumId = :albumId")
+    @Query("SELECT song.* FROM song JOIN song_album_map ON song.id = song_album_map.songId WHERE song_album_map.albumId = :albumId ORDER BY song_album_map.`index`")
     fun albumSongs(albumId: String): Flow<List<Song>>
 
 
@@ -128,7 +128,7 @@ interface AlbumDao {
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
-    @Query("SELECT * FROM album WHERE EXISTS(SELECT * FROM song WHERE song.albumId = album.id AND song.inLibrary IS NOT NULL) ORDER BY title")
+    @Query("SELECT * FROM album WHERE bookmarkedAt IS NOT NULL OR EXISTS(SELECT * FROM song WHERE song.albumId = album.id AND song.inLibrary IS NOT NULL) ORDER BY title")
     fun albumsByNameAsc(): Flow<List<Album>>
 
 
@@ -346,6 +346,10 @@ interface AlbumDao {
     @Transaction
     @Query("SELECT * FROM album WHERE id = :albumId")
     fun albumWithSongs(albumId: String): Flow<AlbumWithSongs?>
+
+
+    @Query("SELECT * FROM album WHERE id = :albumId LIMIT 1")
+    fun getAlbumById(albumId: String): AlbumEntity?
 
 
     @Transaction
