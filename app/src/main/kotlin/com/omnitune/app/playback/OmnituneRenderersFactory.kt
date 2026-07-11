@@ -36,7 +36,7 @@ class OmnituneRenderersFactory(context: Context) : DefaultRenderersFactory(conte
         )
 
         return DefaultAudioSink.Builder(context)
-            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableFloatOutput(true)
             .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
             .setAudioProcessorChain(chain)
             .build()
