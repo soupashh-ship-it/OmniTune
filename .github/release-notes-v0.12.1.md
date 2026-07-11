@@ -18,6 +18,13 @@ This release improves download management, organizes downloaded collections, and
 - Automatically disables audio offload while crossfade or silence processing is active, including during initial player startup.
 - Preserved normal speed and pitch controls for users who intentionally change playback parameters.
 
+## Startup Reliability
+
+- Fixed the app closing during startup when Room rejected an existing version-6 library database during upgrade.
+- Made the downloaded-playlist column migration safe when the column already exists.
+- Added non-destructive schema recovery that preserves songs, playlists, and library data when migration validation fails.
+- Added regression coverage ensuring only schema failures trigger recovery; storage and unrelated database errors still surface normally.
+
 ## Verification
 
 - `testDebugUnitTest`: passed

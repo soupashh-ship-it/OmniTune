@@ -59,6 +59,18 @@ import kotlin.coroutines.resume
 private const val TAG = "MusicDatabase"
 private const val CURRENT_VERSION = 7
 
+internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
+    val message = generateSequence(error) { it.cause }
+        .mapNotNull { it.message?.lowercase() }
+        .joinToString(" ")
+    return listOf(
+        "migration didn't properly handle",
+        "room cannot verify the data integrity",
+        "pre-packaged database has an invalid schema",
+        "duplicate column name",
+    ).any(message::contains)
+}
+
 class MusicDatabase(
     private val delegate: InternalDatabase,
 ) : DatabaseDao by delegate.dao {
@@ -191,18 +203,38 @@ abstract class InternalDatabase : RoomDatabase() {
 
         private val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE `playlist` ADD COLUMN `isDownloaded` INTEGER NOT NULL DEFAULT 0")
+                val hasDownloadedColumn = database.query("PRAGMA table_info(`playlist`)").use { cursor ->
+                    val nameIndex = cursor.getColumnIndex("name")
+                    generateSequence { if (cursor.moveToNext()) cursor.getString(nameIndex) else null }
+                        .any { it == "isDownloaded" }
+                }
+                if (!hasDownloadedColumn) {
+                    database.execSQL("ALTER TABLE `playlist` ADD COLUMN `isDownloaded` INTEGER NOT NULL DEFAULT 0")
+                }
             }
         }
 
         fun newInstance(context: Context): MusicDatabase {
-            val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
+            fun build() = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .addCallback(DatabaseCallback())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
                 .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
                 .build()
+
+            var db = build()
+            try {
+                db.openHelper.writableDatabase
+            } catch (error: Exception) {
+                if (!isRecoverableDatabaseSchemaFailure(error)) throw error
+
+                Log.e(TAG, "Database schema upgrade failed; attempting non-destructive repair", error)
+                runCatching { db.close() }
+                SchemaTools.repairDatabaseFile(context, DB_NAME)
+                db = build()
+                db.openHelper.writableDatabase
+            }
 
             return MusicDatabase(delegate = db)
         }
