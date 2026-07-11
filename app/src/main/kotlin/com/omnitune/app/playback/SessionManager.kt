@@ -39,27 +39,36 @@ class SessionManager(
         .build()
 
     @Suppress("DEPRECATION")
-    fun updateCustomLayout() {
+    fun updateCustomLayout(
+        isLiked: Boolean,
+        repeatMode: Int,
+    ) {
         val customLayout = listOf(
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleLike)
                 .setDisplayName("Like")
-                .setIconResId(R.drawable.ic_favorite)
+                .setIconResId(
+                    if (isLiked) R.drawable.ic_notification_favorite
+                    else R.drawable.ic_notification_favorite_border
+                )
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleRepeatMode)
                 .setDisplayName("Repeat")
-                .setIconResId(R.drawable.ic_repeat)
+                .setIconResId(
+                    if (repeatMode == Player.REPEAT_MODE_ONE) R.drawable.ic_notification_repeat_one
+                    else R.drawable.ic_notification_repeat
+                )
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleShuffle)
                 .setDisplayName("Shuffle")
-                .setIconResId(R.drawable.ic_shuffle)
+                .setIconResId(R.drawable.ic_notification_shuffle)
                 .build(),
             CommandButton.Builder(CommandButton.ICON_UNDEFINED)
                 .setSessionCommand(CommandToggleStartRadio)
                 .setDisplayName("Radio")
-                .setIconResId(R.drawable.ic_share)
+                .setIconResId(R.drawable.ic_notification_share)
                 .build(),
         )
         session.setCustomLayout(customLayout)

@@ -1033,7 +1033,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Suppress("DEPRECATION")
     private fun updateNotification() {
         try {
-            sessionManager?.updateCustomLayout()
+            val meta = _currentMediaMetadata.value
+            sessionManager?.updateCustomLayout(
+                isLiked = meta?.liked == true,
+                repeatMode = player.repeatMode,
+            )
 
             if (::player.isInitialized) {
                 playbackNotificationManager.updateWidget()
