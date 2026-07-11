@@ -6,6 +6,7 @@
 package com.omnitune.app.ui.screens.settings
 
 import java.util.Locale
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -42,9 +43,14 @@ class AboutMetadataTest {
 
     @Test
     fun installedDateFormattingUsesLocaleDateInsteadOfTimestamp() {
-        val formatted = formatInstallDate(1_783_536_000_000L, Locale.US)
-
-        assertEquals("Jul 9, 2026", formatted)
+        val originalTz = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            val formatted = formatInstallDate(1_783_536_000_000L, Locale.US)
+            assertEquals("Jul 8, 2026", formatted)
+        } finally {
+            TimeZone.setDefault(originalTz)
+        }
     }
 
     @Test
