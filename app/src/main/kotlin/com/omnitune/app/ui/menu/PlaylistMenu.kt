@@ -59,6 +59,8 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.playback.queues.ListQueue
+import com.omnitune.app.playback.enqueueCollection
+import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.YouTubeQueue
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.AssignTagsDialog
@@ -508,8 +510,14 @@ fun PlaylistMenu(
                                 )
                             },
                             modifier = Modifier.clickable {
-                                songs.forEach { song ->
-                                    downloadUtil.enqueue(song.id, song.song.title)
+                                coroutineScope.launch {
+                                    downloadUtil.enqueueCollection(
+                                        database = database,
+                                        playlistId = playlist.id,
+                                        name = playlist.title,
+                                        thumbnailUrl = playlist.playlist.thumbnailUrl,
+                                        songs = songs.map { it.toMediaMetadata() },
+                                    )
                                 }
                             }
                         )

@@ -55,15 +55,16 @@ class PlaybackPreferenceObserver(
         // Crossfade needs decoded PCM so both players can mix without an offload transition gap.
         jobs += scope.launch {
             combine(
-                dataStore.data.map { it[AudioOffload] ?: true }.distinctUntilChanged(),
+                dataStore.data.map { it[AudioOffload] ?: false }.distinctUntilChanged(),
                 dataStore.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged(),
-            ) { offload, durationMs -> offload to durationMs }
+                dataStore.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged(),
+            ) { offload, durationMs, skipSilence -> Triple(offload, durationMs, skipSilence) }
                 .distinctUntilChanged()
-                .collect { (offload, durationMs) ->
+                .collect { (offload, durationMs, skipSilence) ->
                     crossfadeDurationMs.value = durationMs
-                    player.setOffloadEnabled(offload && durationMs == 0)
+                    player.setOffloadEnabled(offload && durationMs == 0 && !skipSilence)
                     Timber.tag("MusicService").d(
-                        "Audio offload: ${offload && durationMs == 0}, crossfade: ${durationMs}ms"
+                        "Audio offload: ${offload && durationMs == 0 && !skipSilence}, crossfade: ${durationMs}ms"
                     )
                 }
             }

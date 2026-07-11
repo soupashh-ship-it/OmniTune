@@ -1,5 +1,9 @@
 package com.omnitune.app.playback
 
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.db.entities.PlaylistEntity
+import com.omnitune.app.db.entities.PlaylistSongMap
+import com.omnitune.app.models.MediaMetadata
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import kotlinx.coroutines.channels.awaitClose
@@ -9,6 +13,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 val DownloadUtil.downloads: Flow<Map<String, Download>>
     get() = callbackFlow {
@@ -61,3 +66,42 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
 fun DownloadUtil.getDownload(id: String): Flow<Download?> {
     return downloads.map { it[id] }
 }
+
+suspend fun DownloadUtil.enqueueCollection(
+    database: MusicDatabase,
+    playlistId: String,
+    name: String,
+    thumbnailUrl: String?,
+    songs: List<MediaMetadata>,
+) {
+    if (songs.isEmpty()) return
+
+    database.withTransaction {
+        val now = LocalDateTime.now()
+        val existing = getPlaylistByIdBlocking(playlistId)?.playlist
+        val playlist = existing?.copy(
+            name = name,
+            thumbnailUrl = thumbnailUrl ?: existing.thumbnailUrl,
+            bookmarkedAt = existing.bookmarkedAt ?: now,
+            lastUpdateTime = now,
+            isDownloaded = true,
+        ) ?: PlaylistEntity(
+            id = playlistId,
+            name = name,
+            thumbnailUrl = thumbnailUrl,
+            bookmarkedAt = now,
+            isDownloaded = true,
+        )
+
+        if (existing == null) insert(playlist) else update(playlist)
+        clearPlaylist(playlistId)
+        songs.forEachIndexed { index, song ->
+            insert(song)
+            insert(PlaylistSongMap(playlistId = playlistId, songId = song.id, position = index))
+        }
+    }
+
+    songs.forEach { song -> enqueue(song.id, song.title) }
+}
+
+fun downloadCollectionId(type: String, sourceId: String): String = "DL_${type}_$sourceId"

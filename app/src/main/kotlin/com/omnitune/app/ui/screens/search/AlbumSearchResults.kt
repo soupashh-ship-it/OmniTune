@@ -16,6 +16,8 @@ import com.omnitune.app.LocalDatabase
 import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.R
 import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.playback.downloadCollectionId
+import com.omnitune.app.playback.enqueueCollection
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.innertube.YouTube
@@ -64,9 +66,13 @@ fun LazyListScope.albumSearchResults(
                                 }
                                 val songs = result.getOrNull().orEmpty()
                                 if (songs.isNotEmpty()) {
-                                    songs.forEach { song ->
-                                        downloadUtil.enqueue(song.id, song.title)
-                                    }
+                                    downloadUtil.enqueueCollection(
+                                        database = database,
+                                        playlistId = downloadCollectionId("album", album.browseId),
+                                        name = album.title,
+                                        thumbnailUrl = album.thumbnail,
+                                        songs = songs.map { it.toMediaMetadata() },
+                                    )
                                     Toast.makeText(context, "Queued ${songs.size} album downloads", Toast.LENGTH_SHORT).show()
                                 } else {
                                     Toast.makeText(

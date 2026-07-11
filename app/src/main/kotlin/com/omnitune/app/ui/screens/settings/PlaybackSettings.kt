@@ -24,7 +24,7 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     var historyDuration by rememberPreference(com.omnitune.app.constants.HistoryDuration, 30f)
     var skipSilence by rememberPreference(com.omnitune.app.constants.SkipSilenceKey, false)
     var audioNorm by rememberPreference(com.omnitune.app.constants.AudioNormalizationKey, true)
-    var audioOffload by rememberPreference(com.omnitune.app.constants.AudioOffload, true)
+    var audioOffload by rememberPreference(com.omnitune.app.constants.AudioOffload, false)
     var progressiveSeek by rememberPreference(com.omnitune.app.constants.SeekExtraSeconds, false)
     var pauseOnMute by rememberPreference(com.omnitune.app.constants.PauseOnDeviceMuteKey, false)
     var qualityMode by rememberEnumPreference(PlaybackQualityModeKey, PlaybackQualityMode.AUTO)

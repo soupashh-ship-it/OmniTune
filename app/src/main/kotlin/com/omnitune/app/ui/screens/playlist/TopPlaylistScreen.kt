@@ -54,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -95,6 +96,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.omnitune.app.LocalDownloadUtil
 import androidx.compose.foundation.layout.navigationBars
@@ -106,6 +108,8 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.extensions.togglePlayPause
 import com.omnitune.app.playback.ExoDownloadService
+import com.omnitune.app.playback.enqueueCollection
+import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.DraggableScrollbar
@@ -189,6 +193,8 @@ fun TopPlaylistScreen(
     val name = stringResource(R.string.my_top) + " $maxSize"
 
     val downloadUtil = LocalDownloadUtil.current
+    val database = LocalDatabase.current
+    val coroutineScope = rememberCoroutineScope()
     var downloadState by remember { mutableStateOf(Download.STATE_STOPPED) }
     // Tags
     val pid = "LP_TOP"
@@ -614,8 +620,14 @@ fun TopPlaylistScreen(
                                                     }
                                                 }
                                                 else -> {
-                                                    songs!!.forEach { song ->
-                                                        downloadUtil.enqueue(song.song.id, song.song.title)
+                                                    coroutineScope.launch {
+                                                        downloadUtil.enqueueCollection(
+                                                            database = database,
+                                                            playlistId = pid,
+                                                            name = name,
+                                                            thumbnailUrl = songs!!.firstOrNull()?.song?.thumbnailUrl,
+                                                            songs = songs!!.map { it.toMediaMetadata() },
+                                                        )
                                                     }
                                                 }
                                             }

@@ -169,4 +169,10 @@ class DownloadsViewModel @Inject constructor(
             .filter { it.state == Download.STATE_FAILED }
             .forEach { removeDownload(it.request.id) }
     }
+
+    fun clearQueuedDownloads() {
+        _uiState.value.downloads
+            .filter { it.state == Download.STATE_QUEUED }
+            .forEach { removeDownload(it.request.id) }
+    }
 }

@@ -72,6 +72,7 @@ fun DownloadsScreen(
         it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED || it.state == Download.STATE_STOPPED || it.state == Download.STATE_REMOVING
     }
     val failedCount = uiState.downloads.count { it.state == Download.STATE_FAILED }
+    val queuedCount = uiState.downloads.count { it.state == Download.STATE_QUEUED }
 
     Column(
         modifier = Modifier
@@ -85,8 +86,10 @@ fun DownloadsScreen(
             completedCount = completedCount,
             activeCount = activeCount,
             failedCount = failedCount,
+            queuedCount = queuedCount,
             onBack = onBack,
             onClearFailed = viewModel::clearFailedDownloads,
+            onClearQueued = viewModel::clearQueuedDownloads,
         )
 
         if (uiState.downloads.isEmpty()) {
@@ -163,8 +166,10 @@ private fun DownloadsHeader(
     completedCount: Int,
     activeCount: Int,
     failedCount: Int,
+    queuedCount: Int,
     onBack: () -> Unit,
     onClearFailed: () -> Unit,
+    onClearQueued: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -231,6 +236,21 @@ private fun DownloadsHeader(
                 .padding(bottom = OmniSpacing.medium),
         ) {
             Text("Clear all failed", fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (queuedCount > 0) {
+        Button(
+            onClick = onClearQueued,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = OmniColors.Warning.copy(alpha = 0.18f),
+                contentColor = OmniColors.Warning,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OmniSpacing.medium),
+        ) {
+            Text("Remove all queued", fontWeight = FontWeight.Bold)
         }
     }
 }

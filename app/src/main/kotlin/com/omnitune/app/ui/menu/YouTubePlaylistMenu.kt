@@ -82,6 +82,8 @@ import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.playback.queues.YouTubeQueue
+import com.omnitune.app.playback.downloadCollectionId
+import com.omnitune.app.playback.enqueueCollection
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.NewAction
@@ -647,7 +649,7 @@ fun YouTubePlaylistMenu(
                         },
                         modifier = Modifier.clickable {
                             coroutineScope.launch {
-                                songs
+                                val collectionSongs = songs
                                     .ifEmpty {
                                         withContext(Dispatchers.IO) {
                                             YouTube
@@ -657,7 +659,14 @@ fun YouTubePlaylistMenu(
                                                 ?.songs
                                                 .orEmpty()
                                         }
-                                    }.forEach { song -> downloadUtil.enqueue(song.id, song.title) }
+                                    }.map { it.toMediaMetadata() }
+                                downloadUtil.enqueueCollection(
+                                    database = database,
+                                    playlistId = dbPlaylist?.id ?: downloadCollectionId("playlist", playlist.id),
+                                    name = playlist.title,
+                                    thumbnailUrl = playlist.thumbnail,
+                                    songs = collectionSongs,
+                                )
                             }
                         }
                     )

@@ -72,6 +72,7 @@ fun LibraryPlaylistsScreen(
     val allTags by viewModel.allTags.collectAsState(initial = emptyList())
 
     var selectedTagId by remember { mutableStateOf<String?>(null) }
+    var downloadedOnly by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var showManageFolders by remember { mutableStateOf(false) }
     var showFolderPickerFor by remember { mutableStateOf<String?>(null) }
@@ -174,7 +175,7 @@ fun LibraryPlaylistsScreen(
         )
 
         val showTagsInLibrary by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowTagsInLibraryKey, true)
-        if (showTagsInLibrary) {
+        run {
             // ── Folder chips + manage button ────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -186,22 +187,41 @@ fun LibraryPlaylistsScreen(
                 ) {
                     item {
                         AssistChip(
-                            onClick = { selectedTagId = null },
+                            onClick = {
+                                selectedTagId = null
+                                downloadedOnly = false
+                            },
                             label = { Text("All") },
                             colors = AssistChipDefaults.assistChipColors(
-                                containerColor = if (selectedTagId == null)
+                                containerColor = if (selectedTagId == null && !downloadedOnly)
                                     OmniColors.OmniAccentPrimary.copy(alpha = 0.2f)
                                 else OmniColors.OmniGlassSubtle,
-                                labelColor = if (selectedTagId == null)
+                                labelColor = if (selectedTagId == null && !downloadedOnly)
                                     OmniColors.OmniAccentPrimary
                                 else OmniColors.TextSecondary,
                             ),
                         )
                     }
-                    items(allTags, key = { it.id }) { tag ->
+                    item {
+                        AssistChip(
+                            onClick = {
+                                selectedTagId = null
+                                downloadedOnly = true
+                            },
+                            label = { Text("Downloaded") },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = if (downloadedOnly) OmniColors.Downloaded.copy(alpha = 0.2f) else OmniColors.OmniGlassSubtle,
+                                labelColor = if (downloadedOnly) OmniColors.Downloaded else OmniColors.TextSecondary,
+                            ),
+                        )
+                    }
+                    if (showTagsInLibrary) items(allTags, key = { it.id }) { tag ->
                         val tagColor = android.graphics.Color.parseColor(tag.color).let { Color(it) }
                         AssistChip(
-                            onClick = { selectedTagId = if (selectedTagId == tag.id) null else tag.id },
+                            onClick = {
+                                downloadedOnly = false
+                                selectedTagId = if (selectedTagId == tag.id) null else tag.id
+                            },
                             label = { Text(tag.name) },
                             leadingIcon = {
                                 Box(
@@ -227,9 +247,16 @@ fun LibraryPlaylistsScreen(
 
         Spacer(modifier = Modifier.height(OmniSpacing.small))
 
+        val visiblePlaylists = allPlaylists.filter { playlist ->
+            !downloadedOnly || playlist.playlist.isDownloaded
+        }
+
         // ── Playlist list ───────────────────────────────────────────
-        if (allPlaylists.isEmpty()) {
-            LibraryEmptyState(icon = R.drawable.ic_list, text = "No playlists in your library yet")
+        if (visiblePlaylists.isEmpty()) {
+            LibraryEmptyState(
+                icon = R.drawable.ic_list,
+                text = if (downloadedOnly) "No downloaded playlists yet" else "No playlists in your library yet",
+            )
         } else {
             // Show all playlists with the folder picker available per row
             LazyColumn(
@@ -237,7 +264,7 @@ fun LibraryPlaylistsScreen(
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
             ) {
                 items(
-                    items = allPlaylists,
+                    items = visiblePlaylists,
                     key = { it.id },
                     contentType = { "playlist" },
                 ) { playlist ->

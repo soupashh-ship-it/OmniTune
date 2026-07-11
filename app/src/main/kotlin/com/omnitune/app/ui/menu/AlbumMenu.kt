@@ -82,6 +82,9 @@ import com.omnitune.app.db.entities.Album
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.ExoDownloadService
+import com.omnitune.app.playback.downloadCollectionId
+import com.omnitune.app.playback.enqueueCollection
+import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.LocalAlbumRadio
 import com.omnitune.app.ui.component.AlbumListItem
@@ -506,8 +509,14 @@ fun AlbumMenu(
                             )
                         },
                         modifier = Modifier.clickable {
-                            songs.forEach { song ->
-                                downloadUtil.enqueue(song.id, song.song.title)
+                            scope.launch {
+                                downloadUtil.enqueueCollection(
+                                    database = database,
+                                    playlistId = downloadCollectionId("album", album.id),
+                                    name = album.album.title,
+                                    thumbnailUrl = album.album.thumbnailUrl,
+                                    songs = songs.map { it.toMediaMetadata() },
+                                )
                             }
                         }
                     )

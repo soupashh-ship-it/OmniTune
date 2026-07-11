@@ -77,6 +77,9 @@ import com.omnitune.app.constants.ListThumbnailSize
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.ExoDownloadService
+import com.omnitune.app.playback.downloadCollectionId
+import com.omnitune.app.playback.enqueueCollection
+import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.YouTubeAlbumRadio
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.NewAction
@@ -87,6 +90,7 @@ import com.omnitune.app.utils.rememberPreference
 import com.omnitune.app.utils.reportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -483,8 +487,20 @@ fun YouTubeAlbumMenu(
                             )
                         },
                         modifier = Modifier.clickable {
-                            album?.songs?.forEach { song ->
-                                downloadUtil.enqueue(song.id, song.song.title)
+                            coroutineScope.launch {
+                                val collectionSongs = album?.songs?.map { it.toMediaMetadata() }
+                                    ?: withContext(Dispatchers.IO) {
+                                        YouTube.album(albumItem.id).getOrNull()?.songs
+                                            .orEmpty()
+                                            .map { it.toMediaMetadata() }
+                                    }
+                                downloadUtil.enqueueCollection(
+                                    database = database,
+                                    playlistId = downloadCollectionId("album", albumItem.id),
+                                    name = albumItem.title,
+                                    thumbnailUrl = albumItem.thumbnail,
+                                    songs = collectionSongs,
+                                )
                             }
                         }
                     )

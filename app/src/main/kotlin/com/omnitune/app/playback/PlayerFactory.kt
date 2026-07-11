@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.first
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.constants.SkipSilenceKey
 import com.omnitune.app.constants.AudioOffload
+import com.omnitune.app.constants.AudioCrossfadeDurationKey
 import com.omnitune.app.constants.SeekExtraSeconds
 import com.omnitune.app.extensions.setOffloadEnabled
 
@@ -50,7 +51,8 @@ object PlayerFactory {
 
         val prefs = runBlocking(Dispatchers.IO) { context.dataStore.data.first() }
         val skipSilence = prefs[SkipSilenceKey] ?: false
-        val audioOffload = prefs[AudioOffload] ?: true
+        val audioOffload = prefs[AudioOffload] ?: false
+        val crossfadeDuration = prefs[AudioCrossfadeDurationKey] ?: 0
         val progressiveSeek = prefs[SeekExtraSeconds] ?: false
 
         return ExoPlayer.Builder(context)
@@ -71,7 +73,7 @@ object PlayerFactory {
             .build()
             .apply {
                 skipSilenceEnabled = skipSilence
-                setOffloadEnabled(audioOffload)
+                setOffloadEnabled(audioOffload && crossfadeDuration == 0 && !skipSilence)
             }
     }
 
