@@ -68,9 +68,7 @@ class PlaybackRecoveryCoordinator(
         val currentMediaItem = player.currentMediaItem
         val mediaId = currentMediaItem?.mediaId
 
-        val isUnresolved = StreamUrlResolver.isYouTubeVideoId(currentMediaItem?.localConfiguration?.uri)
-
-        if (errorType == PlaybackErrorType.NetworkError && !isUnresolved) {
+        if (errorType == PlaybackErrorType.NetworkError) {
             if (networkPlaybackMonitor.handleNetworkError(mediaId)) {
                 return
             }

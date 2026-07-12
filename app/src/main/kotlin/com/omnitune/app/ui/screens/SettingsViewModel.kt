@@ -12,13 +12,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.omnitune.app.data.StreamRepository
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.StreamUrlResolver
 import coil3.imageLoader
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val database: MusicDatabase,
-    private val streamRepository: StreamRepository
+    private val streamRepository: StreamRepository,
+    private val downloadUtil: DownloadUtil,
 ) : ViewModel() {
     fun <T> updatePreference(context: Context, key: Preferences.Key<T>, value: T) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -41,6 +43,7 @@ class SettingsViewModel @Inject constructor(
     fun clearAppCache(context: Context) {
         streamRepository.clearCache()
         StreamUrlResolver.clearMemoryCache("user request")
+        downloadUtil.clearPlaybackCache()
         context.imageLoader.memoryCache?.clear()
         context.imageLoader.diskCache?.clear()
     }

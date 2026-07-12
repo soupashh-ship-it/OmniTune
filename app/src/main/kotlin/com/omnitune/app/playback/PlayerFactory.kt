@@ -87,9 +87,9 @@ object PlayerFactory {
             OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
         )
         return CacheDataSource.Factory()
-            .setCache(downloadUtil.downloadCache)
+            .setCache(downloadUtil.playbackCache)
             .setUpstreamDataSourceFactory(dataSourceFactory)
-            .setCacheWriteDataSinkFactory(null)
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 
     fun createOverlapPlayer(

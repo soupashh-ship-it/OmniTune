@@ -134,6 +134,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 ?: languageTag.takeIf { it in LanguageCodeToName }
                 ?: "en"
         )
+        YouTube.youtubeMusicApiKey = BuildConfig.YOUTUBE_MUSIC_API_KEY.takeIf { it.isNotBlank() }
 
         if (languageTag == "zh-TW") {
             KuGou.useTraditionalChinese = true

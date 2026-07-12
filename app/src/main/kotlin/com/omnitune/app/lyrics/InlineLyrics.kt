@@ -6,6 +6,7 @@
 package com.omnitune.app.lyrics
 
 import com.omnitune.app.db.entities.LyricsEntity
+import com.omnitune.app.models.LyricsLine
 
 data class InlineLyricState(
     val currentLine: String? = null,
@@ -56,6 +57,17 @@ object InlineLyrics {
             hasLyrics = current != null,
         )
     }
+
+    fun syncedEntriesFromLines(lines: List<LyricsLine>): List<LyricsEntry> =
+        lines
+            .filter { it.timestamp >= 0L && it.text.isNotBlank() }
+            .map { LyricsEntry(time = it.timestamp, text = it.text) }
+            .sorted()
+
+    fun entriesFromLines(lines: List<LyricsLine>): List<LyricsEntry> =
+        lines
+            .filter { it.text.isNotBlank() }
+            .map { LyricsEntry(time = it.timestamp, text = it.text) }
 }
 
 private fun String.cleanLyricLine(): String? =

@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 68
-        versionName = "0.12.9"
+        versionCode = 69
+        versionName = "0.13.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -65,9 +65,13 @@ android {
         val lastfmSecret = localProperties?.getProperty("LASTFM_SECRET")
             ?: System.getenv("LASTFM_SECRET")
             ?: ""
+        val youtubeMusicApiKey = localProperties?.getProperty("YOUTUBE_MUSIC_API_KEY")
+            ?: System.getenv("YOUTUBE_MUSIC_API_KEY")
+            ?: ""
 
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
+        buildConfigField("String", "YOUTUBE_MUSIC_API_KEY", "\"$youtubeMusicApiKey\"")
 
         val togetherBearerToken = localProperties?.getProperty("TOGETHER_BEARER_TOKEN")
             ?: System.getenv("TOGETHER_BEARER_TOKEN") ?: ""

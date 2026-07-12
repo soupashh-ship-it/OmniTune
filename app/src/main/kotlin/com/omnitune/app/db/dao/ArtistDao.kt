@@ -161,7 +161,7 @@ interface ArtistDao {
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
-    @Query("SELECT *, (SELECT COUNT(1) FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = artist.id AND song.inLibrary IS NOT NULL) AS songCount FROM artist WHERE songCount > 0 ORDER BY rowId")
+    @Query("SELECT *, (SELECT COUNT(1) FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = artist.id AND song.inLibrary IS NOT NULL) AS songCount FROM artist WHERE songCount > 0 OR bookmarkedAt IS NOT NULL ORDER BY rowId")
     fun artistsByCreateDateAsc(): Flow<List<Artist>>
 
 
@@ -173,7 +173,7 @@ interface ArtistDao {
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
-    @Query("SELECT *, (SELECT COUNT(1) FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = artist.id AND song.inLibrary IS NOT NULL) AS songCount FROM artist WHERE songCount > 0 ORDER BY songCount")
+    @Query("SELECT *, (SELECT COUNT(1) FROM song_artist_map JOIN song ON song_artist_map.songId = song.id WHERE artistId = artist.id AND song.inLibrary IS NOT NULL) AS songCount FROM artist WHERE songCount > 0 OR bookmarkedAt IS NOT NULL ORDER BY songCount")
     fun artistsBySongCountAsc(): Flow<List<Artist>>
 
 
@@ -188,14 +188,15 @@ interface ArtistDao {
                 WHERE artistId = artist.id
                   AND song.inLibrary IS NOT NULL) AS songCount
         FROM artist
-                 JOIN(SELECT artistId, SUM(totalPlayTime) AS totalPlayTime
+                 LEFT JOIN(SELECT artistId, SUM(totalPlayTime) AS totalPlayTime
                       FROM song_artist_map
                                JOIN song
                                     ON song_artist_map.songId = song.id
                       GROUP BY artistId
                       ORDER BY totalPlayTime)
                      ON artist.id = artistId
-        WHERE songCount > 0
+        WHERE songCount > 0 OR bookmarkedAt IS NOT NULL
+        ORDER BY COALESCE(totalPlayTime, 0)
     """
     )
     fun artistsByPlayTimeAsc(): Flow<List<Artist>>

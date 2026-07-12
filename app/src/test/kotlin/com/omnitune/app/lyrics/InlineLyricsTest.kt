@@ -10,6 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.omnitune.app.models.LyricsLine
 
 class InlineLyricsTest {
     @Test
@@ -76,5 +77,20 @@ class InlineLyricsTest {
 
         assertEquals(listOf(5_000L, 10_000L), entries.map { it.time })
         assertEquals("Second line", InlineLyrics.stateFor(entries, positionMs = 10_100L).currentLine)
+    }
+
+    @Test
+    fun loadedLyricsLinesCanDriveInlineStateBeforeDatabaseFlowUpdates() {
+        val entries = InlineLyrics.syncedEntriesFromLines(
+            listOf(
+                LyricsLine(timestamp = 1_000L, text = "First loaded line"),
+                LyricsLine(timestamp = 3_000L, text = "Second loaded line"),
+            )
+        )
+
+        val state = InlineLyrics.stateFor(entries, positionMs = 3_100L)
+
+        assertTrue(state.isSynced)
+        assertEquals("Second loaded line", state.currentLine)
     }
 }

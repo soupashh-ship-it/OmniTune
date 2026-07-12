@@ -142,6 +142,8 @@ fun PlayerScreen(
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistSelectionDialog by remember { mutableStateOf(false) }
+    val lyricsViewModel: LyricsViewModel = hiltViewModel()
+    val lyricsUiState by lyricsViewModel.uiState.collectAsState()
     val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
     val libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = hiltViewModel()
     val playlists by libraryViewModel.playlists.collectAsState(initial = emptyList())
@@ -197,6 +199,18 @@ fun PlayerScreen(
                         colors = listOf(dynamicPalette.accent.copy(alpha = 0.12f), Color.Transparent),
                     )
                 )
+    }
+
+    LaunchedEffect(mediaMetadata?.id) {
+        val metadata = mediaMetadata ?: return@LaunchedEffect
+        if (metadata.title.isNotBlank()) {
+            lyricsViewModel.loadLyrics(
+                songId = metadata.id,
+                title = metadata.title,
+                artist = metadata.artists.joinToString(", ") { it.name },
+                duration = metadata.duration.toLong(),
+            )
+        }
     }
 
 
@@ -287,6 +301,7 @@ fun PlayerScreen(
                     Spacer(modifier = Modifier.height(largeGap))
                     MetadataBlock(
                         playerConnection = playerConnection,
+                        lyricsUiState = lyricsUiState,
                         lyricAccentColor = dynamicPalette.accent,
                         onOpenLyrics = { showLyricsSheet = true },
                         onShare = {
@@ -393,7 +408,8 @@ fun PlayerScreen(
     if (showLyricsSheet) {
         LyricsBottomSheet(
             playerConnection = playerConnection,
-            onDismissRequest = { showLyricsSheet = false }
+            onDismissRequest = { showLyricsSheet = false },
+            viewModel = lyricsViewModel,
         )
     }
     if (showSleepTimerDialog) {
@@ -663,13 +679,13 @@ private fun ArtworkHero(
 @Composable
 private fun MetadataBlock(
     playerConnection: PlayerConnection?,
+    lyricsUiState: LyricsUiState,
     lyricAccentColor: Color,
     onOpenLyrics: () -> Unit,
     onShare: () -> Unit
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
     val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
-    val currentLyrics by (playerConnection?.currentLyrics ?: flowOf(null)).collectAsState(initial = null)
     val liked = currentSong?.song?.liked == true || mediaMetadata?.liked == true
     val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
     val artist = mediaMetadata
@@ -679,18 +695,13 @@ private fun MetadataBlock(
         ?: "Unknown artist"
     val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
     val fallbackSubtitle = artist + (if (album != null) " • $album" else "")
-    val lyricsText = currentLyrics?.lyrics
-    val syncedEntries = remember(mediaMetadata?.id, lyricsText) {
-        InlineLyrics.parseSyncedEntries(lyricsText)
+    val lyricsText by (playerConnection?.currentLyrics ?: flowOf(null)).collectAsState(initial = null)
+    val syncedEntries = remember(mediaMetadata?.id, lyricsText?.lyrics, lyricsUiState) {
+        val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
+        InlineLyrics.syncedEntriesFromLines(loadedLines)
+            .ifEmpty { InlineLyrics.parseSyncedEntries(lyricsText?.lyrics) }
     }
     var lyricPositionMs by remember(mediaMetadata?.id) { mutableLongStateOf(0L) }
-
-    LaunchedEffect(playerConnection, mediaMetadata?.id, lyricsText) {
-        val metadata = mediaMetadata ?: return@LaunchedEffect
-        if (lyricsText.isNullOrBlank() || syncedEntries.isEmpty()) {
-            playerConnection?.service?.prefetchLyrics(metadata)
-        }
-    }
 
     LaunchedEffect(playerConnection, mediaMetadata?.id) {
         while (true) {

@@ -553,7 +553,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             player.playWhenReady = playWhenReady
         }
 
-        scope.launch {
+        playQueueJob = scope.launch {
             val initialStatus = queue.getInitialStatus()
             currentPlaybackContext = queue.playbackContext.withSeedItem(
                 initialStatus.items.getOrNull(initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex.coerceAtLeast(0))),
@@ -591,14 +591,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
             Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
 
-            val resolvedItems = withContext(Dispatchers.IO) {
-                StreamUrlResolver.resolveMediaItems(
-                    initialStatus.items,
-                    streamExtractor,
-                    downloadUtil,
-                    getPlaybackQualityMode(),
-                    priorityIndex = requestedIndex
-                )
+            val resolvedItems = initialStatus.items.toMutableList().also {
+                it[requestedIndex] = resolvedCurrent
             }
             val resolvedIndex = requestedIndex
 

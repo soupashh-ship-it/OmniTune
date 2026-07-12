@@ -136,6 +136,12 @@ object YouTube {
             innerTube.useLoginForBrowse = value
         }
 
+    var youtubeMusicApiKey: String?
+        get() = innerTube.youtubeMusicApiKey
+        set(value) {
+            innerTube.youtubeMusicApiKey = value
+        }
+
     internal fun appendGvsPoToken(url: String, client: YouTubeClient? = null): String {
         val token = authState.resolveGvsPoToken(client) ?: return url
 

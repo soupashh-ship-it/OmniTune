@@ -9,6 +9,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.Download
@@ -59,6 +60,12 @@ class DownloadUtil @Inject constructor(
         val downloadDir = OfflineDownloadArchive.downloadDirectory(context)
         if (!downloadDir.exists()) downloadDir.mkdirs()
         SimpleCache(downloadDir, NoOpCacheEvictor(), databaseProvider)
+    }
+
+    val playbackCache: SimpleCache by lazy {
+        val cacheDir = context.cacheDir.resolve("stream-cache")
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+        SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(512L * 1024L * 1024L), databaseProvider)
     }
 
     val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
@@ -124,7 +131,20 @@ class DownloadUtil @Inject constructor(
         try {
             downloadCache.release()
         } catch (e: Exception) {
-            Timber.w(e, "Error releasing caches")
+            Timber.w(e, "Error releasing download cache")
+        }
+        try {
+            playbackCache.release()
+        } catch (e: Exception) {
+            Timber.w(e, "Error releasing playback cache")
+        }
+    }
+
+    fun clearPlaybackCache() {
+        try {
+            playbackCache.keys.toList().forEach { playbackCache.removeResource(it) }
+        } catch (e: Exception) {
+            Timber.w(e, "Error clearing playback cache")
         }
     }
 

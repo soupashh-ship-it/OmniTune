@@ -167,7 +167,8 @@ fun LyricsBottomSheet(
                         val useLyricsV2 by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.UseLyricsV2Key, false)
                         if (useLyricsV2) {
                             com.omnitune.app.ui.component.LyricsV2(
-                                sliderPositionProvider = { playerConnection?.player?.currentPosition }
+                                sliderPositionProvider = { playerConnection?.player?.currentPosition },
+                                fallbackLines = state.lines,
                             )
                         } else {
                             LyricsContent(

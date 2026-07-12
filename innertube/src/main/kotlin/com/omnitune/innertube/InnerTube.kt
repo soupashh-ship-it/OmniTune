@@ -65,6 +65,7 @@ class InnerTube {
         }
 
     var useLoginForBrowse: Boolean = false
+    var youtubeMusicApiKey: String? = null
 
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -327,8 +328,10 @@ class InnerTube {
         client: YouTubeClient,
         videoId: String,
     ) = withRetry {
+        val apiKey = youtubeMusicApiKey?.takeIf { it.isNotBlank() }
+            ?: error("YOUTUBE_MUSIC_API_KEY is not configured")
         httpClient.post("https://music.youtube.com/youtubei/v1/get_transcript") {
-            parameter("key", "AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX3")
+            parameter("key", apiKey)
             headers {
                 append("Content-Type", "application/json")
             }

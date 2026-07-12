@@ -26,6 +26,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Verify tests and lint
+        env:
+          YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
         run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin lintRelease
 
       - name: Decode release keystore
@@ -41,6 +43,7 @@ jobs:
           OMNITUNE_KEYSTORE_PASSWORD: ${{ secrets.OMNITUNE_KEYSTORE_PASSWORD }}
           OMNITUNE_KEY_ALIAS: ${{ secrets.OMNITUNE_KEY_ALIAS }}
           OMNITUNE_KEY_PASSWORD: ${{ secrets.OMNITUNE_KEY_PASSWORD }}
+          YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
         run: ./gradlew assembleRelease
 
       - name: Prepare release assets

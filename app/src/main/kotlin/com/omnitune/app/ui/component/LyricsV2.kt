@@ -94,6 +94,7 @@ import com.omnitune.app.lyrics.LyricsUtils.isTtml
 import com.omnitune.app.lyrics.LyricsUtils.romanizeJapanese
 import com.omnitune.app.lyrics.LyricsUtils.romanizeKorean
 import com.omnitune.app.lyrics.WordTimestamp
+import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.TextPlaceholder
 import com.omnitune.app.constants.LyricsPosition
@@ -136,6 +137,7 @@ private val HEAD_LYRICS_ENTRY = LyricsEntry(time = 0L, text = "")
 fun LyricsV2(
     sliderPositionProvider: () -> Long?,
     modifier: Modifier = Modifier,
+    fallbackLines: List<LyricsLine> = emptyList(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val player = playerConnection.player
@@ -181,14 +183,20 @@ fun LyricsV2(
     val lyrics = currentLyrics?.lyrics
 
     // ── Parse lyrics into entries ──
-    val syncedEntries = remember(lyrics) { InlineLyrics.parseSyncedEntries(lyrics) }
+    val fallbackEntries = remember(fallbackLines) { InlineLyrics.entriesFromLines(fallbackLines) }
+    val syncedEntries = remember(lyrics, fallbackEntries) {
+        InlineLyrics.parseSyncedEntries(lyrics)
+            .ifEmpty { fallbackEntries.filter { it.time >= 0L }.sorted() }
+    }
     val isSynced = syncedEntries.isNotEmpty()
-    val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics ?: return@remember false) }
+    val isTtmlFormat = remember(lyrics) { lyrics?.let { isTtml(it) } == true }
 
-    val lyricsEntries: List<LyricsEntry> = remember(lyrics) {
-        if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
+    val lyricsEntries: List<LyricsEntry> = remember(lyrics, fallbackEntries, syncedEntries) {
+        if (lyrics == null || lyrics == LYRICS_NOT_FOUND) {
+            return@remember fallbackEntries
+        }
         val parsed = syncedEntries.ifEmpty {
-            (lyrics ?: return@remember emptyList()).lines()
+            lyrics.lines()
                 .filter { it.isNotBlank() }
                 .map { line ->
                     LyricsEntry(time = -1L, text = line.trim())
@@ -394,7 +402,7 @@ fun LyricsV2(
             .fillMaxSize()
             .padding(bottom = 12.dp)
     ) lyricsContent@{
-        if (lyrics == LYRICS_NOT_FOUND) {
+        if (lyrics == LYRICS_NOT_FOUND && fallbackEntries.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -409,7 +417,7 @@ fun LyricsV2(
             return@lyricsContent
         }
 
-        if (lyrics == null) {
+        if (lyrics == null && fallbackEntries.isEmpty()) {
             ShimmerHost {
                 repeat(6) {
                     TextPlaceholder()
