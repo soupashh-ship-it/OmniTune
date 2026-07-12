@@ -335,10 +335,12 @@ fun LyricsV2(
     val listState = rememberLazyListState()
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
+    var lastAutoScrollIndex by remember(lyrics) { mutableIntStateOf(-1) }
 
     LaunchedEffect(lyrics) {
         isManualScrolling = false
         lastManualScrollTime = 0L
+        lastAutoScrollIndex = -1
     }
 
     // Detect manual scrolling
@@ -366,6 +368,8 @@ fun LyricsV2(
     LaunchedEffect(lyrics, currentLineIndex, isManualScrolling, lyricsScroll) {
         if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
         if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
+        if (currentLineIndex == lastAutoScrollIndex) return@LaunchedEffect
+        lastAutoScrollIndex = currentLineIndex
 
         while (listState.layoutInfo.viewportSize.height == 0) delay(16)
         val visibleInfo = listState.layoutInfo

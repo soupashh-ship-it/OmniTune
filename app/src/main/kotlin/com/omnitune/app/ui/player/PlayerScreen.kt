@@ -710,6 +710,13 @@ private fun MetadataBlock(
         }
     }
 
+    LaunchedEffect(playerConnection, mediaMetadata?.id) {
+        val metadata = mediaMetadata
+        if (metadata != null && (lyricsText?.lyrics.isNullOrBlank() || syncedEntries.isEmpty())) {
+            playerConnection?.service?.prefetchLyrics(metadata)
+        }
+    }
+
     val inlineLyricState = remember(syncedEntries, lyricPositionMs) {
         InlineLyrics.stateFor(syncedEntries, lyricPositionMs)
     }

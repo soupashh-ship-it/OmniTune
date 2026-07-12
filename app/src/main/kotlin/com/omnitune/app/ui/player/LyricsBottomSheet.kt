@@ -222,6 +222,7 @@ private fun LyricsContent(
 
     var isManualScrolling by remember { mutableStateOf(false) }
     var forceReturn by remember { mutableStateOf(false) }
+    var lastScrolledIndex by remember { mutableStateOf(-1) }
 
     val isDragged by listState.interactionSource.collectIsDraggedAsState()
 
@@ -255,7 +256,8 @@ private fun LyricsContent(
     ) activeIndex else -1
 
     LaunchedEffect(lines, targetScrollIndex) {
-        if (targetScrollIndex >= 0) {
+        if (targetScrollIndex >= 0 && targetScrollIndex != lastScrolledIndex) {
+            lastScrolledIndex = targetScrollIndex
             while (listState.layoutInfo.viewportSize.height == 0) delay(16)
             val firstItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
             val itemHeight = firstItem?.size ?: 0
