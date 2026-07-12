@@ -203,7 +203,7 @@ constructor(
 
         if (normalized.isEmpty()) return false
         if (normalized == LYRICS_NOT_FOUND) return false
-        if (!TIMESTAMP_REGEX.containsMatchIn(normalized)) return false
+        if (!TIMESTAMP_REGEX.containsMatchIn(normalized) && !LyricsUtils.isTtml(lyrics)) return false
 
         val remaining =
             TIMESTAMP_REGEX
