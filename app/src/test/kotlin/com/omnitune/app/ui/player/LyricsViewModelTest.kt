@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import java.util.ArrayDeque
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -50,6 +51,22 @@ class LyricsViewModelTest {
         )
     }
 
+    @Test
+    fun `transient provider errors retry automatically`() = runTest(dispatcher) {
+        val expected = listOf(LyricsLine(timestamp = 1_000L, text = "Loaded after retry"))
+        val repository = SequencedLyricsRepository(
+            AppResult.Error("Temporary provider failure"),
+            AppResult.Success(expected),
+        )
+        val viewModel = LyricsViewModel(repository)
+
+        viewModel.loadLyrics("song", "Song", "Artist", 180)
+        advanceUntilIdle()
+
+        assertEquals(2, repository.requestCount)
+        assertEquals(LyricsUiState.Success(expected), viewModel.uiState.value)
+    }
+
     private class FakeLyricsRepository : LyricsRepository {
         private val requests = mutableMapOf<String, CompletableDeferred<AppResult<List<LyricsLine>>>>()
 
@@ -66,5 +83,25 @@ class LyricsViewModelTest {
         fun complete(songId: String, lines: List<LyricsLine>) {
             requests.getOrPut(songId) { CompletableDeferred() }.complete(AppResult.Success(lines))
         }
+    }
+
+    private class SequencedLyricsRepository(
+        vararg results: AppResult<List<LyricsLine>>,
+    ) : LyricsRepository {
+        private val results = ArrayDeque(results.toList())
+        var requestCount = 0
+            private set
+
+        override suspend fun loadLyrics(
+            songId: String,
+            title: String,
+            artist: String,
+            duration: Long,
+        ): AppResult<List<LyricsLine>> {
+            requestCount++
+            return results.removeFirst()
+        }
+
+        override fun parseLrc(lrcText: String): List<LyricsLine> = emptyList()
     }
 }

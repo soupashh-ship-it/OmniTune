@@ -894,6 +894,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 artist = m.artists.firstOrNull()?.name ?: "",
                 album = m.album?.title,
             )
+            lyricsPrefetcher.prefetch(m)
         }
 
     }

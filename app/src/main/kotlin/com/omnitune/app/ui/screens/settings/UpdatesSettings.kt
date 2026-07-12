@@ -1,5 +1,8 @@
 package com.omnitune.app.ui.screens.settings
 
+import android.content.ActivityNotFoundException
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,6 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +49,26 @@ fun UpdatesSettings(
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
+    var installMessage by remember { mutableStateOf<String?>(null) }
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        val downloaded = (viewModel.state.value as? UpdateState.Downloaded)?.update
+        when {
+            downloaded == null -> Unit
+            !ApkInstallLauncher.canRequestPackageInstalls(context) -> {
+                installMessage = "Android did not grant install permission. Allow it and try again."
+            }
+            else -> {
+                installMessage = null
+                runCatching {
+                    context.startActivity(ApkInstallLauncher.installIntent(context, downloaded.apkFile))
+                }.onFailure {
+                    installMessage = installLaunchError(it)
+                }
+            }
+        }
+    }
 
     OmniPreferenceCard(title = "Version") {
         OmniPreferenceEntry(
@@ -123,19 +149,23 @@ fun UpdatesSettings(
             )
             Spacer(Modifier.height(8.dp))
             SettingsActionButton("Install now") {
+                installMessage = null
                 runCatching {
                     if (ApkInstallLauncher.canRequestPackageInstalls(context)) {
                         context.startActivity(ApkInstallLauncher.installIntent(context, current.update.apkFile))
                     } else {
-                        context.startActivity(ApkInstallLauncher.installPermissionIntent(context))
+                        installPermissionLauncher.launch(
+                            ApkInstallLauncher.installPermissionIntent(context)
+                        )
                     }
-                }.onFailure {
-                    viewModel.showError("Could not open Android installer.")
+                }.onFailure { error ->
+                    installMessage = installLaunchError(error)
                 }
             }
             if (!ApkInstallLauncher.canRequestPackageInstalls(context)) {
-                UpdateMessage("Install permission is required to continue.")
+                UpdateMessage("Allow installs from OmniTune; installation will continue when you return.")
             }
+            installMessage?.let { UpdateMessage(it) }
         }
         is UpdateState.Error -> {
             UpdateStateCard(
@@ -247,3 +277,10 @@ private fun formatBytes(bytes: Long): String {
     val mb = bytes / (1024.0 * 1024.0)
     return "%.1f MB".format(mb)
 }
+
+private fun installLaunchError(error: Throwable): String =
+    if (error is ActivityNotFoundException) {
+        "No Android package installer is available on this device."
+    } else {
+        "Could not open the Android package installer."
+    }

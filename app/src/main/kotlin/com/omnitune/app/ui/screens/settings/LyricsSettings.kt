@@ -8,6 +8,7 @@ import com.omnitune.app.constants.EnableBetterLyricsKey
 import com.omnitune.app.constants.EnableKugouKey
 import com.omnitune.app.constants.EnableLrcLibKey
 import com.omnitune.app.constants.EnableSimpMusicLyricsKey
+import com.omnitune.app.constants.LyricsScrollKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.rememberPreference
 
@@ -17,6 +18,18 @@ fun LyricsSettings() {
     var kugou by rememberPreference(EnableKugouKey, true)
     var betterLyrics by rememberPreference(EnableBetterLyricsKey, true)
     var simpMusic by rememberPreference(EnableSimpMusicLyricsKey, true)
+    var autoScroll by rememberPreference(LyricsScrollKey, true)
+
+    OmniPreferenceCard(title = "Display") {
+        OmniSwitchPreference(
+            title = "Auto-scroll synced lyrics",
+            description = "Keep the current lyric line in view during playback",
+            iconRes = R.drawable.ic_lyrics,
+            accent = OmniColors.OmniAccentSecondary,
+            checked = autoScroll,
+            onCheckedChange = { autoScroll = it },
+        )
+    }
 
     OmniPreferenceCard(title = "Lyrics providers") {
         OmniSwitchPreference(
