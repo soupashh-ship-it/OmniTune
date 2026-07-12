@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -222,7 +223,6 @@ private fun LyricsContent(
 
     var isManualScrolling by remember { mutableStateOf(false) }
     var forceReturn by remember { mutableStateOf(false) }
-    var lastScrolledIndex by remember { mutableStateOf(-1) }
 
     val isDragged by listState.interactionSource.collectIsDraggedAsState()
 
@@ -251,19 +251,21 @@ private fun LyricsContent(
         lines.indexOfLast { it.timestamp <= currentPosition }
     } else -1
 
-    val targetScrollIndex = if (
-        autoScrollEnabled && activeIndex >= 0 && !isManualScrolling
-    ) activeIndex else -1
+    var animTargetLine by remember { mutableIntStateOf(-1) }
 
-    LaunchedEffect(lines, targetScrollIndex) {
-        if (targetScrollIndex >= 0 && targetScrollIndex != lastScrolledIndex) {
-            lastScrolledIndex = targetScrollIndex
-            while (listState.layoutInfo.viewportSize.height == 0) delay(16)
-            val firstItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-            val itemHeight = firstItem?.size ?: 0
-            val centerOffset = (listState.layoutInfo.viewportSize.height / 2) - (itemHeight / 2)
-            listState.animateScrollToItem(targetScrollIndex, scrollOffset = -centerOffset.coerceAtLeast(0))
+    LaunchedEffect(activeIndex, autoScrollEnabled, isManualScrolling) {
+        if (autoScrollEnabled && activeIndex >= 0 && !isManualScrolling && activeIndex != animTargetLine) {
+            animTargetLine = activeIndex
         }
+    }
+
+    LaunchedEffect(animTargetLine) {
+        if (animTargetLine < 0) return@LaunchedEffect
+        while (listState.layoutInfo.viewportSize.height == 0) delay(16)
+        val firstItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+        val itemHeight = firstItem?.size ?: 0
+        val centerOffset = (listState.layoutInfo.viewportSize.height / 2) - (itemHeight / 2)
+        listState.animateScrollToItem(animTargetLine, scrollOffset = -centerOffset.coerceAtLeast(0))
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

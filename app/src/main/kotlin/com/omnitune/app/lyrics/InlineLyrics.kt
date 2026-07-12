@@ -68,6 +68,15 @@ object InlineLyrics {
         lines
             .filter { it.text.isNotBlank() }
             .map { LyricsEntry(time = it.timestamp, text = it.text) }
+
+    fun staticStateFor(lines: List<LyricsLine>): InlineLyricState {
+        val first = lines.firstOrNull()?.text?.cleanLyricLine()
+        return InlineLyricState(
+            currentLine = first,
+            isSynced = false,
+            hasLyrics = first != null,
+        )
+    }
 }
 
 private fun String.cleanLyricLine(): String? =

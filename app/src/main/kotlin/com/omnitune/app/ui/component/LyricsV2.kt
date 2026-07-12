@@ -335,12 +335,12 @@ fun LyricsV2(
     val listState = rememberLazyListState()
     var isManualScrolling by remember { mutableStateOf(false) }
     var lastManualScrollTime by remember { mutableLongStateOf(0L) }
-    var lastAutoScrollIndex by remember(lyrics) { mutableIntStateOf(-1) }
+    var animTargetLine by remember(lyrics) { mutableIntStateOf(-1) }
 
     LaunchedEffect(lyrics) {
         isManualScrolling = false
         lastManualScrollTime = 0L
-        lastAutoScrollIndex = -1
+        animTargetLine = -1
     }
 
     // Detect manual scrolling
@@ -364,28 +364,33 @@ fun LyricsV2(
         }
     }
 
-    // Auto-scroll to active line
-    LaunchedEffect(lyrics, currentLineIndex, isManualScrolling, lyricsScroll) {
+    // Update scroll target when active line changes (decoupled from 60fps loop)
+    LaunchedEffect(currentLineIndex, isManualScrolling) {
+        if (!isManualScrolling && currentLineIndex >= 0 && currentLineIndex != animTargetLine) {
+            animTargetLine = currentLineIndex
+        }
+    }
+
+    // Auto-scroll to animTargetLine
+    LaunchedEffect(animTargetLine, isManualScrolling, lyricsScroll) {
         if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
-        if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
-        if (currentLineIndex == lastAutoScrollIndex) return@LaunchedEffect
-        lastAutoScrollIndex = currentLineIndex
+        if (animTargetLine < 0 || animTargetLine >= entriesWithWords.size) return@LaunchedEffect
 
         while (listState.layoutInfo.viewportSize.height == 0) delay(16)
         val visibleInfo = listState.layoutInfo
         val viewportHeight = visibleInfo.viewportSize.height
         val targetOffset = (viewportHeight * 0.35f).toInt() // Center bias at 35% from top
 
-        val distance = abs(currentLineIndex - (listState.firstVisibleItemIndex))
+        val distance = abs(animTargetLine - (listState.firstVisibleItemIndex))
         if (distance > 15) {
             // Far jump — snap first, then settle
             listState.scrollToItem(
-                (currentLineIndex - 2).coerceAtLeast(0),
+                (animTargetLine - 2).coerceAtLeast(0),
                 0
             )
         }
         listState.animateScrollToItem(
-            index = currentLineIndex,
+            index = animTargetLine,
             scrollOffset = -targetOffset
         )
     }

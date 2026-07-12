@@ -55,6 +55,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -341,6 +342,7 @@ fun PlayerScreen(
                         onOpenQueue = onOpenQueue,
                         onShowSleepTimer = { showSleepTimerDialog = true },
                         onShowOptions = { showOptionsSheet = true },
+                        onOpenLyrics = { showLyricsSheet = true },
                         accentColor = controlAccent,
                     )
                 }
@@ -696,7 +698,7 @@ private fun MetadataBlock(
     val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
     val fallbackSubtitle = artist + (if (album != null) " • $album" else "")
     val lyricsText by (playerConnection?.currentLyrics ?: flowOf(null)).collectAsState(initial = null)
-    val syncedEntries = remember(mediaMetadata?.id, lyricsText?.lyrics, lyricsUiState) {
+    val syncedEntries = remember(lyricsUiState, lyricsText) {
         val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
         InlineLyrics.syncedEntriesFromLines(loadedLines)
             .ifEmpty { InlineLyrics.parseSyncedEntries(lyricsText?.lyrics) }
@@ -710,15 +712,28 @@ private fun MetadataBlock(
         }
     }
 
-    LaunchedEffect(playerConnection, mediaMetadata?.id) {
-        val metadata = mediaMetadata
-        if (metadata != null && (lyricsText?.lyrics.isNullOrBlank() || syncedEntries.isEmpty())) {
-            playerConnection?.service?.prefetchLyrics(metadata)
+    LaunchedEffect(mediaMetadata?.id) {
+        if (playerConnection != null && syncedEntries.isEmpty()) {
+            playerConnection.service.prefetchLyrics(mediaMetadata)
         }
     }
 
-    val inlineLyricState = remember(syncedEntries, lyricPositionMs) {
-        InlineLyrics.stateFor(syncedEntries, lyricPositionMs)
+    val inlineLyricState = remember(syncedEntries, lyricPositionMs, lyricsUiState) {
+        if (syncedEntries.isNotEmpty()) {
+            InlineLyrics.stateFor(syncedEntries, lyricPositionMs)
+        } else {
+            val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
+            if (loadedLines.isNotEmpty()) {
+                InlineLyrics.staticStateFor(loadedLines)
+            } else {
+                InlineLyrics.stateFor(emptyList(), lyricPositionMs)
+            }
+        }
+    }
+
+    LaunchedEffect(syncedEntries, lyricsUiState) {
+        val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
+        Timber.d("lyrics: entries=${syncedEntries.size}, lines=${loadedLines.size}, timestamps=${loadedLines.take(3).map { it.timestamp }}, text=${lyricsText?.lyrics?.take(80)}")
     }
 
     Row(
@@ -784,7 +799,7 @@ private fun InlineLyricSubtitle(
     accentColor: Color,
     onOpenLyrics: () -> Unit,
 ) {
-    val showLyrics = state.isSynced && state.hasLyrics && !state.currentLine.isNullOrBlank()
+    val showLyrics = state.hasLyrics && !state.currentLine.isNullOrBlank()
     val targetActiveColor = remember(accentColor) { accentColor.toInlineLyricActiveColor() }
     val targetNextColor = remember(targetActiveColor) {
         lerp(OmniColors.TextSecondary, targetActiveColor, 0.42f).copy(alpha = 0.82f)
@@ -1211,10 +1226,9 @@ private fun PlayerActionsRow(
     onOpenQueue: () -> Unit,
     onShowSleepTimer: () -> Unit,
     onShowOptions: () -> Unit = {},
+    onOpenLyrics: () -> Unit = {},
     accentColor: Color = LocalOmniAccents.current.primary,
 ) {
-    var showLyricsSheet by remember { mutableStateOf(false) }
-
     val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
 
     Row(
@@ -1243,7 +1257,7 @@ private fun PlayerActionsRow(
         Row(
             modifier = Modifier
                 .clip(OmniShapes.Small)
-                .clickable { showLyricsSheet = true }
+                .clickable(onClick = onOpenLyrics)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1255,13 +1269,6 @@ private fun PlayerActionsRow(
         IconButton(onClick = onShowOptions) {
             Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options", tint = OmniColors.TextSecondary)
         }
-    }
-
-    if (showLyricsSheet) {
-        LyricsBottomSheet(
-            playerConnection = playerConnection,
-            onDismissRequest = { showLyricsSheet = false }
-        )
     }
 }
 
