@@ -359,6 +359,7 @@ fun LyricsV2(
         if (!lyricsScroll || isManualScrolling || !isSynced) return@LaunchedEffect
         if (currentLineIndex < 0 || currentLineIndex >= entriesWithWords.size) return@LaunchedEffect
 
+        while (listState.layoutInfo.viewportSize.height == 0) delay(16)
         val visibleInfo = listState.layoutInfo
         val viewportHeight = visibleInfo.viewportSize.height
         val targetOffset = (viewportHeight * 0.35f).toInt() // Center bias at 35% from top

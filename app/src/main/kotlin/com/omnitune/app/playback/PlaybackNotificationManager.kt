@@ -221,7 +221,7 @@ class PlaybackNotificationManager(
     }
 
     private fun defaultNotificationArtwork(): Bitmap {
-        val d = androidx.core.content.ContextCompat.getDrawable(service, R.mipmap.ic_launcher)
+        val d = androidx.core.content.ContextCompat.getDrawable(service, R.drawable.ic_omnitune_logo)
         if (d != null) {
             val bitmap = Bitmap.createBitmap(d.intrinsicWidth.coerceAtLeast(1), d.intrinsicHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
             val canvas = android.graphics.Canvas(bitmap)

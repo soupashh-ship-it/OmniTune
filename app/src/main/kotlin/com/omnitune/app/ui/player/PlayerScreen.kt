@@ -685,6 +685,13 @@ private fun MetadataBlock(
     }
     var lyricPositionMs by remember(mediaMetadata?.id) { mutableLongStateOf(0L) }
 
+    LaunchedEffect(playerConnection, mediaMetadata?.id, lyricsText) {
+        val metadata = mediaMetadata ?: return@LaunchedEffect
+        if (lyricsText.isNullOrBlank() || syncedEntries.isEmpty()) {
+            playerConnection?.service?.prefetchLyrics(metadata)
+        }
+    }
+
     LaunchedEffect(playerConnection, mediaMetadata?.id) {
         while (true) {
             lyricPositionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L

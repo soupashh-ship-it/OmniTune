@@ -792,6 +792,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
+    fun prefetchLyrics(metadata: MediaMetadata?) {
+        if (::lyricsPrefetcher.isInitialized) {
+            lyricsPrefetcher.prefetch(metadata)
+        }
+    }
+
     override fun onDestroy() {
         discordPresenceManager.destroy()
         Timber.tag("MusicService").i("MusicService destroyed")
