@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -121,11 +122,25 @@ fun AboutSettings() {
 
             AboutDestinations.supportUpi?.let { destination ->
                 SupportDeveloperCard(
+                    destination = destination,
                     onPay = {
                         if (!context.openUpiPayment(destination)) {
                             scope.launch {
                                 snackbarHostState.showSnackbar("No UPI app found on this device.")
                             }
+                        }
+                    },
+                    onCopyUpi = {
+                        context
+                            .getSystemService(android.content.ClipboardManager::class.java)
+                            ?.setPrimaryClip(
+                                android.content.ClipData.newPlainText(
+                                    "OmniTune UPI ID",
+                                    destination.upiId,
+                                ),
+                            )
+                        scope.launch {
+                            snackbarHostState.showSnackbar("UPI ID copied.")
                         }
                     },
                 )
@@ -378,7 +393,9 @@ private fun AboutLeadingMark(
 
 @Composable
 private fun SupportDeveloperCard(
+    destination: UpiPaymentDestination,
     onPay: () -> Unit,
+    onCopyUpi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -415,37 +432,60 @@ private fun SupportDeveloperCard(
                     color = OmniColors.TextPrimary,
                 )
                 Text(
-                    text = "If you enjoy OmniTune, consider buying me a chai.",
+                    text = "If you enjoy OmniTune, consider buying me a chai. Enter any amount in your UPI app.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = OmniColors.TextSecondary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-            Button(
-                onClick = onPay,
-                shape = OmniShapes.Medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.92f),
-                    contentColor = if (OmniColors.OmniAccentPrimary.luminance() > 0.52f) Color.Black else Color.White,
-                ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    horizontal = OmniSpacing.medium,
-                    vertical = 0.dp,
-                ),
-                modifier = Modifier.height(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(android.R.drawable.ic_menu_send),
-                    contentDescription = "UPI",
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "UPI",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
+                    text = destination.upiId,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = OmniColors.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Button(
+                    onClick = onPay,
+                    shape = OmniShapes.Medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.92f),
+                        contentColor = if (OmniColors.OmniAccentPrimary.luminance() > 0.52f) Color.Black else Color.White,
+                    ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = OmniSpacing.medium,
+                        vertical = 0.dp,
+                    ),
+                    modifier = Modifier.height(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(android.R.drawable.ic_menu_send),
+                        contentDescription = "UPI",
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Pay",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                TextButton(
+                    onClick = onCopyUpi,
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                ) {
+                    Text(
+                        text = "Copy UPI",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
             }
         }
     }

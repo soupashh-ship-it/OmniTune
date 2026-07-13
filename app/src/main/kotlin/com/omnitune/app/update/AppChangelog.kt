@@ -8,29 +8,25 @@ object AppChangelog {
         releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
         source = ChangelogSource.Bundled,
         body = """
-# OmniTune v0.13.3
+# OmniTune v0.13.4
 
-This release refreshes OmniTune's dynamic artwork colors so the app reacts more clearly when the currently playing song changes.
+Short donation reliability hotfix.
 
-## Fixes & Improvements
+## Fixes
 
-- Updated the default OmniTune accent seed from the previous muted lavender tone to a warmer, stronger coral tone.
-- Improved song-change color extraction so the app uses the artwork color directly instead of over-processing it into duller results.
-- Improved fullscreen player and mini-player background palettes with stronger artwork-driven gradients.
-- Improved dynamic player color pairing by selecting the most prominent artwork color and a visually distinct companion color.
-- Reduced overly dark color clamping in player surfaces while keeping text and controls readable.
-- Updated fallback dynamic colors so tracks without artwork still use the refreshed OmniTune palette.
+- Added a visible UPI ID in Settings > About donation card.
+- Added a Copy UPI fallback for payment apps that reject the direct UPI intent.
+- Kept donation amount entry inside the user's UPI app so donors can choose their own amount.
 
 ## Verification
 
-- `testDebugUnitTest`: passed
-- `git diff --check`: passed
-- `assembleDebug`: passed
+- Focused About metadata unit test: passed
+- `compileDebugKotlin`: passed
 
 ## Build
 
-- Version: `0.13.3`
-- Version code: `72`
+- Version: `0.13.4`
+- Version code: `73`
         """.trimIndent(),
     )
 }
