@@ -98,12 +98,12 @@ internal fun Context.openUpiPayment(destination: UpiPaymentDestination): Boolean
     if (destination.upiId.isBlank() || destination.payeeName.isBlank()) return false
     val uri = runCatching { Uri.parse(buildUpiPaymentUri(destination)) }.getOrNull() ?: return false
     val intent = Intent(Intent.ACTION_VIEW, uri)
-    val chooser = Intent.createChooser(intent, "Pay with...")
     return runCatching {
-        startActivity(chooser)
+        startActivity(intent)
         true
     }.getOrDefault(false)
 }
+
 
 internal fun formatInstallDate(firstInstallTime: Long, locale: Locale = Locale.getDefault()): String {
     if (firstInstallTime <= 0L) return "Unknown"
