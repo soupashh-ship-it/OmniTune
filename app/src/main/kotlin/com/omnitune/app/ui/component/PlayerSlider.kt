@@ -1,7 +1,10 @@
 /*
- * OmniTune - An open-source music player for Android
- * Licensed under GPL-3.0
+ * Velune - by Nikhil
+ * Nikhil
+ * Licensed Under GPL-3.0
  */
+
+
 
 package com.omnitune.app.ui.component
 
@@ -83,11 +86,13 @@ private fun DrawScope.drawTrack(
         StrokeCap.Round
     )
     val sliderValueEnd = Offset(
-        sliderStart.x + (sliderEnd.x - sliderStart.x) * activeRangeEnd,
+        sliderStart.x +
+                (sliderEnd.x - sliderStart.x) * activeRangeEnd,
         center.y
     )
     val sliderValueStart = Offset(
-        sliderStart.x + (sliderEnd.x - sliderStart.x) * activeRangeStart,
+        sliderStart.x +
+                (sliderEnd.x - sliderStart.x) * activeRangeStart,
         center.y
     )
     drawLine(

@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,12 +47,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 
 import androidx.compose.ui.platform.LocalContext
 import com.omnitune.app.LocalPlayerConnection
+import com.omnitune.app.db.entities.Song
+import coil3.compose.AsyncImage
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -70,6 +75,7 @@ fun DownloadsScreen(
         it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED || it.state == Download.STATE_STOPPED || it.state == Download.STATE_REMOVING
     }
     val failedCount = uiState.downloads.count { it.state == Download.STATE_FAILED }
+    val queuedCount = uiState.downloads.count { it.state == Download.STATE_QUEUED }
 
     Column(
         modifier = Modifier
@@ -83,7 +89,10 @@ fun DownloadsScreen(
             completedCount = completedCount,
             activeCount = activeCount,
             failedCount = failedCount,
+            queuedCount = queuedCount,
             onBack = onBack,
+            onClearFailed = viewModel::clearFailedDownloads,
+            onClearQueued = viewModel::clearQueuedDownloads,
         )
 
         if (uiState.downloads.isEmpty()) {
@@ -110,6 +119,7 @@ fun DownloadsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                contentPadding = PaddingValues(bottom = OmniChrome.BottomContentPadding),
             ) {
                 items(
                     items = uiState.downloads,
@@ -118,12 +128,12 @@ fun DownloadsScreen(
                 ) { download ->
                     DownloadItemRow(
                         download = download,
+                        song = uiState.songs[download.request.id],
                         onPlay = { viewModel.playDownload(download, playerConnection, context) },
                         onRetry = { viewModel.retryDownload(download.request.id) },
                         onRemove = { downloadToRemove = download },
                     )
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
     }
@@ -160,7 +170,10 @@ private fun DownloadsHeader(
     completedCount: Int,
     activeCount: Int,
     failedCount: Int,
+    queuedCount: Int,
     onBack: () -> Unit,
+    onClearFailed: () -> Unit,
+    onClearQueued: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -214,6 +227,36 @@ private fun DownloadsHeader(
         DownloadMetric("Active", activeCount, OmniColors.Warning, Modifier.weight(1f))
         DownloadMetric("Failed", failedCount, OmniColors.Error, Modifier.weight(1f))
     }
+
+    if (failedCount > 0) {
+        Button(
+            onClick = onClearFailed,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = OmniColors.Error.copy(alpha = 0.18f),
+                contentColor = OmniColors.Error,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OmniSpacing.medium),
+        ) {
+            Text("Clear all failed", fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (queuedCount > 0) {
+        Button(
+            onClick = onClearQueued,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = OmniColors.Warning.copy(alpha = 0.18f),
+                contentColor = OmniColors.Warning,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = OmniSpacing.medium),
+        ) {
+            Text("Remove all queued", fontWeight = FontWeight.Bold)
+        }
+    }
 }
 
 @Composable
@@ -253,11 +296,12 @@ private fun DownloadMetric(
 @Composable
 private fun DownloadItemRow(
     download: Download,
+    song: Song?,
     onPlay: () -> Unit,
     onRetry: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val title = String(download.request.data, Charsets.UTF_8).ifBlank { download.request.id }
+    val title = song?.title ?: String(download.request.data, Charsets.UTF_8).ifBlank { download.request.id }
     val state = downloadPresentation(download)
     val rowModifier = Modifier
         .fillMaxWidth()
@@ -287,6 +331,7 @@ private fun DownloadItemRow(
             OmniShapes.Large,
         )
         .then(if (state.playable) Modifier.clickable(onClick = onPlay) else Modifier)
+        .animateContentSize()
         .defaultMinSize(minHeight = 82.dp)
         .padding(OmniSpacing.medium)
 
@@ -301,12 +346,21 @@ private fun DownloadItemRow(
                 .background(state.accent.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painterResource(if (state.playable) R.drawable.ic_play_arrow else R.drawable.ic_download),
-                contentDescription = null,
-                tint = state.accent,
-                modifier = Modifier.size(24.dp),
-            )
+            if (!song?.thumbnailUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painterResource(if (state.playable) R.drawable.ic_play_arrow else R.drawable.ic_download),
+                    contentDescription = null,
+                    tint = state.accent,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
         Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
@@ -320,16 +374,25 @@ private fun DownloadItemRow(
             )
             Spacer(modifier = Modifier.height(OmniSpacing.micro))
             Text(
-                text = state.label,
+                text = song?.artists?.joinToString(", ") { it.name }?.ifBlank { state.label } ?: state.label,
                 style = MaterialTheme.typography.bodySmall,
-                color = state.accent,
+                color = OmniColors.TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (song != null) {
+                Text(
+                    text = state.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = state.accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             if (state.progress != null) {
                 Spacer(modifier = Modifier.height(OmniSpacing.compact))
                 val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
-                    targetValue = state.progress ?: 0f,
+                    targetValue = state.progress,
                     animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.LinearEasing),
                     label = "progressAnim"
                 )

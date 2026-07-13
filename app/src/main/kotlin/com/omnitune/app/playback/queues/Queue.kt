@@ -9,9 +9,12 @@ import androidx.media3.common.MediaItem
 import com.omnitune.app.extensions.ExtraIsMusicVideo
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.playback.continuation.PlaybackContext
 
 interface Queue {
     val preloadItem: MediaMetadata?
+    val playbackContext: PlaybackContext
+        get() = PlaybackContext.Unknown
 
     suspend fun getInitialStatus(): Status
 

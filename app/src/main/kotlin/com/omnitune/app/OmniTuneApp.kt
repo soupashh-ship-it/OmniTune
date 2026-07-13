@@ -38,6 +38,8 @@ import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.constants.StreamBypassProxyKey
 import com.omnitune.app.constants.UseLoginForBrowse
 import com.omnitune.app.constants.VisitorDataKey
+import com.omnitune.app.constants.YtmSyncKey
+import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
 import com.omnitune.kugou.KuGou
@@ -46,6 +48,7 @@ import com.omnitune.app.ui.player.CanvasArtworkPlaybackCache
 import com.omnitune.app.ui.screens.settings.ThemePalettes
 import com.omnitune.app.ui.theme.ThemeSeedPalette
 import com.omnitune.app.ui.theme.ThemeSeedPaletteCodec
+import com.omnitune.app.sync.scheduleYouTubePlaylistSync
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
@@ -111,6 +114,10 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             } catch (_: Exception) {}
         }
 
+        if (OfflineDownloadArchive.applyPending(this)) {
+            Timber.i("Applied pending offline download restore")
+        }
+
         initializeCriticalSync()
         initializeDeferredAsync()
     }
@@ -127,6 +134,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 ?: languageTag.takeIf { it in LanguageCodeToName }
                 ?: "en"
         )
+        YouTube.youtubeMusicApiKey = BuildConfig.YOUTUBE_MUSIC_API_KEY.takeIf { it.isNotBlank() }
 
         if (languageTag == "zh-TW") {
             KuGou.useTraditionalChinese = true
@@ -155,9 +163,10 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
 
                 if (prefs[ProxyEnabledKey] == true) {
                     try {
+                        val proxyUrl = prefs[ProxyUrlKey] ?: return@launch
                         YouTube.proxy = Proxy(
                             prefs[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
-                            prefs[ProxyUrlKey]!!.toInetSocketAddress()
+                            proxyUrl.toInetSocketAddress()
                         )
                     } catch (e: Exception) {
                         reportException(e)
@@ -307,6 +316,13 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 .collect { sessionKey ->
                     LastFM.sessionKey = sessionKey
                 }
+        }
+
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[YtmSyncKey] ?: false }
+                .distinctUntilChanged()
+                .collect { scheduleYouTubePlaylistSync(this@OmniTuneApp, it) }
         }
     }
 

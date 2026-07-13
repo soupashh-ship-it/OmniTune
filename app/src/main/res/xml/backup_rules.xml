@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include
+        domain="database"
+        path="song.db" />
+    <include
+        domain="database"
+        path="exoplayer_internal.db" />
+</full-backup-content>

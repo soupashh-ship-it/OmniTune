@@ -23,7 +23,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -35,12 +37,12 @@ constructor(
 ) {
     private val baseProviders =
         listOf(
+            YouTubeLyricsProvider,
             SimpMusicLyricsProvider,
             BetterLyricsProvider,
             LrcLibLyricsProvider,
             KuGouLyricsProvider,
             YouTubeSubtitleLyricsProvider,
-            YouTubeLyricsProvider,
         )
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
@@ -48,8 +50,6 @@ constructor(
     private val helperScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun getLyrics(mediaMetadata: MediaMetadata, preferredProviderOnly: Boolean = false): String {
-        currentLyricsJob?.cancel()
-
         val cached = cache.get(mediaMetadata.id)?.firstOrNull()
         if (cached != null) {
             GlobalLog.append(Log.DEBUG, "LyricsHelper", "Found lyrics in cache for ${mediaMetadata.title}")
@@ -70,47 +70,61 @@ constructor(
         }
 
         val ordered = orderedProviders()
-        val providers = if (preferredProviderOnly) listOf(ordered.first()) else ordered
-        val deferred = helperScope.async {
-            val jobs = providers.filter { it.isEnabled(context) }.map { provider ->
-                async {
-                    try {
-                        kotlinx.coroutines.withTimeoutOrNull(10000L) {
-                            val result = provider.getLyrics(
-                                mediaMetadata.id,
-                                mediaMetadata.title,
-                                mediaMetadata.artists.joinToString { it.name },
-                                mediaMetadata.album?.title,
-                                mediaMetadata.duration,
-                            )
-                            result.onSuccess { lyrics ->
-                                if (isMeaningfulLyrics(lyrics)) {
-                                    return@withTimeoutOrNull lyrics
-                                }
-                            }.onFailure {
-                                reportException(it)
-                            }
-                            null
-                        }
-                    } catch (e: Exception) {
-                        reportException(e)
-                        null
-                    }
-                }
-            }
-
-            for (job in jobs) {
-                val lyrics = job.await()
-                if (lyrics != null) {
-                    jobs.forEach { it.cancel() }
-                    return@async lyrics
-                }
-            }
-            return@async LYRICS_NOT_FOUND
+        val providers = if (preferredProviderOnly) {
+            listOf(ordered.first())
+        } else {
+            ordered.filterNot { it == YouTubeSubtitleLyricsProvider }
         }
-        currentLyricsJob = deferred
-        val lyrics = deferred.await()
+        val lyrics = helperScope.async {
+            fetchFirstMeaningful(providers, mediaMetadata)?.let { lyrics ->
+                cache.put(mediaMetadata.id, listOf(LyricsResult("cache", lyrics)))
+                return@async lyrics
+            }
+            LYRICS_NOT_FOUND
+        }.await()
         return lyrics
+    }
+
+    private suspend fun fetchFirstMeaningful(
+        providers: List<LyricsProvider>,
+        mediaMetadata: MediaMetadata,
+    ): String? = coroutineScope {
+        val jobs = providers.filter { it.isEnabled(context) }.map { provider ->
+            async {
+                try {
+                    kotlinx.coroutines.withTimeoutOrNull(6000L) {
+                        provider.getLyrics(
+                            mediaMetadata.id,
+                            mediaMetadata.title,
+                            mediaMetadata.artists.joinToString { it.name },
+                            mediaMetadata.album?.title,
+                            mediaMetadata.duration,
+                        ).fold(
+                            onSuccess = { lyrics ->
+                                lyrics
+                                    .takeIf(::isMeaningfulLyrics)
+                                    ?.let { LyricsCandidate(provider.name, it, isSyncedLyrics(it)) }
+                            },
+                            onFailure = {
+                                reportException(it)
+                                null
+                            },
+                        )
+                    }
+                } catch (e: Exception) {
+                    reportException(e)
+                    null
+                }
+            }
+        }
+
+        try {
+            val candidates = jobs.awaitAll().filterNotNull()
+            candidates.firstOrNull { it.isSynced }?.lyrics
+                ?: candidates.firstOrNull()?.lyrics
+        } finally {
+            jobs.forEach { it.cancel() }
+        }
     }
 
     suspend fun getAllLyrics(
@@ -180,7 +194,7 @@ constructor(
                 PreferredLyricsProvider.SIMPMUSIC -> SimpMusicLyricsProvider
             }
 
-        return listOf(first) + baseProviders.filterNot { provider -> provider == first }
+        return (listOf(YouTubeLyricsProvider, SimpMusicLyricsProvider, first) + baseProviders).distinct()
     }
 
     private fun isMeaningfulLyrics(lyrics: String): Boolean {
@@ -192,15 +206,22 @@ constructor(
 
         if (normalized.isEmpty()) return false
         if (normalized == LYRICS_NOT_FOUND) return false
-
         val remaining =
             TIMESTAMP_REGEX
                 .replace(normalized, "")
                 .replace(INVISIBLE_CHARS_REGEX, "")
                 .trim { it.isWhitespace() || it == '\u00A0' }
 
-        return remaining.any { !it.isWhitespace() && it != '\u00A0' }
+        return remaining
+            .lineSequence()
+            .map { it.trim() }
+            .any { line ->
+                line.any { !it.isWhitespace() && it != '\u00A0' }
+            }
     }
+
+    private fun isSyncedLyrics(lyrics: String): Boolean =
+        TIMESTAMP_REGEX.containsMatchIn(lyrics) || LyricsUtils.isTtml(lyrics)
 
     fun cancelCurrentLyricsJob() {
         currentLyricsJob?.cancel()
@@ -217,4 +238,10 @@ constructor(
 data class LyricsResult(
     val providerName: String,
     val lyrics: String,
+)
+
+private data class LyricsCandidate(
+    val providerName: String,
+    val lyrics: String,
+    val isSynced: Boolean,
 )

@@ -12,7 +12,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
 import okhttp3.OkHttpClient
+import okhttp3.ConnectionPool
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -20,17 +22,36 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
+    @Volatile
+    private var httpClient: HttpClient? = null
+
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .connectionPool(ConnectionPool(maxIdleConnections = 20, keepAliveDuration = 5, TimeUnit.MINUTES))
         .build()
+
+    @Provides
+    @Singleton
+    fun provideHttpClient(): HttpClient {
+        return HttpClient().also { httpClient = it }
+    }
 
     @Provides
     @Singleton
     fun provideNetworkConnectivityObserver(
         @ApplicationContext context: Context,
     ): NetworkConnectivityObserver = NetworkConnectivityObserver(context)
+
+    /**
+     * Closes the created [HttpClient] to release connections and thread pools.
+     * Safe to call multiple times; subsequent calls are no-ops.
+     */
+    fun shutdown() {
+        httpClient?.close()
+        httpClient = null
+    }
 }

@@ -49,8 +49,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 32
-        versionName = "0.7.6"
+        versionCode = 72
+        versionName = "0.13.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -65,9 +65,13 @@ android {
         val lastfmSecret = localProperties?.getProperty("LASTFM_SECRET")
             ?: System.getenv("LASTFM_SECRET")
             ?: ""
+        val youtubeMusicApiKey = localProperties?.getProperty("YOUTUBE_MUSIC_API_KEY")
+            ?: System.getenv("YOUTUBE_MUSIC_API_KEY")
+            ?: ""
 
         buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
         buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
+        buildConfigField("String", "YOUTUBE_MUSIC_API_KEY", "\"$youtubeMusicApiKey\"")
 
         val togetherBearerToken = localProperties?.getProperty("TOGETHER_BEARER_TOKEN")
             ?: System.getenv("TOGETHER_BEARER_TOKEN") ?: ""
@@ -89,8 +93,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
@@ -144,13 +148,6 @@ gradle.taskGraph.whenReady {
         it.project == project && it.name.contains("Release") &&
             (it.name.startsWith("assemble") || it.name.startsWith("bundle") || it.name.startsWith("package"))
     }
-    if (requestedReleaseBuild && !hasReleaseSigning) {
-        throw GradleException(
-            "Release signing is required. Missing or invalid environment variables: " +
-                releaseSigningIssues.joinToString(", ") +
-                ". Set OMNITUNE_KEYSTORE_FILE, OMNITUNE_KEYSTORE_PASSWORD, OMNITUNE_KEY_ALIAS, and OMNITUNE_KEY_PASSWORD."
-        )
-    }
 }
 
 kotlin {
@@ -195,6 +192,7 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
+    implementation(libs.compose.ui.text.googlefonts)
     implementation(libs.compose.animation)
     debugImplementation(libs.compose.ui.tooling)
 
@@ -216,6 +214,15 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.websockets)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.encoding)
+    implementation(libs.ktor.serialization.json)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.websockets)
+    implementation(libs.ktor.server.content.negotiation)
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
@@ -229,51 +236,11 @@ dependencies {
     implementation(libs.annotation)
     implementation(libs.apache.lang3)
     implementation(libs.kuromoji.ipadic)
+    implementation(libs.squigglyslider)
+    implementation(libs.palette.ktx)
 
-    implementation(project(":innertube"))
-    implementation(project(":simpmusic"))
-    implementation(project(":betterlyrics"))
-    implementation(project(":lrclib"))
-
-    implementation(libs.compose.runtime)
-    implementation(libs.compose.foundation)
-    implementation(libs.compose.ui)
-    implementation(libs.compose.ui.util)
-    implementation(libs.compose.animation)
-    debugImplementation(libs.compose.ui.tooling)
-
-    implementation(libs.viewmodel)
-    implementation(libs.viewmodel.compose)
-
-    implementation(libs.material3)
-
-    implementation(libs.coil)
-    implementation(libs.coil.network.okhttp)
-
-    implementation(libs.shimmer)
-
-    implementation(libs.media3)
-    implementation(libs.media3.okhttp)
-    implementation(libs.media3.session)
-    implementation(libs.media3.exoplayer.workmanager)
-    implementation(libs.work.runtime)
-
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-
-    implementation(libs.room.runtime)
-    ksp(libs.room.compiler)
-    implementation(libs.room.ktx)
-
-    implementation(libs.timber)
-    implementation(libs.guava)
-    implementation(libs.coroutines.guava)
-    implementation(libs.concurrent.futures)
-    implementation(libs.datastore)
-    implementation(libs.annotation)
-    implementation(libs.apache.lang3)
-    implementation(libs.kuromoji.ipadic)
-
+    // M3 color science for dynamic theme generation
+    implementation("com.github.Kyant0:m3color:2025.4")
     implementation(project(":innertube"))
     implementation(project(":simpmusic"))
     implementation(project(":betterlyrics"))
@@ -284,7 +251,9 @@ dependencies {
     implementation(project(":canvas"))
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.coroutines.test)
     testImplementation("org.mockito:mockito-core:5.12.0")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.room:room-testing:2.8.4")
 }

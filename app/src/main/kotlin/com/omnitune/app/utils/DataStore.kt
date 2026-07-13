@@ -127,12 +127,14 @@ fun <T> rememberPreference(
         }.collectAsState(defaultValue)
 
     return remember {
+        // Capture key locally to avoid smart-cast issues across module boundaries
+        val capturedKey = key
         object : MutableState<T> {
             override var value: T
                 get() = state.value
                 set(value) {
                     PreferenceStore.launchEdit(context.dataStore) {
-                        this[key] = value
+                        this[capturedKey] = value
                     }
                 }
 

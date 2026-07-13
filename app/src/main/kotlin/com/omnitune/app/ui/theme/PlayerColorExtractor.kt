@@ -1,0 +1,230 @@
+/*
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
+ */
+
+package com.omnitune.app.ui.theme
+
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.palette.graphics.Palette
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/**
+ * Player color extraction system for generating gradients from album artwork
+ *
+ * This system analyzes album artwork and extracts vibrant, dominant colors
+ * to create visually appealing gradients for the music player interface.
+ */
+object PlayerColorExtractor {
+
+    /**
+     * Extracts colors from a palette and creates a gradient
+     *
+     * @param palette The color palette extracted from album artwork
+     * @param fallbackColor Fallback color to use if extraction fails
+     * @return List of colors for gradient (primary, darker variant, black)
+     */
+    suspend fun extractGradientColors(
+        palette: Palette,
+        fallbackColor: Int
+    ): List<Color> = withContext(Dispatchers.Default) {
+
+        val swatches = palette.swatches
+            .filter { it.population > 0 }
+            .sortedByDescending { it.population }
+
+        if (swatches.isEmpty()) {
+            return@withContext listOf(Color(0xFF595959), Color(0xFF0D0D0D))
+        }
+
+        val first = swatches.first()
+        val firstHsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(first.rgb, firstHsv)
+
+        val second =
+            swatches
+                .drop(1)
+                .maxByOrNull { candidate ->
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(candidate.rgb, hsv)
+
+                    val hueDiffRaw = kotlin.math.abs(hsv[0] - firstHsv[0])
+                    val hueDiff = kotlin.math.min(hueDiffRaw, 360f - hueDiffRaw) / 180f
+                    val satDiff = kotlin.math.abs(hsv[1] - firstHsv[1])
+                    val valueDiff = kotlin.math.abs(hsv[2] - firstHsv[2])
+
+                    hueDiff * 0.65f + satDiff * 0.2f + valueDiff * 0.15f
+                }
+                ?: first
+
+        return@withContext listOf(Color(first.rgb), Color(second.rgb))
+            .sortedByDescending { it.luminance() }
+    }
+
+    private fun isUsableArtworkColor(color: Color): Boolean {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        val saturation = hsv[1]
+        val brightness = hsv[2]
+        return saturation >= 0.22f && brightness in 0.12f..0.88f && color.luminance() in 0.03f..0.74f
+    }
+
+    /**
+     * Enhances color vividness by adjusting saturation and brightness
+     *
+     * @param color The color to enhance
+     * @param saturationFactor Factor to multiply saturation by (default 1.4)
+     * @return Enhanced color with improved vividness
+     */
+    private fun enhanceColorVividness(color: Color, saturationFactor: Float = 1.4f): Color {
+        val argb = color.toArgb()
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(argb, hsv)
+
+        // Increase saturation for more vivid colors
+        hsv[1] = (hsv[1] * saturationFactor).coerceIn(0.46f, 0.84f)
+        hsv[2] = (hsv[2] * 0.98f).coerceIn(0.30f, 0.78f)
+
+        return Color(android.graphics.Color.HSVToColor(hsv))
+    }
+    private fun darkenIfTooBright(color: Color, maxAllowedBrightness: Float = 0.78f): Color {
+        val argb = color.toArgb()
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(argb, hsv)
+        if (hsv[2] > maxAllowedBrightness) {
+            hsv[2] = maxAllowedBrightness
+            return Color(android.graphics.Color.HSVToColor(hsv))
+        }
+        return color
+    }
+
+    /**
+     * Calculates weight for color selection based on dominance and vibrancy
+     *
+     * @param swatch The palette swatch to analyze
+     * @return Weight value for color selection priority
+     */
+    private fun calculateColorWeight(swatch: Palette.Swatch?): Float {
+        if (swatch == null) return 0f
+        val population = swatch.population.toFloat()
+        val color = Color(swatch.rgb)
+        val argb = color.toArgb()
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(argb, hsv)
+        val saturation = hsv[1]
+        val brightness = hsv[2]
+
+        // Give higher priority to dominance (population) while considering vibrancy
+        val populationWeight = population * 2f // Double dominance weight
+        val vibrancyBonus = if (saturation > 0.3f && brightness > 0.3f) 1.5f else 1f
+
+        return populationWeight * vibrancyBonus * (saturation + brightness) / 2f
+    }
+
+    /**
+     * Checks if two colors are similar (to avoid using nearly identical colors)
+     */
+    private fun isSimilarColor(color1: Color?, color2: Color?): Boolean {
+        if (color1 == null || color2 == null) return false
+        val hsv1 = FloatArray(3)
+        val hsv2 = FloatArray(3)
+        android.graphics.Color.colorToHSV(color1.toArgb(), hsv1)
+        android.graphics.Color.colorToHSV(color2.toArgb(), hsv2)
+
+        val hueDiffRaw = kotlin.math.abs(hsv1[0] - hsv2[0])
+        val hueDiff = kotlin.math.min(hueDiffRaw, 360f - hueDiffRaw)
+        val satDiff = kotlin.math.abs(hsv1[1] - hsv2[1])
+        val valueDiff = kotlin.math.abs(hsv1[2] - hsv2[2])
+        if (hueDiff < 12f && satDiff < 0.12f && valueDiff < 0.12f) return true
+
+        val threshold = 28
+        val r1 = (color1.red * 255).toInt()
+        val g1 = (color1.green * 255).toInt()
+        val b1 = (color1.blue * 255).toInt()
+        val r2 = (color2.red * 255).toInt()
+        val g2 = (color2.green * 255).toInt()
+        val b2 = (color2.blue * 255).toInt()
+
+        return kotlin.math.abs(r1 - r2) < threshold &&
+            kotlin.math.abs(g1 - g2) < threshold &&
+            kotlin.math.abs(b1 - b2) < threshold
+    }
+
+    /**
+     * Checks if a color is similar to any in a list
+     */
+    private fun isSimilarToAny(color: Color, colors: List<Color>): Boolean {
+        return colors.any { isSimilarColor(color, it) }
+    }
+
+    /**
+     * Darkens a color by a factor
+     */
+    private fun darkenColor(color: Color, factor: Float): Color {
+        return color.copy(
+            red = (color.red * factor).coerceAtLeast(0f),
+            green = (color.green * factor).coerceAtLeast(0f),
+            blue = (color.blue * factor).coerceAtLeast(0f)
+        )
+    }
+
+    private fun hueShift(color: Color, degrees: Float): Color {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        hsv[0] = ((hsv[0] + degrees) % 360f + 360f) % 360f
+        return Color(android.graphics.Color.HSVToColor(hsv))
+    }
+
+    private fun tuneColorForMesh(
+        color: Color,
+        saturationMin: Float,
+        saturationBoost: Float,
+        valueTarget: Float,
+        valueMin: Float,
+        valueMax: Float,
+    ): Color {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        hsv[1] = (kotlin.math.max(hsv[1], saturationMin) * saturationBoost).coerceIn(0f, 1f)
+        hsv[2] = (hsv[2] * 0.85f + valueTarget * 0.15f).coerceIn(valueMin, valueMax)
+        return Color(android.graphics.Color.HSVToColor(hsv))
+    }
+
+    private fun isNearGray(color: Color): Boolean {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        return hsv[1] < 0.08f || hsv[2] < 0.08f
+    }
+
+    /**
+     * Configuration constants for color extraction
+     */
+    object Config {
+        const val MAX_COLOR_COUNT = 48
+        const val BITMAP_AREA = 40000
+        const val IMAGE_SIZE = 200
+
+        // Color enhancement factors
+        const val VIBRANT_SATURATION_THRESHOLD = 0.25f
+        const val VIBRANT_BRIGHTNESS_MIN = 0.2f
+        const val VIBRANT_BRIGHTNESS_MAX = 0.9f
+
+        const val POPULATION_WEIGHT_MULTIPLIER = 2f
+        const val VIBRANCY_THRESHOLD_SATURATION = 0.3f
+        const val VIBRANCY_THRESHOLD_BRIGHTNESS = 0.3f
+        const val VIBRANCY_BONUS = 1.5f
+
+        const val DEFAULT_SATURATION_FACTOR = 1.4f
+        const val VIBRANT_SATURATION_FACTOR = 1.3f
+        const val FALLBACK_SATURATION_FACTOR = 1.1f
+
+        const val BRIGHTNESS_MULTIPLIER = 0.92f
+        const val BRIGHTNESS_MIN = 0.32f
+        const val BRIGHTNESS_MAX = 0.88f
+
+        const val DARKER_VARIANT_FACTOR = 0.5f
+    }
+}

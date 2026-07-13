@@ -25,6 +25,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Verify tests and lint
+        env:
+          YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
+        run: ./gradlew testDebugUnitTest compileDebugAndroidTestKotlin lintRelease
+
       - name: Decode release keystore
         env:
           OMNITUNE_KEYSTORE_BASE64: ${{ secrets.OMNITUNE_KEYSTORE_BASE64 }}
@@ -38,7 +43,8 @@ jobs:
           OMNITUNE_KEYSTORE_PASSWORD: ${{ secrets.OMNITUNE_KEYSTORE_PASSWORD }}
           OMNITUNE_KEY_ALIAS: ${{ secrets.OMNITUNE_KEY_ALIAS }}
           OMNITUNE_KEY_PASSWORD: ${{ secrets.OMNITUNE_KEY_PASSWORD }}
-        run: ./gradlew clean assembleRelease
+          YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
+        run: ./gradlew assembleRelease
 
       - name: Prepare release assets
         id: assets
@@ -66,8 +72,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+          NOTES_FILE=".github/release-notes-${GITHUB_REF_NAME}.md"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [ -f "$NOTES_FILE" ]; then
+              gh release edit "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
+            fi
+            exit 0
+          fi
+          if [ -f "$NOTES_FILE" ]; then
+            gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
+          else
             gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes "Signed OmniTune release build."
+          fi
 
       - name: Upload release assets
         env:

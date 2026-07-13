@@ -5,14 +5,41 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.omnitune.app.db.entities.SongEntity
+import com.omnitune.app.models.MediaMetadata
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDateTime
 
 @RunWith(AndroidJUnit4::class)
 class MusicDatabaseTest {
+
+    @Test
+    fun insertingMetadataCreatesUsableLibraryRelations() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val internal = Room.inMemoryDatabaseBuilder(context, InternalDatabase::class.java).build()
+        val database = MusicDatabase(internal)
+        val metadata = MediaMetadata(
+            id = "song-with-relations",
+            title = "Library Song",
+            artists = listOf(MediaMetadata.Artist("UC_artist", "Library Artist", "https://artist/image.jpg")),
+            duration = 180,
+            thumbnailUrl = "https://album/image.jpg",
+            album = MediaMetadata.Album("album-id", "Library Album"),
+            inLibrary = LocalDateTime.now(),
+        )
+
+        database.insert(metadata)
+
+        assertEquals("https://album/image.jpg", database.songsByNameAsc().first().single().thumbnailUrl)
+        assertEquals("https://artist/image.jpg", database.artistsByNameAsc().first().single().thumbnailUrl)
+        assertEquals("Library Album", database.albumsByNameAsc().first().single().title)
+        assertEquals("Library Song", database.albumSongs("album-id").first().single().title)
+        internal.close()
+    }
 
     @Test
     fun databaseIsCreated() = runBlocking {

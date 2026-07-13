@@ -6,7 +6,6 @@
 package com.omnitune.app.ui.theme
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.InteractionSource
@@ -52,13 +51,30 @@ fun Modifier.omniPremiumGradientBackground(
 @Composable
 fun Modifier.omniPressScale(
     interactionSource: InteractionSource,
-    pressedScale: Float = 0.98f,
+    pressedScale: Float = 0.97f,
 ): Modifier {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressedScale else 1f,
-        animationSpec = spring(),
+        animationSpec = OmniMotion.pressSpring(),
         label = "omni_press_scale",
+    )
+    return this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
+}
+
+@Composable
+fun Modifier.omniPressScaleBounce(
+    interactionSource: InteractionSource,
+    pressedScale: Float = 0.94f,
+): Modifier {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1f,
+        animationSpec = OmniMotion.pressSpring(),
+        label = "omni_press_scale_bounce",
     )
     return this.graphicsLayer {
         scaleX = scale

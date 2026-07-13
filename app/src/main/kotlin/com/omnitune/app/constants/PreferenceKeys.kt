@@ -15,15 +15,15 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
+val PureBlackKey = booleanPreferencesKey("pureBlack")
 val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")
+val DynamicSongColorsKey = booleanPreferencesKey("dynamicSongColors")
 val CustomThemeColorKey = stringPreferencesKey("customThemeColor")
 val RandomThemeOnStartupKey = booleanPreferencesKey("randomThemeOnStartup")
 val DarkModeKey = stringPreferencesKey("darkMode")
-val PureBlackKey = booleanPreferencesKey("pureBlack")
 val UseSystemFontKey = booleanPreferencesKey("useSystemFont")
 val DefaultOpenTabKey = stringPreferencesKey("defaultOpenTab")
 val SlimNavBarKey = booleanPreferencesKey("slimNavBar")
-val GridItemsSizeKey = stringPreferencesKey("gridItemSize")
 val SliderStyleKey = stringPreferencesKey("sliderStyle")
 val SwipeToSongKey = booleanPreferencesKey("SwipeToSong")
 val PlayerDesignStyleKey = stringPreferencesKey("playerDesignStyle")
@@ -36,7 +36,6 @@ val PlaybackQualityModeKey = stringPreferencesKey("playbackQualityMode")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
-val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val GlassNavigationBarKey = booleanPreferencesKey("glassNavigationBar")
 val GlassMiniPlayerKey = booleanPreferencesKey("glassMiniPlayer")
 
@@ -56,8 +55,6 @@ val EnableKugouKey = booleanPreferencesKey("enableKugou")
 val EnableLrcLibKey = booleanPreferencesKey("enableLrclib")
 val EnableBetterLyricsKey = booleanPreferencesKey("enableBetterLyrics")
 val EnableSimpMusicLyricsKey = booleanPreferencesKey("enableSimpMusicLyrics")
-val HideExplicitKey = booleanPreferencesKey("hideExplicit")
-val HideVideoKey = booleanPreferencesKey("hideVideo")
 val ProxyEnabledKey = booleanPreferencesKey("proxyEnabled")
 val ProxyUrlKey = stringPreferencesKey("proxyUrl")
 val ProxyTypeKey = stringPreferencesKey("proxyType")
@@ -113,11 +110,13 @@ val PersistentQueueKey = booleanPreferencesKey("persistentQueue")
 val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
-val AudioOffload = booleanPreferencesKey("audioOffload")
+val AudioOffload = booleanPreferencesKey("audioOffloadV2")
 val AudioCrossfadeDurationKey = intPreferencesKey("audioCrossfadeDuration")
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoDownloadOnLikeKey = booleanPreferencesKey("autoDownloadOnLike")
 val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")
+val AutoplaySimilarSongsKey = booleanPreferencesKey("autoplaySimilarSongs")
+val LikedSongsShuffleKey = booleanPreferencesKey("likedSongsShuffle")
 val PauseOnDeviceMuteKey = booleanPreferencesKey("pauseOnDeviceMute")
 val AutoStartOnBluetoothKey = booleanPreferencesKey("autoStartOnBluetooth")
 val StopMusicOnTaskClearKey = booleanPreferencesKey("stopMusicOnTaskClear")
@@ -142,8 +141,6 @@ val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
 val MaxCanvasCacheSizeKey = intPreferencesKey("maxCanvasCacheSize")
 
-val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
-val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
 
 val DiscordTokenKey = stringPreferencesKey("discordToken")
@@ -213,6 +210,7 @@ val LastLibSongSyncKey = longPreferencesKey("last_library_song_sync")
 val LastAlbumSyncKey = longPreferencesKey("last_album_sync")
 val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
+val LastLibraryBackupAtKey = longPreferencesKey("last_library_backup_at")
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
 val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
@@ -425,6 +423,13 @@ val HistoryDuration = floatPreferencesKey("historyDuration")
 
 val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
+val OmniPlayerBackgroundStyleKey = stringPreferencesKey("omniPlayerBackgroundStyle")
+val OmniPlayerDesignStyleKey = stringPreferencesKey("omniPlayerDesignStyle")
+val OmniMiniPlayerDesignKey = stringPreferencesKey("omniMiniPlayerDesign")
+val OmniLibraryDesignKey = stringPreferencesKey("omniLibraryDesign")
+val OmniPlayerButtonColorModeKey = stringPreferencesKey("omniPlayerButtonColorMode")
+val OmniSliderStyleKey = stringPreferencesKey("omniSliderStyle")
+val OmniLyricsPresentationKey = stringPreferencesKey("omniLyricsPresentation")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
@@ -559,6 +564,8 @@ val CountryCodeToName =
 val LaunchCountKey = intPreferencesKey("launch_count")
 val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
 val RemindAfterKey = intPreferencesKey("remind_after")
+val SupportDialogDismissedKey = booleanPreferencesKey("support_dialog_dismissed")
+val SupportDialogSnoozedUntilKey = longPreferencesKey("support_dialog_snoozed_until")
 
 // Update settings
 val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
@@ -595,3 +602,44 @@ val EqualizerPresetKey = stringPreferencesKey("equalizerPreset") // preset name
 // Downloads
 val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // default 3
 val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
+
+enum class LyricsPosition { LEFT, CENTER, RIGHT }
+
+enum class OmniPlayerBackgroundStyle {
+    DYNAMIC_GRADIENT,
+    SOLID_DARK,
+}
+
+enum class OmniPlayerDesignStyle {
+    DEFAULT,
+    COMPACT,
+    IMMERSIVE,
+}
+
+enum class OmniMiniPlayerDesign {
+    DEFAULT,
+    COMPACT,
+}
+
+enum class OmniLibraryDesign {
+    DEFAULT,
+    COMPACT_LIST,
+}
+
+enum class OmniPlayerButtonColorMode {
+    DYNAMIC,
+    DEFAULT,
+    MONOCHROME,
+}
+
+enum class OmniSliderStyle {
+    DEFAULT,
+    THIN,
+    ROUNDED,
+}
+
+enum class OmniLyricsPresentation {
+    DEFAULT,
+    COMPACT,
+    LARGE,
+}

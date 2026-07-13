@@ -16,4 +16,14 @@ object OmniSpacing {
     val section = 24.dp
     val hero = 32.dp
     val screen = 40.dp
+
+    val screenHorizontal = section
+    val screenHorizontalCompact = large
+    val sectionGap = large
+    val chapterGap = hero
+
+    val rowVertical = small
+    val rowHorizontal = medium
+    val cardPadding = medium
+    val cardPaddingLarge = large
 }

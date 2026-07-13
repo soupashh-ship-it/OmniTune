@@ -11,6 +11,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.omnitune.app.data.StreamExtractor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +22,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.models.PlaybackQualityMode
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.pow
@@ -28,6 +30,9 @@ import kotlin.math.pow
 internal class CrossfadeAudio(
     private val player: ExoPlayer,
     private val database: MusicDatabase,
+    private val streamExtractor: StreamExtractor,
+    private val downloadUtil: DownloadUtil,
+    private val playbackQualityModeProvider: suspend () -> PlaybackQualityMode,
     private val crossfadeDurationMs: MutableStateFlow<Int>,
     private val playbackFadeFactor: MutableStateFlow<Float>,
     private val playerVolume: MutableStateFlow<Float>,
@@ -156,7 +161,7 @@ internal class CrossfadeAudio(
             }
 
             val remainingMs = (durationMs - positionMs).coerceAtLeast(0L)
-            val preloadWindowMs = fadeMs.toLong() + 1200L
+            val preloadWindowMs = fadeMs.toLong() + 10_000L
 
             if (remainingMs in 1L..preloadWindowMs) {
                 primeOverlapForNext(nextIndex)
@@ -182,16 +187,32 @@ internal class CrossfadeAudio(
 
         stopOverlapCrossfade(resetMainFade = false)
 
+        val playableItem = resolveOverlapItem(nextItem) ?: return
+
         val overlap = ensureOverlapPlayer()
         overlap.clearMediaItems()
-        overlap.setMediaItem(nextItem)
-        overlap.prepare()
-        overlap.playWhenReady = true
+        overlap.setMediaItem(playableItem)
+        overlap.playWhenReady = false
         overlap.volume = 0f
+        overlap.prepare()
 
         overlapNormalizeFactor = fetchNormalizeFactorForMediaId(nextMediaId)
         overlapPrimedIndex = nextIndex
         overlapPrimedMediaId = nextMediaId
+    }
+
+    private suspend fun resolveOverlapItem(item: MediaItem): MediaItem? {
+        val uri = item.localConfiguration?.uri
+        if (!StreamUrlResolver.isYouTubeVideoId(uri)) return item
+
+        return withContext(Dispatchers.IO) {
+            StreamUrlResolver.resolveMediaItem(
+                mediaItem = item,
+                streamExtractor = streamExtractor,
+                downloadUtil = downloadUtil,
+                qualityMode = playbackQualityModeProvider(),
+            )
+        }
     }
 
     private fun unprimeOverlap() {
@@ -201,7 +222,8 @@ internal class CrossfadeAudio(
     }
 
     private fun beginOverlapCrossfade(fadeMs: Int, remainingMs: Long) {
-        if (overlapPlayer == null) return
+        val overlap = overlapPlayer ?: return
+        overlap.play()
         crossfadeActive = true
         crossfadeStartElapsedMs = android.os.SystemClock.elapsedRealtime()
         crossfadeActiveDurationMs = min(fadeMs.toLong(), remainingMs).toInt().coerceAtLeast(1)

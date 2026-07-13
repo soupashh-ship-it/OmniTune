@@ -30,7 +30,7 @@ class HistoryViewModel @Inject constructor(
             try {
                 database.events().collect { events ->
                     _uiState.value = HistoryUiState(
-                        events = events,
+                        events = events.distinctBy { it.song.id },
                         isLoading = false,
                     )
                 }

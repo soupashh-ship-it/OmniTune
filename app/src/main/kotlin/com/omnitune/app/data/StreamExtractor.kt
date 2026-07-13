@@ -4,11 +4,17 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.omnitune.app.constants.AudioQuality
+import com.omnitune.app.constants.NetworkMeteredKey
 import com.omnitune.app.constants.PlayerStreamClient
+import com.omnitune.app.constants.PlayerStreamClientKey
+import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.db.entities.FormatEntity
 import com.omnitune.app.models.StreamQuality
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.utils.YTPlayerUtils
+import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +47,7 @@ sealed class PlaybackResolveError {
 class StreamExtractor @Inject constructor(
     @ApplicationContext private val context: Context,
     private val clientRotator: ClientRotator,
+    private val database: MusicDatabase,
 ) {
 
     suspend fun resolveWithFallback(songId: String, quality: StreamQuality): StreamResolveResult {
@@ -50,17 +57,24 @@ class StreamExtractor @Inject constructor(
             return StreamResolveResult.Failure(songId, PlaybackResolveError.NoNetwork, emptyList())
         }
 
-        val audioQuality = when (quality) {
-            StreamQuality.LOW -> AudioQuality.LOW
-            StreamQuality.MEDIUM, StreamQuality.HIGH -> AudioQuality.HIGH
-            StreamQuality.BEST -> AudioQuality.HIGHEST
+        val prefs = context.dataStore.data.first()
+        val networkMetered = prefs[NetworkMeteredKey] ?: false
+        val preferredClient = runCatching {
+            PlayerStreamClient.valueOf(prefs[PlayerStreamClientKey] ?: PlayerStreamClient.ANDROID_VR.name)
+        }.getOrDefault(PlayerStreamClient.ANDROID_VR)
+
+        val audioQuality = when {
+            networkMetered -> AudioQuality.LOW
+            quality == StreamQuality.LOW -> AudioQuality.LOW
+            quality == StreamQuality.BEST -> AudioQuality.HIGHEST
+            else -> AudioQuality.HIGH
         }
 
         val attemptedClients = mutableListOf<PlayerStreamClient>()
         var lastFailure: Throwable? = null
         var lastReason: PlaybackResolveError = PlaybackResolveError.NoPlayableFormat
 
-        val clientSequence = clientRotator.getClientSequence(songId)
+        val clientSequence = (listOf(preferredClient) + clientRotator.getClientSequence(songId)).distinct()
         val totalAttempts = clientSequence.size
         Timber.tag("OmniTuneStreamFallback").i("Stream resolve attempt started (total clients: $totalAttempts)")
 
@@ -73,11 +87,13 @@ class StreamExtractor @Inject constructor(
                 audioQuality = audioQuality,
                 connectivityManager = cm,
                 preferredStreamClient = client,
+                networkMetered = networkMetered,
             )
             
             val streamResult = result.fold(
                 onSuccess = { data ->
                     clientRotator.reportSuccess(songId)
+                    persistFormatEntity(songId, data)
                     StreamResult(
                         url = data.streamUrl,
                         contentType = data.format.mimeType,
@@ -124,6 +140,31 @@ class StreamExtractor @Inject constructor(
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun persistFormatEntity(songId: String, data: YTPlayerUtils.PlaybackData) {
+        try {
+            val format = data.format
+            val audioConfig = data.audioConfig
+            val codecs = Regex("""codecs="([^"]+)"""").find(format.mimeType)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+
+            val entity = FormatEntity(
+                id = songId,
+                itag = format.itag,
+                mimeType = format.mimeType,
+                codecs = codecs,
+                bitrate = format.bitrate,
+                sampleRate = format.audioSampleRate,
+                contentLength = format.contentLength ?: 0L,
+                loudnessDb = format.loudnessDb ?: audioConfig?.loudnessDb,
+                perceptualLoudnessDb = audioConfig?.perceptualLoudnessDb,
+                playbackUrl = data.streamUrl,
+            )
+            database.upsert(entity)
+            Timber.tag("OmniTuneFormat").d("Persisted FormatEntity for $songId")
+        } catch (e: Exception) {
+            Timber.tag("OmniTuneFormat").w(e, "Failed to persist FormatEntity for $songId")
+        }
     }
 
     private fun classifyFailure(throwable: Throwable): PlaybackResolveError {

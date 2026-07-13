@@ -5,52 +5,22 @@
 
 package com.omnitune.app.playback
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.net.Uri
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
-import androidx.core.app.NotificationManagerCompat
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.session.CommandButton
-import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.exoplayer.offline.Download
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.omnitune.app.BuildConfig
-import com.omnitune.app.MainActivity
-import com.omnitune.app.R
+import com.omnitune.app.constants.AutoDownloadOnLikeKey
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLike
-import com.omnitune.app.db.entities.LyricsEntity
 import com.omnitune.app.lyrics.LyricsHelper
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleLibrary
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleStartRadio
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleShuffle
-import com.omnitune.app.constants.MediaSessionConstants.CommandToggleRepeatMode
-import com.omnitune.app.extensions.currentMetadata
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.extensions.toMediaItem
@@ -62,39 +32,53 @@ import com.omnitune.app.utils.NetworkConnectivityObserver
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
-import com.omnitune.app.constants.SkipSilenceKey
-import com.omnitune.app.constants.AudioOffload
-import com.omnitune.app.constants.PlayerVolumeKey
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.ShuffleEnabledKey
+import com.omnitune.app.constants.AutoplaySimilarSongsKey
+import com.omnitune.app.constants.HistoryDuration
+import com.omnitune.app.db.entities.SongSkipEntity
 import androidx.datastore.preferences.core.edit
-import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import com.omnitune.app.constants.AudioCrossfadeDurationKey
-import com.omnitune.app.constants.AudioNormalizationKey
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
+import com.omnitune.app.constants.StopMusicOnTaskClearKey
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
+import kotlin.math.min
+import kotlin.math.pow
 import timber.log.Timber
 import javax.inject.Inject
-import com.omnitune.app.playback.EqualizerBand
 
-import com.omnitune.app.utils.dataStore
-import kotlinx.coroutines.flow.first
+import com.omnitune.app.constants.DiscordTokenKey
+import com.omnitune.app.constants.EnableDiscordRPCKey
+import com.omnitune.app.constants.EqualizerBandLevelsMbKey
+import com.omnitune.app.constants.EqualizerEnabledKey
+import com.omnitune.app.discord.DiscordPresenceManager
+import com.omnitune.app.playback.continuation.AutoplayCandidate
+import com.omnitune.app.playback.continuation.AutoplayRecommendationResolver
+import com.omnitune.app.playback.continuation.AutoplayRetryPolicy
+import com.omnitune.app.playback.continuation.LikedSongsPlaybackPlanner
+import com.omnitune.app.playback.continuation.OmniAutoplayRecommendationProvider
+import com.omnitune.app.playback.continuation.PlaybackContinuationPolicy
+import com.omnitune.app.playback.continuation.PlaybackContext
+import com.omnitune.app.playback.continuation.PlaybackSourceType
+import com.omnitune.app.playback.continuation.QueuePlaybackContextMapper
+import com.omnitune.app.playback.continuation.TasteSignalClassifier
+import com.omnitune.app.playback.continuation.TasteSignal
+import com.omnitune.app.playback.continuation.withSeedItem
+import com.omnitune.app.playback.ScrobblingManager
 
 @AndroidEntryPoint
 class MusicService : MediaLibraryService(), Player.Listener {
@@ -105,9 +89,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var streamExtractor: com.omnitune.app.data.StreamExtractor
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
+    @Inject lateinit var discordPresenceManager: DiscordPresenceManager
 
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private var lastNetworkTransport: Int = -1
+    private lateinit var scrobblingManager: ScrobblingManager
+
+    private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
+    private lateinit var playbackRecoveryCoordinator: PlaybackRecoveryCoordinator
 
     private suspend fun getPlaybackQualityMode(): com.omnitune.app.models.PlaybackQualityMode {
         return try {
@@ -128,24 +115,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     companion object {
-        const val CHANNEL_ID = "music_player"
-        const val NOTIFICATION_ID = 1
-        private const val ACTION_PLAY = "com.omnitune.app.playback.action.PLAY"
-        private const val ACTION_PAUSE = "com.omnitune.app.playback.action.PAUSE"
-        private const val ACTION_NEXT = "com.omnitune.app.playback.action.NEXT"
-        private const val ACTION_PREVIOUS = "com.omnitune.app.playback.action.PREVIOUS"
+        const val CHANNEL_ID = PlaybackNotificationManager.CHANNEL_ID
+        const val NOTIFICATION_ID = PlaybackNotificationManager.NOTIFICATION_ID
+        private const val ACTION_PLAY = PlaybackNotificationManager.ACTION_PLAY
+        private const val ACTION_PAUSE = PlaybackNotificationManager.ACTION_PAUSE
+        private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
+        private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
+        private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
+        private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
+        private const val MAX_RECENT_AUTOPLAY_IDS = 40
+        private const val MIN_LISTEN_HISTORY_MS = 10_000L
     }
 
-    private var mediaSession: MediaLibrarySession? = null
+    private var sessionManager: SessionManager? = null
+    private val mediaSession: MediaLibrarySession?
+        get() = sessionManager?.session
+    private lateinit var playbackNotificationManager: PlaybackNotificationManager
+    private lateinit var lyricsPrefetcher: LyricsPrefetcher
     private var scopeJob = kotlinx.coroutines.SupervisorJob()
     private val exceptionHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, exception ->
         timber.log.Timber.tag("MusicService").e(exception, "Uncaught exception in MusicService scope")
     }
     var scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + scopeJob + exceptionHandler)
     private val binder = MusicBinder()
-    private val playbackRecoveryPolicy = com.omnitune.app.playback.recovery.PlaybackRecoveryPolicy()
-
-
     val exoPlayer: ExoPlayer get() = player
     internal lateinit var player: ExoPlayer
     private val _playerVolume = MutableStateFlow(1f)
@@ -154,7 +146,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val playbackFadeFactor = MutableStateFlow(1f)
     private val crossfadeDurationMs = MutableStateFlow(0)
     private val audioNormalizationEnabled = MutableStateFlow(true)
-    private var crossfadeAudio: CrossfadeAudio? = null
+    private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
+    private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
+    private var autoDownloadOnLikeJob: Job? = null
+    private var equalizerPreferenceJob: Job? = null
+    private var radioQueueManager: RadioQueueManager? = null
+    private val equalizerController by lazy { EqualizerController(this) }
+    private val audioEffectController by lazy { AudioEffectController(this) }
+    private val _volumeNormalizationFactor = MutableStateFlow(1f)
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -167,7 +166,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // OMNITUNE: Playback tracking
     private var lastRecordedMediaId: String? = null
-    private var lastRecordedRecentMediaId: String? = null
     private var playbackTrackerJob: Job? = null
 
     private val _currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
@@ -177,8 +175,24 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val _queueRestoreCompleted = MutableStateFlow(false)
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
     private var saveQueueJob: Job? = null
+    private var playQueueJob: Job? = null
+    private var bluetoothReceiver: android.content.BroadcastReceiver? = null
+    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
+    private var pausedByDeviceMute = false
+
 
     private var currentQueue: Queue = EmptyQueue
+    private lateinit var autoplayResolver: AutoplayRecommendationResolver
+    private var currentPlaybackContext: PlaybackContext = PlaybackContext.Unknown
+    private var autoplayContinuationJob: Job? = null
+    private val recentlyAutoplayedIds = ArrayDeque<String>()
+    private val failedAutoplayCandidateIds = linkedSetOf<String>()
+    private var lastTransitionMediaId: String? = null
+    private var lastTransitionMetadata: MediaMetadata? = null
+    private var lastTransitionStartedAtMs: Long = 0L
+    private var lastTransitionDurationMs: Long? = null
+    private var lastTransitionSourceType: PlaybackSourceType = PlaybackSourceType.UNKNOWN
+    private var lastPositiveAutoplaySeed: MediaMetadata? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return if (intent?.action == null) {
@@ -217,6 +231,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 postMediaNotificationFallback("action-previous", force = true)
                 return START_STICKY
             }
+            ACTION_LIKE -> {
+                toggleLike()
+                postMediaNotificationFallback("action-like", force = true)
+                return START_STICKY
+            }
+            ACTION_REPEAT -> {
+                if (::player.isInitialized) {
+                    player.repeatMode = when (player.repeatMode) {
+                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                        Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+                        else -> Player.REPEAT_MODE_OFF
+                    }
+                }
+                postMediaNotificationFallback("action-repeat", force = true)
+                return START_STICKY
+            }
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -225,80 +256,84 @@ class MusicService : MediaLibraryService(), Player.Listener {
         super.onCreate()
         Timber.tag("MusicService").i("MusicService created")
 
-        createNotificationChannel()
-
+        lyricsPrefetcher = LyricsPrefetcher(database, lyricsHelper, scope)
+        autoplayResolver = AutoplayRecommendationResolver(
+            OmniAutoplayRecommendationProvider(database),
+        )
         initializePlayer()
         sleepTimer = SleepTimer(player, scope)
-        observePreferences()
         StreamUrlResolver.clearMemoryCache("service startup")
 
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-                super.onCapabilitiesChanged(network, networkCapabilities)
-                val currentTransport = when {
-                    networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
-                    networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
-                    else -> -1
-                }
-                if (lastNetworkTransport != -1 && lastNetworkTransport != currentTransport) {
-                    Timber.tag("MusicService").i("Network transport changed (\$lastNetworkTransport -> \$currentTransport)")
-                    StreamUrlResolver.clearMemoryCache("Network type changed")
-                    
-                    // Re-prepare the player seamlessly if playing
-                    scope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                        if (player.isPlaying || player.playbackState == Player.STATE_BUFFERING) {
-                            val currentPos = player.currentPosition
-                            val currentIndex = player.currentMediaItemIndex
-                            val currentItem = player.currentMediaItem ?: return@launch
-                            
-                            val mediaId = currentItem.mediaId
-                            if (StreamUrlResolver.isYouTubeVideoId(Uri.parse(mediaId))) {
-                                val originalItem = currentItem.buildUpon().setUri(mediaId).build()
-                                val resolved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                                }
-                                if (resolved != null) {
-                                    player.replaceMediaItem(currentIndex, resolved)
-                                    player.seekTo(currentIndex, currentPos)
-                                    player.prepare()
-                                    player.play()
-                                }
-                            }
-                        }
-                    }
-                }
-                lastNetworkTransport = currentTransport
-            }
-        }
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-        try {
-            connectivityManager.registerNetworkCallback(request, networkCallback!!)
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to register network callback")
-        }
+        networkPlaybackMonitor = NetworkPlaybackMonitor(
+            context = this,
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            waitingForNetworkConnection = _waitingForNetworkConnection,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+            isDownloadCompleted = ::isDownloadCompleted,
+        )
+        networkPlaybackMonitor.register()
+        playbackRecoveryCoordinator = PlaybackRecoveryCoordinator(
+            context = this,
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            networkPlaybackMonitor = networkPlaybackMonitor,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+        )
+        playbackPreferenceObserver = PlaybackPreferenceObserver(
+            context = this,
+            player = player,
+            scope = scope,
+            playerVolume = _playerVolume,
+            playbackFadeFactor = playbackFadeFactor,
+            normalizationFactor = _volumeNormalizationFactor,
+            crossfadeDurationMs = crossfadeDurationMs,
+            audioNormalizationEnabled = audioNormalizationEnabled,
+            onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
+        ).also { it.start() }
+        startAutoDownloadOnLikeObserver()
+        startEqualizerObserver()
+        startBassBoostVirtualizerObserver()
+        radioQueueManager = RadioQueueManager(
+            player = player,
+            scope = scope,
+            streamExtractor = streamExtractor,
+            downloadUtil = downloadUtil,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
+            setQueueTitle = { queueTitle = it },
+            setCurrentQueue = { currentQueue = it },
+        )
 
         // Restore persistent queue
         scope.launch(Dispatchers.IO) {
             try {
-                val savedQueue = database.getQueue()
-                if (savedQueue != null && savedQueue.mediaIdList.isNotBlank()) {
-                    val mediaIds = savedQueue.mediaIdList.split(",")
-                    val songs = database.getSongsByIds(mediaIds)
-                    // Ensure the order is preserved
-                    val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
-                    
-                    if (mediaItems.isNotEmpty()) {
-                        val queue = ListQueue(
-                            title = savedQueue.title,
-                            items = mediaItems,
-                            startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
-                            position = savedQueue.position
-                        )
-                        withContext(Dispatchers.Main) {
-                            restoreQueueMetadataOnly(queue)
+                val prefs = this@MusicService.dataStore.data.first()
+                val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
+                if (!persistentQueue) {
+                    database.clearQueue()
+                } else {
+                    val savedQueue = database.getQueue()
+                    if (savedQueue != null && savedQueue.mediaIdList.isNotBlank()) {
+                        val mediaIds = savedQueue.mediaIdList.split(",")
+                        val songs = database.getSongsByIds(mediaIds)
+                        // Ensure the order is preserved
+                        val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
+
+                        if (mediaItems.isNotEmpty()) {
+                            val queue = ListQueue(
+                                title = savedQueue.title,
+                                items = mediaItems,
+                                startIndex = savedQueue.startIndex.coerceIn(0, mediaItems.size - 1),
+                                position = savedQueue.position,
+                                playbackContext = QueuePlaybackContextMapper.fromEntity(savedQueue, mediaItems),
+                            )
+                            withContext(Dispatchers.Main) {
+                                restoreQueueMetadataOnly(queue)
+                            }
                         }
                     }
                 }
@@ -309,11 +344,56 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         }
 
+        val filter = android.content.IntentFilter().apply {
+            addAction(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+        }
+        bluetoothReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+                val connected = when (intent.action) {
+                    android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(
+                            android.bluetooth.BluetoothProfile.EXTRA_STATE,
+                            android.bluetooth.BluetoothProfile.STATE_DISCONNECTED,
+                        )
+                        state == android.bluetooth.BluetoothProfile.STATE_CONNECTED
+                    }
+                    android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED -> true
+                    else -> false
+                }
+                if (connected) {
+                    handleBluetoothConnected()
+                }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(this, bluetoothReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>) {
+                if (addedDevices.any { it.isBluetoothOutput() }) {
+                    handleBluetoothConnected()
+                }
+            }
+        }.also { callback ->
+            val audioManager = getSystemService(android.media.AudioManager::class.java)
+            audioManager?.registerAudioDeviceCallback(callback, null)
+        }
+
         connectivityObserver = NetworkConnectivityObserver(this)
+
+        scrobblingManager = ScrobblingManager(this, scope)
 
         sessionCallback.onToggleLike = { toggleLike() }
         sessionCallback.onToggleLibrary = { toggleLibrary() }
         sessionCallback.onStartRadio = { toggleStartRadio() }
+
+        // The old Discord WebView login stored user session tokens in plaintext.
+        scope.launch {
+            this@MusicService.dataStore.edit {
+                it.remove(DiscordTokenKey)
+                it[EnableDiscordRPCKey] = false
+            }
+            discordPresenceManager.stop()
+        }
     }
 
     private suspend fun restoreQueueMetadataOnly(queue: Queue) {
@@ -325,6 +405,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         val restoredIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
         currentQueue = queue
+        currentPlaybackContext = queue.playbackContext
         queueTitle = initialStatus.title
         player.playWhenReady = false
         player.stop()
@@ -341,77 +422,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         )
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Music Player",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Playback controls for OmniTune"
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                setShowBadge(false)
-                enableLights(false)
-                enableVibration(false)
-                setSound(null, null)
-            }
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-            if (BuildConfig.DEBUG) {
-                val postedChannel = nm.getNotificationChannel(CHANNEL_ID)
-                Timber.tag("MediaControls").d(
-                    "Playback notification channel ready: id=%s importance=%s visibility=%s notificationsEnabled=%s",
-                    CHANNEL_ID,
-                    postedChannel?.importance,
-                    postedChannel?.lockscreenVisibility,
-                    NotificationManagerCompat.from(this).areNotificationsEnabled()
-                )
-            }
-        }
-    }
-
-
     private fun initializePlayer() {
-        val trackSelector = DefaultTrackSelector(this).apply {
-            setParameters(buildUponParameters().apply {
-                setMaxVideoSizeSd()
-                setPreferredAudioLanguages("en")
-            })
-        }
-
-        val dataSourceFactory = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"))
-        val cacheDataSourceFactory = CacheDataSource.Factory()
-            .setCache(downloadUtil.downloadCache)
-            .setUpstreamDataSourceFactory(dataSourceFactory)
-            .setCacheWriteDataSinkFactory(null)
-
-        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000, // minBufferMs
-                50000, // maxBufferMs
-                1000,  // bufferForPlaybackMs (lowered from default 2500ms for faster startup)
-                1500   // bufferForPlaybackAfterRebufferMs
-            )
-            .build()
-
-        player = ExoPlayer.Builder(this)
-            .setWakeMode(C.WAKE_MODE_NETWORK)
-            .setTrackSelector(trackSelector)
-            .setLoadControl(loadControl)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(cacheDataSourceFactory))
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .setUsage(C.USAGE_MEDIA)
-                    .build(),
-                true
-            )
-            .setHandleAudioBecomingNoisy(true)
-            .setSeekBackIncrementMs(5_000L)
-            .setSeekForwardIncrementMs(10_000L)
-            .build()
+        player = PlayerFactory.createPlayer(this, okHttpClient, downloadUtil)
             .also { exoPlayer ->
-                exoPlayer.setOffloadEnabled(true)
                 exoPlayer.playWhenReady = false
                 exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
                 exoPlayer.addListener(this)
@@ -419,176 +432,91 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         sessionCallback.onPlayerReady(player)
 
-        crossfadeAudio = CrossfadeAudio(
+        crossfadePlaybackCoordinator = CrossfadePlaybackCoordinator(
+            context = this,
             player = player,
             database = database,
+            streamExtractor = streamExtractor,
+            okHttpClient = okHttpClient,
+            downloadUtil = downloadUtil,
+            playbackQualityModeProvider = ::getPlaybackQualityMode,
             crossfadeDurationMs = crossfadeDurationMs,
             playbackFadeFactor = playbackFadeFactor,
             playerVolume = _playerVolume,
             audioFocusVolumeFactor = audioFocusVolumeFactor,
             audioNormalizationEnabled = audioNormalizationEnabled,
-            maxSafeGainFactor = 3.16f,
-            overlapPlayerFactory = {
-                val overlapDataSourceFactory = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"))
-                val overlapCacheDataSourceFactory = CacheDataSource.Factory()
-                    .setCache(downloadUtil.downloadCache)
-                    .setUpstreamDataSourceFactory(overlapDataSourceFactory)
-                    .setCacheWriteDataSinkFactory(null)
-                    
-                ExoPlayer.Builder(this)
-                    .setMediaSourceFactory(DefaultMediaSourceFactory(this).setDataSourceFactory(overlapCacheDataSourceFactory))
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                            .setUsage(C.USAGE_MEDIA)
-                            .build(),
-                        true
-                    )
-                    .setHandleAudioBecomingNoisy(true)
-                    .build()
-            }
-        )
-        crossfadeAudio?.start(scope)
+        ).also { it.start(scope) }
 
-        mediaSession = MediaLibrarySession.Builder(this, player, sessionCallback)
-            .setSessionActivity(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .setId("OmniTune")
-            .build()
+        sessionManager = SessionManager(this, player, sessionCallback, scope)
 
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .setChannelId(CHANNEL_ID)
-                .setChannelName(R.string.music_player_channel_name)
-                .setNotificationId(NOTIFICATION_ID)
-                .build()
-                .apply {
-                    setSmallIcon(R.drawable.ic_notification_album)
-                }
-        )
+        playbackNotificationManager = PlaybackNotificationManager(this, player) { mediaSession }
+        playbackNotificationManager.createChannelIfNeeded()
+        setMediaNotificationProvider(playbackNotificationManager.createProvider())
         logMediaControlState("provider-ready")
     }
 
-    // OMNITUNE: System equalizer integration
-    private var systemEqualizer: android.media.audiofx.Equalizer? = null
-
-    private fun setupEqualizer() {
-        try {
-            systemEqualizer?.release()
-            systemEqualizer = android.media.audiofx.Equalizer(0, player.audioSessionId).apply {
-                enabled = true
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Failed to initialize equalizer")
-            // Inform user if system EQ is unavailable
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(this, "System Equalizer is unavailable on this device.", android.widget.Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
-        val eq = systemEqualizer ?: return
-        try {
-            bands.forEachIndexed { index, band ->
-                if (index < eq.numberOfBands) {
-                    val gainMillibels = (band.gainDb * 100).toInt().toShort()
-                    eq.setBandLevel(index.toShort(), gainMillibels)
+        equalizerController.applyBands(bands)
+    }
+
+    fun setEqualizerEnabled(enabled: Boolean) {
+        equalizerController.setEnabled(enabled)
+    }
+
+    private fun startEqualizerObserver() {
+        equalizerPreferenceJob?.cancel()
+        equalizerPreferenceJob = scope.launch {
+            combine(
+                dataStore.data.map { it[EqualizerEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[EqualizerBandLevelsMbKey].orEmpty() }.distinctUntilChanged(),
+            ) { enabled, levels -> enabled to levels }
+                .collect { (enabled, levels) ->
+                    equalizerController.setEnabled(enabled)
+                    decodeEqualizerBands(levels)?.let(equalizerController::applyBands)
                 }
-            }
+        }
+    }
+
+    private fun startAutoDownloadOnLikeObserver() {
+        autoDownloadOnLikeJob?.cancel()
+        autoDownloadOnLikeJob = scope.launch(Dispatchers.IO) {
+            var knownLikedIds = emptySet<String>()
+            var enabledLastEmission = false
+
+            combine(
+                dataStore.data.map { it[AutoDownloadOnLikeKey] ?: false }.distinctUntilChanged(),
+                database.likedSongsByRowIdAsc(),
+            ) { enabled, songs -> enabled to songs }
+                .collect { (enabled, songs) ->
+                    val likedIds = songs.map { it.song.id }.toSet()
+                    if (!enabled) {
+                        knownLikedIds = likedIds
+                        enabledLastEmission = false
+                        return@collect
+                    }
+                    if (!enabledLastEmission) {
+                        knownLikedIds = likedIds
+                        enabledLastEmission = true
+                        return@collect
+                    }
+
+                    songs
+                        .filter { it.song.id !in knownLikedIds }
+                        .forEach { song -> queueAutoDownload(song.song.id, song.song.title) }
+                    knownLikedIds = likedIds
+                }
+        }
+    }
+
+    private fun queueAutoDownload(mediaId: String, title: String) {
+        try {
+            val existing = downloadUtil.downloadManager.downloadIndex.getDownload(mediaId)
+            if (existing != null && existing.state != Download.STATE_FAILED) return
+
+            downloadUtil.enqueue(mediaId, title)
         } catch (e: Exception) {
-            Timber.w(e, "Failed to apply EQ bands")
+            Timber.tag("MusicService").w(e, "Failed to auto-download liked song $mediaId")
         }
-    }
-
-    private var autoSkipNextOnError = true
-
-    /**
-     * Observes user preferences from DataStore and applies them to the player in real-time.
-     * This ensures Settings toggles actually affect playback behavior.
-     */
-    private fun observePreferences() {
-        val ds = applicationContext.dataStore
-
-        // Skip Silence
-        scope.launch {
-            ds.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
-                player.skipSilenceEnabled = skipSilence
-                Timber.tag("MusicService").d("Skip silence: $skipSilence")
-            }
-        }
-
-        // Audio Offload
-        scope.launch {
-            ds.data.map { it[AudioOffload] ?: true }.distinctUntilChanged().collect { offload ->
-                player.setOffloadEnabled(offload)
-                Timber.tag("MusicService").d("Audio offload: $offload")
-            }
-        }
-
-        // Player Volume
-        scope.launch {
-            ds.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
-                setPlayerVolume(volume.coerceIn(0f, 1f))
-            }
-        }
-
-        // Combine volumes for crossfade
-        scope.launch {
-            combine(_playerVolume, playbackFadeFactor) { vol, fade ->
-                (vol * fade).coerceIn(0f, 1f)
-            }.collectLatest { finalVolume ->
-                player.volume = finalVolume
-            }
-        }
-
-        // Repeat Mode
-        scope.launch {
-            ds.data.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
-                player.repeatMode = mode
-                Timber.tag("MusicService").d("Repeat mode: $mode")
-            }
-        }
-
-        // Shuffle Mode
-        scope.launch {
-            ds.data.map { it[ShuffleEnabledKey] ?: false }.distinctUntilChanged().collect { enabled ->
-                player.shuffleModeEnabled = enabled
-                Timber.tag("OmniTuneQueue").d("Shuffle restored/changed: enabled=$enabled")
-            }
-        }
-
-        // Crossfade
-        scope.launch {
-            ds.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged().collectLatest { durationMs ->
-                crossfadeDurationMs.value = durationMs
-            }
-        }
-
-        // Audio Normalization
-        scope.launch {
-            ds.data.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
-                audioNormalizationEnabled.value = enabled
-            }
-        }
-
-        // Auto skip on error
-        scope.launch {
-            ds.data.map { it[AutoSkipNextOnErrorKey] ?: true }.distinctUntilChanged().collect { autoSkip ->
-                autoSkipNextOnError = autoSkip
-            }
-        }
-    }
-
-    private fun setPlayerVolume(volume: Float) {
-        _playerVolume.value = volume
-        player.volume = volume
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -597,25 +525,39 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        if (!player.playWhenReady || player.mediaItemCount == 0) {
-            stopSelf()
+        scope.launch {
+            val stopOnClear = dataStore.data.first()[StopMusicOnTaskClearKey] ?: false
+            if (stopOnClear) {
+                player.pause()
+                player.stop()
+                stopSelf()
+            } else if (!player.playWhenReady || player.mediaItemCount == 0) {
+                stopSelf()
+            }
         }
     }
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
+        playQueueJob?.cancel()
+        preResolveJob?.cancel()
         StartupTracker.reset()
         currentQueue = queue
+        currentPlaybackContext = queue.playbackContext
+        failedAutoplayCandidateIds.clear()
         queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
-        if (queue.preloadItem != null) {
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
+        queue.preloadItem?.let { preload ->
+            player.setMediaItem(preload.toMediaItem())
             player.prepare()
             player.playWhenReady = playWhenReady
         }
 
-        scope.launch {
+        playQueueJob = scope.launch {
             val initialStatus = queue.getInitialStatus()
+            currentPlaybackContext = queue.playbackContext.withSeedItem(
+                initialStatus.items.getOrNull(initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex.coerceAtLeast(0))),
+            )
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
@@ -649,14 +591,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
             Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
 
-            val resolvedItems = withContext(Dispatchers.IO) {
-                StreamUrlResolver.resolveMediaItems(
-                    initialStatus.items,
-                    streamExtractor,
-                    downloadUtil,
-                    getPlaybackQualityMode(),
-                    priorityIndex = requestedIndex
-                )
+            val resolvedItems = initialStatus.items.toMutableList().also {
+                it[requestedIndex] = resolvedCurrent
             }
             val resolvedIndex = requestedIndex
 
@@ -674,36 +610,32 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.tag("OmniTunePlaybackTrace").i(
                     "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
                 )
-                preResolveNextTracks()
             }
         }
     }
 
     private var preResolveJob: kotlinx.coroutines.Job? = null
 
-    private fun preResolveNextTracks() {
+    private fun preResolveNextTrack() {
         preResolveJob?.cancel()
         preResolveJob = scope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
-                if (player.mediaItemCount == 0) return@launch
-                
-                // Get the actual next index considering shuffle and repeat modes
-                val nextIndex1 = player.nextMediaItemIndex
-                if (nextIndex1 == androidx.media3.common.C.INDEX_UNSET || nextIndex1 == player.currentMediaItemIndex) return@launch
-                
-                val item1 = player.getMediaItemAt(nextIndex1)
-                
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    if (StreamUrlResolver.isYouTubeVideoId(item1.localConfiguration?.uri)) {
-                        val resolved = StreamUrlResolver.resolveMediaItem(item1, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                        if (resolved != null) {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                if (StreamUrlResolver.isYouTubeVideoId(player.getMediaItemAt(nextIndex1).localConfiguration?.uri)) {
-                                    player.replaceMediaItem(nextIndex1, resolved)
-                                    Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $nextIndex1")
-                                }
-                            }
-                        }
+                val index = player.nextMediaItemIndex
+                if (index == androidx.media3.common.C.INDEX_UNSET) return@launch
+                val item = player.getMediaItemAt(index)
+                if (!StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) return@launch
+
+                val resolved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+                } ?: return@launch
+
+                if (index < player.mediaItemCount) {
+                    val queuedItem = player.getMediaItemAt(index)
+                    if (queuedItem.mediaId == item.mediaId &&
+                        StreamUrlResolver.isYouTubeVideoId(queuedItem.localConfiguration?.uri)
+                    ) {
+                        player.replaceMediaItem(index, resolved)
+                        Timber.tag("OmniTunePlaybackTrace").d("Pre-resolved queue index $index")
                     }
                 }
             } catch (e: Exception) {
@@ -739,7 +671,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     title = queueTitle,
                     items = items,
                     startIndex = index.coerceIn(0, items.lastIndex.coerceAtLeast(0)),
-                    position = position
+                    position = position,
+                    playbackContext = currentPlaybackContext,
                 ),
                 playWhenReady = true
             )
@@ -755,43 +688,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun startRadioSeamlessly() {
-        val currentMeta = player.currentMetadata ?: return
-        val currentIndex = player.currentMediaItemIndex
-        val currentMediaId = currentMeta.id
-
-        scope.launch {
-            val radioQueue = com.omnitune.app.playback.queues.YouTubeQueue(
-                endpoint = com.omnitune.innertube.models.WatchEndpoint(videoId = currentMediaId)
-            )
-            val initialStatus = radioQueue.getInitialStatus()
-
-            if (initialStatus.title != null) {
-                queueTitle = initialStatus.title
-            }
-
-            val radioItems = initialStatus.items.filter { item ->
-                item.mediaId != currentMediaId
-            }
-
-            if (radioItems.isNotEmpty()) {
-                // Resolve YouTube video IDs to playable stream URLs before adding to player
-                val resolvedRadioItems = withContext(Dispatchers.IO) {
-                    StreamUrlResolver.resolveMediaItems(radioItems, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                }
-                if (resolvedRadioItems.isNotEmpty()) {
-                    val itemCount = player.mediaItemCount
-                    if (itemCount > currentIndex + 1) {
-                        player.removeMediaItems(currentIndex + 1, itemCount)
-                    }
-                    player.addMediaItems(currentIndex + 1, resolvedRadioItems)
-                    Timber.tag("MusicService").i("Radio: added ${resolvedRadioItems.size} resolved tracks")
-                } else {
-                    Timber.tag("MusicService").w("Radio: all stream resolutions failed")
-                }
-            }
-
-            currentQueue = radioQueue
-        }
+        radioQueueManager?.startRadioSeamlessly()
     }
 
     fun playNext(items: List<MediaItem>) {
@@ -868,6 +765,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     fun stopAndClearPlayback() {
         currentQueue = EmptyQueue
+        currentPlaybackContext = PlaybackContext.Unknown
+        failedAutoplayCandidateIds.clear()
+        recentlyAutoplayedIds.clear()
         queueTitle = null
         _waitingForNetworkConnection.value = false
         _currentMediaMetadata.value = null
@@ -876,19 +776,53 @@ class MusicService : MediaLibraryService(), Player.Listener {
         player.clearMediaItems()
     }
 
+    fun restartDiscordPresence() {
+        playQueueJob = scope.launch {
+            dataStore.edit {
+                it.remove(DiscordTokenKey)
+                it[EnableDiscordRPCKey] = false
+            }
+            discordPresenceManager.stop()
+        }
+    }
+
+    fun prefetchLyrics(metadata: MediaMetadata?) {
+        if (::lyricsPrefetcher.isInitialized) {
+            lyricsPrefetcher.prefetch(metadata)
+        }
+    }
+
     override fun onDestroy() {
+        discordPresenceManager.destroy()
         Timber.tag("MusicService").i("MusicService destroyed")
         try {
-            crossfadeAudio?.release()
-            crossfadeAudio = null
+            crossfadePlaybackCoordinator?.release()
+            crossfadePlaybackCoordinator = null
         } catch (_: Exception) {}
-        systemEqualizer?.release()
-        systemEqualizer = null
-        mediaSession?.run {
-            sessionCallback.onDestroy()
-            release()
-            mediaSession = null
+        playbackPreferenceObserver?.stop()
+        playbackPreferenceObserver = null
+        equalizerPreferenceJob?.cancel()
+        equalizerPreferenceJob = null
+        radioQueueManager = null
+        equalizerController.release()
+        audioEffectController.release()
+        if (::playbackRecoveryCoordinator.isInitialized) {
+            playbackRecoveryCoordinator.release()
         }
+        sessionManager?.release()
+        sessionManager = null
+        if (::networkPlaybackMonitor.isInitialized) {
+            networkPlaybackMonitor.release()
+        }
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.release()
+        }
+        bluetoothReceiver?.let { unregisterReceiver(it) }
+        audioDeviceCallback?.let { callback ->
+            getSystemService(android.media.AudioManager::class.java)?.unregisterAudioDeviceCallback(callback)
+        }
+        audioDeviceCallback = null
+
         scopeJob.cancel()
         player.release()
         super.onDestroy()
@@ -896,33 +830,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     // --- Player.Listener ---
 
-    private var playbackWatchdogJob: kotlinx.coroutines.Job? = null
-
     override fun onPlaybackStateChanged(state: Int) {
         Timber.tag("MusicService").v("Playback state: $state")
         StartupTracker.logState(state)
-        crossfadeAudio?.onPlaybackStateChanged(state)
+        crossfadePlaybackCoordinator?.onPlaybackStateChanged(state)
         updateNotification()
         logMediaControlState("state-$state")
         postMediaNotificationFallback("state-$state")
-        if (state == Player.STATE_READY && systemEqualizer == null) {
-            setupEqualizer()
+        if (state == Player.STATE_READY) {
+            equalizerController.setupIfNeeded(player.audioSessionId)
+            audioEffectController.setupIfNeeded(player.audioSessionId)
         }
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             saveQueueState()
-            playbackWatchdogJob?.cancel()
-        } else if (state == Player.STATE_BUFFERING && player.playWhenReady) {
-            playbackWatchdogJob?.cancel()
-            playbackWatchdogJob = scope.launch(Dispatchers.Main) {
-                kotlinx.coroutines.delay(15_000L) // 15 seconds max buffering
-                if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady) {
-                    Timber.tag("MusicService").w("Playback watchdog timeout!")
-                    val exception = PlaybackException(
-                        "Buffering timeout", null, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-                    )
-                    onPlayerError(exception)
-                }
-            }
+        }
+        playbackRecoveryCoordinator.onPlaybackStateChanged(state)
+        if (state == Player.STATE_ENDED) {
+            handlePlaybackEnded()
         }
     }
 
@@ -948,131 +872,38 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        playbackRecoveryPolicy.resetRetry(mediaItem?.mediaId ?: "")
-        crossfadeAudio?.onMediaItemTransition(mediaItem, reason)
+        recordTasteSignalForPreviousTransition(
+            completed = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+        )
+        playbackRecoveryCoordinator.resetRetry(mediaItem?.mediaId ?: "")
+        crossfadePlaybackCoordinator?.onMediaItemTransition(mediaItem, reason)
         val meta = mediaItem?.metadata ?: _currentMediaMetadata.value
         _currentMediaMetadata.value = meta
         updateNotification()
         logMediaControlState("item-transition")
         postMediaNotificationFallback("item-transition")
         startPlaybackTracker(mediaItem)
+        beginTasteWindow(mediaItem)
         saveQueueState()
-        preResolveNextTracks()
+        updateVolumeNormalizationFactor(mediaItem?.mediaId)
 
-        // Fetch lyrics for the current song in the background
-        meta?.let { metadata ->
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val existing = database.lyrics(metadata.id).first()
-                    if (existing != null && existing.lyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                        Timber.tag("MusicService").d("Lyrics already cached for: ${metadata.title}")
-                        return@launch
-                    }
-
-                    val lyrics = lyricsHelper.getLyrics(metadata)
-                    if (lyrics != LyricsEntity.LYRICS_NOT_FOUND && lyrics.isNotBlank()) {
-                        database.upsert(LyricsEntity(id = metadata.id, lyrics = lyrics))
-                        Timber.tag("MusicService").d("Fetched and cached lyrics for: ${metadata.title}")
-                    } else {
-                        // Mark as not found so we don't keep retrying
-                        database.upsert(LyricsEntity(id = metadata.id, lyrics = LyricsEntity.LYRICS_NOT_FOUND))
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("MusicService").w(e, "Failed to fetch lyrics for: ${metadata.title}")
-                    reportException(e)
-                }
-            }
+        // Send now-playing update to Last.fm
+        meta?.let { m ->
+            scrobblingManager.onTrackChanged(
+                title = m.title,
+                artist = m.artists.firstOrNull()?.name ?: "",
+                album = m.album?.title,
+            )
+            lyricsPrefetcher.prefetch(m)
         }
+
     }
 
     override fun onPlayerError(error: PlaybackException) {
         Timber.tag("MusicService").e(error, "Player error")
         logMediaControlState("player-error")
         reportException(error)
-
-        val errorType = com.omnitune.app.playback.recovery.PlaybackErrorClassifier.classify(error)
-        val currentMediaItem = player.currentMediaItem
-        val mediaId = currentMediaItem?.mediaId
-
-        val isUnresolved = StreamUrlResolver.isYouTubeVideoId(currentMediaItem?.localConfiguration?.uri)
-
-        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError && !isUnresolved) {
-            val hasInternet = isInternetAvailable(this)
-            if (!hasInternet) {
-                _waitingForNetworkConnection.value = true
-                val message = if (mediaId != null && !isDownloadCompleted(mediaId)) {
-                    "This song is not downloaded and cannot play offline."
-                } else {
-                    "No internet connection. Retry when online."
-                }
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                return
-            } else if (lastNetworkTransport == NetworkCapabilities.TRANSPORT_WIFI) {
-                val message = "Playback failed on this network. Try another Wi-Fi, disable VPN/Private DNS, or switch to mobile data."
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                // Do not return here, let recovery policy try if applicable, but we showed the error
-            }
-        }
-        
-        if (errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.Forbidden403 ||
-            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.NotFound404 ||
-            errorType == com.omnitune.app.playback.recovery.PlaybackErrorType.BotCheck) {
-            if (mediaId != null) {
-                StreamUrlResolver.invalidate(mediaId)
-            }
-        }
-
-        if (mediaId != null && playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
-            Timber.tag("MusicService").w("Recovering from $errorType for mediaId: $mediaId")
-            playbackRecoveryPolicy.incrementRetry(mediaId)
-            
-            // Invalidate caches
-            StreamUrlResolver.invalidate(mediaId)
-            streamExtractor.invalidate(mediaId)
-
-            scope.launch(Dispatchers.Main) {
-                try {
-                    // Start from the original item, not the resolved one, so the resolver sees the yt ID
-                    val originalItem = currentMediaItem.buildUpon().setUri(mediaId).build()
-                    val resolved = withContext(Dispatchers.IO) {
-                        StreamUrlResolver.resolveMediaItem(originalItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
-                    }
-                    if (resolved != null) {
-                        val pos = player.currentPosition
-                        val index = player.currentMediaItemIndex
-                        player.replaceMediaItem(index, resolved)
-                        player.seekTo(index, pos)
-                        player.prepare()
-                        player.play()
-                        return@launch
-                    }
-                } catch (e: Exception) {
-                    Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
-                }
-                fallbackSkip(errorType)
-            }
-        } else {
-            Timber.tag("MusicService").w("Recovery policy denied retry for $mediaId, error: $errorType")
-            fallbackSkip(errorType)
-        }
-    }
-
-    private fun fallbackSkip(errorType: com.omnitune.app.playback.recovery.PlaybackErrorType) {
-        if (autoSkipNextOnError && player.hasNextMediaItem()) {
-            Timber.tag("MusicService").i("Auto-skipping to next track after error")
-            player.seekToNextMediaItem()
-            player.prepare()
-            player.play()
-        } else {
-            val message = when (errorType) {
-                com.omnitune.app.playback.recovery.PlaybackErrorType.NetworkError -> "Network error during playback. Please check your connection."
-                com.omnitune.app.playback.recovery.PlaybackErrorType.Timeout -> "Playback timed out. Please try again."
-                else -> "Playback failed after retries."
-            }
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                android.widget.Toast.makeText(this@MusicService, message, android.widget.Toast.LENGTH_LONG).show()
-            }
-        }
+        playbackRecoveryCoordinator.onPlayerError(error)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -1080,22 +911,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("is-playing-$isPlaying", force = true)
 
         if (isPlaying) {
+            preResolveNextTrack()
             val mediaItem = player.currentMediaItem
             val mediaId = mediaItem?.mediaId
-            if (mediaId != null && mediaId != lastRecordedRecentMediaId) {
-                lastRecordedRecentMediaId = mediaId
+            if (mediaId != null) {
                 val meta = mediaItem.metadata
                 if (meta != null) {
-                    val durationMs = if (player.duration == androidx.media3.common.C.TIME_UNSET) 0L else player.duration
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         database.insert(meta)
-                        database.insertRecentEvent(mediaId, durationMs)
-                        timber.log.Timber.tag("OmniTuneRecent").d("Recorded recent play: ${meta.title}")
+                        timber.log.Timber.tag("OmniTuneRecent").d("Ensured song metadata for active play: ${meta.title}")
                     }
+                    lyricsPrefetcher.prefetch(meta)
                 } else {
                     timber.log.Timber.tag("OmniTuneRecent").w("Metadata is null for $mediaId, skipping recent play record")
                 }
             }
+            if (lastTransitionMediaId == null) {
+                beginTasteWindow(mediaItem)
+            }
+        } else if (
+            player.playbackState == Player.STATE_READY &&
+            player.currentPosition >= MIN_LISTEN_HISTORY_MS
+        ) {
+            recordTasteSignalForPreviousTransition(completed = false)
         }
     }
 
@@ -1103,6 +941,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
         updateNotification()
         logMediaControlState("metadata")
         postMediaNotificationFallback("metadata", force = true)
+    }
+
+    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) {
+        scope.launch {
+            val pauseOnMute = dataStore.data.first()[com.omnitune.app.constants.PauseOnDeviceMuteKey] ?: false
+            if (!pauseOnMute) {
+                pausedByDeviceMute = false
+                return@launch
+            }
+
+            if (volume == 0 || muted) {
+                if (player.playWhenReady) {
+                    pausedByDeviceMute = true
+                    pausePlayback()
+                }
+            } else if (pausedByDeviceMute) {
+                pausedByDeviceMute = false
+                playOrResolveCurrent()
+            }
+        }
     }
 
     private fun isDownloadCompleted(mediaId: String?): Boolean {
@@ -1119,36 +977,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Suppress("DEPRECATION")
     private fun updateNotification() {
         try {
-            val customLayout = listOf(
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleLike)
-                    .setDisplayName("Like")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_add)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleRepeatMode)
-                    .setDisplayName("Repeat")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_history)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleShuffle)
-                    .setDisplayName("Shuffle")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_sort)
-                    .build(),
-                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-                    .setSessionCommand(CommandToggleStartRadio)
-                    .setDisplayName("Radio")
-                    .setIconResId(com.omnitune.app.R.drawable.ic_share)
-                    .build(),
+            val meta = _currentMediaMetadata.value
+            sessionManager?.updateCustomLayout(
+                isLiked = meta?.liked == true,
+                repeatMode = player.repeatMode,
             )
-            mediaSession?.setCustomLayout(customLayout)
 
             if (::player.isInitialized) {
-                val isPlaying = player.playWhenReady && player.playbackState != androidx.media3.common.Player.STATE_ENDED && player.playbackState != androidx.media3.common.Player.STATE_IDLE
-                val meta = player.currentMediaItem?.mediaMetadata
-                val title = meta?.title?.toString() ?: "OmniTune"
-                val artist = meta?.artist?.toString() ?: "Ready to play"
-                com.omnitune.app.widget.updateWidgetState(this, title, artist, isPlaying)
+                playbackNotificationManager.updateWidget()
             }
         } catch (e: Exception) {
             reportException(e)
@@ -1156,142 +992,251 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun logMediaControlState(event: String) {
-        if (!BuildConfig.DEBUG) return
-        try {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                notificationManager.getNotificationChannel(CHANNEL_ID)?.importance
-            } else {
-                null
-            }
-            val playerReady = ::player.isInitialized
-            Timber.tag("MediaControls").d(
-                "event=%s notificationsEnabled=%s channel=%s session=%s playerReady=%s state=%s playWhenReady=%s isPlaying=%s title=%s mediaId=%s count=%s",
-                event,
-                NotificationManagerCompat.from(this).areNotificationsEnabled(),
-                channelImportance,
-                mediaSession != null,
-                playerReady,
-                if (playerReady) player.playbackState else null,
-                if (playerReady) player.playWhenReady else null,
-                if (playerReady) player.isPlaying else null,
-                if (playerReady) player.currentMediaItem?.mediaMetadata?.title else null,
-                if (playerReady) player.currentMediaItem?.mediaId else null,
-                if (playerReady) player.mediaItemCount else null
-            )
-        } catch (e: Exception) {
-            Timber.tag("MediaControls").w(e, "Failed to log media control state")
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.logState(event)
         }
     }
 
     private fun postMediaNotificationFallback(reason: String, force: Boolean = false) {
-        if (!::player.isInitialized || mediaSession == null || player.currentMediaItem == null) return
-        if (!force && hasActivePlaybackNotification()) return
-
-        try {
-            val notification = buildPlatformMediaNotification()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
-            }
-            if (BuildConfig.DEBUG) {
-                Timber.tag("MediaControls").d(
-                    "Posted platform media notification fallback: reason=%s activeBefore=%s",
-                    reason,
-                    hasActivePlaybackNotification()
-                )
-            }
-        } catch (e: Exception) {
-            Timber.tag("MediaControls").w(e, "Failed to post platform media notification fallback")
+        if (::playbackNotificationManager.isInitialized) {
+            playbackNotificationManager.postFallback(reason, force)
         }
     }
 
-    private fun hasActivePlaybackNotification(): Boolean {
-        return try {
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.activeNotifications.any { notification ->
-                notification.id == NOTIFICATION_ID && notification.packageName == packageName
+    private fun handleBluetoothConnected() {
+        scope.launch {
+            val autoStart = dataStore.data.first()[com.omnitune.app.constants.AutoStartOnBluetoothKey] ?: false
+            if (!autoStart || !::player.isInitialized || player.mediaItemCount == 0 || player.playWhenReady) {
+                return@launch
             }
-        } catch (_: Exception) {
-            false
+
+            playOrResolveCurrent()
+            postMediaNotificationFallback("bluetooth-connect", force = true)
         }
     }
 
-    private fun buildPlatformMediaNotification(): Notification {
-        val metadata = player.currentMediaItem?.mediaMetadata
-        val title = metadata?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.app_name)
-        val artist = metadata?.artist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumArtist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumTitle?.takeIf { it.isNotBlank() }
-            ?: "Playing"
-
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_album)
-            .setContentTitle(title)
-            .setContentText(artist)
-            .setTicker(title)
-            .setLargeIcon(defaultNotificationArtwork())
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .setCategory(Notification.CATEGORY_TRANSPORT)
-            .setPriority(Notification.PRIORITY_LOW)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setShowWhen(false)
-            .setOngoing(player.isPlaying)
-            .addAction(notificationAction(R.drawable.ic_notification_previous, "Previous", ACTION_PREVIOUS, 1))
-            .addAction(
-                notificationAction(
-                    if (player.isPlaying) R.drawable.ic_notification_pause else R.drawable.ic_notification_play,
-                    if (player.isPlaying) "Pause" else "Play",
-                    if (player.isPlaying) ACTION_PAUSE else ACTION_PLAY,
-                    2
-                )
-            )
-            .addAction(notificationAction(R.drawable.ic_notification_next, "Next", ACTION_NEXT, 3))
-            .setStyle(
-                Notification.MediaStyle()
-                    .setMediaSession(mediaSession?.platformToken)
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
-            .build()
+    private fun android.media.AudioDeviceInfo.isBluetoothOutput(): Boolean {
+        return type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+            (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                (type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                    type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
     }
 
-    private fun defaultNotificationArtwork(): Bitmap {
-        val size = (96 * resources.displayMetrics.density).toInt().coerceAtLeast(96)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val drawable = getDrawable(R.drawable.ic_notification_album)
-        drawable?.setBounds(0, 0, size, size)
-        drawable?.draw(canvas)
-        return bitmap
+    private fun handlePlaybackEnded() {
+        recordTasteSignalForPreviousTransition(completed = true)
+        if (autoplayContinuationJob?.isActive == true) return
+        autoplayContinuationJob = scope.launch {
+            if (!::player.isInitialized || player.hasNextMediaItem()) return@launch
+            if (loopLikedSongsIfNeeded()) return@launch
+            continueWithAutoplayIfAllowed()
+        }
     }
 
-    private fun notificationAction(
-        icon: Int,
-        title: String,
-        action: String,
-        requestCode: Int,
-    ): Notification.Action {
-        val intent = Intent(this, MusicService::class.java).setAction(action)
-        val pendingIntent = PendingIntent.getService(
-            this,
-            requestCode,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    private fun loopLikedSongsIfNeeded(): Boolean {
+        if (currentPlaybackContext.sourceType != PlaybackSourceType.LIKED_SONGS) return false
+        if (player.mediaItemCount <= 0) return false
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) return true
+
+        val count = player.mediaItemCount
+        val currentItems = (0 until count).map { index ->
+            player.getMediaItemAt(index).withOriginalVideoIdUri()
+        }
+        val loopItems = if (currentPlaybackContext.shuffledCollection && currentItems.size > 1) {
+            currentItems.shuffled()
+        } else {
+            currentItems
+        }
+        val loopIndex = LikedSongsPlaybackPlanner.nextLoopIndex(loopItems.size) ?: return false
+
+        player.setMediaItems(loopItems, loopIndex, 0L)
+        player.prepare()
+        player.playWhenReady = true
+        Timber.tag("OmniTuneContinuation").i(
+            "Looped Liked Songs queue: count=${loopItems.size}, shuffled=${currentPlaybackContext.shuffledCollection}",
         )
-        return Notification.Action.Builder(icon, title, pendingIntent).build()
+        return true
     }
+
+    private suspend fun continueWithAutoplayIfAllowed() {
+        val prefs = this@MusicService.dataStore.data.first()
+        val autoplayEnabled = prefs[AutoplaySimilarSongsKey] ?: true
+        if (!PlaybackContinuationPolicy.shouldRunAutoplay(
+                autoplayEnabled = autoplayEnabled,
+                playbackContext = currentPlaybackContext,
+                hasNextItem = player.hasNextMediaItem(),
+            )
+        ) {
+            Timber.tag("OmniTuneContinuation").i("Autoplay skipped: enabled=$autoplayEnabled context=${currentPlaybackContext.sourceType}")
+            return
+        }
+
+        val currentTrack = lastPositiveAutoplaySeed ?: _currentMediaMetadata.value ?: player.currentMediaItem?.metadata ?: return
+        val recentlyPlayedIds = recentlyAutoplayedIds.toSet()
+
+        repeat(AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS) {
+            val candidate = withContext(Dispatchers.IO) {
+                autoplayResolver.getNextAutoplayCandidate(
+                    currentTrack = currentTrack,
+                    playbackContext = currentPlaybackContext,
+                    recentlyPlayedIds = recentlyPlayedIds,
+                    failedCandidateIds = failedAutoplayCandidateIds,
+                )
+            } ?: run {
+                Timber.tag("OmniTuneContinuation").i("Autoplay stopped: no valid candidate")
+                return
+            }
+
+            val resolved = resolveAutoplayCandidate(candidate)
+            if (resolved != null) {
+                rememberAutoplayCandidate(resolved.mediaId)
+                val meta = resolved.metadata
+                playQueue(
+                    ListQueue(
+                        title = "Autoplay Radio",
+                        items = listOf(resolved),
+                        playbackContext = PlaybackContext(
+                            sourceType = PlaybackSourceType.AUTOPLAY_RADIO,
+                            sourceTitle = "Autoplay Radio",
+                            seedSongId = currentTrack.id,
+                            artist = meta?.artists?.firstOrNull()?.name ?: currentTrack.artists.firstOrNull()?.name,
+                            allowAutoplay = true,
+                        ),
+                    ),
+                    playWhenReady = true,
+                )
+                Timber.tag("OmniTuneContinuation").i(
+                    "Autoplay selected ${resolved.mediaId} via ${candidate.source}: ${candidate.reason}",
+                )
+                return
+            }
+
+            failedAutoplayCandidateIds.add(candidate.mediaItem.mediaId)
+            Timber.tag("OmniTuneContinuation").w(
+                "Autoplay candidate failed stream resolution: ${candidate.mediaItem.mediaId} via ${candidate.source}",
+            )
+        }
+
+        Timber.tag("OmniTuneContinuation").w(
+            "Autoplay stopped after ${AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS} failed candidates",
+        )
+    }
+
+    private suspend fun resolveAutoplayCandidate(candidate: AutoplayCandidate): MediaItem? =
+        withContext(Dispatchers.IO) {
+            val item = candidate.mediaItem.withOriginalVideoIdUri()
+            if (StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) {
+                StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+            } else {
+                item
+            }
+        }
+
+    private fun rememberAutoplayCandidate(mediaId: String) {
+        if (mediaId.isBlank()) return
+        recentlyAutoplayedIds.addLast(mediaId)
+        while (recentlyAutoplayedIds.size > MAX_RECENT_AUTOPLAY_IDS) {
+            recentlyAutoplayedIds.removeFirst()
+        }
+    }
+
+    private fun beginTasteWindow(mediaItem: MediaItem?) {
+        val meta = mediaItem?.metadata
+        lastTransitionMediaId = mediaItem?.mediaId
+        lastTransitionMetadata = meta
+        lastTransitionStartedAtMs = System.currentTimeMillis()
+        lastTransitionSourceType = currentPlaybackContext.sourceType
+        lastTransitionDurationMs = meta?.duration
+            ?.takeIf { it > 0 }
+            ?.let { it * 1000L }
+            ?: player.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+    }
+
+    private fun recordTasteSignalForPreviousTransition(completed: Boolean) {
+        val mediaId = lastTransitionMediaId ?: return
+        val sourceType = lastTransitionSourceType
+        val wallClockListenedMs = System.currentTimeMillis() - lastTransitionStartedAtMs
+        val playerPositionMs = player.currentPosition
+            .takeIf { player.currentMediaItem?.mediaId == mediaId && it > 0L }
+        val listenedMs = playerPositionMs ?: wallClockListenedMs
+        val durationMs = lastTransitionDurationMs
+        val actualListenedMs = durationMs
+            ?.takeIf { it > 0L }
+            ?.let { listenedMs.coerceAtMost(it) }
+            ?: listenedMs
+        val positive = TasteSignalClassifier.isPositiveListen(listenedMs, durationMs)
+        val skippedQuickly = TasteSignalClassifier.isQuickSkip(listenedMs, completed)
+        val signal = TasteSignal(
+            songId = mediaId,
+            sourceType = sourceType,
+            listenedMillis = actualListenedMs,
+            durationMillis = durationMs,
+            completed = completed,
+            skippedQuickly = skippedQuickly,
+            positive = positive,
+        )
+
+        recordListeningEventIfNeeded(
+            mediaId = mediaId,
+            metadata = lastTransitionMetadata,
+            listenedMs = actualListenedMs,
+            positive = positive,
+            completed = completed,
+        )
+
+        if (sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
+            if (signal.positive) {
+                lastPositiveAutoplaySeed = lastTransitionMetadata
+                Timber.tag("OmniTuneContinuation").i("Positive autoplay signal for $mediaId after ${listenedMs}ms")
+            }
+            if (signal.skippedQuickly) {
+                failedAutoplayCandidateIds.add(mediaId)
+                scope.launch(Dispatchers.IO) {
+                    val existing = database.getSkip(mediaId)
+                    database.upsertSkip(
+                        existing?.copy(
+                            skipCount = existing.skipCount + 1,
+                            lastSkippedAt = System.currentTimeMillis(),
+                        ) ?: SongSkipEntity(songId = mediaId, skipCount = 1),
+                    )
+                }
+                Timber.tag("OmniTuneContinuation").i("Quick skip signal for autoplay candidate $mediaId")
+            }
+        }
+
+        lastTransitionMediaId = null
+        lastTransitionMetadata = null
+        lastTransitionStartedAtMs = 0L
+        lastTransitionDurationMs = null
+    }
+
+    private fun recordListeningEventIfNeeded(
+        mediaId: String,
+        metadata: MediaMetadata?,
+        listenedMs: Long,
+        positive: Boolean,
+        completed: Boolean,
+    ) {
+        if (listenedMs < MIN_LISTEN_HISTORY_MS) return
+        if (!positive && !completed) return
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                metadata?.let { database.insert(it) }
+                database.insertRecentEvent(mediaId, listenedMs)
+                val historyDays = dataStore.data.first()[HistoryDuration] ?: 30f
+                if (historyDays > 0f) {
+                    val cutoff = System.currentTimeMillis() - historyDays.toLong().coerceAtLeast(1L) * 86_400_000L
+                    database.deleteEventsBefore(cutoff)
+                }
+                database.incrementTotalPlayTime(mediaId, listenedMs)
+                Timber.tag("OmniTuneRecent").d("Recorded listening event: mediaId=$mediaId listenedMs=$listenedMs")
+            } catch (e: Exception) {
+                Timber.tag("OmniTuneRecent").w(e, "Failed to record listening event for $mediaId")
+            }
+        }
+    }
+
     private fun startPlaybackTracker(mediaItem: MediaItem?) {
         playbackTrackerJob?.cancel()
         val mediaId = mediaItem?.mediaId ?: return
@@ -1311,19 +1256,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val ds = applicationContext.dataStore
             val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
             val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
-            
+
             // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
             val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
 
             while (isActive) {
-                val (currentPos, currentId) = withContext(Dispatchers.Main) { 
-                    Pair(player.currentPosition, player.currentMediaItem?.mediaId) 
+                val (currentPos, currentId) = withContext(Dispatchers.Main) {
+                    Pair(player.currentPosition, player.currentMediaItem?.mediaId)
                 }
-                
+
                 if (currentId == mediaId) {
                     if (currentPos >= thresholdMs) {
                         Timber.tag("MusicService").d("Recording play count for $mediaId")
                         database.incrementPlayCount(mediaId)
+                        // Submit scrobble
+                        val scrobbleMeta = _currentMediaMetadata.value
+                        if (scrobbleMeta != null) {
+                            scrobblingManager.onScrobbleThreshold(
+                                title = scrobbleMeta.title,
+                                artist = scrobbleMeta.artists.firstOrNull()?.name ?: "",
+                                album = scrobbleMeta.album?.title,
+                                durationMs = durationMs,
+                            )
+                        }
                         lastRecordedMediaId = mediaId
                         break
                     }
@@ -1335,6 +1290,40 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
+    private fun updateVolumeNormalizationFactor(mediaId: String?) {
+        if (mediaId.isNullOrBlank()) {
+            _volumeNormalizationFactor.value = 1f
+            return
+        }
+        scope.launch {
+            val factor = withContext(Dispatchers.IO) {
+                if (!audioNormalizationEnabled.value) return@withContext 1f
+                val format = database.format(mediaId).first()
+                val loudness = format?.loudnessDb ?: format?.perceptualLoudnessDb ?: return@withContext 1f
+                var f = 10f.pow((-loudness.toFloat()) / 20f)
+                if (f > 1f) f = min(f, 3.16f)
+                f
+            }
+            _volumeNormalizationFactor.value = factor
+        }
+    }
+
+    private fun startBassBoostVirtualizerObserver() {
+        scope.launch {
+            combine(
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostStrengthKey] ?: 500 }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerEnabledKey] ?: false }.distinctUntilChanged(),
+                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerStrengthKey] ?: 500 }.distinctUntilChanged(),
+            ) { bbEnabled, bbStrength, virtEnabled, virtStrength ->
+                audioEffectController.setBassBoostEnabled(bbEnabled)
+                audioEffectController.setBassBoostStrength(bbStrength)
+                audioEffectController.setVirtualizerEnabled(virtEnabled)
+                audioEffectController.setVirtualizerStrength(virtStrength)
+            }.collect { }
+        }
+    }
+
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
         saveQueueState()
     }
@@ -1343,37 +1332,50 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueJob?.cancel()
         saveQueueJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                val prefs = this@MusicService.dataStore.data.first()
+                val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
+                if (!persistentQueue) return@launch
+
                 kotlinx.coroutines.delay(1000) // Debounce
-                
-                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
-                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
+
+                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition)
                 }
-                
+
                 if (count == 0) {
                     database.clearQueue()
                     return@launch
                 }
-                
+
                 val mediaIds = mutableListOf<String>()
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     for (i in 0 until count) {
                         mediaIds.add(player.getMediaItemAt(i).mediaId)
                     }
                 }
-                
+
                 val entity = com.omnitune.app.db.entities.QueueEntity(
                     id = 1,
                     title = queueTitle,
                     mediaIdList = mediaIds.joinToString(","),
                     startIndex = currentIndex,
-                    position = currentPos.coerceAtLeast(0L)
+                    position = currentPos.coerceAtLeast(0L),
+                    playbackSourceType = currentPlaybackContext.sourceType.name,
+                    playbackSourceId = currentPlaybackContext.sourceId,
+                    playbackSourceTitle = currentPlaybackContext.sourceTitle,
+                    playbackSeedSongId = currentPlaybackContext.seedSongId,
+                    playbackGenre = currentPlaybackContext.genre,
+                    playbackMood = currentPlaybackContext.mood,
+                    playbackArtist = currentPlaybackContext.artist,
+                    playbackAllowAutoplay = currentPlaybackContext.allowAutoplay,
+                    playbackShuffledCollection = currentPlaybackContext.shuffledCollection,
                 )
                 database.saveQueue(entity)
                 Timber.tag("OmniTuneQueue").i("Queue saved: count=$count, index=$currentIndex, pos=$currentPos")
-            } catch (e: CancellationException) {
+            } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                timber.log.Timber.tag("MusicService").e(e, "Error saving queue state")
+                Timber.tag("MusicService").e(e, "Error saving queue state")
             }
         }
     }

@@ -28,6 +28,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import com.omnitune.app.utils.dataStore
+import com.omnitune.app.constants.PermanentShuffleKey
+import com.omnitune.app.constants.AutoDownloadOnLikeKey
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -100,6 +105,8 @@ class PlayerConnection(
         }
     }.stateIn(scope, SharingStarted.Eagerly, 0L)
 
+    val discordPresenceRunning: StateFlow<Boolean> = service.discordPresenceManager.isRunning
+
     init {
         player.addListener(this)
 
@@ -124,7 +131,14 @@ class PlayerConnection(
     }
 
     fun playQueue(queue: Queue) {
-        service.playQueue(queue)
+        service.scope.launch {
+            val prefs = service.dataStore.data.first()
+            val permanentShuffle = prefs[PermanentShuffleKey] ?: false
+            if (!permanentShuffle) {
+                player.shuffleModeEnabled = false
+            }
+            service.playQueue(queue)
+        }
     }
 
     fun playOrResolveCurrent() {
@@ -137,6 +151,10 @@ class PlayerConnection(
 
     fun applyEqualizerBands(bands: List<com.omnitune.app.playback.EqualizerBand>) {
         service.applyEqualizerBands(bands)
+    }
+
+    fun setEqualizerEnabled(enabled: Boolean) {
+        service.setEqualizerEnabled(enabled)
     }
 
     fun startRadioSeamlessly() {
@@ -181,6 +199,14 @@ class PlayerConnection(
                 database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
             }
             com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+
+            if (!meta.liked) {
+                val prefs = service.dataStore.data.first()
+                val autoDownload = prefs[AutoDownloadOnLikeKey] ?: false
+                if (autoDownload) {
+                    service.downloadUtil.enqueue(meta.id, meta.title)
+                }
+            }
         }
         mediaMetadata.value = meta.copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null)
     }
@@ -280,6 +306,8 @@ class PlayerConnection(
     fun seekTo(index: Int, position: Long) = player.seekTo(index, position)
     fun getMediaItemAt(index: Int): MediaItem = player.getMediaItemAt(index)
     fun removeMediaItem(index: Int) = player.removeMediaItem(index)
+    fun moveMediaItem(fromIndex: Int, toIndex: Int) = player.moveMediaItem(fromIndex, toIndex)
+    fun addMediaItem(mediaItem: androidx.media3.common.MediaItem) = player.addMediaItem(mediaItem)
     fun setShuffleModeEnabled(enabled: Boolean) { player.shuffleModeEnabled = enabled }
     fun setRepeatMode(mode: Int) { player.repeatMode = mode }
     fun prepare() = player.prepare()
@@ -292,4 +320,8 @@ class PlayerConnection(
     fun setPlaybackParameters(speed: Float, pitch: Float) { player.playbackParameters = PlaybackParameters(speed, pitch) }
     val playbackSpeed: Float get() = player.playbackParameters.speed
     val playbackPitch: Float get() = player.playbackParameters.pitch
+
+    fun restartDiscordPresence() {
+        service.restartDiscordPresence()
+    }
 }

@@ -51,3 +51,14 @@ object EqualizerPresets {
 
     val all = listOf(FLAT, BASS_BOOST, TREBLE_BOOST, VOCAL, ELECTRONIC)
 }
+
+fun encodeEqualizerBands(bands: List<EqualizerBand>): String =
+    bands.joinToString(",") { (it.gainDb * 100).toInt().toString() }
+
+fun decodeEqualizerBands(value: String): List<EqualizerBand>? {
+    val levels = value.split(',').mapNotNull(String::toIntOrNull)
+    if (levels.size != EqualizerPresets.FLAT.bands.size) return null
+    return EqualizerPresets.FLAT.bands.mapIndexed { index, band ->
+        band.copy(gainDb = (levels[index] / 100f).coerceIn(-15f, 15f))
+    }
+}

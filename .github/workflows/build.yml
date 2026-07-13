@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -24,12 +24,23 @@ jobs:
       run: chmod +x gradlew
 
     - name: Run Unit Tests
+      env:
+        YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
       run: ./gradlew testDebugUnitTest --stacktrace
 
     - name: Run Lint
-      run: ./gradlew lintDebug --stacktrace
+      env:
+        YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
+      run: ./gradlew lintDebug lintRelease --stacktrace
+
+    - name: Compile Android tests
+      env:
+        YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
+      run: ./gradlew compileDebugAndroidTestKotlin --stacktrace
 
     - name: Build Debug APK
+      env:
+        YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
       run: ./gradlew assembleDebug
 
     - name: Upload Debug APK

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,21 +52,34 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.component.SongListItem
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.omnitune.app.R
+import com.omnitune.app.db.entities.Album
+import com.omnitune.app.db.entities.Song
+import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.queues.ListQueue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumScreen(
     albumId: String,
     onBack: () -> Unit = {},
-    onPlaySong: (SongItem) -> Unit = {},
+    viewModel: AlbumDetailViewModel = hiltViewModel(),
 ) {
     var albumPage by remember { mutableStateOf<AlbumPage?>(null) }
     var songs by remember { mutableStateOf<List<SongItem>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val isBookmarked by viewModel.isBookmarked.collectAsState()
+    val localAlbum by viewModel.album.collectAsState()
+    val localSongs by viewModel.songs.collectAsState()
+    val playerConnection = LocalPlayerConnection.current
 
     LaunchedEffect(albumId) {
         isLoading = true
+        error = null
+        viewModel.loadAlbum(albumId)
         val pageResult = YouTube.album(albumId)
         pageResult.fold(
             onSuccess = { page ->
@@ -82,12 +97,25 @@ fun AlbumScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(albumPage?.album?.title ?: "Album") },
+            title = { Text(albumPage?.album?.title ?: localAlbum?.title ?: "Album") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         painter = painterResource(com.omnitune.app.R.drawable.ic_arrow_back),
                         contentDescription = "Back",
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = { viewModel.toggleBookmark(albumId) }) {
+                    Icon(
+                        painter = painterResource(
+                            if (isBookmarked) R.drawable.ic_favorite
+                            else R.drawable.ic_favorite_border
+                        ),
+                        contentDescription = if (isBookmarked) "Unlike album" else "Like album",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },
@@ -98,7 +126,7 @@ fun AlbumScreen(
         )
 
         when {
-            isLoading -> {
+            isLoading && localAlbum == null -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -106,14 +134,17 @@ fun AlbumScreen(
                     OmniTuneLoader(size = 48.dp)
                 }
             }
-            error != null -> {
+            localAlbum != null && (albumPage == null || songs == null) -> {
+                LocalAlbumContent(localAlbum ?: return, localSongs, playerConnection)
+            }
+            error != null && albumPage == null -> {
                 EmptyPlaceholder(
                     icon = com.omnitune.app.R.drawable.ic_album,
                     text = error ?: "Failed to load album",
                 )
             }
             albumPage != null -> {
-                val album = albumPage!!.album
+                val album = albumPage?.album ?: return
                 val songList = songs ?: emptyList()
 
                 LazyColumn(
@@ -196,11 +227,23 @@ fun AlbumScreen(
                             )
                         }
                     } else {
-                        itemsIndexed(songList) { index, song ->
+                        itemsIndexed(
+                            items = songList,
+                            key = { index, song -> "album_song_${song.id.ifBlank { index.toString() }}" },
+                            contentType = { _, _ -> "album-song" },
+                        ) { index, song ->
                             SongRow(
                                 index = index + 1,
                                 song = song,
-                                onClick = { onPlaySong(song) },
+                                onClick = {
+                                    playerConnection?.playQueue(
+                                        ListQueue(
+                                            title = album.title,
+                                            items = songList.map { it.toMediaItem() },
+                                            startIndex = index,
+                                        ),
+                                    )
+                                },
                             )
                             if (index < songList.lastIndex) {
                                 HorizontalDivider(
@@ -213,6 +256,59 @@ fun AlbumScreen(
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LocalAlbumContent(
+    album: Album,
+    songs: List<Song>,
+    playerConnection: PlayerConnection?,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AsyncImage(
+                    model = album.thumbnailUrl,
+                    contentDescription = album.title,
+                    modifier = Modifier.size(144.dp).clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(album.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        album.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text("${songs.size} tracks", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            if (songs.isNotEmpty()) playerConnection?.playQueue(
+                                ListQueue(title = album.title, items = songs.map { it.toMediaItem() }),
+                            )
+                        },
+                    ) { Text("Play") }
+                }
+            }
+        }
+        itemsIndexed(songs, key = { _, song -> song.id }) { index, song ->
+            SongListItem(
+                song = song,
+                modifier = Modifier.clickable {
+                    playerConnection?.playQueue(
+                        ListQueue(title = album.title, items = songs.map { it.toMediaItem() }, startIndex = index),
+                    )
+                },
+            )
         }
     }
 }

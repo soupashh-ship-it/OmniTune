@@ -20,6 +20,9 @@ class QueueEntityTest {
         assertEquals("id1,id2,id3", entity.mediaIdList)
         assertEquals(0, entity.startIndex)
         assertEquals(1000L, entity.position)
+        assertNull(entity.playbackSourceType)
+        assertEquals(true, entity.playbackAllowAutoplay)
+        assertEquals(false, entity.playbackShuffledCollection)
     }
 
     @Test

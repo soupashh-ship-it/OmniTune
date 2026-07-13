@@ -13,8 +13,8 @@ import kotlinx.coroutines.withContext
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
-    val LINE_REGEX = "((\\[(?:\\d\\d:)?\\d\\d:\\d\\d\\.\\d{2,3}\\] ?)+)(.*)".toRegex()
-    val TIME_REGEX = "\\[(?:(\\d\\d):)?(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]".toRegex()
+    val LINE_REGEX = "((\\[(?:\\d\\d:)?\\d\\d:\\d\\d(?:\\.\\d{1,3})?\\] ?)+)(.*)".toRegex()
+    val TIME_REGEX = "\\[(?:(\\d\\d):)?(\\d\\d):(\\d\\d)(?:\\.(\\d{1,3}))?\\]".toRegex()
 
     private val KANA_ROMAJI_MAP: Map<String, String> = mapOf(
         "キャ" to "kya", "キュ" to "kyu", "キョ" to "kyo",
@@ -158,9 +158,13 @@ object LyricsUtils {
                 val min = timeMatchResult.groupValues[2].toLong()
                 val sec = timeMatchResult.groupValues[3].toLong()
                 val milString = timeMatchResult.groupValues[4]
-                var mil = milString.toLong()
-                if (milString.length == 2) {
-                    mil *= 10
+                val mil = if (milString.isEmpty()) 0L else {
+                    val m = milString.toLong()
+                    when (milString.length) {
+                        1 -> m * 100
+                        2 -> m * 10
+                        else -> m
+                    }
                 }
                 val time = hr * 3600000L + min * 60000L + sec * 1000L + mil
                 LyricsEntry(time, text)

@@ -21,8 +21,20 @@ fun String.resize(
         if (w == null && h != null) w = (h / H) * W
         return "${split("=w")[0]}=w$w-h$h-p-l90-rj"
     }
-    if (this matches "https://yt3\\.ggpht\\.com/.*=s(\\d+)".toRegex()) {
-        return "$this-s${width ?: height}"
+    val requestedSize = width ?: height
+    if (requestedSize != null) {
+        "https://yt3\\.ggpht\\.com/.*=s(\\d+).*".toRegex()
+            .matchEntire(this)?.let {
+                return "${substringBefore("=s")}=s$requestedSize"
+            }
+    }
+    if (contains("i.ytimg.com/vi/") || contains("i.ytimg.com/vi_webp/")) {
+        return replace("mqdefault.jpg", "maxresdefault.jpg")
+            .replace("hqdefault.jpg", "maxresdefault.jpg")
+            .replace("sddefault.jpg", "maxresdefault.jpg")
+            .replace("mqdefault.webp", "maxresdefault.webp")
+            .replace("hqdefault.webp", "maxresdefault.webp")
+            .replace("sddefault.webp", "maxresdefault.webp")
     }
     return this
 }

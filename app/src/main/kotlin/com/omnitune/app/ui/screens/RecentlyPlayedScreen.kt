@@ -45,6 +45,7 @@ import com.omnitune.app.R
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.EmptyPlaceholder
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -93,7 +94,7 @@ fun RecentlyPlayedScreen(
                         onClick = { onPlaySong(event.song) },
                     )
                 }
-                item { Spacer(modifier = Modifier.height(88.dp)) }
+                item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPadding)) }
             }
         }
     }

@@ -57,7 +57,19 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 4
+private const val CURRENT_VERSION = 7
+
+internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
+    val message = generateSequence(error) { it.cause }
+        .mapNotNull { it.message?.lowercase() }
+        .joinToString(" ")
+    return listOf(
+        "migration didn't properly handle",
+        "room cannot verify the data integrity",
+        "pre-packaged database has an invalid schema",
+        "duplicate column name",
+    ).any(message::contains)
+}
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -131,7 +143,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = CURRENT_VERSION + 1,
+    version = CURRENT_VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -141,7 +153,7 @@ abstract class InternalDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "song.db"
 
-        private val MIGRATION_1_2 = object : Migration(1, 2) {
+        internal val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Empty migration: The schema for version 1 in OmniTune was already the 
                 // modern schema. We just bump the version to 2 to enable proper 
@@ -149,7 +161,7 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_2_3 = object : Migration(2, 3) {
+        internal val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "ALTER TABLE Song ADD COLUMN download_state INTEGER NOT NULL DEFAULT 0"
@@ -157,7 +169,7 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_3_4 = object : Migration(3, 4) {
+        internal val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL(
                     "CREATE TABLE IF NOT EXISTS `queue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT, `mediaIdList` TEXT NOT NULL, `startIndex` INTEGER NOT NULL, `position` INTEGER NOT NULL)"
@@ -165,7 +177,7 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
-        private val MIGRATION_4_5 = object : Migration(4, 5) {
+        internal val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `song` (`inLibrary`)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isLocal` ON `song` (`isLocal`)")
@@ -175,17 +187,66 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceType` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceId` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceTitle` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSeedSongId` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackGenre` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackMood` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackArtist` TEXT")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackAllowAutoplay` INTEGER NOT NULL DEFAULT 1")
+                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackShuffledCollection` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        internal val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                val hasDownloadedColumn = database.query("PRAGMA table_info(`playlist`)").use { cursor ->
+                    val nameIndex = cursor.getColumnIndex("name")
+                    generateSequence { if (cursor.moveToNext()) cursor.getString(nameIndex) else null }
+                        .any { it == "isDownloaded" }
+                }
+                if (!hasDownloadedColumn) {
+                    database.execSQL("ALTER TABLE `playlist` ADD COLUMN `isDownloaded` INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
-            val db = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            fun build() = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .addCallback(DatabaseCallback())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
                 .setQueryExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
                 .build()
 
+            var db = build()
+            try {
+                db.openHelper.writableDatabase
+            } catch (error: Exception) {
+                if (!isRecoverableDatabaseSchemaFailure(error)) throw error
+
+                Log.e(TAG, "Database schema upgrade failed; attempting non-destructive repair", error)
+                runCatching { db.close() }
+                SchemaTools.repairDatabaseFile(context, DB_NAME)
+                db = build()
+                db.openHelper.writableDatabase
+            }
+
             return MusicDatabase(delegate = db)
         }
+
+        internal val ALL_MIGRATIONS = arrayOf(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+        )
     }
 }
 
@@ -203,6 +264,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 
                 cleanupDuplicatePlaylistsOnOpen(db)
                 ensurePlaylistBrowseIdIndex(db)
+                repairLibraryRelations(db)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set PRAGMA settings", e)
             }
@@ -211,49 +273,45 @@ private class DatabaseCallback : RoomDatabase.Callback() {
     
     private fun cleanupDuplicatePlaylistsOnOpen(db: SupportSQLiteDatabase) {
         try {
-            db.execSQL("""
-                DELETE FROM playlist_song_map WHERE playlistId IN (
-                    SELECT p1.id FROM playlist p1
-                    WHERE p1.browseId IS NOT NULL
-                    AND EXISTS (
-                        SELECT 1 FROM playlist p2 
-                        WHERE p2.browseId = p1.browseId 
-                        AND p2.id != p1.id
-                        AND (
-                            (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) >
-                            (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p1.id)
-                            OR (
-                                (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) =
-                                (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p1.id)
-                                AND p2.rowid < p1.rowid
-                            )
-                        )
-                    )
-                )
-            """)
-            
-            db.execSQL("""
-                DELETE FROM playlist WHERE id IN (
-                    SELECT p1.id FROM playlist p1
-                    WHERE p1.browseId IS NOT NULL
-                    AND EXISTS (
-                        SELECT 1 FROM playlist p2 
-                        WHERE p2.browseId = p1.browseId 
-                        AND p2.id != p1.id
-                        AND (
-                            (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) >
-                            (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p1.id)
-                            OR (
-                                (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p2.id) =
-                                (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = p1.id)
-                                AND p2.rowid < p1.rowid
-                            )
-                        )
-                    )
-                )
-            """)
+            db.beginTransaction()
+            db.execSQL(
+                """
+                CREATE TEMP TABLE duplicate_playlist_map AS
+                SELECT loser.id AS loserId,
+                       (SELECT winner.id FROM playlist winner
+                        WHERE winner.browseId = loser.browseId
+                        ORDER BY (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = winner.id) DESC,
+                                 winner.rowid ASC
+                        LIMIT 1) AS winnerId
+                FROM playlist loser
+                WHERE loser.browseId IS NOT NULL
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT INTO playlist_song_map (playlistId, songId, position, setVideoId)
+                SELECT map.winnerId,
+                       songs.songId,
+                       COALESCE((SELECT MAX(position) FROM playlist_song_map WHERE playlistId = map.winnerId), -1) + songs.id + 1,
+                       songs.setVideoId
+                FROM duplicate_playlist_map map
+                JOIN playlist_song_map songs ON songs.playlistId = map.loserId
+                WHERE map.loserId != map.winnerId
+                  AND NOT EXISTS (
+                      SELECT 1 FROM playlist_song_map existing
+                      WHERE existing.playlistId = map.winnerId AND existing.songId = songs.songId
+                  )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "DELETE FROM playlist WHERE id IN (SELECT loserId FROM duplicate_playlist_map WHERE loserId != winnerId)",
+            )
+            db.execSQL("DROP TABLE duplicate_playlist_map")
+            db.setTransactionSuccessful()
         } catch (e: Exception) {
             Log.w(TAG, "Duplicate playlist cleanup skipped", e)
+        } finally {
+            if (db.inTransaction()) db.endTransaction()
         }
     }
     
@@ -263,6 +321,60 @@ private class DatabaseCallback : RoomDatabase.Callback() {
         } catch (e: Exception) {
             Log.w(TAG, "Failed to create browseId index", e)
         }
+    }
+
+    private fun repairLibraryRelations(db: SupportSQLiteDatabase) {
+        try {
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO album
+                    (id, title, thumbnailUrl, songCount, duration, explicit, lastUpdateTime, isLocal)
+                SELECT albumId,
+                       MAX(albumName),
+                       MAX(thumbnailUrl),
+                       COUNT(*),
+                       SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END),
+                       MAX(explicit),
+                       strftime('%s', 'now') * 1000,
+                       MAX(isLocal)
+                FROM song
+                WHERE albumId IS NOT NULL AND albumId != '' AND albumName IS NOT NULL AND albumName != ''
+                GROUP BY albumId
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO song_album_map (songId, albumId, `index`)
+                SELECT song.id,
+                       song.albumId,
+                       (SELECT COUNT(*) FROM song earlier
+                        WHERE earlier.albumId = song.albumId AND earlier.rowid < song.rowid)
+                FROM song
+                WHERE song.albumId IS NOT NULL AND song.albumId IN (SELECT id FROM album)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO album_artist_map (albumId, artistId, `order`)
+                SELECT DISTINCT song.albumId, song_artist_map.artistId, song_artist_map.position
+                FROM song
+                JOIN song_artist_map ON song_artist_map.songId = song.id
+                WHERE song.albumId IS NOT NULL AND song.albumId IN (SELECT id FROM album)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                """
+                UPDATE album
+                SET songCount = (SELECT COUNT(*) FROM song WHERE song.albumId = album.id),
+                    duration = (SELECT SUM(CASE WHEN duration > 0 THEN duration ELSE 0 END) FROM song WHERE song.albumId = album.id),
+                    thumbnailUrl = COALESCE(thumbnailUrl, (SELECT MAX(thumbnailUrl) FROM song WHERE song.albumId = album.id))
+                WHERE id IN (SELECT DISTINCT albumId FROM song WHERE albumId IS NOT NULL)
+                """.trimIndent(),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Library relation repair skipped", e)
+        }
+
     }
 }
 
@@ -351,16 +463,22 @@ private object SchemaTools {
         val expectedTriggers = expectedMaster.filter { it.type == "trigger" && it.sql != null }
 
         db.execSQL("PRAGMA foreign_keys=OFF")
-        dropNonTableObjects(db)
-
-        expectedTables.forEach { table ->
-            ensureTableSchema(db = db, expectedDb = expectedDb, table = table, expectedIndices = expectedIndices)
+        try {
+            db.beginTransaction()
+            try {
+                dropNonTableObjects(db)
+                expectedTables.forEach { table ->
+                    ensureTableSchema(db = db, expectedDb = expectedDb, table = table, expectedIndices = expectedIndices)
+                }
+                expectedViews.forEach { db.execSQL(it.sql!!) }
+                expectedTriggers.forEach { db.execSQL(it.sql!!) }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        } finally {
+            db.execSQL("PRAGMA foreign_keys=ON")
         }
-
-        expectedViews.forEach { db.execSQL(it.sql!!) }
-        expectedTriggers.forEach { db.execSQL(it.sql!!) }
-
-        db.execSQL("PRAGMA foreign_keys=ON")
     }
 
     private fun readIdentityHash(db: SupportSQLiteDatabase): String? =

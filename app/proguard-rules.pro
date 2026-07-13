@@ -38,3 +38,4 @@
 -dontwarn java.lang.management.**
 -dontwarn javax.script.**
 -dontwarn jdk.dynalink.**
+-dontwarn com.sun.nio.file.**

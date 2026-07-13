@@ -1,9 +1,13 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,236 +18,170 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import com.omnitune.app.ui.component.OmniTuneLoader
+import coil3.compose.AsyncImage
+import com.omnitune.app.R
+import com.omnitune.app.db.entities.ArtistEntity
+import com.omnitune.app.db.entities.Song
+import com.omnitune.app.ui.component.OmniChrome
+import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
+import com.omnitune.app.ui.screens.settings.OmniPreferenceCard
+import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.OmniSpacing
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel(),
+    onNavigateToYearInMusic: () -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .background(OmniColors.OmniBackgroundBase)
+            .padding(horizontal = OmniSpacing.section),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
-        item {
+        item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Listening Stats",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Your music listening overview",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Spacer(modifier = Modifier.height(OmniSpacing.large))
+            StatsHeader(
+                minutesListened = uiState.minutesListened,
+                totalPlayed = uiState.totalPlayed,
             )
         }
 
-        if (uiState.isLoading) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
-                    contentAlignment = Alignment.Center,
+        item(contentType = "year-in-music") {
+            com.omnitune.app.ui.screens.settings.OmniPreferenceCard(title = null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToYearInMusic() }
+                        .padding(OmniSpacing.medium),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OmniTuneLoader(size = 48.dp)
+                    androidx.compose.material3.Icon(
+                        painter = androidx.compose.ui.res.painterResource(R.drawable.ic_history), // Use any available icon
+                        contentDescription = null,
+                        tint = com.omnitune.app.ui.theme.OmniColors.OmniAccentPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(OmniSpacing.medium))
+                    Column {
+                        androidx.compose.material3.Text(
+                            text = "Year in Music",
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            color = com.omnitune.app.ui.theme.OmniColors.TextPrimary
+                        )
+                        androidx.compose.material3.Text(
+                            text = "View your personal music recap",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = com.omnitune.app.ui.theme.OmniColors.TextSecondary
+                        )
+                    }
                 }
             }
-        } else {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    StatCard(
-                        icon = com.omnitune.app.R.drawable.ic_play_arrow,
-                        label = "Songs in Library",
-                        value = uiState.songCount.toString(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    StatCard(
-                        icon = com.omnitune.app.R.drawable.ic_history,
-                        label = "Times Played",
-                        value = uiState.totalPlayed.toString(),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        }
+
+        when {
+            uiState.isLoading -> item(contentType = "loading") {
+                ShimmerTrackList(rowCount = 5)
             }
 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    StatCard(
-                        icon = com.omnitune.app.R.drawable.ic_album,
-                        label = "Albums",
-                        value = uiState.albumCount.toString(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    StatCard(
-                        icon = com.omnitune.app.R.drawable.ic_artist,
-                        label = "Artists",
-                        value = uiState.artistCount.toString(),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    StatCard(
-                        icon = com.omnitune.app.R.drawable.ic_calendar,
-                        label = "Minutes Listened",
-                        value = uiState.minutesListened.toString(),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Top Tracks",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+            uiState.error != null -> item(contentType = "error") {
+                StatsEmptyState(
+                    icon = R.drawable.ic_info,
+                    title = "Stats unavailable",
+                    body = uiState.error ?: "Could not read listening stats.",
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            if (uiState.topSongs.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
+            !uiState.hasStats -> item(contentType = "empty") {
+                StatsEmptyState(
+                    icon = R.drawable.ic_history,
+                    title = "No insights yet",
+                    body = "Listen to a few songs to see your stats here.",
+                )
+            }
+
+            else -> {
+                item(contentType = "summary") {
+                    OmniPreferenceCard(title = "Overview") {
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(OmniSpacing.small),
+                            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
                         ) {
-                            Icon(
-                                painter = painterResource(com.omnitune.app.R.drawable.ic_info),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(40.dp),
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "Not enough listening history yet to generate stats",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
+                            if (uiState.recentlyPlayedCount > 0) {
+                                StatChip(R.drawable.ic_history, "Recently played", uiState.recentlyPlayedCount.toString())
+                            }
+                            if (uiState.totalPlayed > 0) {
+                                StatChip(R.drawable.ic_play_arrow, "Plays", uiState.totalPlayed.toString())
+                            }
+                            if (uiState.playedThisWeek > 0) {
+                                StatChip(R.drawable.ic_calendar, "This week", uiState.playedThisWeek.toString())
+                            }
+                            if (uiState.minutesListened > 0) {
+                                StatChip(R.drawable.ic_history, "Minutes", uiState.minutesListened.toString())
+                            }
+                            if (uiState.likedCount > 0) {
+                                StatChip(R.drawable.ic_favorite, "Liked", uiState.likedCount.toString())
+                            }
+                            if (uiState.songCount > 0) {
+                                StatChip(R.drawable.ic_album, "Library songs", uiState.songCount.toString())
+                            }
+                            if (uiState.artistCount > 0) {
+                                StatChip(R.drawable.ic_artist, "Artists", uiState.artistCount.toString())
+                            }
+                            if (uiState.albumCount > 0) {
+                                StatChip(R.drawable.ic_album, "Albums", uiState.albumCount.toString())
+                            }
                         }
                     }
                 }
-            } else {
-                item {
-                    var animateBars by remember { androidx.compose.runtime.mutableStateOf(false) }
-                    androidx.compose.runtime.LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(100)
-                        animateBars = true
+
+                if (uiState.topSongs.isNotEmpty()) {
+                    item(contentType = "top-songs") {
+                        OmniPreferenceCard(title = "Top songs") {
+                            Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
+                                uiState.topSongs.forEach { (song, plays) ->
+                                    TopSongRow(song = song, plays = plays)
+                                }
+                            }
+                        }
                     }
-                    val maxPlays = uiState.topSongs.maxOfOrNull { it.second } ?: 1
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        uiState.topSongs.forEach { (song, playCount) ->
-                            val targetProgress = playCount.toFloat() / maxPlays.toFloat()
-                            val progress by androidx.compose.animation.core.animateFloatAsState(
-                                targetValue = if (animateBars) targetProgress else 0f,
-                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                                label = "progress"
-                            )
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                            ) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.surface)
-                                        ) {
-                                            if (song.thumbnailUrl != null) {
-                                                coil3.compose.AsyncImage(
-                                                    model = song.thumbnailUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = song.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.SemiBold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = song.artists.joinToString(", ") { it.name },
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "$playCount plays",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    androidx.compose.material3.LinearProgressIndicator(
-                                        progress = { progress },
-                                        modifier = Modifier.fillMaxWidth().height(4.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                }
+
+                if (uiState.topArtists.isNotEmpty()) {
+                    item(contentType = "top-artists") {
+                        OmniPreferenceCard(title = "Top artists") {
+                            Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
+                                uiState.topArtists.forEach { (artist, plays) ->
+                                    TopArtistRow(
+                                        artist = artist,
+                                        plays = plays,
+                                        onClick = { onNavigateToArtist(artist.id) },
                                     )
                                 }
                             }
@@ -253,46 +191,302 @@ fun StatsScreen(
             }
         }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
 }
 
 @Composable
-private fun StatCard(
-    icon: Int,
-    label: String,
+private fun StatsHeader(minutesListened: Long, totalPlayed: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+        Text(
+            text = "Stats",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = OmniColors.TextPrimary,
+        )
+        Text(
+            text = "Listening insights from your real activity",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextSecondary,
+        )
+        if (totalPlayed > 0 || minutesListened > 0) {
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                if (totalPlayed > 0) {
+                    StatsHeroPill(
+                        value = totalPlayed.toString(),
+                        label = "total plays",
+                        icon = R.drawable.ic_play_arrow,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (minutesListened > 0) {
+                    StatsHeroPill(
+                        value = if (minutesListened >= 60) "${minutesListened / 60}h ${minutesListened % 60}m"
+                               else "${minutesListened}m",
+                        label = "listened",
+                        icon = R.drawable.ic_history,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsHeroPill(
     value: String,
+    label: String,
+    icon: Int,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
+    Row(
+        modifier = modifier
+            .clip(OmniShapes.Medium)
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(
+                        OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                        OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
+                    )
+                )
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+        Column {
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.ExtraBold,
+                color = OmniColors.TextPrimary,
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                color = OmniColors.TextSecondary,
             )
         }
     }
+}
+
+@Composable
+private fun StatChip(
+    icon: Int,
+    label: String,
+    value: String,
+) {
+    Row(
+        modifier = Modifier
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceRaised)
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = OmniColors.OmniAccentSecondary,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopSongRow(
+    song: Song,
+    plays: Int,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceRaised)
+            .padding(OmniSpacing.small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ArtworkBox(thumbnailUrl = song.thumbnailUrl)
+        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            text = countLabel(plays, "play"),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.OmniAccentSecondary,
+        )
+    }
+}
+
+@Composable
+private fun TopArtistRow(
+    artist: ArtistEntity,
+    plays: Int,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Medium)
+            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.44f))
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(OmniShapes.Pill)
+                .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (artist.thumbnailUrl.isNullOrBlank()) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_artist),
+                    contentDescription = null,
+                    tint = OmniColors.OmniAccentSecondary,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                AsyncImage(
+                    model = artist.thumbnailUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = artist.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = countLabel(plays, "play"),
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArtworkBox(thumbnailUrl: String?) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(OmniShapes.ArtworkSmall)
+            .background(OmniColors.SurfaceQuiet),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (thumbnailUrl.isNullOrBlank()) {
+            Icon(
+                painter = painterResource(R.drawable.ic_album),
+                contentDescription = null,
+                tint = OmniColors.TextTertiary,
+                modifier = Modifier.size(24.dp),
+            )
+        } else {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsEmptyState(
+    icon: Int,
+    title: String,
+    body: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.ExtraLarge)
+            .padding(OmniSpacing.screen),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary,
+            modifier = Modifier.size(44.dp),
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.medium))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = OmniColors.TextPrimary,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.micro))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextSecondary,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private fun countLabel(
+    count: Int,
+    singular: String,
+): String {
+    val noun = if (count == 1) singular else "${singular}s"
+    return "$count $noun"
 }
