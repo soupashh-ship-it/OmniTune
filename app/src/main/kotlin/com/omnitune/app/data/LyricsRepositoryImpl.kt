@@ -52,13 +52,27 @@ class LyricsRepositoryImpl @Inject constructor(
 
     override fun parseLrc(lrcText: String): List<LyricsLine> {
         val entries = InlineLyrics.parseSyncedEntries(lrcText)
-        if (entries.isEmpty()) return emptyList()
-        return entries.map { entry ->
-            LyricsLine(
-                timestamp = entry.time,
-                text = entry.text,
-                isTranslated = false
-            )
+        if (entries.isNotEmpty()) {
+            return entries.map { entry ->
+                LyricsLine(
+                    timestamp = entry.time,
+                    text = entry.text,
+                    isTranslated = false
+                )
+            }
         }
+
+        return lrcText
+            .lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotBlank() && it != LyricsEntity.LYRICS_NOT_FOUND }
+            .map { line ->
+                LyricsLine(
+                    timestamp = -1L,
+                    text = line,
+                    isTranslated = false
+                )
+            }
+            .toList()
     }
 }

@@ -27,4 +27,39 @@ class LyricsRepositoryImplTest {
         assertEquals("Cached line", (result as AppResult.Success).data.single().text)
         Mockito.verifyNoInteractions(helper)
     }
+
+    @Test
+    fun `plain lyrics are returned as displayable unsynced lines`() {
+        val helper = Mockito.mock(LyricsHelper::class.java)
+        val database = Mockito.mock(DatabaseDao::class.java)
+        val repository = LyricsRepositoryImpl(helper, database)
+
+        val lines = repository.parseLrc(
+            """
+            First plain line
+
+            Second plain line
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("First plain line", "Second plain line"), lines.map { it.text })
+        assertEquals(listOf(-1L, -1L), lines.map { it.timestamp })
+    }
+
+    @Test
+    fun `synced lyrics keep timestamps for auto scroll`() {
+        val helper = Mockito.mock(LyricsHelper::class.java)
+        val database = Mockito.mock(DatabaseDao::class.java)
+        val repository = LyricsRepositoryImpl(helper, database)
+
+        val lines = repository.parseLrc(
+            """
+            [00:01.00]First synced line
+            [00:03.50]Second synced line
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("First synced line", "Second synced line"), lines.map { it.text })
+        assertEquals(listOf(1_000L, 3_500L), lines.map { it.timestamp })
+    }
 }

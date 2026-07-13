@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
-import com.omnitune.app.constants.LyricsScrollKey
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniLoadingPulse
@@ -63,7 +62,6 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
-import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 
@@ -164,20 +162,10 @@ fun LyricsBottomSheet(
                         EmptyState(message = "No lyrics found for this track.")
                     }
                     is LyricsUiState.Success -> {
-                        val autoScrollLyrics by rememberPreference(LyricsScrollKey, true)
-                        val useLyricsV2 by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.UseLyricsV2Key, false)
-                        if (useLyricsV2) {
-                            com.omnitune.app.ui.component.LyricsV2(
-                                sliderPositionProvider = { playerConnection?.player?.currentPosition },
-                                fallbackLines = state.lines,
-                            )
-                        } else {
-                            LyricsContent(
-                                lines = state.lines,
-                                playerConnection = playerConnection,
-                                autoScrollEnabled = autoScrollLyrics,
-                            )
-                        }
+                        com.omnitune.app.ui.component.LyricsV2(
+                            sliderPositionProvider = { playerConnection?.player?.currentPosition },
+                            fallbackLines = state.lines,
+                        )
                     }
                 }
             }

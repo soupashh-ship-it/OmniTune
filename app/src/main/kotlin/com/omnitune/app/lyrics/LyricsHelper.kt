@@ -203,15 +203,18 @@ constructor(
 
         if (normalized.isEmpty()) return false
         if (normalized == LYRICS_NOT_FOUND) return false
-        if (!TIMESTAMP_REGEX.containsMatchIn(normalized) && !LyricsUtils.isTtml(lyrics)) return false
-
         val remaining =
             TIMESTAMP_REGEX
                 .replace(normalized, "")
                 .replace(INVISIBLE_CHARS_REGEX, "")
                 .trim { it.isWhitespace() || it == '\u00A0' }
 
-        return remaining.any { !it.isWhitespace() && it != '\u00A0' }
+        return remaining
+            .lineSequence()
+            .map { it.trim() }
+            .any { line ->
+                line.any { !it.isWhitespace() && it != '\u00A0' }
+            }
     }
 
     fun cancelCurrentLyricsJob() {
