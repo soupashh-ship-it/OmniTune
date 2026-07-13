@@ -7,7 +7,9 @@ import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.models.AppResult
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.MediaMetadata
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class LyricsRepositoryImpl @Inject constructor(
@@ -20,8 +22,8 @@ class LyricsRepositoryImpl @Inject constructor(
         title: String,
         artist: String,
         duration: Long
-    ): AppResult<List<LyricsLine>> {
-        return try {
+    ): AppResult<List<LyricsLine>> = withContext(Dispatchers.IO) {
+        try {
             val metadata = MediaMetadata(
                 id = songId,
                 title = title,
@@ -30,7 +32,20 @@ class LyricsRepositoryImpl @Inject constructor(
             )
             val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
             if (!dbLyrics.isNullOrBlank() && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                return AppResult.Success(parseLrc(dbLyrics))
+                val cachedLines = parseLrc(dbLyrics)
+                if (cachedLines.any { it.timestamp >= 0L }) {
+                    return@withContext AppResult.Success(cachedLines)
+                }
+
+                val refreshed = lyricsHelper.getLyrics(metadata)
+                if (refreshed != LyricsEntity.LYRICS_NOT_FOUND && refreshed.isNotBlank()) {
+                    val refreshedLines = parseLrc(refreshed)
+                    if (refreshedLines.any { it.timestamp >= 0L } || cachedLines.isEmpty()) {
+                        databaseDao.upsert(LyricsEntity(id = songId, lyrics = refreshed))
+                        return@withContext AppResult.Success(refreshedLines)
+                    }
+                }
+                return@withContext AppResult.Success(cachedLines)
             }
             val fetched = lyricsHelper.getLyrics(metadata)
             val lrcText = if (fetched != LyricsEntity.LYRICS_NOT_FOUND) {
@@ -39,7 +54,7 @@ class LyricsRepositoryImpl @Inject constructor(
             } else {
                 dbLyrics ?: LyricsEntity.LYRICS_NOT_FOUND
             }
-            
+
             if (lrcText == LyricsEntity.LYRICS_NOT_FOUND) {
                 AppResult.Error("Lyrics not found")
             } else {

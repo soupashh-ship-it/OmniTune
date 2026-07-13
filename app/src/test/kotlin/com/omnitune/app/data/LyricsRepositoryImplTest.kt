@@ -4,8 +4,10 @@ import com.omnitune.app.db.DatabaseDao
 import com.omnitune.app.db.entities.LyricsEntity
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.models.AppResult
+import com.omnitune.app.models.MediaMetadata
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,6 +28,48 @@ class LyricsRepositoryImplTest {
         assertTrue(result is AppResult.Success)
         assertEquals("Cached line", (result as AppResult.Success).data.single().text)
         Mockito.verifyNoInteractions(helper)
+    }
+
+    @Test
+    fun `plain cached lyrics are refreshed when synced lyrics are available`() = runBlocking {
+        val helper = Mockito.mock(LyricsHelper::class.java)
+        val database = Mockito.mock(DatabaseDao::class.java)
+        Mockito.`when`(database.lyrics("song-id")).thenReturn(
+            flowOf(LyricsEntity(id = "song-id", lyrics = "Plain cached line")),
+        )
+        val metadata = MediaMetadata(
+            id = "song-id",
+            title = "Song",
+            artists = listOf(MediaMetadata.Artist(id = "", name = "Artist")),
+            duration = 180,
+        )
+        Mockito.`when`(helper.getLyrics(metadata)).thenReturn("[00:02.00]Synced provider line")
+        val repository = LyricsRepositoryImpl(helper, database)
+
+        val result = repository.loadLyrics("song-id", "Song", "Artist", 180)
+
+        assertTrue(result is AppResult.Success)
+        val lines = (result as AppResult.Success).data
+        assertEquals("Synced provider line", lines.single().text)
+        assertEquals(2_000L, lines.single().timestamp)
+        Mockito.verify(database).upsert(LyricsEntity(id = "song-id", lyrics = "[00:02.00]Synced provider line"))
+    }
+
+    @Test
+    fun `lyrics load can be called from main dispatcher`() = runTest {
+        val helper = Mockito.mock(LyricsHelper::class.java)
+        val database = Mockito.mock(DatabaseDao::class.java)
+        Mockito.`when`(database.lyrics("song-id")).thenReturn(
+            flowOf(LyricsEntity(id = "song-id", lyrics = "[00:04.00]Main-safe line")),
+        )
+        val repository = LyricsRepositoryImpl(helper, database)
+
+        val result = repository.loadLyrics("song-id", "Song", "Artist", 180)
+
+        assertTrue(result is AppResult.Success)
+        val lines = (result as AppResult.Success).data
+        assertEquals("Main-safe line", lines.single().text)
+        assertEquals(4_000L, lines.single().timestamp)
     }
 
     @Test

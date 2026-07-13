@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -99,7 +100,11 @@ constructor(
                             mediaMetadata.album?.title,
                             mediaMetadata.duration,
                         ).fold(
-                            onSuccess = { lyrics -> lyrics.takeIf(::isMeaningfulLyrics) },
+                            onSuccess = { lyrics ->
+                                lyrics
+                                    .takeIf(::isMeaningfulLyrics)
+                                    ?.let { LyricsCandidate(provider.name, it, isSyncedLyrics(it)) }
+                            },
                             onFailure = {
                                 reportException(it)
                                 null
@@ -114,11 +119,9 @@ constructor(
         }
 
         try {
-            for (job in jobs) {
-                val lyrics = job.await()
-                if (lyrics != null) return@coroutineScope lyrics
-            }
-            null
+            val candidates = jobs.awaitAll().filterNotNull()
+            candidates.firstOrNull { it.isSynced }?.lyrics
+                ?: candidates.firstOrNull()?.lyrics
         } finally {
             jobs.forEach { it.cancel() }
         }
@@ -217,6 +220,9 @@ constructor(
             }
     }
 
+    private fun isSyncedLyrics(lyrics: String): Boolean =
+        TIMESTAMP_REGEX.containsMatchIn(lyrics) || LyricsUtils.isTtml(lyrics)
+
     fun cancelCurrentLyricsJob() {
         currentLyricsJob?.cancel()
         currentLyricsJob = null
@@ -232,4 +238,10 @@ constructor(
 data class LyricsResult(
     val providerName: String,
     val lyrics: String,
+)
+
+private data class LyricsCandidate(
+    val providerName: String,
+    val lyrics: String,
+    val isSynced: Boolean,
 )

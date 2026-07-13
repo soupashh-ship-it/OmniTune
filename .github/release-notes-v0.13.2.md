@@ -6,6 +6,9 @@ This release focuses on restoring reliable lyrics behavior and cleaning up the l
 
 - Fixed lyrics provider results being incorrectly rejected when a provider returned valid plain-text lyrics without timestamps.
 - Fixed plain lyrics loading as an empty result, which made the lyrics screen show missing/error states even after a provider returned usable lyrics.
+- Fixed auto-scroll not advancing when a plain-text provider result was cached before a synced LRC/TTML result. OmniTune now prefers synced lyrics for playback-following views and only falls back to plain lyrics when no synced lyrics are available.
+- Fixed existing plain cached lyrics blocking synced lyrics forever by refreshing unsynced cached lyrics when a synced provider result can be found.
+- Fixed lyrics failing with "Cannot access database on the main thread" by moving lyrics repository database reads/writes and refresh work onto the IO dispatcher.
 - Preserved synced LRC/TTML timestamps through the lyrics repository so playback-synced lyrics can continue to auto-scroll with the current song position.
 - Made the fullscreen lyrics sheet use the synced lyrics renderer consistently so timed lyrics follow playback instead of requiring manual scrolling.
 - Restored the fullscreen player lyric preview path by keeping fetched lyrics displayable for both synced and plain lyric formats.
