@@ -54,7 +54,7 @@ fun AssignTagsDialog(
 ) {
     val allTags by database.allTags().collectAsState(initial = emptyList())
     val currentTags by database.playlistTags(playlistId).collectAsState(initial = emptyList())
-    
+
     val currentTagIds = remember(currentTags) { currentTags.map { it.id }.toSet() }
     var selectedTagIds by remember(currentTagIds) { mutableStateOf(currentTagIds) }
     var showManageTagsDialog by remember { mutableStateOf(false) }

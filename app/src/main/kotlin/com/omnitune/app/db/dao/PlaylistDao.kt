@@ -166,12 +166,12 @@ interface PlaylistDao {
     @Transaction
     @Query(
         """
-        UPDATE playlist_song_map SET position = 
-            CASE 
+        UPDATE playlist_song_map SET position =
+            CASE
                 WHEN position < :fromPosition THEN position + 1
                 WHEN position > :fromPosition THEN position - 1
                 ELSE :toPosition
-            END 
+            END
         WHERE playlistId = :playlistId AND position BETWEEN MIN(:fromPosition, :toPosition) AND MAX(:fromPosition, :toPosition)
     """,
     )

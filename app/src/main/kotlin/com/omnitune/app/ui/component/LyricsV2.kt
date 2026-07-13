@@ -321,11 +321,11 @@ fun LyricsV2(
         while (isActive) {
             val sliderPos = sliderPositionProvider()
             val pos = sliderPos ?: player.currentPosition
-            
+
             // Add a visual tuning offset so animations feel instantly responsive and perfectly land on beat
-            val visualTuningOffsetMs = 150L 
+            val visualTuningOffsetMs = 150L
             currentPositionMs = pos + leadMs + visualTuningOffsetMs
-            
+
             currentLineIndex = findCurrentLineIndex(entriesWithWords, currentPositionMs, 0L)
             delay(16L) // ~60fps polling
         }
@@ -682,7 +682,7 @@ private fun LyricsLineV2(
     if (bgWords.isNotEmpty()) {
         val spacerHeight = if (mainWords.isNotEmpty()) 4.dp else 0.dp
         if (mainWords.isNotEmpty()) Spacer(modifier = Modifier.height(spacerHeight))
-        
+
         FlowRow(
             modifier = Modifier.fillMaxWidth().alpha(0.85f), // Slightly dimmer overall
             horizontalArrangement = arrangement,
@@ -699,7 +699,7 @@ private fun LyricsLineV2(
                     )
                     return@forEachIndexed
                 }
-                
+
                 AnimatedWordV2(
                     word = word,
                     wordIndex = wordIndex + mainWords.size,
@@ -753,9 +753,9 @@ private fun AnimatedWordV2(
     // Subtle scale up peaking halfway through the word. Exact timing sync!
     val sinProgress = kotlin.math.sin(progress * kotlin.math.PI).toFloat()
     val wordScale = 1f + (0.015f * sinProgress)
-    
+
     // Float is only applied when the word is actively sung, making it pop from the line.
-    // We use animateFloatAsState so that when it finishes (and drops to 0f), 
+    // We use animateFloatAsState so that when it finishes (and drops to 0f),
     // it smoothly decays back into place rather than a harsh mathematical snap.
     val targetFloat = if (isWordActive) -4f * sinProgress else 0f
     val floatOffset by androidx.compose.animation.core.animateFloatAsState(
@@ -836,7 +836,7 @@ private fun AnimatedWordV2(
                             )
                         }
                 } else {
-                    Modifier 
+                    Modifier
                 }
             )
         }

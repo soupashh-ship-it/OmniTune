@@ -88,7 +88,7 @@ fun TagChip(
             Color(tag.color.toColorInt()).copy(alpha = 0.12f)
         }
     }
-    
+
     val contentColor = remember(tag.color) {
         Color(tag.color.toColorInt())
     }
@@ -149,7 +149,7 @@ fun TagChip(
 
             if (editable && onRemove != null) {
                 Spacer(modifier = Modifier.width(2.dp))
-                
+
                 Box(
                     modifier = Modifier
                         .size(24.dp)

@@ -23,4 +23,3 @@ object LikedSongsPlaybackPlanner {
     fun nextLoopIndex(itemCount: Int): Int? =
         if (itemCount > 0) 0 else null
 }
-

@@ -20,14 +20,14 @@ sealed class Screens(
     object CustomizeBackground : Screens("customize_background")
     object PoToken : Screens("po_token")
 
-    
+
     object MoodAndGenres : Screens("mood_and_genres")
     object YouTubeBrowse : Screens("youtube_browse")
-    
-    
+
+
     object Login : Screens("login")
     object AccountSettings : Screens("account_settings")
-    
+
     object Changelog : Screens("changelog")
     companion object {
         val MainScreens = listOf(Home, Stats, History, Library)

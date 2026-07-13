@@ -38,13 +38,13 @@ fun LazyListScope.songSearchResults(
                     Timber.tag("OmniTunePlaybackTrace").i("Search row clicked: ${song.title}")
                     onPlaySong(songs, index)
                 },
-                onPlayNext = { 
+                onPlayNext = {
                     Timber.tag("OmniTuneSearch").i("Play Next clicked: ${song.title}")
-                    onPlayNext(song) 
+                    onPlayNext(song)
                 },
-                onAddToQueue = { 
+                onAddToQueue = {
                     Timber.tag("OmniTuneSearch").i("Add to Queue clicked: ${song.title}")
-                    onAddToQueue(song) 
+                    onAddToQueue(song)
                 },
                 mediaMetadata = song.toMediaMetadata(),
             )

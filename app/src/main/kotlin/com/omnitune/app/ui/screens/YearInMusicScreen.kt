@@ -23,7 +23,7 @@ fun YearInMusicScreen(
     val selectedYear by viewModel.selectedYear.collectAsState()
     val totalListeningTime by viewModel.totalListeningTime.collectAsState()
     val totalSongsPlayed by viewModel.totalSongsPlayed.collectAsState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -50,7 +50,7 @@ fun YearInMusicScreen(
                 fontWeight = FontWeight.Bold,
                 color = OmniColors.OmniAccentPrimary
             )
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = OmniColors.OmniBackgroundElevated)
@@ -64,7 +64,7 @@ fun YearInMusicScreen(
                     )
                 }
             }
-            
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = OmniColors.OmniBackgroundElevated)
@@ -74,7 +74,7 @@ fun YearInMusicScreen(
                     Text("$totalSongsPlayed", color = OmniColors.TextPrimary, style = MaterialTheme.typography.titleLarge)
                 }
             }
-            
+
             Button(onClick = { navController.popBackStack() }) {
                 Text("Back to Stats")
             }

@@ -30,7 +30,7 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
             }
             trySend(map)
         }
-        
+
         sendDownloads()
 
         val poller = launch {
@@ -39,7 +39,7 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
                 sendDownloads()
             }
         }
-        
+
         val listener = object : DownloadManager.Listener {
             override fun onDownloadChanged(
                 downloadManager: DownloadManager,
@@ -55,7 +55,7 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
                 sendDownloads()
             }
         }
-        
+
         downloadManager.addListener(listener)
         awaitClose {
             poller.cancel()

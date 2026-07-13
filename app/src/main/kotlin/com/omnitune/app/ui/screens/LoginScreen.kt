@@ -100,9 +100,9 @@ fun LoginScreen(navController: NavController) {
                             if (isCompleting) return
 
                             // Check if we landed on YouTube Music after login
-                            if (currentUrl.contains("music.youtube.com") || 
+                            if (currentUrl.contains("music.youtube.com") ||
                                 (currentUrl.contains("youtube.com") && !currentUrl.contains("accounts.google.com"))) {
-                                
+
                                 val cookieManager = CookieManager.getInstance()
                                 val cookies = cookieManager.getCookie("https://music.youtube.com")
 

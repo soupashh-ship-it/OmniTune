@@ -575,7 +575,7 @@ fun YouTubePlaylistMenu(
                                         database.query {
                                             update(existing.copy(isAutoSync = newValue))
                                         }
-                                        
+
                                         if (newValue) {
                                             withContext(Dispatchers.Main) {
                                                 if (snackbarHostState != null) {

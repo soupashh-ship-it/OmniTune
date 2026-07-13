@@ -417,7 +417,7 @@ fun QueueScreen(
                 shape = OmniShapes.Large,
             )
         }
-        
+
         if (showAddToPlaylistDialog) {
             val playlists by libraryViewModel.playlists.collectAsState()
             com.omnitune.app.ui.component.AddToPlaylistDialog(
@@ -452,13 +452,13 @@ fun QueueScreen(
                             if (firstMeta != null) {
                                 libraryViewModel.ensureSongExists(firstMeta)
                                 libraryViewModel.createPlaylist(name, firstMeta.id)
-                                
+
                                 // Wait briefly for playlist to be created (hacky but works for bulk create)
                                 kotlinx.coroutines.delay(200)
-                                
+
                                 val playlists = libraryViewModel.playlists.value
                                 val newPlaylist = playlists.find { it.playlist.name == name }
-                                
+
                                 if (newPlaylist != null) {
                                     selectedIndices.drop(1).forEach { windowIndex ->
                                         val mediaItem = pc.getMediaItemAt(windowIndex)

@@ -479,7 +479,7 @@ fun CachePlaylistScreen(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                     )
                                 }
-                                
+
                                 tags.forEach { tag ->
                                     TagChip(
                                         tag = tag,
@@ -487,7 +487,7 @@ fun CachePlaylistScreen(
                                         onRemove = { libraryViewModel.removePlaylistTag(pid, tag.id) }
                                     )
                                 }
-                                
+
                                 // Add Tag chip
                                 Surface(
                                     shape = RoundedCornerShape(16.dp),

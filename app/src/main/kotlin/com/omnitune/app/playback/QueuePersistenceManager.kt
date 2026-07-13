@@ -35,7 +35,7 @@ class QueuePersistenceManager(
 
         val restoredIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
         onQueueTitleRestored(initialStatus.title)
-        
+
         player.playWhenReady = false
         player.stop()
         player.clearMediaItems()
@@ -44,9 +44,9 @@ class QueuePersistenceManager(
             restoredIndex,
             initialStatus.position.coerceAtLeast(0L)
         )
-        
+
         onMetadataRestored(player.currentMediaItem?.mediaMetadata)
-        
+
         Timber.tag("OmniTunePlaybackTrace").i(
             "Restored queue metadata only: items=${initialStatus.items.size}, index=$restoredIndex, current=${player.currentMediaItem?.mediaId}"
         )
@@ -58,23 +58,23 @@ class QueuePersistenceManager(
         saveQueueJob = scope.launch(Dispatchers.IO) {
             try {
                 delay(1000) // Debounce
-                
-                val (count, currentIndex, currentPos) = withContext(Dispatchers.Main) { 
-                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
+
+                val (count, currentIndex, currentPos) = withContext(Dispatchers.Main) {
+                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition)
                 }
-                
+
                 if (count == 0) {
                     database.clearQueue()
                     return@launch
                 }
-                
+
                 val mediaIds = mutableListOf<String>()
                 withContext(Dispatchers.Main) {
                     for (i in 0 until count) {
                         mediaIds.add(player.getMediaItemAt(i).mediaId)
                     }
                 }
-                
+
                 val entity = QueueEntity(
                     id = 1,
                     title = queueTitle,

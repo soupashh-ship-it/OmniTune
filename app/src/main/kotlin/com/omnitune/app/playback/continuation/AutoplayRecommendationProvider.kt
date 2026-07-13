@@ -78,4 +78,3 @@ class OmniAutoplayRecommendationProvider(
     private fun List<SongItem>.toMediaItems(): List<MediaItem> =
         map { it.toMediaItem() }
 }
-

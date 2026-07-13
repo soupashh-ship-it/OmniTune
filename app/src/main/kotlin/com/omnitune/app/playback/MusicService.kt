@@ -322,7 +322,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                         val songs = database.getSongsByIds(mediaIds)
                         // Ensure the order is preserved
                         val mediaItems = mediaIds.mapNotNull { id -> songs.find { it.id == id }?.toMediaItem() }
-                        
+
                         if (mediaItems.isNotEmpty()) {
                             val queue = ListQueue(
                                 title = savedQueue.title,
@@ -1256,15 +1256,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val ds = applicationContext.dataStore
             val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
             val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
-            
+
             // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
             val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
 
             while (isActive) {
-                val (currentPos, currentId) = withContext(Dispatchers.Main) { 
-                    Pair(player.currentPosition, player.currentMediaItem?.mediaId) 
+                val (currentPos, currentId) = withContext(Dispatchers.Main) {
+                    Pair(player.currentPosition, player.currentMediaItem?.mediaId)
                 }
-                
+
                 if (currentId == mediaId) {
                     if (currentPos >= thresholdMs) {
                         Timber.tag("MusicService").d("Recording play count for $mediaId")
@@ -1337,23 +1337,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 if (!persistentQueue) return@launch
 
                 kotlinx.coroutines.delay(1000) // Debounce
-                
-                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
-                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition) 
+
+                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition)
                 }
-                
+
                 if (count == 0) {
                     database.clearQueue()
                     return@launch
                 }
-                
+
                 val mediaIds = mutableListOf<String>()
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     for (i in 0 until count) {
                         mediaIds.add(player.getMediaItemAt(i).mediaId)
                     }
                 }
-                
+
                 val entity = com.omnitune.app.db.entities.QueueEntity(
                     id = 1,
                     title = queueTitle,

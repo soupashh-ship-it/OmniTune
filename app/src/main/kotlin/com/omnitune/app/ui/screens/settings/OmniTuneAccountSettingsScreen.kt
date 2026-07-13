@@ -113,8 +113,8 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                 description = "Use your account for personalized recommendations and browsing",
                 iconRes = R.drawable.ic_settings,
                 checked = useLoginForBrowse,
-                onCheckedChange = { 
-                    useLoginForBrowse = it 
+                onCheckedChange = {
+                    useLoginForBrowse = it
                     com.omnitune.innertube.YouTube.useLoginForBrowse = it
                 }
             )

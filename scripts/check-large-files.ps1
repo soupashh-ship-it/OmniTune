@@ -16,7 +16,7 @@ foreach ($file in $files) {
     # Fast line count trick in PS
     $lineCount = 0
     Get-Content $file.FullName | ForEach-Object { $lineCount++ }
-    
+
     if ($lineCount -ge 1000) {
         Write-Host "REVIEW REQUIRED: 1000+ lines in $($file.FullName) ($lineCount lines)" -ForegroundColor Red
         $reviewCount++

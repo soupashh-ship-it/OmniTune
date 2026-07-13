@@ -46,7 +46,7 @@ interface AlbumDao {
             sum(event.playTime) DESC
         LIMIT :limit
         OFFSET :offset
-        
+
         """,
     )
     fun getRecommendationAlbum(
@@ -66,13 +66,13 @@ interface AlbumDao {
             FROM song_album_map
                      JOIN event e ON song_album_map.songId = e.songId
             WHERE albumId = album.id
-              AND e.timestamp > :fromTimeStamp 
+              AND e.timestamp > :fromTimeStamp
               AND e.timestamp <= :toTimeStamp) AS songCountListened,
            (SELECT SUM(e.playTime)
             FROM song_album_map
                      JOIN event e ON song_album_map.songId = e.songId
             WHERE albumId = album.id
-              AND e.timestamp > :fromTimeStamp 
+              AND e.timestamp > :fromTimeStamp
               AND e.timestamp <= :toTimeStamp) AS timeListened
     FROM album
     JOIN song_album_map ON album.id = song_album_map.albumId

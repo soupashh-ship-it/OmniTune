@@ -55,10 +55,10 @@ fun PlaylistSuggestionsSection(
     val playerConnection = LocalPlayerConnection.current
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState()
         ?: remember { mutableStateOf<com.omnitune.app.models.MediaMetadata?>(null) }
-    
+
     val playlistSuggestions by viewModel.playlistSuggestions.collectAsState()
     val isLoading by viewModel.isLoadingSuggestions.collectAsState()
-    
+
     val currentSuggestions = playlistSuggestions
     if (currentSuggestions == null && !isLoading) return
     if (currentSuggestions != null && currentSuggestions.items.isEmpty() && !isLoading) return
@@ -75,9 +75,9 @@ fun PlaylistSuggestionsSection(
                 title = "You might like",
             )
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         currentSuggestions?.let { suggestions ->
             suggestions.items.forEach { item ->
                 val songItem = item as? SongItem ?: return@forEach
@@ -87,7 +87,7 @@ fun PlaylistSuggestionsSection(
                     thumbnailUrl = songItem.thumbnail,
                     trailing = {
                         IconButton(
-                            onClick = { 
+                            onClick = {
                                 coroutineScope.launch {
                                     val browseId = viewModel.playlist.value?.playlist?.browseId
                                     val playlistName = viewModel.playlist.value?.playlist?.name ?: "playlist"
@@ -130,7 +130,7 @@ fun PlaylistSuggestionsSection(
                     }
                 )
             }
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

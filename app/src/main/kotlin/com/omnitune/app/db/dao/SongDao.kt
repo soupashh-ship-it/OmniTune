@@ -429,7 +429,7 @@ interface SongDao {
     @Transaction
     @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
     fun getSongByIdBlocking(songId: String): Song?
-    
+
 
     @Transaction
     @Query("SELECT * FROM song")

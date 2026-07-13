@@ -176,7 +176,7 @@ fun TopPlaylistScreen(
     }
 
     var selection by remember { mutableStateOf(false) }
-    
+
 
     if (isSearching) {
         BackHandler {

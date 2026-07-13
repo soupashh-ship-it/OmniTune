@@ -65,4 +65,3 @@ data class TasteSignal(
     val positive: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
 )
-

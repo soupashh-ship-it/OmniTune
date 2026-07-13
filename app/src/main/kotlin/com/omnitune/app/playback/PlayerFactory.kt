@@ -83,7 +83,7 @@ object PlayerFactory {
         downloadUtil: DownloadUtil
     ): CacheDataSource.Factory {
         val dataSourceFactory = DefaultDataSource.Factory(
-            context, 
+            context,
             OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
         )
         return CacheDataSource.Factory()

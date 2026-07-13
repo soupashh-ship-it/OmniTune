@@ -60,7 +60,7 @@ fun ArtistSeparatorsDialog(
     val separatorsList = remember(currentSeparators) {
         currentSeparators.toList().map { it.toString() }.toMutableStateList()
     }
-    
+
     var showAddSymbolDialog by remember { mutableStateOf(false) }
     var newSymbolInput by remember { mutableStateOf("") }
 
@@ -71,7 +71,7 @@ fun ArtistSeparatorsDialog(
             text = {
                 OutlinedTextField(
                     value = newSymbolInput,
-                    onValueChange = { 
+                    onValueChange = {
                         if (it.length <= 1) {
                             newSymbolInput = it
                         }
@@ -96,9 +96,9 @@ fun ArtistSeparatorsDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     newSymbolInput = ""
-                    showAddSymbolDialog = false 
+                    showAddSymbolDialog = false
                 }) {
                     Text(stringResource(android.R.string.cancel))
                 }
@@ -174,9 +174,9 @@ fun ArtistSeparatorsDialog(
                     TextButton(onClick = onDismiss) {
                         Text(stringResource(android.R.string.cancel))
                     }
-                    
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     Button(
                         onClick = { onSave(separatorsList.joinToString("")) }
                     ) {
@@ -207,9 +207,9 @@ private fun SeparatorChip(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.width(4.dp))
-            
+
             Box(
                 modifier = Modifier
                     .size(24.dp)

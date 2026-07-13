@@ -113,7 +113,7 @@ interface ArtistDao {
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query("""
         SELECT album.*, count(song.dateDownload) downloadCount
-        FROM album_artist_map 
+        FROM album_artist_map
             JOIN album ON album_artist_map.albumId = album.id
             JOIN song ON album_artist_map.albumId = song.albumId
         WHERE artistId = :artistId
@@ -148,11 +148,11 @@ interface ArtistDao {
                       ORDER BY totalPlayTime DESC) AS artistTotalPlayTime
                      ON artist.id = artistId
                      OR artist.bookmarkedAt IS NOT NULL
-                     ORDER BY 
-                      CASE 
-                        WHEN artistTotalPlayTime.artistId IS NULL THEN 1 
-                        ELSE 0 
-                      END, 
+                     ORDER BY
+                      CASE
+                        WHEN artistTotalPlayTime.artistId IS NULL THEN 1
+                        ELSE 0
+                      END,
                       artistTotalPlayTime.totalPlayTime DESC
     """,
     )

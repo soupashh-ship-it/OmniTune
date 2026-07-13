@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Player color extraction system for generating gradients from album artwork
- * 
+ *
  * This system analyzes album artwork and extracts vibrant, dominant colors
  * to create visually appealing gradients for the music player interface.
  */
@@ -22,7 +22,7 @@ object PlayerColorExtractor {
 
     /**
      * Extracts colors from a palette and creates a gradient
-     * 
+     *
      * @param palette The color palette extracted from album artwork
      * @param fallbackColor Fallback color to use if extraction fails
      * @return List of colors for gradient (primary, darker variant, black)
@@ -31,7 +31,7 @@ object PlayerColorExtractor {
         palette: Palette,
         fallbackColor: Int
     ): List<Color> = withContext(Dispatchers.Default) {
-        
+
         val swatches = palette.swatches
             .filter { it.population > 0 }
             .sortedByDescending { it.population }
@@ -71,10 +71,10 @@ object PlayerColorExtractor {
         val brightness = hsv[2]
         return saturation >= 0.22f && brightness in 0.12f..0.88f && color.luminance() in 0.03f..0.74f
     }
-    
+
     /**
      * Enhances color vividness by adjusting saturation and brightness
-     * 
+     *
      * @param color The color to enhance
      * @param saturationFactor Factor to multiply saturation by (default 1.4)
      * @return Enhanced color with improved vividness
@@ -83,7 +83,7 @@ object PlayerColorExtractor {
         val argb = color.toArgb()
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(argb, hsv)
-        
+
         // Increase saturation for more vivid colors
         hsv[1] = (hsv[1] * saturationFactor).coerceIn(0.46f, 0.84f)
         hsv[2] = (hsv[2] * 0.98f).coerceIn(0.30f, 0.78f)
@@ -103,7 +103,7 @@ object PlayerColorExtractor {
 
     /**
      * Calculates weight for color selection based on dominance and vibrancy
-     * 
+     *
      * @param swatch The palette swatch to analyze
      * @return Weight value for color selection priority
      */
@@ -116,11 +116,11 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(argb, hsv)
         val saturation = hsv[1]
         val brightness = hsv[2]
-        
+
         // Give higher priority to dominance (population) while considering vibrancy
         val populationWeight = population * 2f // Double dominance weight
         val vibrancyBonus = if (saturation > 0.3f && brightness > 0.3f) 1.5f else 1f
-        
+
         return populationWeight * vibrancyBonus * (saturation + brightness) / 2f
     }
 
@@ -152,14 +152,14 @@ object PlayerColorExtractor {
             kotlin.math.abs(g1 - g2) < threshold &&
             kotlin.math.abs(b1 - b2) < threshold
     }
-    
+
     /**
      * Checks if a color is similar to any in a list
      */
     private fun isSimilarToAny(color: Color, colors: List<Color>): Boolean {
         return colors.any { isSimilarColor(color, it) }
     }
-    
+
     /**
      * Darkens a color by a factor
      */
@@ -198,7 +198,7 @@ object PlayerColorExtractor {
         android.graphics.Color.colorToHSV(color.toArgb(), hsv)
         return hsv[1] < 0.08f || hsv[2] < 0.08f
     }
-    
+
     /**
      * Configuration constants for color extraction
      */
@@ -206,25 +206,25 @@ object PlayerColorExtractor {
         const val MAX_COLOR_COUNT = 48
         const val BITMAP_AREA = 40000
         const val IMAGE_SIZE = 200
-        
+
         // Color enhancement factors
         const val VIBRANT_SATURATION_THRESHOLD = 0.25f
         const val VIBRANT_BRIGHTNESS_MIN = 0.2f
         const val VIBRANT_BRIGHTNESS_MAX = 0.9f
-        
+
         const val POPULATION_WEIGHT_MULTIPLIER = 2f
         const val VIBRANCY_THRESHOLD_SATURATION = 0.3f
         const val VIBRANCY_THRESHOLD_BRIGHTNESS = 0.3f
         const val VIBRANCY_BONUS = 1.5f
-        
+
         const val DEFAULT_SATURATION_FACTOR = 1.4f
         const val VIBRANT_SATURATION_FACTOR = 1.3f
         const val FALLBACK_SATURATION_FACTOR = 1.1f
-        
+
         const val BRIGHTNESS_MULTIPLIER = 0.92f
         const val BRIGHTNESS_MIN = 0.32f
         const val BRIGHTNESS_MAX = 0.88f
-        
+
         const val DARKER_VARIANT_FACTOR = 0.5f
     }
 }

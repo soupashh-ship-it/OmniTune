@@ -65,7 +65,7 @@ fun TagsManagementDialog(
     onDismiss: () -> Unit
 ) {
     val allTags by database.allTags().collectAsState(initial = emptyList())
-    
+
     var showAddTagDialog by remember { mutableStateOf(false) }
     var tagToEdit by remember { mutableStateOf<TagEntity?>(null) }
     var showColorPicker by remember { mutableStateOf<TagEntity?>(null) }
@@ -250,7 +250,7 @@ private fun AddEditTagDialog(
                             .background(Color(selectedColor.toColorInt()))
                             .clickable { showColorPicker = true }
                     )
-                    
+
                     Text(
                         text = stringResource(R.string.tap_to_change_color),
                         style = MaterialTheme.typography.bodySmall,
@@ -294,7 +294,7 @@ private fun ColorPickerDialog(
                 TagEntity.DEFAULT_COLORS.forEach { color ->
                     val isSelected = color == currentColor
                     val size by animateDpAsState(if (isSelected) 48.dp else 40.dp, label = "colorSize")
-                    
+
                     Box(
                         modifier = Modifier
                             .size(size)

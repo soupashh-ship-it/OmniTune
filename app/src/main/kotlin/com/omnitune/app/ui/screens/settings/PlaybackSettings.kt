@@ -29,14 +29,14 @@ fun PlaybackSettings(onNavigateToEqualizer: () -> Unit) {
     var pauseOnMute by rememberPreference(com.omnitune.app.constants.PauseOnDeviceMuteKey, false)
     var qualityMode by rememberEnumPreference(PlaybackQualityModeKey, PlaybackQualityMode.AUTO)
     var playerClient by rememberPreference(com.omnitune.app.constants.PlayerStreamClientKey, PlayerStreamClient.ANDROID_VR.name)
-    
+
     var autoBluetooth by rememberPreference(com.omnitune.app.constants.AutoStartOnBluetoothKey, false)
     var persistentQueue by rememberPreference(com.omnitune.app.constants.PersistentQueueKey, true)
     var permShuffle by rememberPreference(com.omnitune.app.constants.PermanentShuffleKey, false)
     var autoDownloadLike by rememberPreference(com.omnitune.app.constants.AutoDownloadOnLikeKey, false)
     var autoSkipError by rememberPreference(com.omnitune.app.constants.AutoSkipNextOnErrorKey, true)
     var autoplaySimilarSongs by rememberPreference(AutoplaySimilarSongsKey, true)
-    
+
     var stopOnClear by rememberPreference(com.omnitune.app.constants.StopMusicOnTaskClearKey, false)
     var artistSeparators by rememberPreference(com.omnitune.app.constants.ArtistSeparatorsKey, ", ; / &")
 

@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Player slider color configuration for consistent styling across all slider types
- * 
+ *
  * This object provides standardized color schemes for Default, Squiggly, and Slim sliders
  * used in the music player interface, ensuring visual consistency and proper contrast.
  */
@@ -23,7 +23,7 @@ object PlayerSliderColors {
 
     /**
      * Standard slider colors for all slider types
-     * 
+     *
      * @param activeColor Color for active track, ticks, and thumb
      * @param inactiveAlpha Alpha transparency for inactive track (default: 0.15f for subtle appearance)
      * @return SliderColors configuration
@@ -43,7 +43,7 @@ object PlayerSliderColors {
 
     /**
      * Default slider colors using button color scheme
-     * 
+     *
      * @param buttonColor The active button color from player theme
      * @return SliderColors configuration for default slider
      */
@@ -57,7 +57,7 @@ object PlayerSliderColors {
 
     /**
      * Squiggly slider colors using button color scheme
-     * 
+     *
      * @param buttonColor The active button color from player theme
      * @return SliderColors configuration for squiggly slider
      */
@@ -113,13 +113,13 @@ object PlayerSliderColors {
         const val SIMPLE_ACTIVE_TRACK_ALPHA = 0.8f
 
         const val SIMPLE_INACTIVE_TRACK_ALPHA = 0.1f
-        
+
         /** Alpha transparency for inactive ticks */
         const val INACTIVE_TICK_ALPHA = 0.2f
-        
+
         /** Default active color when no theme color is available */
         val DEFAULT_ACTIVE_COLOR = Color(0xFF1976D2)
-        
+
         /** Default inactive color when no theme color is available */
         val DEFAULT_INACTIVE_COLOR = Color.White.copy(alpha = INACTIVE_TRACK_ALPHA)
     }

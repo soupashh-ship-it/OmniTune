@@ -47,15 +47,15 @@ class PlaybackEventRecorder(
             val ds = context.dataStore
             val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
             val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
-            
+
             // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
             val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
 
             while (isActive) {
-                val (currentPos, currentId) = withContext(Dispatchers.Main) { 
-                    Pair(player.currentPosition, player.currentMediaItem?.mediaId) 
+                val (currentPos, currentId) = withContext(Dispatchers.Main) {
+                    Pair(player.currentPosition, player.currentMediaItem?.mediaId)
                 }
-                
+
                 if (currentId == mediaId) {
                     if (currentPos >= thresholdMs) {
                         Timber.tag("MusicService").d("Recording play count for $mediaId")

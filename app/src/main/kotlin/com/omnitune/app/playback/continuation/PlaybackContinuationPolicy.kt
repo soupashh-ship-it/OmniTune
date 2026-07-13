@@ -36,4 +36,3 @@ object TasteSignalClassifier {
     ): Boolean =
         !completed && listenedMillis in 1 until QUICK_SKIP_MS
 }
-

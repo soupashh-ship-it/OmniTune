@@ -171,7 +171,7 @@ fun ScrobblingSettings() {
                 onClick = { showListenBrainzDialog = true }
             )
         }
-        
+
         if (showListenBrainzDialog) {
             var tokenInput by remember { mutableStateOf(listenBrainzToken) }
             AlertDialog(
@@ -384,4 +384,3 @@ private fun LoginDialog(
         },
     )
 }
-

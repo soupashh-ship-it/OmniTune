@@ -185,4 +185,3 @@ class MoodGenreResolverTest {
         thumbnail = "https://example.com/$id.jpg",
     )
 }
-

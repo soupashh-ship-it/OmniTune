@@ -370,7 +370,7 @@ fun SongMenu(
                         database.query {
                             update(s)
                         }
-                        
+
                     },
                 ) {
                     Icon(
@@ -588,14 +588,14 @@ fun SongMenu(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
                 }
-            
+
                 if (event != null) {
                     HorizontalDivider(
                         modifier = dividerModifier,
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
-            
+
                 if (playlistSong != null) {
                     ListItem(
                         headlineContent = {
@@ -636,15 +636,15 @@ fun SongMenu(
                             },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
-            
+
                     HorizontalDivider(
                         modifier = dividerModifier,
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
-            
-                
-            
+
+
+
                 when (download?.state) {
                     Download.STATE_COMPLETED -> {
                         ListItem(
@@ -737,13 +737,13 @@ fun SongMenu(
                         },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
-            
+
                 if (song.song.albumId != null) {
                     HorizontalDivider(
                         modifier = Modifier.padding(start = 56.dp),
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
-            
+
                     ListItem(
                         headlineContent = { Text(text = stringResource(R.string.view_album)) },
                         leadingContent = {
@@ -794,12 +794,12 @@ fun SongMenu(
                         },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
-            
+
                 HorizontalDivider(
                     modifier = Modifier.padding(start = 56.dp),
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
-            
+
                 ListItem(
                     headlineContent = { Text(text = stringResource(R.string.details)) },
                     leadingContent = {

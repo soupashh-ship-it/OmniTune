@@ -339,7 +339,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     },
                 )
             }
-            composable(Screens.Stats.route) { 
+            composable(Screens.Stats.route) {
                 StatsScreen(
                     onNavigateToYearInMusic = { navController.navigate(Screens.YearInMusic.route) },
                     onNavigateToArtist = { navController.navigate("artist/$it") },
@@ -602,12 +602,12 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) }
                 )
             }
-            composable("settings/content") { 
-                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { 
+            composable("settings/content") {
+                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) {
                     ContentSettings(
                         onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) }
-                    ) 
-                } 
+                    )
+                }
             }
             composable("album/{albumId}") {
                 AlbumScreen(
@@ -622,50 +622,50 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToAlbum = { navController.navigate("album/$it") },
                 )
             }
-            composable("player") { 
+            composable("player") {
                 PlayerScreen(
-                    playerConnection = localPlayerConnection, 
-                    onDismiss = { navController.popBackStack() }, 
+                    playerConnection = localPlayerConnection,
+                    onDismiss = { navController.popBackStack() },
                     onOpenQueue = { navController.navigate("queue") }
-                ) 
+                )
             }
             composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
-            composable("settings/appearance") { 
-                SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) { 
+            composable("settings/appearance") {
+                SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) {
                     AppearanceSettings()
-                } 
+                }
             }
-            composable("settings/updates") { 
-                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { 
-                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) }) 
-                } 
+            composable("settings/updates") {
+                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) {
+                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) })
+                }
             }
-            composable("settings") { 
+            composable("settings") {
                 SettingsScreen(
-                    onBack = { navController.popBackStack() }, 
-                    onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }, 
-                    onNavigateToCategory = { cat -> 
+                    onBack = { navController.popBackStack() },
+                    onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) },
+                    onNavigateToCategory = { cat ->
                         if (cat == "account_settings") {
                             navController.navigate(Screens.AccountSettings.route)
                         } else {
-                            navController.navigate("settings/$cat") 
+                            navController.navigate("settings/$cat")
                         }
                     }
-                ) 
+                )
             }
             composable("settings/playback") { SettingsSubScreenScaffold(title = "Playback & Audio", onBack = { navController.popBackStack() }) { PlaybackSettings(onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) } }
-            composable("settings/content") { 
-                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) { 
-                    ContentSettings(onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) }) 
-                } 
+            composable("settings/content") {
+                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) {
+                    ContentSettings(onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) })
+                }
             }
             composable("settings/storage") { SettingsSubScreenScaffold(title = "Storage", onBack = { navController.popBackStack() }) { StorageSettings() } }
             composable("settings/lyrics") { SettingsSubScreenScaffold(title = "Lyrics", onBack = { navController.popBackStack() }) { LyricsSettings() } }
             composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "Scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
-            composable("settings/updates") { 
-                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) { 
-                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) }) 
-                } 
+            composable("settings/updates") {
+                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) {
+                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) })
+                }
             }
             composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
             composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }

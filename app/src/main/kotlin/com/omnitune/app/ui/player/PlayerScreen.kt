@@ -1036,7 +1036,7 @@ private fun PlayerControlRow(
                 modifier = Modifier.size(24.dp)
             )
         }
-        
+
         // Previous Button (Boxed)
         Box(
             modifier = Modifier
@@ -1067,7 +1067,7 @@ private fun PlayerControlRow(
                 }
             },
         )
-        
+
         // Next Button (Boxed)
         Box(
             modifier = Modifier
@@ -1809,6 +1809,3 @@ private fun OptionButton(
         )
     }
 }
-
-
-

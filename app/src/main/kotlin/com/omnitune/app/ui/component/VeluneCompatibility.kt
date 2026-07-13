@@ -138,7 +138,7 @@ fun AddToPlaylistDialog(
                         name = name
                     )
                     database.insert(newPlaylist)
-                    // Let user add to it later, or add immediately? 
+                    // Let user add to it later, or add immediately?
                     // Actually Velune AddToPlaylistDialog had create playlist flow internally?
                     // For now just create it.
                 }

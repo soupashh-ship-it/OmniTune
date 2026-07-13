@@ -168,7 +168,7 @@ fun ArtistScreen(
                                     .clip(CircleShape),
                                 contentScale = ContentScale.Crop,
                             )
-                            
+
                             Spacer(modifier = Modifier.height(24.dp))
 
                             Text(
@@ -178,7 +178,7 @@ fun ArtistScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                             )
-                            
+
                             page.description?.let { desc ->
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
@@ -199,13 +199,13 @@ fun ArtistScreen(
                                         .clickable { /* TODO: show full bio */ }
                                 )
                             }
-                            
+
                             Spacer(modifier = Modifier.height(24.dp))
-                            
+
                             // Stats Row
                             val songCount = page.sections.find { it.title.contains("Song", ignoreCase = true) }?.items?.size ?: 0
                             val albumCount = page.sections.find { it.title.contains("Album", ignoreCase = true) }?.items?.size ?: 0
-                            
+
                             if (songCount > 0 || albumCount > 0) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -226,7 +226,7 @@ fun ArtistScreen(
                                 }
                                 Spacer(modifier = Modifier.height(24.dp))
                             }
-                            
+
                             // Action Buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -244,7 +244,7 @@ fun ArtistScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(if (isBookmarked) "Subscribed" else "Subscribe")
                                 }
-                                
+
                                 Button(
                                     onClick = {
                                         if (allSongs.isNotEmpty()) {
@@ -264,9 +264,9 @@ fun ArtistScreen(
                                     Text("Shuffle")
                                 }
                             }
-                            
+
                             Spacer(modifier = Modifier.height(16.dp))
-                            
+
                             OutlinedButton(
                                 onClick = {
                                     allSongs.firstOrNull()?.toMediaMetadata()?.let { song ->
@@ -281,7 +281,7 @@ fun ArtistScreen(
                                 Text("Radio", color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(32.dp))
                     }
 
@@ -487,7 +487,7 @@ private fun ArtistSongRow(
 
         var menuExpanded by remember { mutableStateOf(false) }
         val playerConnection = LocalPlayerConnection.current
-        
+
         Box {
             IconButton(
                 onClick = { menuExpanded = true },
@@ -500,7 +500,7 @@ private fun ArtistSongRow(
                     modifier = Modifier.size(18.dp),
                 )
             }
-            
+
             TrackMenuProvider(
                 showMenu = menuExpanded,
                 onDismissMenu = { menuExpanded = false },
@@ -553,5 +553,3 @@ private fun ArtistAlbumRow(
         }
     }
 }
-
-

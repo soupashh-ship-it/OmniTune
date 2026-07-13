@@ -44,4 +44,3 @@ fun PlaybackContext.withSeedMetadata(seed: MediaMetadata?): PlaybackContext =
 
 fun PlaybackContext.withSeedItem(seed: MediaItem?): PlaybackContext =
     withSeedMetadata(seed?.metadata)
-
