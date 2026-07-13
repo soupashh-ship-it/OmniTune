@@ -253,7 +253,10 @@ class OmniBackupRepository @Inject constructor(
                         }
                         entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
                             val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
-                            val relative = entry.name.removePrefix(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX)
+                            val relative = safeArchiveRelativePath(
+                                entry.name,
+                                OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX,
+                            )
                             val target = OfflineDownloadArchive.resolveStagingTarget(stage, "files/$relative")
                             val remaining = (stage.usableSpace - MIN_FREE_SPACE_BYTES).coerceAtLeast(0L)
                             require(remaining > 0) { "Not enough storage to restore downloaded audio" }
@@ -265,7 +268,10 @@ class OmniBackupRepository @Inject constructor(
                         }
                         entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX) -> {
                             val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
-                            val relative = entry.name.removePrefix(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX)
+                            val relative = safeArchiveRelativePath(
+                                entry.name,
+                                OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX,
+                            )
                             val allowedNames = setOf(
                                 OfflineDownloadArchive.MEDIA3_DATABASE_NAME,
                                 "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-wal",
@@ -296,6 +302,22 @@ class OmniBackupRepository @Inject constructor(
             ),
             stagedDownloadDir = stagedDir,
         )
+    }
+
+    private fun safeArchiveRelativePath(entryName: String, prefix: String): String {
+        require(entryName.startsWith(prefix)) { "Archive entry is outside the expected backup section" }
+
+        val relative = entryName.removePrefix(prefix)
+        require(relative.isNotBlank()) { "Empty archive entry path" }
+        require(!relative.startsWith('/')) { "Absolute archive entry path" }
+        require(!relative.contains('\\')) { "Invalid archive entry path" }
+
+        val parts = relative.split('/')
+        require(parts.none { it.isBlank() || it == "." || it == ".." || it.contains('\u0000') }) {
+            "Unsafe archive entry path"
+        }
+
+        return parts.joinToString("/")
     }
 
     private fun InputStream.readBytesLimited(limit: Long): ByteArray {

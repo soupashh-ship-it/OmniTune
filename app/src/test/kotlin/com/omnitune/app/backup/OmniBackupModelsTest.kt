@@ -9,10 +9,16 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class OmniBackupModelsTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -87,5 +93,24 @@ class OmniBackupModelsTest {
 
         assertEquals("song_1", decoded.songs.single().id)
         assertEquals("Track One", decoded.songs.single().title)
+    }
+
+    @Test
+    fun stagingTargetRejectsArchiveTraversalPaths() {
+        val stage = temporaryFolder.newFolder("restore-stage")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            OfflineDownloadArchive.resolveStagingTarget(stage, "files/../escape.mp3")
+        }
+    }
+
+    @Test
+    fun stagingTargetAllowsSafeNestedArchivePaths() {
+        val stage = temporaryFolder.newFolder("restore-stage")
+
+        val target = OfflineDownloadArchive.resolveStagingTarget(stage, "files/audio/song.mp3")
+
+        assertTrue(target.canonicalFile.toPath().startsWith(stage.canonicalFile.toPath()))
+        assertEquals("song.mp3", target.name)
     }
 }
