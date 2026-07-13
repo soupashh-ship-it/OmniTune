@@ -1,13 +1,3 @@
-package com.omnitune.app.update
-
-import com.omnitune.app.BuildConfig
-
-object AppChangelog {
-    val bundled = ChangelogRelease(
-        versionName = BuildConfig.VERSION_NAME,
-        releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
-        source = ChangelogSource.Bundled,
-        body = """
 # OmniTune v0.13.3
 
 This release refreshes OmniTune's dynamic artwork colors so the app reacts more clearly when the currently playing song changes.
@@ -23,27 +13,6 @@ This release refreshes OmniTune's dynamic artwork colors so the app reacts more 
 
 ## Verification
 
-- `testDebugUnitTest`: passed
-- `git diff --check`: passed
-- `assembleDebug`: passed
-
-## Build
-
-- Version: `0.13.3`
-- Version code: `72`
-        """.trimIndent(),
-    )
-}
-
-data class ChangelogRelease(
-    val versionName: String,
-    val releaseName: String,
-    val source: ChangelogSource,
-    val body: String,
-    val publishedAt: String? = null,
-)
-
-enum class ChangelogSource {
-    Bundled,
-    GitHub,
-}
+- Passed `testDebugUnitTest`.
+- Passed `git diff --check`.
+- Passed `assembleDebug`.

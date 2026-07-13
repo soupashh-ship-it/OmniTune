@@ -29,7 +29,6 @@ import com.omnitune.app.utils.reportException
 import com.omnitune.app.ui.theme.OmniTuneTheme
 import com.omnitune.app.ui.theme.DefaultThemeColor
 import com.omnitune.app.ui.theme.extractThemeColor
-import com.omnitune.app.ui.theme.boostSaturation
 import com.omnitune.app.ui.navigation.OmniTuneMainScreen
 import com.omnitune.app.ui.shell.OmniShellBackground
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,10 +37,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import coil3.BitmapImage
 import coil3.request.ImageRequest
 import coil3.SingletonImageLoader
 import coil3.request.allowHardware
+import coil3.toBitmap
 import androidx.compose.ui.graphics.toArgb
 import javax.inject.Inject
 
@@ -175,15 +174,15 @@ class MainActivity : ComponentActivity() {
                                 .build()
                             Log.d("OmniTuneColor", "Executing Coil request...")
                             val result = imageLoader.execute(request)
-                            Log.d("OmniTuneColor", "Coil result: " + result.image?.let { "success" } ?: "null image")
-                            val bitmap = (result.image as? BitmapImage)?.bitmap
+                            val imageStatus = if (result.image != null) "success" else "null image"
+                            Log.d("OmniTuneColor", "Coil result: $imageStatus")
+                            val bitmap = result.image?.toBitmap()
                             if (bitmap != null) {
                                 Log.d("OmniTuneColor", "Bitmap obtained, extracting theme color...")
                                 val extractedColor = bitmap.extractThemeColor()
-                                val boostedColor = extractedColor.boostSaturation()
-                                Log.d("OmniTuneColor", "Extracted color: #" + Integer.toHexString(extractedColor.toArgb()) + " boosted: #" + Integer.toHexString(boostedColor.toArgb()))
+                                Log.d("OmniTuneColor", "Extracted color: #" + Integer.toHexString(extractedColor.toArgb()))
                                 withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    themeColor = boostedColor
+                                    themeColor = extractedColor
                                     Log.d("OmniTuneColor", "themeColor updated!")
                                 }
                             } else {

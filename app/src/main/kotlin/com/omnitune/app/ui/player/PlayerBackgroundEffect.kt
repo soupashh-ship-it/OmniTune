@@ -46,7 +46,7 @@ val PlayerFallbackGradient: List<Color>
         OmniColors.OmniBackgroundBase,
     )
 
-private val FallbackGlow = Color(0xFF8B8FFF).copy(alpha = 0.30f)
+private val FallbackGlow = Color(0xFFED5564).copy(alpha = 0.30f)
 private val songPaletteCache = ConcurrentHashMap<String, ArtworkColors>()
 
 /**
@@ -81,7 +81,6 @@ private suspend fun loadArtworkColors(
             val palette = withContext(Dispatchers.Default) {
                 androidx.palette.graphics.Palette.from(bitmap)
                     .maximumColorCount(PlayerColorExtractor.Config.MAX_COLOR_COUNT)
-                    .resizeBitmapArea(PlayerColorExtractor.Config.BITMAP_AREA)
                     .generate()
             }
             val gradient = PlayerColorExtractor.extractGradientColors(
@@ -211,7 +210,7 @@ data class PlayerGradientState(
     val backgroundBrush: Brush,
     val accentGlow: Color,
     val dominantColor: Color,
-    val dynamicAccentColor: Color = Color(0xFF8B8FFF),
+    val dynamicAccentColor: Color = Color(0xFFED5564),
     val palette: OmniDynamicSongPalette = OmniDynamicSongPalette.fallback(),
     val isFromArtwork: Boolean = false,
 )

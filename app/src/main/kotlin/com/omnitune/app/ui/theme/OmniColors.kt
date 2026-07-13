@@ -42,20 +42,20 @@ object OmniColors {
     val GlassBorder = OmniGlassBorderStrong
     val GlassBorderLight = OmniGlassBorderSubtle
 
-    // Accents — single lavender primary with a cooler blue-violet for contrast
-    var OmniAccentPrimary = Color(0xFF8B8FFF)       // Lavender — the one accent
-    var OmniAccentSecondary = Color(0xFF6B7FFF)      // Cooler blue-violet for gradient endpoints
-    var OmniAccentTertiary = Color(0xFFB8A0FF)       // Warmer lilac for highlights
+    // Accents — Velune-compatible warm default seed with coral/amber support tones
+    var OmniAccentPrimary = Color(0xFFED5564)
+    var OmniAccentSecondary = Color(0xFFFF7A6F)
+    var OmniAccentTertiary = Color(0xFFFFA15C)
     var OmniAccentWarm = Color(0xFFFFC46B)            // Kept for semantic warning only
-    var OmniAccentMuted = Color(0xFF6B6AAA)           // Desaturated lavender for muted elements
+    var OmniAccentMuted = Color(0xFFB35C64)
     var OmniAccentSoft = OmniAccentPrimary.copy(alpha = 0.12f)
     var OmniAccentGlow = OmniAccentPrimary.copy(alpha = 0.30f)
     var OmniAccentOnPrimary = Color(0xFF05060A)
 
     var Primary = OmniAccentPrimary
-    var PrimaryLight = Color(0xFFADA8FF)
+    var PrimaryLight = Color(0xFFFF8C92)
     var Secondary = OmniAccentSecondary
-    var SecondaryLight = Color(0xFF9B9AFF)
+    var SecondaryLight = Color(0xFFFFA49A)
     val Hot = Color(0xFFFF5C93)                        // Kept for likes/favorites only
     val HotLight = Color(0xFFFF83AD)
 

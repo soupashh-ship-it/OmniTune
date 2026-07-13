@@ -41,21 +41,30 @@ data class OmniDynamicSongPalette(
         fun fromArtworkColors(colors: List<Color>, fallbackAccent: Color = OmniColors.OmniAccentPrimary): OmniDynamicSongPalette {
             val seed = colors
                 .filter { it.isUsableSongColor() }
-                .maxByOrNull { it.songColorScore() }
+                .firstOrNull()
+                ?: colors
+                    .filter { !it.isNearBlack() }
+                    .firstOrNull()
                 ?: fallbackAccent
-            return fromAccent(seed.toReadableAccent())
+            val companion = colors
+                .drop(1)
+                .firstOrNull { it.isUsableSongColor() || !it.isNearBlack() }
+            return fromAccent(seed.toReadableAccent(), companion?.toReadableAccent())
         }
 
-        private fun fromAccent(accent: Color): OmniDynamicSongPalette {
-            val backdrop = accent.toDarkTone(value = 0.21f, saturationMin = 0.42f)
-            val deepBackdrop = accent.toDarkTone(value = 0.085f, saturationMin = 0.36f)
+        private fun fromAccent(accent: Color, companion: Color? = null): OmniDynamicSongPalette {
+            val secondaryAccent = companion ?: accent.hueShift(28f).toReadableAccent()
+            val backdrop = accent.toDarkTone(value = 0.28f, saturationMin = 0.46f)
+            val deepBackdrop = secondaryAccent.toDarkTone(value = 0.13f, saturationMin = 0.40f)
             val ink = Color(0xFF05070D)
-            val background = lerp(ink, deepBackdrop, 0.58f)
-            val backgroundSecondary = lerp(Color(0xFF111827), backdrop, 0.46f)
-            val surface = lerp(Color(0xFF121722), backdrop, 0.24f).copy(alpha = 0.95f)
-            val surfaceElevated = lerp(Color(0xFF172031), backdrop, 0.30f).copy(alpha = 0.97f)
-            val miniSurface = lerp(Color(0xE6111724), backdrop, 0.34f).copy(alpha = 0.97f)
-            val controlSurface = lerp(Color(0xFF151C2B), backdrop, 0.44f).copy(alpha = 0.92f)
+            val background = lerp(ink, deepBackdrop, 0.68f)
+            val backgroundSecondary = lerp(Color(0xFF111827), backdrop, 0.62f)
+            val surface = lerp(Color(0xFF121722), backdrop, 0.36f).copy(alpha = 0.95f)
+            val surfaceElevated = lerp(Color(0xFF172031), backdrop, 0.42f).copy(alpha = 0.97f)
+            val miniSurface = lerp(Color(0xE6111724), backdrop, 0.48f).copy(alpha = 0.97f)
+            val controlSurface = lerp(Color(0xFF151C2B), backdrop, 0.56f).copy(alpha = 0.92f)
+            val gradientStart = lerp(backgroundSecondary, accent, 0.30f).copy(alpha = 0.98f)
+            val gradientEnd = lerp(ink, secondaryAccent.toDarkTone(value = 0.16f, saturationMin = 0.44f), 0.70f)
 
             return OmniDynamicSongPalette(
                 background = background,
@@ -69,8 +78,8 @@ data class OmniDynamicSongPalette(
                 textSecondary = OmniColors.TextSecondary,
                 miniPlayerSurface = miniSurface,
                 playerControlSurface = controlSurface,
-                gradientStart = lerp(backgroundSecondary, accent.toDarkTone(value = 0.30f, saturationMin = 0.48f), 0.42f).copy(alpha = 0.98f),
-                gradientEnd = ink,
+                gradientStart = gradientStart,
+                gradientEnd = gradientEnd,
             )
         }
     }
@@ -101,8 +110,8 @@ private fun Color.songColorScore(): Float {
 
 private fun Color.toReadableAccent(): Color {
     val hsv = toHsv()
-    hsv[1] = hsv[1].coerceIn(0.48f, 0.82f)
-    hsv[2] = hsv[2].coerceIn(0.56f, 0.74f)
+    hsv[1] = hsv[1].coerceIn(0.42f, 0.92f)
+    hsv[2] = hsv[2].coerceIn(0.52f, 0.90f)
     return Color(AndroidColor.HSVToColor(hsv))
 }
 
@@ -117,4 +126,15 @@ private fun Color.toHsv(): FloatArray {
     val hsv = FloatArray(3)
     AndroidColor.colorToHSV(toArgb(), hsv)
     return hsv
+}
+
+private fun Color.isNearBlack(): Boolean {
+    val hsv = toHsv()
+    return hsv[2] < 0.08f
+}
+
+private fun Color.hueShift(degrees: Float): Color {
+    val hsv = toHsv()
+    hsv[0] = ((hsv[0] + degrees) % 360f + 360f) % 360f
+    return Color(AndroidColor.HSVToColor(hsv))
 }

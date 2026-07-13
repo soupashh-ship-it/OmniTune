@@ -32,71 +32,36 @@ object PlayerColorExtractor {
         fallbackColor: Int
     ): List<Color> = withContext(Dispatchers.Default) {
         
-        // Extract multiple distinct colors from the palette
-        val vibrantColor = palette.vibrantSwatch?.rgb?.let { Color(it) }
-        val darkVibrantColor = palette.darkVibrantSwatch?.rgb?.let { Color(it) }
-        val lightVibrantColor = palette.lightVibrantSwatch?.rgb?.let { Color(it) }
-        val dominantColor = palette.dominantSwatch?.rgb?.let { Color(it) }
-        val mutedColor = palette.mutedSwatch?.rgb?.let { Color(it) }
-        val darkMutedColor = palette.darkMutedSwatch?.rgb?.let { Color(it) }
-        val lightMutedColor = palette.lightMutedSwatch?.rgb?.let { Color(it) }
-        
-        // Build list of available distinct colors
-        val availableColors = mutableListOf<Color>()
-        
-        fun addIfUnique(color: Color?, enhancement: Float) {
-            if (color != null && isUsableArtworkColor(color) && !isSimilarToAny(color, availableColors)) {
-                availableColors.add(enhanceColorVividness(color, enhancement))
-            }
+        val swatches = palette.swatches
+            .filter { it.population > 0 }
+            .sortedByDescending { it.population }
+
+        if (swatches.isEmpty()) {
+            return@withContext listOf(Color(0xFF595959), Color(0xFF0D0D0D))
         }
 
-        // Prefer dark-safe expressive swatches, then gently recover softer colors.
-        addIfUnique(darkVibrantColor, 1.18f)
-        addIfUnique(vibrantColor, 1.14f)
-        addIfUnique(darkMutedColor, 1.06f)
-        addIfUnique(mutedColor, 1.08f)
-        addIfUnique(dominantColor, 1.04f)
-        addIfUnique(lightVibrantColor, 0.96f)
-        addIfUnique(lightMutedColor, 0.98f)
-        
-        val fallbackSeed =
-            Color(fallbackColor).takeUnless { isNearGray(it) } ?: DefaultThemeColor
+        val first = swatches.first()
+        val firstHsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(first.rgb, firstHsv)
 
-        val seed = availableColors.firstOrNull() ?: fallbackSeed
-        val targets = listOf(25f, -25f, 55f, -55f, 120f, -120f, 180f, 150f, -150f)
-        val valueTargets = floatArrayOf(0.82f, 0.74f, 0.68f, 0.6f, 0.86f, 0.7f)
+        val second =
+            swatches
+                .drop(1)
+                .maxByOrNull { candidate ->
+                    val hsv = FloatArray(3)
+                    android.graphics.Color.colorToHSV(candidate.rgb, hsv)
 
-        run {
-            val baseCandidates = (availableColors.toList() + seed).distinct()
-            var baseIndex = 0
-            var targetIndex = 0
-            while (availableColors.size < 6) {
-                val baseColor = baseCandidates[baseIndex % baseCandidates.size]
-                val hueShiftDegrees = targets[targetIndex % targets.size]
-                val valueTarget = valueTargets[availableColors.size % valueTargets.size]
-                val derived =
-                    tuneColorForMesh(
-                        hueShift(baseColor, hueShiftDegrees),
-                        saturationMin = 0.62f,
-                        saturationBoost = 1.08f,
-                        valueTarget = valueTarget,
-                        valueMin = 0.38f,
-                        valueMax = 0.9f,
-                    )
-                if (!isSimilarToAny(derived, availableColors)) {
-                    availableColors.add(derived)
+                    val hueDiffRaw = kotlin.math.abs(hsv[0] - firstHsv[0])
+                    val hueDiff = kotlin.math.min(hueDiffRaw, 360f - hueDiffRaw) / 180f
+                    val satDiff = kotlin.math.abs(hsv[1] - firstHsv[1])
+                    val valueDiff = kotlin.math.abs(hsv[2] - firstHsv[2])
+
+                    hueDiff * 0.65f + satDiff * 0.2f + valueDiff * 0.15f
                 }
-                baseIndex++
-                targetIndex++
-                if (baseIndex > 40) break
-            }
-        }
+                ?: first
 
-        if (availableColors.isEmpty()) {
-            availableColors.add(tuneColorForMesh(fallbackSeed, 0.62f, 1.08f, 0.75f, 0.38f, 0.9f))
-        }
-        
-        return@withContext availableColors
+        return@withContext listOf(Color(first.rgb), Color(second.rgb))
+            .sortedByDescending { it.luminance() }
     }
 
     private fun isUsableArtworkColor(color: Color): Boolean {
@@ -238,8 +203,8 @@ object PlayerColorExtractor {
      * Configuration constants for color extraction
      */
     object Config {
-        const val MAX_COLOR_COUNT = 32
-        const val BITMAP_AREA = 8000
+        const val MAX_COLOR_COUNT = 48
+        const val BITMAP_AREA = 40000
         const val IMAGE_SIZE = 200
         
         // Color enhancement factors
