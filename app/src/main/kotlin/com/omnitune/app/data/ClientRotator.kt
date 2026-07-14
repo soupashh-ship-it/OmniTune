@@ -30,6 +30,9 @@ class ClientRotator @Inject constructor() {
         return clients.drop(startIndex) + clients.take(startIndex)
     }
 
+    fun hasFailures(videoId: String): Boolean =
+        failureCounts.getOrDefault(videoId, 0) > 0
+
     fun reportFailure(videoId: String) {
         val count = failureCounts.getOrDefault(videoId, 0)
         failureCounts[videoId] = count + 1

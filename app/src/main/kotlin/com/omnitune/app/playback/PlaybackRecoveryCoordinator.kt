@@ -46,6 +46,11 @@ class PlaybackRecoveryCoordinator(
     fun onPlaybackStateChanged(state: Int) {
         if (state == Player.STATE_READY || state == Player.STATE_ENDED) {
             playbackWatchdogJob?.cancel()
+            if (state == Player.STATE_READY) {
+                player.currentMediaItem?.mediaId
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(streamExtractor::reportPlaybackReady)
+            }
         } else if (state == Player.STATE_BUFFERING && player.playWhenReady) {
             playbackWatchdogJob?.cancel()
             playbackWatchdogJob = scope.launch(Dispatchers.Main) {
@@ -89,6 +94,14 @@ class PlaybackRecoveryCoordinator(
             // Invalidate caches
             StreamUrlResolver.invalidate(mediaId)
             streamExtractor.invalidate(mediaId)
+            if (errorType == PlaybackErrorType.Timeout ||
+                errorType == PlaybackErrorType.NetworkError ||
+                errorType == PlaybackErrorType.Forbidden403 ||
+                errorType == PlaybackErrorType.Error2000 ||
+                errorType == PlaybackErrorType.SignatureExpired
+            ) {
+                streamExtractor.reportPlaybackFailure(mediaId)
+            }
 
             scope.launch(Dispatchers.Main) {
                 try {

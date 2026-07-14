@@ -17,13 +17,17 @@ enum class PlaybackErrorType {
 object PlaybackErrorClassifier {
     fun classify(error: PlaybackException): PlaybackErrorType {
         val cause = error.cause
-        
+        val message = "${error.message.orEmpty()} ${cause?.message.orEmpty()}".lowercase()
+
+        if (message.contains("buffering timeout") || message.contains("playback timed out")) {
+            return PlaybackErrorType.Timeout
+        }
+
         if (error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
             error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT) {
             return PlaybackErrorType.NetworkError
         }
 
-        val message = "${error.message.orEmpty()} ${cause?.message.orEmpty()}".lowercase()
         if (message.contains("error 2000") || message.contains("errorcode=2000")) {
             return PlaybackErrorType.Error2000
         }

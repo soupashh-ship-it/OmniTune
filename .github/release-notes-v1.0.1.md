@@ -6,6 +6,10 @@ This release addresses inconsistent playback starts, shuffle behavior, and previ
 
 - Improved playback startup reliability by normalizing queue items before stream resolution.
 - Reduced cases where the first selected song could remain stuck buffering until another track was chosen.
+- Improved Quick Picks Play All recovery when the first song or first two songs get stuck on infinite loading.
+- Matched playback request headers to the resolved YouTube stream client so validated stream URLs are less likely to hang during ExoPlayer playback.
+- Reclassified buffering watchdog stalls as recoverable playback timeouts instead of generic network errors.
+- Rotates stream clients after playback failures and only clears stream-client failure state once the player actually reaches ready playback.
 - Resolved explicit next and previous targets before seeking, avoiding unresolved stream URLs during manual navigation.
 - Fixed shuffle being turned off when manually starting another song or queue.
 - Preserved the user's current shuffle state when starting new playback.

@@ -74,7 +74,12 @@ class StreamExtractor @Inject constructor(
         var lastFailure: Throwable? = null
         var lastReason: PlaybackResolveError = PlaybackResolveError.NoPlayableFormat
 
-        val clientSequence = (listOf(preferredClient) + clientRotator.getClientSequence(songId)).distinct()
+        val rotatedClients = clientRotator.getClientSequence(songId)
+        val clientSequence = if (clientRotator.hasFailures(songId)) {
+            rotatedClients
+        } else {
+            (listOf(preferredClient) + rotatedClients).distinct()
+        }
         val totalAttempts = clientSequence.size
         Timber.tag("OmniTuneStreamFallback").i("Stream resolve attempt started (total clients: $totalAttempts)")
 
@@ -92,7 +97,6 @@ class StreamExtractor @Inject constructor(
             
             val streamResult = result.fold(
                 onSuccess = { data ->
-                    clientRotator.reportSuccess(songId)
                     persistFormatEntity(songId, data)
                     StreamResult(
                         url = data.streamUrl,
@@ -134,6 +138,14 @@ class StreamExtractor @Inject constructor(
 
     fun invalidate(songId: String) {
         YTPlayerUtils.invalidateCachedStreamUrls(songId)
+    }
+
+    fun reportPlaybackFailure(songId: String) {
+        clientRotator.reportFailure(songId)
+    }
+
+    fun reportPlaybackReady(songId: String) {
+        clientRotator.reportSuccess(songId)
     }
 
     private fun hasNetwork(connectivityManager: ConnectivityManager): Boolean {

@@ -22,8 +22,13 @@ import com.omnitune.app.constants.AudioOffload
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
 import com.omnitune.app.constants.SeekExtraSeconds
 import com.omnitune.app.extensions.setOffloadEnabled
+import com.omnitune.app.utils.StreamClientUtils
+import okhttp3.Interceptor
 
 object PlayerFactory {
+
+    private const val DEFAULT_PLAYBACK_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"
 
     fun createPlayer(
         context: Context,
@@ -82,9 +87,12 @@ object PlayerFactory {
         okHttpClient: OkHttpClient,
         downloadUtil: DownloadUtil
     ): CacheDataSource.Factory {
+        val playbackHttpClient = okHttpClient.newBuilder()
+            .addInterceptor(youtubeStreamHeaderInterceptor())
+            .build()
         val dataSourceFactory = DefaultDataSource.Factory(
             context,
-            OkHttpDataSource.Factory(okHttpClient).setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune")
+            OkHttpDataSource.Factory(playbackHttpClient).setUserAgent(DEFAULT_PLAYBACK_USER_AGENT)
         )
         return CacheDataSource.Factory()
             .setCache(downloadUtil.playbackCache)
@@ -110,4 +118,22 @@ object PlayerFactory {
             .setHandleAudioBecomingNoisy(false)
             .build()
     }
+
+    private fun youtubeStreamHeaderInterceptor(): Interceptor =
+        Interceptor { chain ->
+            val request = chain.request()
+            val clientParam = request.url.queryParameter("c")?.trim().orEmpty()
+
+            if (!request.url.host.endsWith("googlevideo.com") || clientParam.isBlank()) {
+                return@Interceptor chain.proceed(request)
+            }
+
+            val originReferer = StreamClientUtils.resolveOriginReferer(clientParam)
+            val builder = request.newBuilder()
+                .header("User-Agent", StreamClientUtils.resolveUserAgent(clientParam))
+            originReferer.origin?.let { builder.header("Origin", it) }
+            originReferer.referer?.let { builder.header("Referer", it) }
+
+            chain.proceed(builder.build())
+        }
 }

@@ -23,6 +23,13 @@ class PlaybackErrorClassifierTest {
     }
 
     @Test
+    fun testClassify_bufferingTimeoutWithNetworkTimeoutCode_returnsTimeout() {
+        val error = PlaybackException("Buffering timeout", null, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT)
+        val type = PlaybackErrorClassifier.classify(error)
+        assertEquals(PlaybackErrorType.Timeout, type)
+    }
+
+    @Test
     fun testClassify_badHttpStatus_returnsNetworkError() {
         val error = PlaybackException("Bad HTTP status", null, PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)
         val type = PlaybackErrorClassifier.classify(error)
