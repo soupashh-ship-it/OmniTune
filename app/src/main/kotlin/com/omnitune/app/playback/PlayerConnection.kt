@@ -134,8 +134,8 @@ class PlayerConnection(
         service.scope.launch {
             val prefs = service.dataStore.data.first()
             val permanentShuffle = prefs[PermanentShuffleKey] ?: false
-            if (!permanentShuffle) {
-                player.shuffleModeEnabled = false
+            if (permanentShuffle && !player.shuffleModeEnabled) {
+                player.shuffleModeEnabled = true
             }
             service.playQueue(queue)
         }
@@ -212,13 +212,11 @@ class PlayerConnection(
     }
 
     fun seekToNext() {
-        player.seekToNext()
-        player.playWhenReady = true
+        service.seekToNext()
     }
 
     fun seekToPrevious() {
-        player.seekToPrevious()
-        player.playWhenReady = true
+        service.seekToPrevious()
     }
 
     override fun onPlaybackStateChanged(state: Int) {

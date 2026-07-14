@@ -124,8 +124,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
         private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
         private const val MAX_RECENT_AUTOPLAY_IDS = 40
+        private const val MAX_PLAYBACK_HISTORY_ITEMS = 80
         private const val MIN_LISTEN_HISTORY_MS = 10_000L
+        private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
     }
+
+    private data class PlaybackHistoryEntry(
+        val mediaId: String,
+        val index: Int,
+    )
 
     private var sessionManager: SessionManager? = null
     private val mediaSession: MediaLibrarySession?
@@ -193,6 +200,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var lastTransitionDurationMs: Long? = null
     private var lastTransitionSourceType: PlaybackSourceType = PlaybackSourceType.UNKNOWN
     private var lastPositiveAutoplaySeed: MediaMetadata? = null
+    private val playbackHistory = ArrayDeque<PlaybackHistoryEntry>()
+    private var currentHistoryEntry: PlaybackHistoryEntry? = null
+    private var suppressNextHistoryRecord = false
+    private var userNavigationJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return if (intent?.action == null) {
@@ -216,18 +227,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 return START_STICKY
             }
             ACTION_NEXT -> {
-                if (::player.isInitialized && player.hasNextMediaItem()) {
-                    player.seekToNextMediaItem()
-                    player.play()
-                }
+                seekToNext()
                 postMediaNotificationFallback("action-next", force = true)
                 return START_STICKY
             }
             ACTION_PREVIOUS -> {
-                if (::player.isInitialized) {
-                    player.seekToPreviousMediaItem()
-                    player.play()
-                }
+                seekToPrevious()
                 postMediaNotificationFallback("action-previous", force = true)
                 return START_STICKY
             }
@@ -544,6 +549,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         currentQueue = queue
         currentPlaybackContext = queue.playbackContext
         failedAutoplayCandidateIds.clear()
+        resetPlaybackHistory()
         queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
@@ -570,7 +576,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
             )
 
             val requestedIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
-            val currentItem = initialStatus.items[requestedIndex]
+            val queueItems = initialStatus.items.map { it.withOriginalVideoIdUri() }
+            val currentItem = queueItems[requestedIndex]
             val resolvedCurrent = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
                     StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
@@ -591,7 +598,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
             Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
 
-            val resolvedItems = initialStatus.items.toMutableList().also {
+            val resolvedItems = queueItems.toMutableList().also {
                 it[requestedIndex] = resolvedCurrent
             }
             val resolvedIndex = requestedIndex
@@ -644,6 +651,52 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
+    private suspend fun seekToResolvedMediaItem(index: Int, positionMs: Long): Boolean {
+        if (index !in 0 until player.mediaItemCount) return false
+
+        val target = player.getMediaItemAt(index)
+        val targetNeedsResolution = target.needsFreshResolution()
+        val playableTarget = if (targetNeedsResolution) {
+            val originalItem = target.withOriginalVideoIdUri()
+            withContext(Dispatchers.IO) {
+                if (StreamUrlResolver.isYouTubeVideoId(originalItem.localConfiguration?.uri)) {
+                    StreamUrlResolver.resolveMediaItem(
+                        originalItem,
+                        streamExtractor,
+                        downloadUtil,
+                        getPlaybackQualityMode(),
+                    )
+                } else {
+                    originalItem
+                }
+            }
+        } else {
+            target
+        }
+
+        if (playableTarget == null) {
+            Timber.tag("OmniTunePlaybackTrace").w("Could not resolve navigation target ${target.mediaId}")
+            Toast.makeText(
+                this,
+                "Could not resolve stream for ${target.mediaMetadata.title ?: "track"}",
+                Toast.LENGTH_SHORT,
+            ).show()
+            return false
+        }
+
+        if (index !in 0 until player.mediaItemCount) return false
+        val queuedItem = player.getMediaItemAt(index)
+        if (queuedItem.mediaId == target.mediaId && targetNeedsResolution) {
+            player.replaceMediaItem(index, playableTarget)
+        }
+
+        player.seekTo(index, positionMs.coerceAtLeast(0L))
+        if (targetNeedsResolution || player.playbackState == Player.STATE_IDLE) {
+            player.prepare()
+        }
+        return true
+    }
+
     fun playOrResolveCurrent() {
         val currentItem = player.currentMediaItem
         if (currentItem == null) {
@@ -685,6 +738,67 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     fun pausePlayback() {
         player.pause()
+    }
+
+    fun seekToNext() {
+        userNavigationJob?.cancel()
+        userNavigationJob = scope.launch {
+            if (!::player.isInitialized || player.mediaItemCount == 0) return@launch
+
+            val nextIndex = player.nextMediaItemIndex
+            if (nextIndex == C.INDEX_UNSET) {
+                player.seekToNext()
+                player.playWhenReady = true
+                return@launch
+            }
+
+            if (seekToResolvedMediaItem(nextIndex, 0L)) {
+                player.playWhenReady = true
+            }
+        }
+    }
+
+    fun seekToPrevious() {
+        userNavigationJob?.cancel()
+        userNavigationJob = scope.launch {
+            if (!::player.isInitialized || player.mediaItemCount == 0) return@launch
+
+            if (player.playbackState != Player.STATE_ENDED &&
+                player.currentPosition > PREVIOUS_RESTART_THRESHOLD_MS
+            ) {
+                player.seekTo(0L)
+                player.playWhenReady = true
+                return@launch
+            }
+
+            while (playbackHistory.isNotEmpty()) {
+                val previous = playbackHistory.removeLast()
+                val historyIndex = findHistoryIndex(previous)
+                if (historyIndex == C.INDEX_UNSET || historyIndex == player.currentMediaItemIndex) {
+                    continue
+                }
+
+                suppressNextHistoryRecord = true
+                if (seekToResolvedMediaItem(historyIndex, 0L)) {
+                    player.playWhenReady = true
+                    return@launch
+                }
+                suppressNextHistoryRecord = false
+            }
+
+            val previousIndex = player.previousMediaItemIndex
+            if (previousIndex != C.INDEX_UNSET) {
+                suppressNextHistoryRecord = true
+                if (seekToResolvedMediaItem(previousIndex, 0L)) {
+                    player.playWhenReady = true
+                    return@launch
+                }
+                suppressNextHistoryRecord = false
+            }
+
+            player.seekTo(0L)
+            player.playWhenReady = true
+        }
     }
 
     fun startRadioSeamlessly() {
@@ -872,6 +986,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        updatePlaybackHistory(mediaItem)
         recordTasteSignalForPreviousTransition(
             completed = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
         )
@@ -897,6 +1012,45 @@ class MusicService : MediaLibraryService(), Player.Listener {
             lyricsPrefetcher.prefetch(m)
         }
 
+    }
+
+    private fun updatePlaybackHistory(mediaItem: MediaItem?) {
+        val nextEntry = mediaItem
+            ?.takeIf { it.mediaId.isNotBlank() }
+            ?.let { PlaybackHistoryEntry(it.mediaId, player.currentMediaItemIndex) }
+        val previousEntry = currentHistoryEntry
+
+        if (suppressNextHistoryRecord) {
+            suppressNextHistoryRecord = false
+        } else if (previousEntry != null && previousEntry != nextEntry) {
+            playbackHistory.addLast(previousEntry)
+            while (playbackHistory.size > MAX_PLAYBACK_HISTORY_ITEMS) {
+                playbackHistory.removeFirst()
+            }
+        }
+
+        currentHistoryEntry = nextEntry
+    }
+
+    private fun resetPlaybackHistory() {
+        playbackHistory.clear()
+        currentHistoryEntry = null
+        suppressNextHistoryRecord = false
+    }
+
+    private fun findHistoryIndex(entry: PlaybackHistoryEntry): Int {
+        if (entry.index in 0 until player.mediaItemCount &&
+            player.getMediaItemAt(entry.index).mediaId == entry.mediaId
+        ) {
+            return entry.index
+        }
+
+        for (index in 0 until player.mediaItemCount) {
+            if (player.getMediaItemAt(index).mediaId == entry.mediaId) {
+                return index
+            }
+        }
+        return C.INDEX_UNSET
     }
 
     override fun onPlayerError(error: PlaybackException) {

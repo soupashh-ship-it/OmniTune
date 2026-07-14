@@ -34,8 +34,9 @@ import androidx.glance.text.TextStyle
 import com.omnitune.app.R
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.core.content.ContextCompat
+import com.omnitune.app.playback.PlaybackNotificationManager
 import com.omnitune.app.playback.MusicService
-import androidx.media3.common.Player
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -181,16 +182,19 @@ class PlayPauseAction : ActionCallback {
 
 class NextAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        withMediaController(context) { player ->
-            player.seekToNextMediaItem()
-        }
+        sendPlaybackAction(context, PlaybackNotificationManager.ACTION_NEXT)
     }
 }
 
 class PrevAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        withMediaController(context) { player ->
-            player.seekToPreviousMediaItem()
-        }
+        sendPlaybackAction(context, PlaybackNotificationManager.ACTION_PREVIOUS)
     }
+}
+
+private fun sendPlaybackAction(context: Context, action: String) {
+    ContextCompat.startForegroundService(
+        context,
+        Intent(context, MusicService::class.java).setAction(action),
+    )
 }
