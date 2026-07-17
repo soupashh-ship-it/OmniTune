@@ -7,6 +7,7 @@ package com.omnitune.app
 
 import android.app.ActivityManager
 import android.app.Application
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -53,6 +54,7 @@ import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.GlobalLogTree
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.forgetAccount
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.YouTubeLocale
@@ -159,7 +161,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     YouTube.locale = YouTube.locale.copy(hl = lang)
                 }
 
-                LastFM.sessionKey = prefs[LastFMSessionKey]
+                LastFM.sessionKey = SecurePreferenceCipher.decryptOrPlain(prefs[LastFMSessionKey]).ifBlank { null }
 
                 if (prefs[ProxyEnabledKey] == true) {
                     try {
@@ -230,7 +232,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     
                     // Save to SharedPreferences so we can read it on next launch
                     val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
-                    prefs.edit().putString("last_crash", stack).commit()
+                    writeCrashSnapshot(prefs, stack)
                     
                     // Write to external files dir as fallback
                     val crashFile = java.io.File(getExternalFilesDir(null), "crash.txt")
@@ -270,8 +272,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[InnerTubeCookieKey] }
                 .distinctUntilChanged()
-                .collect { cookie ->
+                .collect { storedCookie ->
                     try {
+                        val cookie = SecurePreferenceCipher.decryptOrPlain(storedCookie)
+                        if (!storedCookie.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedCookie)) {
+                            dataStore.edit { it[InnerTubeCookieKey] = SecurePreferenceCipher.encrypt(storedCookie) }
+                        }
                         YouTube.cookie = cookie
                     } catch (e: Exception) {
                         Timber.e("Could not parse cookie. Clearing existing cookie. %s", e.message)
@@ -285,8 +291,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[PoTokenKey] }
                 .distinctUntilChanged()
-                .collect { token ->
-                    YouTube.poToken = token?.takeIf { it.isNotBlank() }
+                .collect { storedToken ->
+                    val token = SecurePreferenceCipher.decryptOrPlain(storedToken)
+                    if (!storedToken.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedToken)) {
+                        dataStore.edit { it[PoTokenKey] = SecurePreferenceCipher.encrypt(storedToken) }
+                    }
+                    YouTube.poToken = token.takeIf { it.isNotBlank() }
                 }
         }
 
@@ -294,8 +304,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[PoTokenGvsKey] }
                 .distinctUntilChanged()
-                .collect { token ->
-                    YouTube.poTokenGvs = token?.takeIf { it.isNotBlank() }
+                .collect { storedToken ->
+                    val token = SecurePreferenceCipher.decryptOrPlain(storedToken)
+                    if (!storedToken.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedToken)) {
+                        dataStore.edit { it[PoTokenGvsKey] = SecurePreferenceCipher.encrypt(storedToken) }
+                    }
+                    YouTube.poTokenGvs = token.takeIf { it.isNotBlank() }
                 }
         }
 
@@ -303,8 +317,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[PoTokenPlayerKey] }
                 .distinctUntilChanged()
-                .collect { token ->
-                    YouTube.poTokenPlayer = token?.takeIf { it.isNotBlank() }
+                .collect { storedToken ->
+                    val token = SecurePreferenceCipher.decryptOrPlain(storedToken)
+                    if (!storedToken.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedToken)) {
+                        dataStore.edit { it[PoTokenPlayerKey] = SecurePreferenceCipher.encrypt(storedToken) }
+                    }
+                    YouTube.poTokenPlayer = token.takeIf { it.isNotBlank() }
                 }
         }
 
@@ -313,8 +331,12 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             dataStore.data
                 .map { it[LastFMSessionKey] }
                 .distinctUntilChanged()
-                .collect { sessionKey ->
-                    LastFM.sessionKey = sessionKey
+                .collect { storedSessionKey ->
+                    val sessionKey = SecurePreferenceCipher.decryptOrPlain(storedSessionKey)
+                    if (!storedSessionKey.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedSessionKey)) {
+                        dataStore.edit { it[LastFMSessionKey] = SecurePreferenceCipher.encrypt(storedSessionKey) }
+                    }
+                    LastFM.sessionKey = sessionKey.takeIf { it.isNotBlank() }
                 }
         }
 
@@ -324,6 +346,11 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 .distinctUntilChanged()
                 .collect { scheduleYouTubePlaylistSync(this@OmniTuneApp, it) }
         }
+    }
+
+    @SuppressLint("ApplySharedPref")
+    private fun writeCrashSnapshot(prefs: android.content.SharedPreferences, stack: String) {
+        prefs.edit().putString("last_crash", stack).commit()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {

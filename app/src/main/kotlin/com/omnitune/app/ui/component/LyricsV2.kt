@@ -117,6 +117,9 @@ private const val TTML_LEAD_MS = 0L
 /** Seconds to wait before auto-scroll resumes after manual scroll. */
 private const val MANUAL_SCROLL_TIMEOUT_MS = 3000L
 
+/** Playback position polling interval for lyrics animation. */
+private const val POSITION_POLL_INTERVAL_MS = 80L
+
 /** Apple-Music-style easing for smooth deceleration. */
 private val V2Easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1.0f)
 
@@ -327,7 +330,7 @@ fun LyricsV2(
             currentPositionMs = pos + leadMs + visualTuningOffsetMs
 
             currentLineIndex = findCurrentLineIndex(entriesWithWords, currentPositionMs, 0L)
-            delay(16L) // ~60fps polling
+            delay(POSITION_POLL_INTERVAL_MS)
         }
     }
 

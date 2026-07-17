@@ -101,9 +101,9 @@ constructor(
                             mediaMetadata.duration,
                         ).fold(
                             onSuccess = { lyrics ->
-                                lyrics
-                                    .takeIf(::isMeaningfulLyrics)
-                                    ?.let { LyricsCandidate(provider.name, it, isSyncedLyrics(it)) }
+                                val isSynced = isSyncedLyrics(lyrics)
+                                LyricsQuality.score(provider.name, lyrics, mediaMetadata, isSynced)
+                                    ?.let { score -> LyricsCandidate(provider.name, lyrics, isSynced, score) }
                             },
                             onFailure = {
                                 reportException(it)
@@ -120,8 +120,10 @@ constructor(
 
         try {
             val candidates = jobs.awaitAll().filterNotNull()
-            candidates.firstOrNull { it.isSynced }?.lyrics
-                ?: candidates.firstOrNull()?.lyrics
+            candidates.maxWithOrNull(
+                compareBy<LyricsCandidate> { it.score }
+                    .thenBy { it.isSynced }
+            )?.lyrics
         } finally {
             jobs.forEach { it.cancel() }
         }
@@ -163,7 +165,15 @@ constructor(
                     try {
                         kotlinx.coroutines.withTimeoutOrNull(10000L) {
                             provider.getAllLyrics(mediaId, songTitle, songArtists, songAlbum, duration) lyricsCallback@{ lyrics ->
-                                if (!isMeaningfulLyrics(lyrics)) return@lyricsCallback
+                                val metadata = MediaMetadata(
+                                    id = mediaId,
+                                    title = songTitle,
+                                    artists = listOf(MediaMetadata.Artist(id = "", name = songArtists)),
+                                    album = songAlbum?.let { MediaMetadata.Album(id = "", title = it) },
+                                    duration = duration,
+                                )
+                                val isSynced = isSyncedLyrics(lyrics)
+                                LyricsQuality.score(provider.name, lyrics, metadata, isSynced) ?: return@lyricsCallback
                                 val result = LyricsResult(provider.name, lyrics)
                                 allResult += result
                                 callback(result)
@@ -198,26 +208,8 @@ constructor(
     }
 
     private fun isMeaningfulLyrics(lyrics: String): Boolean {
-        val normalized =
-            lyrics
-                .replace("\uFEFF", "")
-                .replace(INVISIBLE_CHARS_REGEX, "")
-                .trim { it.isWhitespace() || it == '\u00A0' }
-
-        if (normalized.isEmpty()) return false
-        if (normalized == LYRICS_NOT_FOUND) return false
-        val remaining =
-            TIMESTAMP_REGEX
-                .replace(normalized, "")
-                .replace(INVISIBLE_CHARS_REGEX, "")
-                .trim { it.isWhitespace() || it == '\u00A0' }
-
-        return remaining
-            .lineSequence()
-            .map { it.trim() }
-            .any { line ->
-                line.any { !it.isWhitespace() && it != '\u00A0' }
-            }
+        if (lyrics == LYRICS_NOT_FOUND) return false
+        return LyricsQuality.hasMeaningfulText(lyrics)
     }
 
     private fun isSyncedLyrics(lyrics: String): Boolean =
@@ -231,7 +223,6 @@ constructor(
     companion object {
         private const val MAX_CACHE_SIZE = 3
         private val TIMESTAMP_REGEX = Regex("""\[[0-9]{1,2}:[0-9]{2}(?:\.[0-9]{1,3})?]""")
-        private val INVISIBLE_CHARS_REGEX = Regex("""[\u200B\u200C\u200D\u2060\u00AD]""")
     }
 }
 
@@ -244,4 +235,5 @@ private data class LyricsCandidate(
     val providerName: String,
     val lyrics: String,
     val isSynced: Boolean,
+    val score: Int,
 )

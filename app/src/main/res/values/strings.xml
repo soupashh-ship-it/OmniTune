@@ -3,6 +3,7 @@
     <string name="app_name">OmniTune</string>
     <string name="music_player_channel_name">OmniTune Playback</string>
     <string name="download_channel_name">OmniTune Downloads</string>
+    <string name="debug_crash_occurred">CRASH OCCURRED:\n\n%1$s</string>
 
     <!-- Year in Music -->
     <string name="year_in_music">Year in Music</string>

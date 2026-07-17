@@ -2,7 +2,6 @@ package com.omnitune.app.ui.screens.settings
 
 import android.app.NotificationManager
 import android.content.Intent
-import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
@@ -36,16 +35,12 @@ fun MediaControlsHelp() {
         NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
     val channelStatus = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = context.getSystemService(NotificationManager::class.java)
-            when (manager.getNotificationChannel(MusicService.CHANNEL_ID)?.importance) {
-                null -> "Playback channel will be created after playback starts."
-                NotificationManager.IMPORTANCE_NONE -> "Playback notification channel is blocked."
-                NotificationManager.IMPORTANCE_MIN -> "Playback channel is set very low; controls may be hidden."
-                else -> "Playback notification channel is allowed."
-            }
-        } else {
-            "Notification channels are not used on this Android version."
+        val manager = context.getSystemService(NotificationManager::class.java)
+        when (manager.getNotificationChannel(MusicService.CHANNEL_ID)?.importance) {
+            null -> "Playback channel will be created after playback starts."
+            NotificationManager.IMPORTANCE_NONE -> "Playback notification channel is blocked."
+            NotificationManager.IMPORTANCE_MIN -> "Playback channel is set very low; controls may be hidden."
+            else -> "Playback notification channel is allowed."
         }
     }
     val batteryStatus = remember {

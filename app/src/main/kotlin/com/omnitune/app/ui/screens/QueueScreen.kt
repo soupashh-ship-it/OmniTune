@@ -47,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,12 +104,12 @@ fun QueueScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val queueTitle by playerConnection?.queueTitle?.collectAsState() ?: remember { mutableStateOf(null) }
-    val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsState() ?: remember { mutableStateOf(-1) }
+    val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsState() ?: remember { mutableIntStateOf(-1) }
     val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
     val queueIndices by playerConnection?.queueIndices?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
     val currentFormat by playerConnection?.currentFormat?.collectAsState(initial = null) ?: remember { mutableStateOf<FormatEntity?>(null) }
     val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsState(initial = false) ?: remember { mutableStateOf(false) }
-    val sleepTimerRemaining by playerConnection?.sleepTimerRemaining?.collectAsState(initial = 0L) ?: remember { mutableStateOf(0L) }
+    val sleepTimerRemaining by playerConnection?.sleepTimerRemaining?.collectAsState(initial = 0L) ?: remember { mutableLongStateOf(0L) }
 
     val itemCount = queueIndices.size
     val currentIndexInQueue = queueIndices.indexOf(currentIndex).coerceAtLeast(0)

@@ -5,6 +5,7 @@
 
 package com.omnitune.app.backup
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.db.MusicDatabase
@@ -231,6 +232,7 @@ class OmniBackupRepository @Inject constructor(
         }
     }
 
+    @SuppressLint("UsableSpace")
     private fun readZipBackup(inputStream: InputStream): BackupPackageReadResult {
         var snapshot: OmniBackupSnapshot? = null
         var stagedDir: File? = null

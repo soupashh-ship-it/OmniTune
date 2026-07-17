@@ -3,7 +3,6 @@ package com.omnitune.app.ui.screens.settings
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -400,12 +399,8 @@ fun FloatPreferenceSliderRow(
 
 
 fun openNotificationSettingsIntent(context: Context): Intent {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-    } else {
-        openAppDetailsIntent(context)
-    }
+    return Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
 }
 
 fun openAppDetailsIntent(context: Context): Intent {

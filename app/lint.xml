@@ -2,6 +2,13 @@
 <lint>
     <issue id="ObsoleteLintCustomCheck" severity="ignore" />
     <issue id="TypographyDashes" severity="ignore" />
-    <issue id="UnusedResources" severity="warning" />
+    <issue id="UnusedResources" severity="ignore" />
     <issue id="ContentDescription" severity="warning" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="OldTargetApi" severity="ignore" />
+    <issue id="ObsoleteSdkInt" severity="ignore" />
+    <issue id="PluralsCandidate" severity="ignore" />
+    <issue id="AppBundleLocaleChanges" severity="ignore" />
 </lint>

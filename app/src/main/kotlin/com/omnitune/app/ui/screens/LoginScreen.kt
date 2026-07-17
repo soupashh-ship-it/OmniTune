@@ -35,6 +35,7 @@ import com.omnitune.app.constants.AccountNameKey
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.PreferenceStore
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -112,7 +113,7 @@ fun LoginScreen(navController: NavController) {
 
                                     Handler(Looper.getMainLooper()).post {
                                         PreferenceStore.launchEdit(context.dataStore) {
-                                            this[InnerTubeCookieKey] = cookies
+                                            this[InnerTubeCookieKey] = SecurePreferenceCipher.encrypt(cookies)
                                         }
                                         com.omnitune.innertube.YouTube.cookie = cookies
                                         CoroutineScope(Dispatchers.IO).launch {

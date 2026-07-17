@@ -12,15 +12,20 @@ import com.omnitune.app.constants.DataSyncIdKey
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.SelectedYtmPlaylistsKey
 import com.omnitune.app.constants.UseLoginForBrowse
+import com.omnitune.app.constants.YtmLastSyncAtKey
+import com.omnitune.app.constants.YtmLastSyncErrorKey
+import com.omnitune.app.constants.YtmLastSyncStatusKey
 import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.PlaylistSongMap
 import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.utils.completed
+import androidx.datastore.preferences.core.edit
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -65,7 +70,7 @@ class YouTubePlaylistSyncWorker(
     override suspend fun doWork(): Result {
         val prefs = applicationContext.dataStore.data.first()
         if (prefs[YtmSyncKey] != true) return Result.success()
-        val cookie = prefs[InnerTubeCookieKey].orEmpty()
+        val cookie = SecurePreferenceCipher.decryptOrPlain(prefs[InnerTubeCookieKey])
         val selectedIds = parseSelectedYouTubePlaylists(prefs[SelectedYtmPlaylistsKey].orEmpty())
         if (cookie.isBlank() || selectedIds.isEmpty()) return Result.success()
 
@@ -77,11 +82,33 @@ class YouTubePlaylistSyncWorker(
             val playlists = YouTube.library(PLAYLISTS_BROWSE_ID).completed().getOrThrow()
                 .items.filterIsInstance<PlaylistItem>()
                 .filter { it.id in selectedIds }
-            playlists.forEach { syncYouTubePlaylist(database, it) }
+            val songCount = playlists.sumOf { syncYouTubePlaylist(database, it) }
+            applicationContext.recordYouTubeSyncStatus(
+                status = "Synced ${playlists.size} playlists, $songCount songs",
+                error = "",
+            )
         }.fold(
             onSuccess = { Result.success() },
-            onFailure = { if (runAttemptCount < 3) Result.retry() else Result.failure() },
+            onFailure = { error ->
+                applicationContext.recordYouTubeSyncStatus(
+                    status = "Sync failed",
+                    error = error.message ?: error::class.java.simpleName,
+                )
+                if (runAttemptCount < 3) Result.retry() else Result.failure()
+            },
         )
+    }
+}
+
+suspend fun Context.recordYouTubeSyncStatus(status: String, error: String = "") {
+    dataStore.edit { prefs ->
+        prefs[YtmLastSyncAtKey] = System.currentTimeMillis()
+        prefs[YtmLastSyncStatusKey] = status
+        if (error.isBlank()) {
+            prefs.remove(YtmLastSyncErrorKey)
+        } else {
+            prefs[YtmLastSyncErrorKey] = error.take(240)
+        }
     }
 }
 

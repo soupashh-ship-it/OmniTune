@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import android.content.Intent
 import android.content.Context
-import android.util.Log
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.playback.PlayerConnection
@@ -42,6 +41,7 @@ import coil3.SingletonImageLoader
 import coil3.request.allowHardware
 import coil3.toBitmap
 import androidx.compose.ui.graphics.toArgb
+import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -92,10 +92,10 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
         val lastCrash = prefs.getString("last_crash", null)
         if (BuildConfig.DEBUG && lastCrash != null) {
-            prefs.edit().remove("last_crash").commit()
+            prefs.edit().remove("last_crash").apply()
             val scrollView = android.widget.ScrollView(this).apply {
                 addView(android.widget.TextView(this@MainActivity).apply {
-                    text = "CRASH OCCURRED:\n\n$lastCrash"
+                    text = getString(R.string.debug_crash_occurred, lastCrash)
                     textSize = 12f
                     setPadding(32, 100, 32, 32)
                     setTextColor(android.graphics.Color.RED)
@@ -148,22 +148,22 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(playerConnection, dynamicSongColors) {
                 val pc = playerConnection
                 if (!dynamicSongColors || pc == null) {
-                    Log.d("OmniTuneColor", "Dynamic song colors disabled or playerConnection is null, using default")
+                    Timber.tag("OmniTuneColor").d("Dynamic song colors disabled or playerConnection is null, using default")
                     themeColor = DefaultThemeColor
                     return@LaunchedEffect
                 }
 
-                Log.d("OmniTuneColor", "Starting to collect mediaMetadata flow")
+                Timber.tag("OmniTuneColor").d("Starting to collect mediaMetadata flow")
                 // Use direct flow.collectLatest (snapshotFlow doesn't track StateFlow.value)
                 pc.mediaMetadata.collectLatest { metadata ->
-                    Log.d("OmniTuneColor", "Received metadata: " + (metadata?.title ?: "null"))
+                    Timber.tag("OmniTuneColor").d("Received metadata: ${metadata?.title ?: "null"}")
                     val thumbnailUrl = metadata?.thumbnailUrl
-                    Log.d("OmniTuneColor", "Thumbnail URL: " + (thumbnailUrl ?: "null/blank"))
+                    Timber.tag("OmniTuneColor").d("Thumbnail URL: ${thumbnailUrl ?: "null/blank"}")
                     if (thumbnailUrl.isNullOrBlank()) {
                         themeColor = DefaultThemeColor
                         return@collectLatest
                     }
-                    Log.d("OmniTuneColor", "Loading image from: " + thumbnailUrl)
+                    Timber.tag("OmniTuneColor").d("Loading image from: $thumbnailUrl")
                     // Run heavy work (image loading + palette extraction) on background thread
                     withContext(kotlinx.coroutines.Dispatchers.Default) {
                         try {
@@ -172,27 +172,27 @@ class MainActivity : ComponentActivity() {
                                 .data(thumbnailUrl)
                                 .allowHardware(false)
                                 .build()
-                            Log.d("OmniTuneColor", "Executing Coil request...")
+                            Timber.tag("OmniTuneColor").d("Executing Coil request...")
                             val result = imageLoader.execute(request)
                             val imageStatus = if (result.image != null) "success" else "null image"
-                            Log.d("OmniTuneColor", "Coil result: $imageStatus")
+                            Timber.tag("OmniTuneColor").d("Coil result: $imageStatus")
                             val bitmap = result.image?.toBitmap()
                             if (bitmap != null) {
-                                Log.d("OmniTuneColor", "Bitmap obtained, extracting theme color...")
+                                Timber.tag("OmniTuneColor").d("Bitmap obtained, extracting theme color...")
                                 val extractedColor = bitmap.extractThemeColor()
-                                Log.d("OmniTuneColor", "Extracted color: #" + Integer.toHexString(extractedColor.toArgb()))
+                                Timber.tag("OmniTuneColor").d("Extracted color: #${Integer.toHexString(extractedColor.toArgb())}")
                                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                                     themeColor = extractedColor
-                                    Log.d("OmniTuneColor", "themeColor updated!")
+                                    Timber.tag("OmniTuneColor").d("themeColor updated")
                                 }
                             } else {
-                                Log.d("OmniTuneColor", "Bitmap was null after loading")
+                                Timber.tag("OmniTuneColor").d("Bitmap was null after loading")
                                 withContext(kotlinx.coroutines.Dispatchers.Main) {
                                     themeColor = DefaultThemeColor
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.d("OmniTuneColor", "Exception: " + e.message)
+                            Timber.tag("OmniTuneColor").d(e, "Dynamic color extraction failed")
                             withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 reportException(e)
                                 themeColor = DefaultThemeColor

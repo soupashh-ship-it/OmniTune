@@ -28,17 +28,12 @@ class NetworkConnectivityObserver(context: Context) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            // Wait for onCapabilitiesChanged to confirm validation
+            val capabilities = connectivityManager.getNetworkCapabilities(network)
+            _networkStatus.trySend(capabilities.isUsableForAppTraffic())
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            val isValidated = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            } else {
-                true
-            }
-            _networkStatus.trySend(hasInternet && isValidated)
+            _networkStatus.trySend(networkCapabilities.isUsableForAppTraffic())
         }
 
         override fun onLost(network: Network) {
@@ -49,7 +44,6 @@ class NetworkConnectivityObserver(context: Context) {
     init {
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
             .build()
         
         try {
@@ -76,19 +70,14 @@ class NetworkConnectivityObserver(context: Context) {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
             
-            // Check if we have internet capability
-            val hasInternet = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            
-            // For API 23+, also check if connection is validated
-            val isValidated = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-            } else {
-                true // For older versions, assume validated if we have internet capability
-            }
-            
-            hasInternet && isValidated
+            networkCapabilities.isUsableForAppTraffic()
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun NetworkCapabilities?.isUsableForAppTraffic(): Boolean {
+        if (this == null) return false
+        return hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }

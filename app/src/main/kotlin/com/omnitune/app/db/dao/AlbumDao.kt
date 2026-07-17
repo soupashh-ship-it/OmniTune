@@ -202,11 +202,11 @@ interface AlbumDao {
         """
         SELECT album.*
         FROM album
-                 JOIN song
+                 LEFT JOIN song
                       ON song.albumId = album.id
         WHERE bookmarkedAt IS NOT NULL
         GROUP BY album.id
-        ORDER BY SUM(song.totalPlayTime)
+        ORDER BY COALESCE(SUM(song.totalPlayTime), 0)
     """
     )
     fun albumsLikedByPlayTimeAsc(): Flow<List<Album>>

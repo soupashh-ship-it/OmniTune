@@ -19,6 +19,8 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val MAX_OUTER_CLIENT_ATTEMPTS = 2
+
 sealed class StreamResolveResult {
     data class Success(
         val stream: StreamResult,
@@ -79,7 +81,7 @@ class StreamExtractor @Inject constructor(
             rotatedClients
         } else {
             (listOf(preferredClient) + rotatedClients).distinct()
-        }
+        }.take(MAX_OUTER_CLIENT_ATTEMPTS)
         val totalAttempts = clientSequence.size
         Timber.tag("OmniTuneStreamFallback").i("Stream resolve attempt started (total clients: $totalAttempts)")
 
@@ -117,6 +119,7 @@ class StreamExtractor @Inject constructor(
             )
 
             if (streamResult != null) {
+                clientRotator.reportSuccess(songId)
                 Timber.tag("OmniTuneStreamFallback").i("Fallback success using client: ${client.name} on attempt $attemptIndex/$totalAttempts")
                 return StreamResolveResult.Success(streamResult, client)
             }

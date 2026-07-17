@@ -32,16 +32,21 @@ import com.omnitune.app.R
 import com.omnitune.app.constants.*
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.sync.parseSelectedYouTubePlaylists
+import com.omnitune.app.sync.recordYouTubeSyncStatus
 import com.omnitune.app.sync.scheduleYouTubePlaylistSync
 import com.omnitune.app.sync.syncYouTubePlaylist
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.utils.completed
+import com.omnitune.innertube.utils.parseCookieString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.DateFormat
+import java.util.Date
 
 private const val YTM_PLAYLISTS_BROWSE_ID = "FEmusic_liked_playlists"
 
@@ -56,13 +61,17 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
     var useLoginForBrowse by rememberPreference(UseLoginForBrowse, true)
     var ytmSync by rememberPreference(YtmSyncKey, false)
     var persistedPlaylistIds by rememberPreference(SelectedYtmPlaylistsKey, "")
+    var lastSyncAt by rememberPreference(YtmLastSyncAtKey, 0L)
+    var lastSyncStatus by rememberPreference(YtmLastSyncStatusKey, "")
+    var lastSyncError by rememberPreference(YtmLastSyncErrorKey, "")
     var innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     var isSyncBusy by remember { mutableStateOf(false) }
     var showPlaylistPicker by remember { mutableStateOf(false) }
     var remotePlaylists by remember { mutableStateOf<List<PlaylistItem>>(emptyList()) }
     var selectedPlaylistIds by remember { mutableStateOf(setOf<String>()) }
 
-    val isLoggedIn = innerTubeCookie.isNotBlank()
+    val decryptedCookie = SecurePreferenceCipher.decryptOrPlain(innerTubeCookie)
+    val isLoggedIn = "SAPISID" in parseCookieString(decryptedCookie)
 
     SettingsSubScreenScaffold(
         title = "OmniTune Account",
@@ -162,6 +171,12 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                     }
                 },
             )
+            OmniPreferenceEntry(
+                title = "Sync status",
+                description = youtubeSyncStatusText(lastSyncAt, lastSyncStatus, lastSyncError),
+                iconRes = R.drawable.ic_info,
+                accent = if (lastSyncError.isBlank()) OmniColors.Downloaded else OmniColors.Warning,
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -227,13 +242,27 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                             runCatching {
                                 selected.sumOf { playlist -> syncYouTubePlaylist(database, playlist) }
                             }.onSuccess { songCount ->
+                                context.recordYouTubeSyncStatus(
+                                    status = "Synced ${selected.size} playlists, $songCount songs",
+                                    error = "",
+                                )
                                 withContext(Dispatchers.Main) {
                                     ytmSync = true
                                     scheduleYouTubePlaylistSync(context, true)
+                                    lastSyncAt = System.currentTimeMillis()
+                                    lastSyncStatus = "Synced ${selected.size} playlists, $songCount songs"
+                                    lastSyncError = ""
                                     Toast.makeText(context, "Synced ${selected.size} playlists, $songCount songs", Toast.LENGTH_SHORT).show()
                                 }
                             }.onFailure { error ->
+                                context.recordYouTubeSyncStatus(
+                                    status = "Sync failed",
+                                    error = error.message ?: error::class.java.simpleName,
+                                )
                                 withContext(Dispatchers.Main) {
+                                    lastSyncAt = System.currentTimeMillis()
+                                    lastSyncStatus = "Sync failed"
+                                    lastSyncError = error.message ?: error::class.java.simpleName
                                     Toast.makeText(context, error.message ?: "Playlist sync failed", Toast.LENGTH_SHORT).show()
                                 }
                             }
@@ -250,5 +279,19 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                 }
             },
         )
+    }
+}
+
+private fun youtubeSyncStatusText(lastSyncAt: Long, status: String, error: String): String {
+    if (lastSyncAt <= 0L && status.isBlank()) return "No sync has completed yet."
+    val time = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(lastSyncAt))
+    return buildString {
+        append(status.ifBlank { "Last sync recorded" })
+        append(" • ")
+        append(time)
+        if (error.isNotBlank()) {
+            append(" • ")
+            append(error)
+        }
     }
 }

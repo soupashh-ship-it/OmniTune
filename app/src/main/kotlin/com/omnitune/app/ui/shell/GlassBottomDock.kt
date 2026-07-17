@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,7 +112,7 @@ fun GlassBottomDock(
             // ── Pill indicator (behind items) ─────────────────────────────
             Box(
                 modifier = Modifier
-                    .offset(x = indicatorOffset, y = 10.dp)
+                    .offset { IntOffset(indicatorOffset.roundToPx(), 10.dp.roundToPx()) }
                     .width(pillWidth)
                     .height(pillHeight)
                     .clip(RoundedCornerShape(14.dp))

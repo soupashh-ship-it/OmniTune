@@ -6,7 +6,6 @@
 package com.omnitune.app.ui.theme
 
 import android.graphics.Bitmap
-import android.util.Log
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -28,6 +27,7 @@ import com.kyant.m3color.hct.Hct
 import com.kyant.m3color.scheme.SchemeMonochrome
 import com.kyant.m3color.scheme.SchemeNeutral
 import com.kyant.m3color.scheme.SchemeTonalSpot
+import timber.log.Timber
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 
@@ -122,7 +122,9 @@ fun OmniTuneTheme(
 
     val animatedColorScheme = animateColorScheme(colorScheme)
 
-    Log.d("OmniTuneTheme", "themeColor in theme: " + Integer.toHexString(themeColor.toArgb()) + ", scheme.primary: " + Integer.toHexString(colorScheme.primary.toArgb()))
+    Timber.tag("OmniTuneTheme").d(
+        "themeColor in theme: ${Integer.toHexString(themeColor.toArgb())}, scheme.primary: ${Integer.toHexString(colorScheme.primary.toArgb())}",
+    )
 
     OmniColors.updateFromTheme(
         primary = colorScheme.primary,

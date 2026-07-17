@@ -10,7 +10,6 @@ package com.omnitune.app.db
 import android.annotation.SuppressLint
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 import androidx.core.content.contentValuesOf
 import androidx.room.AutoMigration
 import androidx.room.Database
@@ -55,6 +54,7 @@ import java.time.ZoneOffset
 import java.util.Date
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
+import timber.log.Timber
 
 private const val TAG = "MusicDatabase"
 private const val CURRENT_VERSION = 7
@@ -229,7 +229,7 @@ abstract class InternalDatabase : RoomDatabase() {
             } catch (error: Exception) {
                 if (!isRecoverableDatabaseSchemaFailure(error)) throw error
 
-                Log.e(TAG, "Database schema upgrade failed; attempting non-destructive repair", error)
+                Timber.tag(TAG).e(error, "Database schema upgrade failed; attempting non-destructive repair")
                 runCatching { db.close() }
                 SchemaTools.repairDatabaseFile(context, DB_NAME)
                 db = build()
@@ -266,7 +266,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 ensurePlaylistBrowseIdIndex(db)
                 repairLibraryRelations(db)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to set PRAGMA settings", e)
+                Timber.tag(TAG).e(e, "Failed to set PRAGMA settings")
             }
         }
     }
@@ -309,7 +309,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
             db.execSQL("DROP TABLE duplicate_playlist_map")
             db.setTransactionSuccessful()
         } catch (e: Exception) {
-            Log.w(TAG, "Duplicate playlist cleanup skipped", e)
+            Timber.tag(TAG).w(e, "Duplicate playlist cleanup skipped")
         } finally {
             if (db.inTransaction()) db.endTransaction()
         }
@@ -319,7 +319,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
         try {
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_playlist_browseId ON playlist (browseId) WHERE browseId IS NOT NULL")
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to create browseId index", e)
+            Timber.tag(TAG).w(e, "Failed to create browseId index")
         }
     }
 
@@ -372,7 +372,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 """.trimIndent(),
             )
         } catch (e: Exception) {
-            Log.w(TAG, "Library relation repair skipped", e)
+            Timber.tag(TAG).w(e, "Library relation repair skipped")
         }
 
     }
@@ -395,15 +395,15 @@ private class UniversalMigration(
     override fun migrate(db: SupportSQLiteDatabase) {
         val from = startVersion
         val to = endVersion
-        Log.i(TAG, "Running universal migration from $from to $to")
+        Timber.tag(TAG).i("Running universal migration from $from to $to")
 
         val expectedDb = Room.inMemoryDatabaseBuilder(context, InternalDatabase::class.java).build()
         try {
             val expected = expectedDb.openHelper.writableDatabase
             SchemaTools.reconcileDatabase(db = db, expectedDb = expected)
-            Log.i(TAG, "Migration completed successfully")
+            Timber.tag(TAG).i("Migration completed successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Migration failed", e)
+            Timber.tag(TAG).e(e, "Migration failed")
             throw e
         } finally {
             expectedDb.close()

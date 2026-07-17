@@ -231,7 +231,7 @@ interface ArtistDao {
                 WHERE artistId = artist.id
                   AND song.inLibrary IS NOT NULL) AS songCount
         FROM artist
-                 JOIN(SELECT artistId, SUM(totalPlayTime) AS totalPlayTime
+                 LEFT JOIN(SELECT artistId, SUM(totalPlayTime) AS totalPlayTime
                       FROM song_artist_map
                                JOIN song
                                     ON song_artist_map.songId = song.id
@@ -239,6 +239,7 @@ interface ArtistDao {
                       ORDER BY totalPlayTime)
                      ON artist.id = artistId
         WHERE bookmarkedAt IS NOT NULL
+        ORDER BY COALESCE(totalPlayTime, 0)
     """
     )
     fun artistsBookmarkedByPlayTimeAsc(): Flow<List<Artist>>

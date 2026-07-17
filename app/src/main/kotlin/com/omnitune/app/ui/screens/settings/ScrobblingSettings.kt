@@ -32,10 +32,13 @@ import com.omnitune.app.constants.EnableLastFMScrobblingKey
 import com.omnitune.app.constants.LastFMSessionKey
 import com.omnitune.app.constants.LastFMUseNowPlaying
 import com.omnitune.app.constants.LastFMUsernameKey
+import com.omnitune.app.constants.ListenBrainzEnabledKey
+import com.omnitune.app.constants.ListenBrainzTokenKey
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
 import com.omnitune.app.constants.ScrobbleMinSongDurationKey
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.lastfm.LastFM
 import kotlinx.coroutines.Dispatchers
@@ -54,8 +57,8 @@ fun ScrobblingSettings() {
     var delayPercent by rememberPreference(ScrobbleDelayPercentKey, 50f)
     var delaySeconds by rememberPreference(ScrobbleDelaySecondsKey, 30)
     var minSongDuration by rememberPreference(ScrobbleMinSongDurationKey, 30)
-    var listenBrainzEnabled by rememberPreference(com.omnitune.app.constants.ListenBrainzEnabledKey, false)
-    var listenBrainzToken by rememberPreference(com.omnitune.app.constants.ListenBrainzTokenKey, "")
+    var listenBrainzEnabled by rememberPreference(ListenBrainzEnabledKey, false)
+    var listenBrainzToken by rememberPreference(ListenBrainzTokenKey, "")
     var showListenBrainzDialog by remember { mutableStateOf(false) }
 
     var showLoginDialog by remember { mutableStateOf(false) }
@@ -63,6 +66,7 @@ fun ScrobblingSettings() {
     var loginError by remember { mutableStateOf<String?>(null) }
 
     val isLoggedIn = sessionKey.isNotBlank()
+    val decryptedListenBrainzToken = SecurePreferenceCipher.decryptOrPlain(listenBrainzToken)
 
     Column(
         modifier = Modifier
@@ -165,7 +169,7 @@ fun ScrobblingSettings() {
             )
             OmniPreferenceEntry(
                 title = "User Token",
-                description = if (listenBrainzToken.isBlank()) "Tap to configure token" else "Token configured",
+                description = if (decryptedListenBrainzToken.isBlank()) "Tap to configure token" else "Token configured",
                 iconRes = R.drawable.ic_settings,
                 accent = OmniColors.OmniAccentSecondary,
                 onClick = { showListenBrainzDialog = true }
@@ -173,7 +177,7 @@ fun ScrobblingSettings() {
         }
 
         if (showListenBrainzDialog) {
-            var tokenInput by remember { mutableStateOf(listenBrainzToken) }
+            var tokenInput by remember(showListenBrainzDialog) { mutableStateOf(decryptedListenBrainzToken) }
             AlertDialog(
                 onDismissRequest = { showListenBrainzDialog = false },
                 containerColor = OmniColors.OmniBackgroundElevated,
@@ -196,7 +200,7 @@ fun ScrobblingSettings() {
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        listenBrainzToken = tokenInput
+                        listenBrainzToken = SecurePreferenceCipher.encrypt(tokenInput.trim())
                         showListenBrainzDialog = false
                     }) { Text("Save") }
                 },
@@ -220,7 +224,7 @@ fun ScrobblingSettings() {
             },
             onLoginSuccess = { user, session ->
                 username = user
-                sessionKey = session
+                sessionKey = SecurePreferenceCipher.encrypt(session)
                 scrobblingEnabled = true
                 showLoginDialog = false
                 loginError = null

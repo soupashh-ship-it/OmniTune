@@ -708,7 +708,7 @@ private fun parseColor(hex: String): Color {
     return try {
         Color(android.graphics.Color.parseColor(hex))
     } catch (_: Exception) {
-        Color(0xFF6B6B)
+        Color(0xFFFF6B6B)
     }
 }
 

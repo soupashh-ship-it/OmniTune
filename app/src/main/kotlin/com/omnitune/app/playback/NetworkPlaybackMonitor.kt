@@ -47,6 +47,7 @@ class NetworkPlaybackMonitor(
                 val currentTransport = when {
                     networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkCapabilities.TRANSPORT_WIFI
                     networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkCapabilities.TRANSPORT_CELLULAR
+                    networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> NetworkCapabilities.TRANSPORT_VPN
                     else -> -1
                 }
                 if (lastNetworkTransport != -1 && lastNetworkTransport != currentTransport) {
@@ -91,8 +92,10 @@ class NetworkPlaybackMonitor(
             }
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             return true
-        } else if (lastNetworkTransport == NetworkCapabilities.TRANSPORT_WIFI) {
-            val message = "Playback failed on this network. Try another Wi-Fi, disable VPN/Private DNS, or switch to mobile data."
+        } else if (lastNetworkTransport == NetworkCapabilities.TRANSPORT_WIFI ||
+            lastNetworkTransport == NetworkCapabilities.TRANSPORT_VPN
+        ) {
+            val message = "Playback failed on this network. Try another Wi-Fi, DNS/VPN profile, or mobile data."
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
         return false

@@ -13,7 +13,6 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import androidx.media3.common.Player
@@ -33,8 +32,6 @@ class PlaybackNotificationManager(
     private val sessionProvider: () -> MediaLibraryService.MediaLibrarySession?,
 ) {
     fun createChannelIfNeeded() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Music Player",
@@ -90,11 +87,7 @@ class PlaybackNotificationManager(
         if (!BuildConfig.DEBUG) return
         try {
             val notificationManager = service.getSystemService(Service.NOTIFICATION_SERVICE) as NotificationManager
-            val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                notificationManager.getNotificationChannel(CHANNEL_ID)?.importance
-            } else {
-                null
-            }
+            val channelImportance = notificationManager.getNotificationChannel(CHANNEL_ID)?.importance
             Timber.tag("MediaControls").d(
                 "event=%s notificationsEnabled=%s channel=%s session=%s playerReady=%s state=%s playWhenReady=%s isPlaying=%s title=%s mediaId=%s count=%s",
                 event,

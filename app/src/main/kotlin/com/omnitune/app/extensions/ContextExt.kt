@@ -12,6 +12,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.YtmSyncKey
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.get
 import com.omnitune.innertube.utils.parseCookieString
@@ -21,7 +22,7 @@ fun Context.isSyncEnabled(): Boolean {
 }
 
 fun Context.isUserLoggedIn(): Boolean {
-    val cookie = dataStore[InnerTubeCookieKey] ?: ""
+    val cookie = SecurePreferenceCipher.decryptOrPlain(dataStore[InnerTubeCookieKey])
     return "SAPISID" in parseCookieString(cookie) && isInternetConnected()
 }
 

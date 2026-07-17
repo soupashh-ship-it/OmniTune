@@ -578,6 +578,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val requestedIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
             val queueItems = initialStatus.items.map { it.withOriginalVideoIdUri() }
             val currentItem = queueItems[requestedIndex]
+            if (queue.preloadItem == null) {
+                Timber.tag("OmniTunePlaybackTrace").i(
+                    "Player set unresolved queue: count=${queueItems.size}, index=$requestedIndex, position=${initialStatus.position}"
+                )
+                player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
+                player.playWhenReady = false
+            }
             val resolvedCurrent = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
                     StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
@@ -598,19 +605,26 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
             Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
 
-            val resolvedItems = queueItems.toMutableList().also {
-                it[requestedIndex] = resolvedCurrent
-            }
-            val resolvedIndex = requestedIndex
-
             if (queue.preloadItem != null) {
+                val resolvedItems = queueItems.toMutableList().also {
+                    it[requestedIndex] = resolvedCurrent
+                }
+                val resolvedIndex = requestedIndex
                 player.addMediaItems(0, resolvedItems.subList(0, resolvedIndex))
                 player.addMediaItems(resolvedItems.subList(resolvedIndex + 1, resolvedItems.size))
             } else {
                 Timber.tag("OmniTunePlaybackTrace").i(
-                    "Player setMediaItems: count=${resolvedItems.size}, index=$resolvedIndex, position=${initialStatus.position}"
+                    "Player current item resolved: index=$requestedIndex, position=${initialStatus.position}"
                 )
-                player.setMediaItems(resolvedItems, resolvedIndex, initialStatus.position)
+                if (requestedIndex in 0 until player.mediaItemCount &&
+                    player.getMediaItemAt(requestedIndex).mediaId == currentItem.mediaId
+                ) {
+                    player.replaceMediaItem(requestedIndex, resolvedCurrent)
+                    player.seekTo(requestedIndex, initialStatus.position)
+                } else {
+                    Timber.tag("OmniTunePlaybackTrace").w("Queue changed before current stream resolved")
+                    return@launch
+                }
                 StartupTracker.logPlayerPrepare()
                 player.prepare()
                 player.playWhenReady = playWhenReady

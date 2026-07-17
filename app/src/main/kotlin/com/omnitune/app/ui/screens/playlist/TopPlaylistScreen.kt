@@ -52,6 +52,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -195,7 +196,7 @@ fun TopPlaylistScreen(
     val downloadUtil = LocalDownloadUtil.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
-    var downloadState by remember { mutableStateOf(Download.STATE_STOPPED) }
+    var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
     // Tags
     val pid = "LP_TOP"
     val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())

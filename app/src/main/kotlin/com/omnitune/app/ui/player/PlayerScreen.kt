@@ -120,17 +120,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Locale
 
 private const val ARTWORK_REQUEST_SIZE = 800
 
 @Composable
 fun PlayerScreen(
     playerConnection: PlayerConnection?,
+    modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onNavigateToAlbum: ((String) -> Unit)? = null,
     onNavigateToArtist: ((String) -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
@@ -1329,7 +1330,7 @@ private fun AudioEffectsDialog(
 
             EffectSlider(
                 label = "Tempo",
-                valueText = String.format("%.2fx", tempo),
+                valueText = String.format(Locale.US, "%.2fx", tempo),
                 value = tempo,
                 onValueChange = { tempo = it },
                 onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
@@ -1338,7 +1339,7 @@ private fun AudioEffectsDialog(
 
             EffectSlider(
                 label = "Pitch",
-                valueText = String.format("%.2fx", pitch),
+                valueText = String.format(Locale.US, "%.2fx", pitch),
                 value = pitch,
                 onValueChange = { pitch = it },
                 onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
@@ -1424,7 +1425,7 @@ private fun SleepTimerDialog(
     onCancel: () -> Unit,
     isRunning: Boolean,
 ) {
-    var selectedMinutes by remember { mutableStateOf(30) }
+    var selectedMinutes by remember { mutableIntStateOf(30) }
     var endOfSong by remember { mutableStateOf(false) }
     val options = listOf(15, 30, 45, 60, 90, 120)
 
@@ -1643,7 +1644,7 @@ fun PlayerOptionsBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Text(
-                    text = String.format("%.1fx", speed),
+                    text = String.format(Locale.US, "%.1fx", speed),
                     color = OmniColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(32.dp),
@@ -1683,7 +1684,7 @@ fun PlayerOptionsBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Text(
-                    text = String.format("%.1fx", pitch),
+                    text = String.format(Locale.US, "%.1fx", pitch),
                     color = OmniColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(32.dp),

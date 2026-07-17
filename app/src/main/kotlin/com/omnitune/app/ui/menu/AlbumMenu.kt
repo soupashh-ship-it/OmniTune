@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -124,9 +125,7 @@ fun AlbumMenu(
         }
     }
 
-    var downloadState by remember {
-        mutableStateOf(STATE_STOPPED)
-    }
+    var downloadState by remember { mutableIntStateOf(STATE_STOPPED) }
 
     LaunchedEffect(songs) {
         if (songs.isEmpty()) return@LaunchedEffect

@@ -30,7 +30,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -71,7 +72,9 @@ fun CustomizeBackground(
         title = stringResource(R.string.customize_background_title),
         onBack = { navController.navigateUp() }
     ) {
-        val screenHeightDp = LocalConfiguration.current.screenHeightDp.toFloat()
+        val density = LocalDensity.current
+        val windowInfo = LocalWindowInfo.current
+        val screenHeightDp = with(density) { windowInfo.containerSize.height.toDp().value }
 
         Column(
             modifier = Modifier

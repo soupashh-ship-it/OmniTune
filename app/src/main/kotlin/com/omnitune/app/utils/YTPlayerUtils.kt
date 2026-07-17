@@ -37,6 +37,7 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 object YTPlayerUtils {
     private const val logTag = "YTPlayerUtils"
@@ -51,6 +52,9 @@ object YTPlayerUtils {
         }
         val client = OkHttpClient.Builder()
             .proxy(current)
+            .connectTimeout(2, TimeUnit.SECONDS)
+            .readTimeout(3, TimeUnit.SECONDS)
+            .callTimeout(4, TimeUnit.SECONDS)
             .build()
         streamClientPair = current to client
         return client

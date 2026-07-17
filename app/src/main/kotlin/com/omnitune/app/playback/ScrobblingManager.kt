@@ -9,6 +9,7 @@ import android.content.Context
 import com.omnitune.app.constants.EnableLastFMScrobblingKey
 import com.omnitune.app.constants.LastFMSessionKey
 import com.omnitune.app.constants.LastFMUseNowPlaying
+import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
 import com.omnitune.lastfm.LastFM
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +26,7 @@ class ScrobblingManager(
     private suspend fun isEnabled(): Boolean {
         val prefs = context.dataStore.data.first()
         val enabled = prefs[EnableLastFMScrobblingKey] ?: false
-        val hasSession = prefs[LastFMSessionKey]?.isNotBlank() ?: false
+        val hasSession = SecurePreferenceCipher.decryptOrPlain(prefs[LastFMSessionKey]).isNotBlank()
         return enabled && hasSession
     }
 

@@ -9,6 +9,7 @@ package com.omnitune.app.utils
 
 import java.math.BigInteger
 import java.security.MessageDigest
+import java.util.Locale
 
 fun makeTimeString(duration: Long?): String {
     if (duration == null || duration < 0) return ""
@@ -17,7 +18,7 @@ fun makeTimeString(duration: Long?): String {
     // format as a human-readable date/time rather than a duration.
     // (1_000_000_000_000L ~= 2001-09-09 UTC)
     if (duration > 1_000_000_000_000L) {
-        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
         sdf.timeZone = java.util.TimeZone.getDefault()
         return sdf.format(java.util.Date(duration))
     }

@@ -47,10 +47,10 @@ import com.omnitune.app.db.entities.TagEntity
 @Composable
 fun PlaylistTagChips(
     tags: List<TagEntity>,
+    modifier: Modifier = Modifier,
     editable: Boolean = false,
     onTagClick: ((TagEntity) -> Unit)? = null,
     onRemoveTag: ((TagEntity) -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     if (tags.isNotEmpty()) {
         FlowRow(
@@ -75,11 +75,11 @@ fun PlaylistTagChips(
 @Composable
 fun TagChip(
     tag: TagEntity,
+    modifier: Modifier = Modifier,
     selected: Boolean = false,
     editable: Boolean = false,
     onClick: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     val backgroundColor = remember(tag.color, selected) {
         if (selected) {
