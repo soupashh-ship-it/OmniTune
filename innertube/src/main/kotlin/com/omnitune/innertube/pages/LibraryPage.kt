@@ -143,10 +143,11 @@ data class LibraryPage(
 
             if (runs != null) {
                 for (run in runs) {
-                    if (run.navigationEndpoint != null) {
+                    val browseId = run.navigationEndpoint?.browseEndpoint?.browseId
+                    if (browseId != null) {
                         artists.add(
                             Artist(
-                                id = run.navigationEndpoint.browseEndpoint?.browseId!!,
+                                id = browseId,
                                 name = run.text
                             )
                         )

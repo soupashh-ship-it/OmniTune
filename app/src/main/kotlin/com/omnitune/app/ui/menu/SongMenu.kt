@@ -103,6 +103,7 @@ import com.omnitune.app.ui.component.AddToPlaylistDialog
 import com.omnitune.app.ui.component.SongListItem
 import com.omnitune.app.ui.component.TextFieldDialog
 import com.omnitune.app.ui.utils.ShowMediaInfo
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.app.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -369,6 +370,9 @@ fun SongMenu(
                         val s = song.song.toggleLike()
                         database.query {
                             update(s)
+                        }
+                        coroutineScope.launch(Dispatchers.IO) {
+                            YouTubeLibrarySync.syncSongLike(s, liked = s.liked)
                         }
 
                     },

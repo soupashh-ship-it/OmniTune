@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,7 +79,7 @@ class DiscordPresenceManager @Inject constructor(
         if (_started.getAndSet(true)) return
 
         this.token = token
-        scope.launch {
+        presenceJob = scope.launch {
             try {
                 discordRPC.connect(token)
                 _isRunning.value = true
@@ -92,17 +93,17 @@ class DiscordPresenceManager @Inject constructor(
                         val paused = pauseProvider()
 
                         if (song.title.isNotBlank()) {
-                    discordRPC.updateSong(
-                        title = song.title,
-                        videoId = song.videoId,
-                        artist = song.artist,
-                        album = song.album,
-                        thumbnail = song.thumbnail,
-                        artistImage = song.artistImage,
-                        position = position,
-                        duration = song.duration,
-                        paused = paused,
-                    )
+                            discordRPC.updateSong(
+                                title = song.title,
+                                videoId = song.videoId,
+                                artist = song.artist,
+                                album = song.album,
+                                thumbnail = song.thumbnail,
+                                artistImage = song.artistImage,
+                                position = position,
+                                duration = song.duration,
+                                paused = paused,
+                            )
                         } else if (lastSongData != null) {
                             discordRPC.stop()
                         }
@@ -112,6 +113,8 @@ class DiscordPresenceManager @Inject constructor(
                         consecutiveFailures = 0
 
                         delay(updateInterval)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         consecutiveFailures++
                         logger.warning("Presence update failed ($consecutiveFailures/$MAX_CONSECUTIVE_FAILURES): ${e.message}")
@@ -129,10 +132,16 @@ class DiscordPresenceManager @Inject constructor(
                         delay(min(updateInterval, 30_000L))
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.severe("Presence manager crashed: ${e.message}")
+            } finally {
                 _isRunning.value = false
                 _started.set(false)
+                if (presenceJob === coroutineContext[Job]) {
+                    presenceJob = null
+                }
             }
         }
     }

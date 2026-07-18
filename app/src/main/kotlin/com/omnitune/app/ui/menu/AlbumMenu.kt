@@ -88,6 +88,7 @@ import com.omnitune.app.playback.enqueueCollection
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.LocalAlbumRadio
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.AlbumListItem
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.ListItem
@@ -307,7 +308,14 @@ fun AlbumMenu(
             IconButton(
                 onClick = {
                     database.query {
-                        update(album.album.toggleLike())
+                        val updatedAlbum = album.album.toggleLike()
+                        update(updatedAlbum)
+                        coroutineScope.launch(Dispatchers.IO) {
+                            YouTubeLibrarySync.syncAlbumBookmark(
+                                updatedAlbum,
+                                bookmarked = updatedAlbum.bookmarkedAt != null
+                            )
+                        }
                     }
                 },
             ) {

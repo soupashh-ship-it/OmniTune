@@ -364,11 +364,15 @@ class TogetherOnlineHost(
                             }
 
                             is ControlRequest -> {
-                                if (message.sessionId == sessionId) onEvent?.invoke(TogetherServerEvent.ControlRequested(message))
+                                if (canForwardControlRequest(message)) {
+                                    onEvent?.invoke(TogetherServerEvent.ControlRequested(message))
+                                }
                             }
 
                             is AddTrackRequest -> {
-                                if (message.sessionId == sessionId) onEvent?.invoke(TogetherServerEvent.AddTrackRequested(message))
+                                if (canForwardAddTrackRequest(message)) {
+                                    onEvent?.invoke(TogetherServerEvent.AddTrackRequested(message))
+                                }
                             }
 
                             is ServerError -> {
@@ -389,5 +393,19 @@ class TogetherOnlineHost(
                 }
             }
         loopJob?.join()
+    }
+
+    private suspend fun canForwardControlRequest(request: ControlRequest): Boolean {
+        if (request.sessionId != sessionId) return false
+        val guest = guests[request.participantId] ?: return false
+        if (guest.pending) return false
+        return mutex.withLock { settings.allowGuestsToControlPlayback }
+    }
+
+    private suspend fun canForwardAddTrackRequest(request: AddTrackRequest): Boolean {
+        if (request.sessionId != sessionId) return false
+        val guest = guests[request.participantId] ?: return false
+        if (guest.pending) return false
+        return mutex.withLock { settings.allowGuestsToAddTracks }
     }
 }

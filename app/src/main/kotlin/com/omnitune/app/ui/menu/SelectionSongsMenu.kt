@@ -64,6 +64,7 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
+import com.omnitune.app.sync.YouTubeLibrarySync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -446,6 +447,9 @@ fun SelectionSongMenu(
                             if ((!allLiked && !song.song.liked) || allLiked) {
                                 val s = song.song.toggleLike()
                                 update(s)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncSongLike(s, liked = s.liked)
+                                }
                             }
                         }
                     }
@@ -713,11 +717,19 @@ fun SelectionMediaMetadataMenu(
                     database.query {
                         if (allLiked) {
                             songSelection.forEach { song ->
-                                update(song.toSongEntity().toggleLike())
+                                val entity = song.toSongEntity().toggleLike()
+                                update(entity)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncSongLike(entity, liked = entity.liked)
+                                }
                             }
                         } else {
                             songSelection.filter { !it.liked }.forEach { song ->
-                                update(song.toSongEntity().toggleLike())
+                                val entity = song.toSongEntity().toggleLike()
+                                update(entity)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncSongLike(entity, liked = entity.liked)
+                                }
                             }
                         }
                     }

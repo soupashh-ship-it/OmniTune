@@ -89,6 +89,7 @@ import com.omnitune.app.ui.component.LocalMenuState
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
 import com.omnitune.app.ui.utils.ShowMediaInfo
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.joinByBullet
 import com.omnitune.app.utils.makeTimeString
 import com.omnitune.app.utils.rememberPreference
@@ -259,6 +260,9 @@ fun YouTubeSongMenu(
                             } else {
                                 s = librarySong.song.toggleLike()
                                 update(s)
+                            }
+                            coroutineScope.launch(Dispatchers.IO) {
+                                YouTubeLibrarySync.syncSongLike(s, liked = s.liked)
                             }
                         }
                     }

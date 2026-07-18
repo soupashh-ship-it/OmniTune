@@ -62,6 +62,7 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.enqueueCollection
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.YouTubeQueue
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.AssignTagsDialog
 import com.omnitune.app.ui.component.EditPlaylistDialog
@@ -248,7 +249,14 @@ fun PlaylistMenu(
                             // First toggle the like using the same logic as the like button
                             if (playlist.playlist.bookmarkedAt != null) {
                                 // Using the same toggleLike() method that's used in the like button
-                                update(playlist.playlist.toggleLike())
+                                val updatedPlaylist = playlist.playlist.toggleLike()
+                                update(updatedPlaylist)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncPlaylistBookmark(
+                                        updatedPlaylist,
+                                        bookmarked = false
+                                    )
+                                }
                             }
                             // Then delete the playlist
                             delete(playlist.playlist)
@@ -272,7 +280,15 @@ fun PlaylistMenu(
                 IconButton(
                     onClick = {
                         database.query {
-                            dbPlaylist?.playlist?.toggleLike()?.let { update(it) }
+                            dbPlaylist?.playlist?.toggleLike()?.let { updatedPlaylist ->
+                                update(updatedPlaylist)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncPlaylistBookmark(
+                                        updatedPlaylist,
+                                        bookmarked = updatedPlaylist.bookmarkedAt != null
+                                    )
+                                }
+                            }
                         }
                     }
                 ) {

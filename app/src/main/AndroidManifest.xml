@@ -13,7 +13,7 @@
 
     <application
         android:name=".OmniTuneApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:appCategory="audio"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"

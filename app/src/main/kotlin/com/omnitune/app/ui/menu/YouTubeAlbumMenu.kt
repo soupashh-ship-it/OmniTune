@@ -81,6 +81,7 @@ import com.omnitune.app.playback.downloadCollectionId
 import com.omnitune.app.playback.enqueueCollection
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.YouTubeAlbumRadio
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
@@ -286,7 +287,15 @@ fun YouTubeAlbumMenu(
             IconButton(
                 onClick = {
                     database.query {
-                        album?.album?.toggleLike()?.let(::update)
+                        album?.album?.toggleLike()?.let { updatedAlbum ->
+                            update(updatedAlbum)
+                            coroutineScope.launch(Dispatchers.IO) {
+                                YouTubeLibrarySync.syncAlbumBookmark(
+                                    updatedAlbum,
+                                    bookmarked = updatedAlbum.bookmarkedAt != null
+                                )
+                            }
+                        }
                     }
                 },
             ) {

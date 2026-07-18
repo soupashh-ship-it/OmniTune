@@ -16,6 +16,12 @@ import java.io.File
 import java.time.Instant
 
 object DiagnosticReportExporter {
+    private val queryUrlPattern = """https?://[^\s"']+\?[^\s"']+""".toRegex(RegexOption.IGNORE_CASE)
+    private val sensitiveHeaderPattern = """(?i)\b(authorization|cookie)\s*[:=]\s*.*""".toRegex()
+    private val sensitiveKeyValuePattern =
+        """(?i)\b((?:access|refresh|id)[_-]?token|x[_-]?api[_-]?(?:key|token)|api[_-]?key|po[_-]?token|potoken|token|session|password|keystore|key_password|visitor)[\w-]*\s*[:=]\s*([^\s,;"']+)""".toRegex()
+    private val bearerTokenPattern = """(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+""".toRegex()
+
     fun createShareIntent(context: Context): Intent {
         val reportFile = writeReport(context)
         val uri = FileProvider.getUriForFile(
@@ -96,7 +102,9 @@ object DiagnosticReportExporter {
     @androidx.annotation.VisibleForTesting
     internal fun sanitize(text: String): String {
         return text.lineSequence().take(200).joinToString("\n")
-            .replace("""https?://[^\s"']+\?[^\s"']+""".toRegex(RegexOption.IGNORE_CASE), "<REDACTED_URL>")
-            .replace("""(?i)(authorization|cookie|potoken|token|session|password|keystore|key_password|visitor)[_a-z]*[:=]\s*([^\s,;"']+)""".toRegex(), "$1: <REDACTED>")
+            .replace(queryUrlPattern, "<REDACTED_URL>")
+            .replace(sensitiveHeaderPattern) { "${it.groupValues[1]}: <REDACTED>" }
+            .replace(sensitiveKeyValuePattern) { "${it.groupValues[1]}: <REDACTED>" }
+            .replace(bearerTokenPattern, "Bearer <REDACTED>")
     }
 }

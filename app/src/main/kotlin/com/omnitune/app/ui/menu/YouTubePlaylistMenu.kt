@@ -84,6 +84,7 @@ import com.omnitune.app.playback.ExoDownloadService
 import com.omnitune.app.playback.queues.YouTubeQueue
 import com.omnitune.app.playback.downloadCollectionId
 import com.omnitune.app.playback.enqueueCollection
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.NewAction
@@ -168,6 +169,12 @@ fun YouTubePlaylistMenu(
                                 ).toggleLike()
                                 insert(playlistEntity)
                                 coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncPlaylistBookmark(
+                                        playlistEntity,
+                                        bookmarked = playlistEntity.bookmarkedAt != null
+                                    )
+                                }
+                                coroutineScope.launch(Dispatchers.IO) {
                                     songs.ifEmpty {
                                         YouTube.playlist(playlist.id).completed()
                                             .getOrNull()?.songs.orEmpty()
@@ -188,7 +195,14 @@ fun YouTubePlaylistMenu(
                                 // Update playlist information including thumbnail before toggling like
                                 val currentPlaylist = dbPlaylist?.playlist ?: return@transaction
                                 update(currentPlaylist, playlist)
-                                update(currentPlaylist.toggleLike())
+                                val updatedPlaylist = currentPlaylist.toggleLike()
+                                update(updatedPlaylist)
+                                coroutineScope.launch(Dispatchers.IO) {
+                                    YouTubeLibrarySync.syncPlaylistBookmark(
+                                        updatedPlaylist,
+                                        bookmarked = updatedPlaylist.bookmarkedAt != null
+                                    )
+                                }
                             }
                         }
                     }

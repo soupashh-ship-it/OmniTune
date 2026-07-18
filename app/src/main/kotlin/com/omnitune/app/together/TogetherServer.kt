@@ -329,11 +329,15 @@ class TogetherServer(
                     }
 
                     is ControlRequest -> {
-                        if (!client.pending) onEvent?.invoke(TogetherServerEvent.ControlRequested(message))
+                        if (canForwardControlRequest(client, message)) {
+                            onEvent?.invoke(TogetherServerEvent.ControlRequested(message))
+                        }
                     }
 
                     is AddTrackRequest -> {
-                        if (!client.pending) onEvent?.invoke(TogetherServerEvent.AddTrackRequested(message))
+                        if (canForwardAddTrackRequest(client, message)) {
+                            onEvent?.invoke(TogetherServerEvent.AddTrackRequested(message))
+                        }
                     }
 
                     is ClientLeave -> {
@@ -353,5 +357,19 @@ class TogetherServer(
             onEvent?.invoke(TogetherServerEvent.ParticipantLeft(participantId, "Disconnected"))
             runCatching { close() }
         }
+    }
+
+    private suspend fun canForwardControlRequest(client: Client, request: ControlRequest): Boolean {
+        if (client.pending || request.sessionId != sessionId || request.participantId != client.participantId) {
+            return false
+        }
+        return mutex.withLock { settings.allowGuestsToControlPlayback }
+    }
+
+    private suspend fun canForwardAddTrackRequest(client: Client, request: AddTrackRequest): Boolean {
+        if (client.pending || request.sessionId != sessionId || request.participantId != client.participantId) {
+            return false
+        }
+        return mutex.withLock { settings.allowGuestsToAddTracks }
     }
 }

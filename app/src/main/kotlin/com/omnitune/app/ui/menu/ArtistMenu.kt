@@ -52,6 +52,7 @@ import com.omnitune.app.constants.ArtistSongSortType
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.queues.ListQueue
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.ArtistListItem
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
@@ -210,7 +211,14 @@ fun ArtistMenu(
                 },
                 modifier = Modifier.clickable {
                     database.transaction {
-                        update(artist.artist.toggleLike())
+                        val updatedArtist = artist.artist.toggleLike()
+                        update(updatedArtist)
+                        coroutineScope.launch(Dispatchers.IO) {
+                            YouTubeLibrarySync.syncArtistBookmark(
+                                updatedArtist,
+                                bookmarked = updatedArtist.bookmarkedAt != null
+                            )
+                        }
                     }
                 }
             )

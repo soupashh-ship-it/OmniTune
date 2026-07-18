@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,9 +54,12 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.ArtistEntity
 import com.omnitune.app.playback.queues.YouTubeQueue
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
 import com.omnitune.app.ui.component.YouTubeListItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,6 +71,7 @@ fun YouTubeArtistMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val libraryArtist by database.artist(artist.id).collectAsState(initial = null)
+    val coroutineScope = rememberCoroutineScope()
 
     YouTubeListItem(
         item = artist,
@@ -183,16 +188,21 @@ fun YouTubeArtistMenu(
                 modifier = Modifier.clickable {
                     database.query {
                         val libraryArtist = libraryArtist
-                        if (libraryArtist != null) {
-                            update(libraryArtist.artist.toggleLike())
-                        } else {
-                            insert(
+                        val updatedArtist =
+                            if (libraryArtist != null) {
+                                libraryArtist.artist.toggleLike().also(::update)
+                            } else {
                                 ArtistEntity(
                                     id = artist.id,
                                     name = artist.title,
                                     channelId = artist.channelId,
                                     thumbnailUrl = artist.thumbnail,
-                                ).toggleLike()
+                                ).toggleLike().also(::insert)
+                            }
+                        coroutineScope.launch(Dispatchers.IO) {
+                            YouTubeLibrarySync.syncArtistBookmark(
+                                updatedArtist,
+                                bookmarked = updatedArtist.bookmarkedAt != null
                             )
                         }
                     }

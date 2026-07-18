@@ -23,6 +23,7 @@ import com.omnitune.app.extensions.getQueueIndices
 import com.omnitune.app.extensions.metadata
 import com.omnitune.app.playback.MusicService.MusicBinder
 import com.omnitune.app.playback.queues.Queue
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -193,14 +194,18 @@ class PlayerConnection(
         val meta = mediaMetadata.value ?: return
         service.scope.launch(Dispatchers.IO) {
             val song = database.getSongById(meta.id)
-            if (song != null) {
-                database.upsert(song.song.localToggleLike())
+            val updatedSong = if (song != null) {
+                song.song.localToggleLike()
             } else {
-                database.upsert(meta.toSongEntity().copy(liked = !meta.liked, likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null))
+                meta.toSongEntity().copy(
+                    liked = !meta.liked,
+                    likedDate = if (!meta.liked) java.time.LocalDateTime.now() else null
+                )
             }
-            com.omnitune.innertube.YouTube.likeVideo(meta.id, !meta.liked)
+            database.upsert(updatedSong)
+            YouTubeLibrarySync.syncSongLike(updatedSong, liked = updatedSong.liked)
 
-            if (!meta.liked) {
+            if (updatedSong.liked) {
                 val prefs = service.dataStore.data.first()
                 val autoDownload = prefs[AutoDownloadOnLikeKey] ?: false
                 if (autoDownload) {

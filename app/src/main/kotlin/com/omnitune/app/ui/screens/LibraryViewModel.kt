@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
+import com.omnitune.app.sync.YouTubeLibrarySync
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -154,12 +155,9 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val song = database.getSongById(songId)
             if (song != null) {
-                database.upsert(song.song.localToggleLike())
-                try {
-                    com.omnitune.innertube.YouTube.likeVideo(songId, song.song.likedDate == null)
-                } catch (e: Exception) {
-                    timber.log.Timber.e(e, "Failed to sync like with YouTube")
-                }
+                val updatedSong = song.song.localToggleLike()
+                database.upsert(updatedSong)
+                YouTubeLibrarySync.syncSongLike(updatedSong, liked = updatedSong.liked)
             }
         }
     }
