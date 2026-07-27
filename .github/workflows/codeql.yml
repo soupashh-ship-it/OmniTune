@@ -17,14 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: github/codeql-action/init@v4
-        with:
-          languages: java-kotlin
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
           cache: gradle
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
       - run: chmod +x gradlew
       - run: ./gradlew compileReleaseKotlin
       - uses: github/codeql-action/analyze@v4
