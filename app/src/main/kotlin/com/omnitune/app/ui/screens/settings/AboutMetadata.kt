@@ -75,6 +75,8 @@ internal object AboutDestinations {
     )
 }
 
+internal const val OmniTuneKoFiUrl = "https://ko-fi.com/soupashh"
+
 internal fun Context.openExternalUrl(url: String): Boolean {
     if (url.isBlank()) return false
     val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
