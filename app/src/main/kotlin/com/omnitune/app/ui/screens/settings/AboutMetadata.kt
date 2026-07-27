@@ -75,8 +75,7 @@ internal object AboutDestinations {
     )
 }
 
-internal const val DEFAULT_DONATION_AMOUNT = 100
-internal val DONATION_PRESET_AMOUNTS = listOf(50, 100, 250, 500)
+internal const val INSTAMOJO_DONATION_URL = "https://www.instamojo.com/@soupashh/donation"
 
 internal fun Context.openExternalUrl(url: String): Boolean {
     if (url.isBlank()) return false
