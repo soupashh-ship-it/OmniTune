@@ -26,15 +26,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -376,6 +383,8 @@ private fun DonationSection(
     onSnackbar: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    var amount by remember { mutableStateOf("") }
+
     val destination = AboutDestinations.supportUpi ?: return
 
     Card(
@@ -407,26 +416,72 @@ private fun DonationSection(
                 color = OmniColors.TextPrimary,
             )
             Text(
-                text = "If you enjoy OmniTune, consider buying me a chai. Tap below to donate via UPI, Cards, or NetBanking.",
+                text = "If you enjoy OmniTune, consider buying me a chai. Enter an amount and tap Pay.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextSecondary,
             )
 
+            Text(
+                text = "Amount (₹)",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.TextPrimary,
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+                DONATION_PRESET_AMOUNTS.forEach { preset ->
+                    val selected = amount == preset.toString()
+                    FilterChip(
+                        selected = selected,
+                        onClick = { amount = preset.toString() },
+                        label = { Text("₹$preset") },
+                        shape = OmniShapes.Chip,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = OmniColors.OmniGlassStrong,
+                            selectedContainerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.25f),
+                            labelColor = OmniColors.TextSecondary,
+                            selectedLabelColor = OmniColors.TextPrimary,
+                        ),
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = amount,
+                onValueChange = { amount = it.filter { c -> c.isDigit() } },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Custom amount (₹)") },
+                singleLine = true,
+                shape = OmniShapes.Medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = OmniColors.TextPrimary,
+                    unfocusedTextColor = OmniColors.TextPrimary,
+                    cursorColor = OmniColors.OmniAccentPrimary,
+                    focusedBorderColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.5f),
+                    unfocusedBorderColor = OmniColors.OmniGlassBorderStrong,
+                ),
+            )
+
             Button(
                 onClick = {
-                    if (!context.openExternalUrl(INSTAMOJO_DONATION_URL)) {
-                        onSnackbar("Could not open payment page")
+                    val amt = amount.toIntOrNull()
+                    if (amt == null || amt <= 0) {
+                        onSnackbar("Enter a valid amount")
+                    } else if (!context.openUpiPayment(destination, amt)) {
+                        onSnackbar("No UPI app found on this device")
                     }
                 },
+                enabled = amount.toIntOrNull() != null && amount.toIntOrNull()!! > 0,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = OmniShapes.Medium,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.92f),
                     contentColor = if (OmniColors.OmniAccentPrimary.luminance() > 0.52f) Color.Black else Color.White,
+                    disabledContainerColor = OmniColors.OmniAccentMuted.copy(alpha = 0.3f),
                 ),
             ) {
                 Text(
-                    text = "Donate via UPI / Cards",
+                    text = "Pay ₹${amount.ifBlank { "—" }} via UPI",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -438,12 +493,12 @@ private fun DonationSection(
                         ?.setPrimaryClip(
                             android.content.ClipData.newPlainText("OmniTune UPI ID", destination.upiId),
                         )
-                    onSnackbar("UPI ID copied")
+                    onSnackbar("UPI ID copied — paste in your UPI app")
                 },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             ) {
                 Text(
-                    text = "Or pay via UPI directly",
+                    text = "Copy UPI ID (manual pay)",
                     style = MaterialTheme.typography.labelMedium,
                     color = OmniColors.TextMuted,
                 )
