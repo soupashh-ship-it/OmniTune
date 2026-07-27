@@ -75,7 +75,8 @@ internal object AboutDestinations {
     )
 }
 
-internal const val OmniTuneKoFiUrl = "https://ko-fi.com/soupashh"
+internal const val DEFAULT_DONATION_AMOUNT = 100
+internal val DONATION_PRESET_AMOUNTS = listOf(50, 100, 250, 500)
 
 internal fun Context.openExternalUrl(url: String): Boolean {
     if (url.isBlank()) return false
@@ -90,15 +91,34 @@ internal fun Context.openExternalUrl(url: String): Boolean {
     }.getOrDefault(false)
 }
 
-internal fun buildUpiPaymentUri(destination: UpiPaymentDestination): String {
-    val encodedPayee = destination.payeeName.encodeUriComponent()
-    val encodedNote = destination.note.encodeUriComponent()
-    return "upi://pay?pa=${destination.upiId}&pn=$encodedPayee&tn=$encodedNote&cu=INR"
+internal fun buildUpiPaymentUri(
+    destination: UpiPaymentDestination,
+    amountInr: Int? = null,
+    transactionRef: String? = null,
+): String {
+    return Uri.Builder()
+        .scheme("upi")
+        .authority("pay")
+        .appendQueryParameter("pa", destination.upiId)
+        .appendQueryParameter("pn", destination.payeeName)
+        .appendQueryParameter("tn", destination.note)
+        .appendQueryParameter("cu", "INR")
+        .appendQueryParameter("tr", transactionRef ?: "OMNI${System.currentTimeMillis()}")
+        .apply {
+            if (amountInr != null && amountInr > 0) {
+                appendQueryParameter("am", "${amountInr}.00")
+            }
+        }
+        .build()
+        .toString()
 }
 
-internal fun Context.openUpiPayment(destination: UpiPaymentDestination): Boolean {
+internal fun Context.openUpiPayment(
+    destination: UpiPaymentDestination,
+    amountInr: Int? = null,
+): Boolean {
     if (destination.upiId.isBlank() || destination.payeeName.isBlank()) return false
-    val uri = runCatching { Uri.parse(buildUpiPaymentUri(destination)) }.getOrNull() ?: return false
+    val uri = runCatching { Uri.parse(buildUpiPaymentUri(destination, amountInr)) }.getOrNull() ?: return false
     val intent = Intent(Intent.ACTION_VIEW, uri)
     return runCatching {
         startActivity(intent)
