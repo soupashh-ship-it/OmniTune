@@ -8,6 +8,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -97,6 +99,7 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val textFieldValue = remember { mutableStateOf(searchTextFieldValue(uiState.query)) }
+    val searchFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(initialQuery) {
         val query = initialQuery?.trim().orEmpty()
@@ -116,13 +119,15 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Transparent)
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient)
             .statusBarsPadding()
             .padding(horizontal = OmniSpacing.medium),
     ) {
         SearchTopBar(
             query = textFieldValue.value,
             isSearching = uiState.isSearching,
+            focusRequester = searchFocusRequester,
             onQueryChange = {
                 textFieldValue.value = it
                 viewModel.onQueryChanged(it.text)
@@ -138,6 +143,7 @@ fun SearchScreen(
 
         SearchFilterChips(
             selectedFilter = uiState.selectedFilter,
+            compactResults = uiState.query.isNotBlank(),
             onFilterSelected = viewModel::onFilterSelected,
         )
 
@@ -154,6 +160,7 @@ fun SearchScreen(
                 history = uiState.searchHistory,
                 onHistoryClick = viewModel::onQueryChanged,
                 onClearHistory = viewModel::clearSearchHistory,
+                onStartSearch = { searchFocusRequester.requestFocus() },
             )
             uiState.hasNoResults -> SearchEmptyResults(query = uiState.query)
             else -> SearchResultsContent(
@@ -254,6 +261,7 @@ fun SearchResultsContent(
 @Composable
 private fun SearchFilterChips(
     selectedFilter: SearchFilterTab,
+    compactResults: Boolean,
     onFilterSelected: (SearchFilterTab) -> Unit,
 ) {
     LazyRow(
@@ -266,24 +274,42 @@ private fun SearchFilterChips(
             contentType = { "search-filter" },
         ) { filter ->
             val selected = filter == selectedFilter
-            TextButton(
-                onClick = { onFilterSelected(filter) },
+            Row(
                 modifier = Modifier
+                    .height(36.dp)
                     .clip(OmniShapes.Pill)
-                    .background(
-                        if (selected) {
-                            OmniColors.OmniAccentPrimary.copy(alpha = 0.22f)
-                        } else {
-                            OmniColors.SurfaceSubtle.copy(alpha = 0.70f)
-                        },
-                    ),
+                    .background(if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceRaised)
+                    .border(
+                        1.dp,
+                        if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceHairline,
+                        OmniShapes.Pill,
+                    )
+                    .clickable { onFilterSelected(filter) }
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                Icon(
+                    painter = painterResource(searchFilterIcon(filter)),
+                    contentDescription = null,
+                    tint = if (selected) OmniColors.TextOnAccent else OmniColors.TextSecondary,
+                    modifier = Modifier.size(15.dp),
+                )
                 Text(
-                    text = filter.label,
-                    color = if (selected) OmniColors.TextPrimary else OmniColors.TextSecondary,
+                    text = if (compactResults && filter == SearchFilterTab.All) "Top" else filter.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected) OmniColors.TextOnAccent else OmniColors.TextPrimary,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                 )
             }
         }
     }
+}
+
+private fun searchFilterIcon(filter: SearchFilterTab): Int = when (filter) {
+    SearchFilterTab.All -> R.drawable.ic_grid
+    SearchFilterTab.Songs, SearchFilterTab.Videos -> R.drawable.ic_play_arrow
+    SearchFilterTab.Albums -> R.drawable.ic_album
+    SearchFilterTab.Artists -> R.drawable.ic_artist
+    SearchFilterTab.Playlists -> R.drawable.ic_list
 }

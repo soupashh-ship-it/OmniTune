@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -101,6 +102,7 @@ import com.omnitune.app.constants.OmniSliderStyle
 import com.omnitune.app.constants.OmniSliderStyleKey
 import com.omnitune.app.lyrics.InlineLyricState
 import com.omnitune.app.lyrics.InlineLyrics
+import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
@@ -203,7 +205,12 @@ fun PlayerScreen(
                 )
     }
 
-    LaunchedEffect(mediaMetadata?.id) {
+    LaunchedEffect(
+        mediaMetadata?.id,
+        mediaMetadata?.title,
+        mediaMetadata?.artists,
+        mediaMetadata?.duration,
+    ) {
         val metadata = mediaMetadata ?: return@LaunchedEffect
         if (metadata.title.isNotBlank()) {
             lyricsViewModel.loadLyrics(
@@ -255,8 +262,10 @@ fun PlayerScreen(
             val baseArtworkHeight = when {
                 maxHeight < 680.dp -> 220.dp
                 maxHeight < 760.dp -> 248.dp
-                compactPlayer -> 286.dp
-                else -> 330.dp
+                compactPlayer -> 220.dp
+                // The reference keeps the artwork compact enough to show the
+                // transport controls and the integrated lyrics panel together.
+                else -> 248.dp
             }
             val artworkHeight = when {
                 compactDesign -> (baseArtworkHeight - 44.dp).coerceAtLeast(188.dp)
@@ -267,15 +276,17 @@ fun PlayerScreen(
                 maxWidth < 380.dp -> 0.90f
                 compactDesign -> 0.78f
                 immersiveDesign -> 0.92f
-                compactPlayer -> 0.84f
-                else -> 0.86f
+                compactPlayer -> 0.60f
+                else -> 0.62f
             }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center,
+                // Start at the top so the integrated lyrics card remains visible
+                // in the initial fullscreen viewport opened from the mini player.
+                contentAlignment = Alignment.TopCenter,
             ) {
                 Column(
                     modifier = Modifier
@@ -288,6 +299,7 @@ fun PlayerScreen(
                         title = headerTitle,
                         onDismiss = onDismiss,
                         onOpenQueue = onOpenQueue,
+                        onShowOptions = { showOptionsSheet = true },
                         hasQueue = playerConnection != null,
                     )
                     Spacer(modifier = Modifier.height(mediumGap))
@@ -300,7 +312,9 @@ fun PlayerScreen(
                             accentColor = dynamicAccent,
                         )
                     }
-                    Spacer(modifier = Modifier.height(largeGap))
+                    // Keep the identity block close to the artwork, as in the
+                    // reference player, while retaining the real metadata below it.
+                    Spacer(modifier = Modifier.height(OmniSpacing.hero))
                     MetadataBlock(
                         playerConnection = playerConnection,
                         lyricsUiState = lyricsUiState,
@@ -320,7 +334,7 @@ fun PlayerScreen(
                             }
                         }
                     )
-                    Spacer(modifier = Modifier.height(largeGap))
+                    Spacer(modifier = Modifier.height(OmniSpacing.micro))
                     PlayerSeekBar(
                         playerConnection = playerConnection,
                         isSeeking = isSeeking,
@@ -335,17 +349,16 @@ fun PlayerScreen(
                         repeatMode = repeatMode,
                         playerConnection = playerConnection,
                         accentColor = controlAccent,
-                        controlSurface = dynamicPalette.playerControlSurface,
                     )
-                    Spacer(modifier = Modifier.height(largeGap))
-                    PlayerActionsRow(
-                        playerConnection = playerConnection,
-                        onOpenQueue = onOpenQueue,
-                        onShowSleepTimer = { showSleepTimerDialog = true },
-                        onShowOptions = { showOptionsSheet = true },
-                        onOpenLyrics = { showLyricsSheet = true },
-                        accentColor = controlAccent,
-                    )
+                    if (lyricsUiState is LyricsUiState.Success) {
+                        Spacer(modifier = Modifier.height(OmniSpacing.micro))
+                        PlayerLyricsPreview(
+                            lines = (lyricsUiState as LyricsUiState.Success).lines,
+                            playerConnection = playerConnection,
+                            onOpenLyrics = { showLyricsSheet = true },
+                            onOpenQueue = onOpenQueue,
+                        )
+                    }
                 }
             }
         }
@@ -506,6 +519,7 @@ private fun PlayerTopBar(
     title: String,
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
+    onShowOptions: () -> Unit,
     hasQueue: Boolean,
 ) {
     Row(
@@ -538,10 +552,9 @@ private fun PlayerTopBar(
             )
         }
         GlassIconButton(
-            icon = R.drawable.ic_list,
-            contentDescription = "Queue",
-            onClick = onOpenQueue,
-            enabled = hasQueue,
+            icon = R.drawable.ic_more_vert,
+            contentDescription = "More options",
+            onClick = onShowOptions,
         )
     }
 }
@@ -698,45 +711,6 @@ private fun MetadataBlock(
         ?: "Unknown artist"
     val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
     val fallbackSubtitle = artist + (if (album != null) " • $album" else "")
-    val lyricsText by (playerConnection?.currentLyrics ?: flowOf(null)).collectAsState(initial = null)
-    val syncedEntries = remember(lyricsUiState, lyricsText) {
-        val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
-        InlineLyrics.syncedEntriesFromLines(loadedLines)
-            .ifEmpty { InlineLyrics.parseSyncedEntries(lyricsText?.lyrics) }
-    }
-    var lyricPositionMs by remember(mediaMetadata?.id) { mutableLongStateOf(0L) }
-
-    LaunchedEffect(playerConnection, mediaMetadata?.id) {
-        while (true) {
-            lyricPositionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
-            delay(250)
-        }
-    }
-
-    LaunchedEffect(mediaMetadata?.id) {
-        if (playerConnection != null && syncedEntries.isEmpty()) {
-            playerConnection.service.prefetchLyrics(mediaMetadata)
-        }
-    }
-
-    val inlineLyricState = remember(syncedEntries, lyricPositionMs, lyricsUiState) {
-        if (syncedEntries.isNotEmpty()) {
-            InlineLyrics.stateFor(syncedEntries, lyricPositionMs)
-        } else {
-            val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
-            if (loadedLines.isNotEmpty()) {
-                InlineLyrics.staticStateFor(loadedLines)
-            } else {
-                InlineLyrics.stateFor(emptyList(), lyricPositionMs)
-            }
-        }
-    }
-
-    LaunchedEffect(syncedEntries, lyricsUiState) {
-        val loadedLines = (lyricsUiState as? LyricsUiState.Success)?.lines.orEmpty()
-        Timber.d("lyrics: entries=${syncedEntries.size}, lines=${loadedLines.size}, timestamps=${loadedLines.take(3).map { it.timestamp }}, text=${lyricsText?.lyrics?.take(80)}")
-    }
-
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
@@ -753,25 +727,20 @@ private fun MetadataBlock(
             ) { currentTitle ->
                 Text(
                     text = currentTitle,
-                    style = OmniTextStyles.screenTitle,
+                    style = MaterialTheme.typography.headlineMedium,
                     color = OmniColors.TextPrimary,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            AnimatedContent(
-                targetState = inlineLyricState,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "player_inline_lyrics",
-            ) { lyricsState ->
-                InlineLyricSubtitle(
-                    state = lyricsState,
-                    fallbackText = fallbackSubtitle,
-                    accentColor = lyricAccentColor,
-                    onOpenLyrics = onOpenLyrics,
-                )
-            }
+            Text(
+                text = fallbackSubtitle,
+                style = MaterialTheme.typography.bodyLarge,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Spacer(modifier = Modifier.width(OmniSpacing.medium))
         IconButton(onClick = onShare) {
@@ -883,6 +852,100 @@ private fun Color.toInlineLyricActiveColor(): Color {
 }
 
 @Composable
+private fun PlayerLyricsPreview(
+    lines: List<LyricsLine>,
+    playerConnection: PlayerConnection?,
+    onOpenLyrics: () -> Unit,
+    onOpenQueue: () -> Unit,
+) {
+    var positionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playerConnection) {
+        while (true) {
+            positionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
+            delay(250L)
+        }
+    }
+    val readableLines = remember(lines) { lines.filter { it.text.isNotBlank() } }
+    if (readableLines.isEmpty()) return
+    val activeIndex = remember(readableLines, positionMs) {
+        readableLines.indexOfLast { line -> line.timestamp <= positionMs }.coerceAtLeast(0)
+    }
+    val visibleLines = remember(readableLines, activeIndex) {
+        val start = (activeIndex - 1).coerceAtLeast(0)
+        readableLines.drop(start).take(5)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(OmniShapes.Large)
+            .background(OmniColors.SurfaceRaised.copy(alpha = 0.92f))
+            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Large)
+            .padding(OmniSpacing.medium),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+            PlayerPreviewTab(
+                label = "Lyrics",
+                selected = true,
+                onClick = onOpenLyrics,
+                modifier = Modifier.weight(1f),
+            )
+            PlayerPreviewTab(
+                label = "Queue",
+                selected = false,
+                onClick = onOpenQueue,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenLyrics),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+        ) {
+            visibleLines.forEach { line ->
+                val active = line == readableLines.getOrNull(activeIndex)
+                Text(
+                    text = line.text,
+                    style = if (active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    color = if (active) OmniColors.OmniAccentSecondary else OmniColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerPreviewTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .height(44.dp)
+            .clip(OmniShapes.Pill)
+            .background(if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.62f) else OmniColors.SurfaceQuiet)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = if (selected) OmniColors.TextPrimary else OmniColors.TextSecondary,
+        )
+    }
+}
+
+@Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 private fun PlayerSeekBar(
     playerConnection: PlayerConnection?,
@@ -947,7 +1010,7 @@ private fun PlayerSeekBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small)
+            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.micro)
             .semantics { contentDescription = "Playback progress" },
     ) {
         me.saket.squiggles.SquigglySlider(
@@ -1002,7 +1065,6 @@ private fun PlayerControlRow(
     repeatMode: Int,
     playerConnection: PlayerConnection?,
     accentColor: Color = LocalOmniAccents.current.primary,
-    controlSurface: Color = OmniColors.OmniGlassSubtle,
 ) {
     val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
     val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
@@ -1038,14 +1100,11 @@ private fun PlayerControlRow(
             )
         }
 
-        // Previous Button (Boxed)
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(OmniShapes.Medium)
-                .background(controlSurface.copy(alpha = if (canSkipPrevious) 0.86f else 0.48f))
-                .clickable(enabled = canSkipPrevious) { playerConnection?.seekToPrevious() },
-            contentAlignment = Alignment.Center
+        // Keep skip actions visually light; the primary action is play/pause.
+        IconButton(
+            onClick = { playerConnection?.seekToPrevious() },
+            enabled = canSkipPrevious,
+            modifier = Modifier.size(40.dp),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_skip_previous),
@@ -1069,14 +1128,10 @@ private fun PlayerControlRow(
             },
         )
 
-        // Next Button (Boxed)
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(OmniShapes.Medium)
-                .background(controlSurface.copy(alpha = if (canSkipNext) 0.86f else 0.48f))
-                .clickable(enabled = canSkipNext) { playerConnection?.seekToNext() },
-            contentAlignment = Alignment.Center
+        IconButton(
+            onClick = { playerConnection?.seekToNext() },
+            enabled = canSkipNext,
+            modifier = Modifier.size(40.dp),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_skip_next),
@@ -1123,7 +1178,7 @@ private fun PlayPauseButton(
         onClick = onClick,
         interactionSource = interactionSource,
         modifier = Modifier
-            .size(76.dp)
+            .size(64.dp)
             .shadow(
                 elevation = 8.dp,
                 shape = CircleShape,
@@ -1324,7 +1379,7 @@ private fun AudioEffectsDialog(
         ) {
             Text(
                 text = "Audio Effects",
-                style = OmniTextStyles.sectionTitle,
+                style = OmniTextStyles.sectionHeader,
                 color = OmniColors.TextPrimary,
             )
 
@@ -1440,7 +1495,7 @@ private fun SleepTimerDialog(
         ) {
             Text(
                 text = "Sleep Timer",
-                style = OmniTextStyles.sectionTitle,
+                style = OmniTextStyles.sectionHeader,
                 color = OmniColors.TextPrimary,
             )
 

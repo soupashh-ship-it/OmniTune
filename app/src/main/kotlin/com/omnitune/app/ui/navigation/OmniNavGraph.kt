@@ -62,6 +62,7 @@ import com.omnitune.app.ui.screens.HomeCollectionMetadata
 import com.omnitune.app.ui.screens.HomeCollectionRoute
 import com.omnitune.app.ui.screens.HomeCollectionType
 import com.omnitune.app.ui.screens.HomeDiscoveryRoute
+import com.omnitune.app.ui.screens.ExploreScreen
 import com.omnitune.app.ui.screens.LibraryAlbumsScreen
 import com.omnitune.app.ui.screens.LibraryArtistsScreen
 import com.omnitune.app.ui.screens.LibraryPlaylistsScreen
@@ -79,10 +80,14 @@ import com.omnitune.app.ui.screens.search.SearchScreen
 import com.omnitune.app.ui.screens.settings.BackupRestoreScreen
 import com.omnitune.app.ui.screens.settings.AboutSettings
 import com.omnitune.app.ui.screens.settings.AppearanceSettings
+import com.omnitune.app.ui.screens.settings.BehaviorSettings
 import com.omnitune.app.ui.screens.settings.ContentSettings
 import com.omnitune.app.ui.screens.settings.DiagnosticsSettings
+import com.omnitune.app.ui.screens.settings.DownloadsSettings
+import com.omnitune.app.ui.screens.settings.LibrarySettings
 import com.omnitune.app.ui.screens.settings.LyricsSettings
 import com.omnitune.app.ui.screens.settings.MediaControlsHelp
+import com.omnitune.app.ui.screens.settings.ParentalControlsSettings
 import com.omnitune.app.ui.screens.settings.PlaybackSettings
 import com.omnitune.app.ui.screens.settings.ScrobblingSettings
 import com.omnitune.app.ui.screens.settings.SettingsScreen
@@ -198,7 +203,16 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     var pendingSongQueue by remember { mutableStateOf<PendingSongQueue?>(null) }
     var showPlayerOverlay by remember { mutableStateOf(false) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
-    val showBottomBar = !showPlayerOverlay && isTopLevelRoute && currentRoute != "player" && currentRoute != "queue" && currentRoute != "settings" && !currentRoute.orEmpty().startsWith("settings/")
+    // The replacement reference keeps its persistent dock on header destinations and
+    // editorial playlist screens as well as the four main tabs.
+    val isSearchRoute = currentRoute == Screens.Search.route ||
+        currentRoute.orEmpty().startsWith("${Screens.Search.route}?")
+    val isReferenceShellRoute = isTopLevelRoute || isSearchRoute ||
+        currentRoute == "settings" || currentRoute.orEmpty().startsWith("settings/") ||
+        currentRoute == ROUTE_DOWNLOADS ||
+        currentRoute.orEmpty().startsWith("playlist/")
+    val showBottomBar = !showPlayerOverlay && isReferenceShellRoute &&
+        currentRoute != "player" && currentRoute != "queue"
 
     LaunchedEffect(localPlayerConnection, pendingSongQueue) {
         val queueData = pendingSongQueue
@@ -232,7 +246,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         }
     }
 
-    val showMiniPlayer = !showPlayerOverlay && currentRoute != "player" && currentRoute != "queue" && currentMediaMetadata != null
+    val showMiniPlayer = !showPlayerOverlay &&
+        currentRoute != "player" &&
+        currentRoute != "queue" &&
+        currentMediaMetadata?.title?.isNotBlank() == true
 
     val mpHeight = OmniChrome.MiniPlayerHeight
     val dockHeight = OmniChrome.BottomDockHeight
@@ -279,7 +296,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToDownloads = { navController.navigate(ROUTE_DOWNLOADS) },
                     onNavigateToSettings = { navController.navigate("settings") },
                     onNavigateToAllGenres = { navController.navigate(Screens.MoodAndGenres.route) },
-                    onResumePlayback = { navController.navigate("player") },
+                    onResumePlayback = {
+                        localPlayerConnection?.playOrResolveCurrent()
+                            ?: navController.navigate("player")
+                    },
                     onNavigateToExplore = { route -> navController.navigate(route) },
                     onPlaySong = { song ->
                         localPlayerConnection?.playQueue(
@@ -339,6 +359,14 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     },
                 )
             }
+            composable(Screens.Explore.route) {
+                ExploreScreen(
+                    onOpenAllCategories = { navController.navigate(Screens.MoodAndGenres.route) },
+                    onBrowse = { browseId, params ->
+                        navController.navigate(youtubeBrowseRoute(browseId, params))
+                    },
+                )
+            }
             composable(Screens.Stats.route) {
                 StatsScreen(
                     onNavigateToYearInMusic = { navController.navigate(Screens.YearInMusic.route) },
@@ -348,7 +376,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable(Screens.History.route) {
                 HistoryScreen(onPlaySong = { song ->
                     localPlayerConnection?.playQueue(ListQueue(title = "History", items = listOf(song.toMediaItem())))
-                })
+                }, onNavigateToSearch = { navController.navigate(Screens.Search.route) })
             }
             composable(Screens.YearInMusic.route) {
                 com.omnitune.app.ui.screens.YearInMusicScreen(navController = navController)
@@ -396,7 +424,13 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onNavigateToRecentlyPlayed = { navController.navigate("recently_played") },
                     onNavigateToArtists = { navController.navigate("library_artists") },
                     onNavigateToAlbums = { navController.navigate("library_albums") },
-                    onNavigateToPlaylists = { navController.navigate("library_playlists") })
+                    onNavigateToPlaylists = { navController.navigate("library_playlists") },
+                    onNavigateToSettings = { navController.navigate("settings") },
+                    onPlaySong = { song ->
+                        localPlayerConnection?.playQueue(
+                            ListQueue(title = "Library", items = listOf(song.toMediaItem())),
+                        )
+                    })
             }
             composable("library_songs") {
                 LibrarySongsScreen(onBack = { navController.popBackStack() }, onPlaySong = { songs, index ->
@@ -602,13 +636,6 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     onChipClick = { chip -> navController.navigate(homeCollectionRoute(chip.id, null)) }
                 )
             }
-            composable("settings/content") {
-                SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) {
-                    ContentSettings(
-                        onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) }
-                    )
-                }
-            }
             composable("album/{albumId}") {
                 AlbumScreen(
                     albumId = it.arguments?.getString("albumId") ?: "",
@@ -630,19 +657,10 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 )
             }
             composable("queue") { QueueScreen(playerConnection = localPlayerConnection, onBack = { navController.popBackStack() }) }
-            composable("settings/appearance") {
-                SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) {
-                    AppearanceSettings()
-                }
-            }
-            composable("settings/updates") {
-                SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) {
-                    UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) })
-                }
-            }
             composable("settings") {
                 SettingsScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToSearch = { navController.navigate(Screens.Search.route) },
                     onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) },
                     onNavigateToCategory = { cat ->
                         if (cat == "account_settings") {
@@ -654,6 +672,18 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 )
             }
             composable("settings/playback") { SettingsSubScreenScaffold(title = "Playback & Audio", onBack = { navController.popBackStack() }) { PlaybackSettings(onNavigateToEqualizer = { navController.navigate(ROUTE_EQUALIZER) }) } }
+            composable("settings/appearance") {
+                SettingsSubScreenScaffold(title = "Appearance", onBack = { navController.popBackStack() }) {
+                    AppearanceSettings(onNavigateToLyrics = { navController.navigate("settings/lyrics") })
+                }
+            }
+            composable("settings/behavior") { SettingsSubScreenScaffold(title = "Behavior", onBack = { navController.popBackStack() }) { BehaviorSettings() } }
+            composable("settings/downloads") {
+                SettingsSubScreenScaffold(title = "Downloads", onBack = { navController.popBackStack() }) {
+                    DownloadsSettings(onOpenDownloads = { navController.navigate(ROUTE_DOWNLOADS) })
+                }
+            }
+            composable("settings/library") { SettingsSubScreenScaffold(title = "Library", onBack = { navController.popBackStack() }) { LibrarySettings() } }
             composable("settings/content") {
                 SettingsSubScreenScaffold(title = "Content", onBack = { navController.popBackStack() }) {
                     ContentSettings(onNavigateToPoToken = { navController.navigate(Screens.PoToken.route) })
@@ -661,6 +691,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             }
             composable("settings/storage") { SettingsSubScreenScaffold(title = "Storage", onBack = { navController.popBackStack() }) { StorageSettings() } }
             composable("settings/lyrics") { SettingsSubScreenScaffold(title = "Lyrics", onBack = { navController.popBackStack() }) { LyricsSettings() } }
+            composable("settings/parental_controls") { SettingsSubScreenScaffold(title = "Parental Controls", onBack = { navController.popBackStack() }) { ParentalControlsSettings() } }
             composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "Scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
             composable("settings/updates") {
                 SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) {
@@ -674,6 +705,8 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable(ROUTE_DOWNLOADS) {
                 DownloadsScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToSearch = { navController.navigate(Screens.Search.route) },
+                    onNavigateToSettings = { navController.navigate("settings/content") },
                     onPlayDownload = { download ->
                         val connection = localPlayerConnection
                         if (connection != null) {
@@ -716,7 +749,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Bottom))
-                .padding(bottom = OmniSpacing.compact),
+                .padding(bottom = OmniChrome.BottomDockBottomMargin),
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
         ) {
             if (showMiniPlayer) {
@@ -743,7 +776,23 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                     )
                 }
             }
-            if (showBottomBar) GlassBottomDock(currentRoute = currentRoute, onNavigate = { route -> navController.navigate(route) { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }, pureBlack = pureBlack)
+            if (showBottomBar) {
+                GlassBottomDock(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            // Restoring the saved Home state could reopen a nested Settings
+                            // destination when the user explicitly tapped the Home dock item.
+                            restoreState = false
+                        }
+                    },
+                    pureBlack = pureBlack,
+                )
+            }
         }
 
         AnimatedVisibility(

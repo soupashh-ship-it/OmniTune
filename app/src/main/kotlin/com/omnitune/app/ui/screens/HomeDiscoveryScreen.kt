@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,6 +52,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -60,6 +63,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -78,7 +82,6 @@ import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerHeroBanner
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
-import com.omnitune.app.ui.player.rememberPlayerGradient
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniMotion
@@ -90,6 +93,7 @@ import com.omnitune.app.utils.dataStore
 import com.omnitune.innertube.models.SongItem
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val HERO_IMAGE_SIZE = 960
@@ -121,6 +125,7 @@ fun HomeDiscoveryRoute(
     val hasProviderFeed = uiState.providerSections.isNotEmpty() ||
         uiState.communitySections.isNotEmpty() ||
         uiState.exploreSections.isNotEmpty()
+    val heroItems = uiState.carouselItems.filter { it.canLeadHero() }
     val onShowAllGenres = remember(uiState.genreChips, onNavigateToAllGenres) {
         if (onNavigateToAllGenres != null) {
             {
@@ -150,15 +155,15 @@ fun HomeDiscoveryRoute(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = OmniSpacing.screenHorizontalCompact),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.large),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
             item(contentType = "header") {
                 Column {
                     Spacer(modifier = Modifier.statusBarsPadding())
-                    Spacer(modifier = Modifier.height(OmniSpacing.small))
                     HomeTopHeader(
                         onSearch = onNavigateToSearch,
                         onSettings = onNavigateToSettings,
+                        modifier = Modifier.padding(horizontal = OmniSpacing.compact),
                     )
                 }
             }
@@ -177,9 +182,8 @@ fun HomeDiscoveryRoute(
                 }
             }
 
-            item(contentType = "hero") {
-                val heroItems = uiState.carouselItems.filter { it.canLeadHero() }
-                if (heroItems.isNotEmpty() || uiState.isLoading || uiState.isProviderLoading) {
+            if (currentMediaMetadata == null && (heroItems.isNotEmpty() || uiState.isLoading || uiState.isProviderLoading)) {
+                item(contentType = "hero") {
                     HeroCarousel(
                         items = heroItems,
                         isLoading = uiState.isLoading || (uiState.isProviderLoading && heroItems.isEmpty()),
@@ -206,6 +210,7 @@ fun HomeDiscoveryRoute(
                 QuickPicksSection(
                     items = uiState.quickPicks,
                     isLoading = uiState.isLoading,
+                    modifier = Modifier.padding(horizontal = OmniSpacing.compact),
                     onPlayAll = {
                         if (providerSongs.isNotEmpty()) {
                             onPlayProviderSongs(providerSongs)
@@ -353,8 +358,8 @@ private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            accents.primary.copy(alpha = 0.20f),
-                            accents.secondary.copy(alpha = 0.10f),
+                            accents.primary.copy(alpha = 0.16f),
+                            accents.secondary.copy(alpha = 0.08f),
                             Color.Transparent,
                         ),
                         center = Offset(90f, 120f),
@@ -368,7 +373,7 @@ private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            accents.tertiary.copy(alpha = 0.14f),
+                            accents.tertiary.copy(alpha = 0.10f),
                             Color.Transparent,
                         ),
                         center = Offset(980f, 360f),
@@ -383,36 +388,42 @@ private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
 private fun HomeTopHeader(
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = OmniSpacing.small),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        // Left: compact logo mark + OmniTune title
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
         ) {
-            // OmniTune app icon
             Icon(
                 painter = painterResource(R.drawable.ic_omnitune_logo),
                 contentDescription = "OmniTune",
                 tint = OmniColors.OmniAccentPrimary,
-                modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                modifier = Modifier.size(32.dp),
             )
-            Text(
-                text = "OmniTune",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = OmniColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = "OmniTune",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = OmniColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "Your music, your vibe.",
+                    fontSize = 11.sp,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                )
+            }
         }
-        // Right: action buttons
         Row(
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically,
@@ -428,82 +439,158 @@ private fun ContinueListeningCard(
     mediaMetadata: MediaMetadata,
     onClick: () -> Unit,
 ) {
-    val songPalette = rememberPlayerGradient(
-        thumbnailUrl = mediaMetadata.thumbnailUrl,
-        videoId = mediaMetadata.id,
-    ).palette
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        songPalette.accent.copy(alpha = 0.18f),
-                        songPalette.surface,
-                        OmniColors.SurfacePanel,
-                    ),
-                ),
-            )
-            .border(
-                width = 1.dp,
-                color = songPalette.accent.copy(alpha = 0.18f),
-                shape = OmniShapes.Large,
-            )
-            .clickable(onClick = onClick)
-            .padding(OmniSpacing.cardPadding),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        DiscoveryArtwork(
-            thumbnailUrl = mediaMetadata.thumbnailUrl,
-            contentDescription = mediaMetadata.title,
-            title = mediaMetadata.title,
-            artworkKey = mediaMetadata.id,
-            modifier = Modifier.size(64.dp),
-            imageSize = SHELF_IMAGE_SIZE,
-            shape = OmniShapes.ArtworkMedium,
-        )
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Continue listening",
-                style = OmniTextStyles.caption,
-                color = songPalette.accent,
-                maxLines = 1,
-            )
-            Text(
-                text = mediaMetadata.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(OmniShapes.Pill)
-                .background(songPalette.accent.copy(alpha = 0.18f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_play_arrow),
-                contentDescription = "Open player",
-                tint = songPalette.accent,
-                modifier = Modifier.size(22.dp),
-            )
+    val playerConnection = LocalPlayerConnection.current
+    var positionMs by remember(mediaMetadata.id) { mutableLongStateOf(0L) }
+    var durationMs by remember(mediaMetadata.id) { mutableLongStateOf(0L) }
+    LaunchedEffect(playerConnection, mediaMetadata.id) {
+        while (true) {
+            positionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
+            durationMs = playerConnection?.duration?.coerceAtLeast(0L) ?: 0L
+            delay(1_000L)
         }
     }
+    val progress = if (durationMs > 0L) {
+        (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(OmniChrome.HeroCardHeight)
+            .clip(OmniShapes.Large)
+            .background(OmniColors.SurfacePanel)
+            .border(
+                width = 1.dp,
+                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.15f),
+                shape = OmniShapes.Large,
+            )
+            .clickable(onClick = onClick),
+    ) {
+        // Keep the card tied to the actual playing item while giving it the
+        // artwork-derived atmosphere used by the reference design.
+        DiscoveryArtwork(
+            thumbnailUrl = mediaMetadata.thumbnailUrl,
+            contentDescription = null,
+            title = mediaMetadata.title,
+            artworkKey = "${mediaMetadata.id}_ambient",
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(alpha = 0.34f),
+            imageSize = HERO_IMAGE_SIZE,
+            shape = OmniShapes.Large,
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            OmniColors.OmniAccentPrimary.copy(alpha = 0.62f),
+                            OmniColors.OmniBackgroundBase.copy(alpha = 0.68f),
+                            OmniColors.SurfacePanel.copy(alpha = 0.90f),
+                        ),
+                    ),
+                ),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(OmniSpacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DiscoveryArtwork(
+                thumbnailUrl = mediaMetadata.thumbnailUrl,
+                contentDescription = mediaMetadata.title,
+                title = mediaMetadata.title,
+                artworkKey = mediaMetadata.id,
+                modifier = Modifier
+                    .size(90.dp)
+                    .clip(OmniShapes.ArtworkMedium),
+                imageSize = HERO_IMAGE_SIZE,
+                shape = OmniShapes.ArtworkMedium,
+            )
+            Spacer(modifier = Modifier.width(OmniSpacing.medium))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = OmniSpacing.small),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.56f))
+                        .padding(horizontal = OmniSpacing.small, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "Continue listening",
+                        style = OmniTextStyles.metadata,
+                        color = OmniColors.TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = mediaMetadata.title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = OmniColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                    fontSize = 13.sp,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(OmniSpacing.medium))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.SurfaceHairline),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress)
+                            .fillMaxHeight()
+                            .background(OmniColors.OmniAccentPrimary),
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${formatPlaybackTime(positionMs)} / ${formatPlaybackTime(durationMs)}",
+                    style = OmniTextStyles.metadata,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniAccentPrimary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play_arrow),
+                    contentDescription = "Resume playback",
+                    tint = OmniColors.TextOnAccent,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun formatPlaybackTime(milliseconds: Long): String {
+    val totalSeconds = milliseconds.coerceAtLeast(0L) / 1_000L
+    return "%d:%02d".format(totalSeconds / 60L, totalSeconds % 60L)
 }
 
 @Composable
@@ -534,11 +621,34 @@ private fun MoodChipRow(
     chips: List<MoodChip>,
     onChipClick: (MoodChip) -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-        items(chips, key = { it.id }, contentType = { "mood-chip" }) { chip ->
+    var selectedId by remember { mutableStateOf("all") }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        item(key = "all") {
+            FeedChip(
+                label = "All",
+                iconRes = R.drawable.ic_grid,
+                isSelected = selectedId == "all",
+                onClick = { selectedId = "all" },
+            )
+        }
+        // The top rail is deliberately the four primary, reference-aligned moods.
+        // Provider-specific filters are still exposed through the browse sections below.
+        items(chips.take(4), key = { it.id }, contentType = { "mood-chip" }) { chip ->
+            val isSelected = chip.id == selectedId
             FeedChip(
                 label = chip.label,
-                onClick = { onChipClick(chip) },
+                iconRes = when (chip.id) {
+                    "relax" -> R.drawable.ic_moon
+                    "chill" -> R.drawable.ic_leaf
+                    "feel_good" -> R.drawable.ic_sparkle
+                    "energize" -> R.drawable.ic_bolt
+                    else -> null
+                },
+                isSelected = isSelected,
+                onClick = {
+                    selectedId = chip.id
+                    onChipClick(chip)
+                },
             )
         }
     }
@@ -547,29 +657,41 @@ private fun MoodChipRow(
 @Composable
 private fun FeedChip(
     label: String,
+    iconRes: Int? = null,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val bg = if (isSelected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceRaised
+    val textColor = if (isSelected) OmniColors.TextOnAccent else OmniColors.TextSecondary
+
     Box(
         modifier = Modifier
-            .height(36.dp)
+            .height(32.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceRaised)
-            .border(
-                width = 1.dp,
-                color = OmniColors.SurfaceHairline,
-                shape = OmniShapes.Pill,
-            )
+            .background(bg)
+            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = if (isSelected) 0.58f else 0.22f), OmniShapes.Pill)
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.medium),
+            .padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (iconRes != null) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -621,8 +743,8 @@ private fun HeroCard(
 
     Box(
         modifier = Modifier
-            .width(286.dp)
-            .aspectRatio(1f)
+            .width(360.dp)
+            .height(132.dp)
             .clip(OmniShapes.ArtworkLarge)
             .clickable(onClick = onClick),
     ) {
@@ -647,11 +769,11 @@ private fun HeroCard(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(OmniSpacing.large),
+                .padding(OmniSpacing.medium),
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleLarge,
+                fontSize = 17.sp,
                 color = OmniColors.TextPrimary,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -680,21 +802,25 @@ private fun HeroSkeleton() {
 private fun QuickPicksSection(
     items: List<QuickPickItem>,
     isLoading: Boolean,
+    modifier: Modifier = Modifier,
     onPlayAll: () -> Unit,
     onPlaySong: (Song) -> Unit,
     onPlayProviderSong: (SongItem) -> Unit,
     onOpenCollection: (String, String?) -> Unit,
     onRequestHydration: (HomeThumbnailRequest) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Quick Picks",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = OmniColors.TextPrimary,
                 modifier = Modifier.weight(1f),
             )
@@ -718,56 +844,76 @@ private fun QuickPicksSection(
         }
         if (isLoading) {
             repeat(4) { ShelfSkeletonRow() }
-        } else if (items.isEmpty()) {
-            StartExploringRow(onClick = { onOpenCollection(HomeDefaultCatalog.freshDiscovery.items.first().id, null) })
-        } else {
-            val pageCount = (items.size + 4) / 5
-            val pagerState = rememberPagerState(pageCount = { pageCount })
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) { page ->
-                val fromIndex = page * 5
-                val toIndex = minOf(fromIndex + 5, items.size)
-                Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-                    items.subList(fromIndex, toIndex).forEach { item ->
-                        QuickPickRow(
-                            item = item,
-                            onRequestHydration = onRequestHydration,
-                            onClick = {
-                                item.song?.let(onPlaySong)
-                                    ?: item.providerSong?.let(onPlayProviderSong)
-                                    ?: onOpenCollection(item.id, item.thumbnailUrl)
-                            },
-                        )
-                    }
-                }
-            }
-
-            if (pageCount > 1) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    repeat(pageCount) { index ->
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .size(if (pagerState.currentPage == index) 8.dp else 6.dp)
-                                .clip(OmniShapes.Pill)
-                                .background(
-                                    if (pagerState.currentPage == index)
-                                        LocalOmniAccents.current.secondary
-                                    else
-                                        OmniColors.TextTertiary.copy(alpha = 0.4f)
-                                ),
-                        )
-                    }
+        } else if (items.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+                items(items, key = { it.id }, contentType = { "quick-pick" }) { item ->
+                    QuickPickRailCard(
+                        item = item,
+                        onRequestHydration = onRequestHydration,
+                        onClick = {
+                            item.song?.let(onPlaySong)
+                                ?: item.providerSong?.let(onPlayProviderSong)
+                                ?: onOpenCollection(item.id, item.thumbnailUrl)
+                        },
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun QuickPickRailCard(
+    item: QuickPickItem,
+    onRequestHydration: (HomeThumbnailRequest) -> Unit,
+    onClick: () -> Unit,
+) {
+    RequestHydrationEffect(
+        id = item.id,
+        query = item.query,
+        source = item.source,
+        thumbnailUrl = item.thumbnailUrl,
+        state = item.hydrationState,
+        collage = false,
+        onRequestHydration = onRequestHydration,
+    )
+    Column(
+        modifier = Modifier
+            .width(80.dp)
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
+    ) {
+        Box {
+            DiscoveryArtwork(
+                thumbnailUrl = item.thumbnailUrl,
+                contentDescription = item.title,
+                title = item.title,
+                artworkKey = item.artworkKey ?: item.id,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(OmniShapes.ArtworkSmall),
+                imageSize = SHELF_IMAGE_SIZE,
+                shape = OmniShapes.ArtworkSmall,
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp)
+                    .size(26.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.90f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_play_arrow),
+                    contentDescription = "Play ${item.title}",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+        Text(item.title, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(item.subtitle, fontSize = 9.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -915,7 +1061,10 @@ private fun HorizontalDiscoveryShelf(
         return
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+    Column(
+        modifier = Modifier.padding(horizontal = OmniSpacing.compact),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
         FeedSectionHeader(title = section.title, action = section.actionLabel)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.large),
@@ -937,7 +1086,10 @@ private fun TextDiscoveryShelf(
     section: HomeSection,
     onItemClick: (PlaylistShelfItem) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+    Column(
+        modifier = Modifier.padding(horizontal = OmniSpacing.compact),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+    ) {
         FeedSectionHeader(title = section.title, action = section.actionLabel)
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
@@ -981,7 +1133,7 @@ private fun ShelfArtworkCard(
 
     Column(
         modifier = Modifier
-            .width(152.dp)
+            .width(102.dp)
             .clip(OmniShapes.Medium)
             .background(OmniColors.SurfaceSubtle.copy(alpha = 0.24f))
             .clickable(onClick = onClick),
@@ -1011,9 +1163,9 @@ private fun ShelfArtworkCard(
                 shape = OmniShapes.ArtworkSmall,
             )
         }
-        Column(modifier = Modifier.padding(top = OmniSpacing.small, start = OmniSpacing.micro, end = OmniSpacing.micro, bottom = OmniSpacing.micro)) {
-            Text(item.title, style = OmniTextStyles.songTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(item.subtitle, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.padding(top = OmniSpacing.compact, start = OmniSpacing.micro, end = OmniSpacing.micro, bottom = OmniSpacing.micro)) {
+            Text(item.title, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, fontSize = 9.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -1443,7 +1595,7 @@ private fun FeedSectionHeader(
     ) {
         Text(
             text = title,
-            style = OmniTextStyles.sectionTitle,
+            style = OmniTextStyles.sectionHeader,
             color = OmniColors.TextPrimary,
             modifier = Modifier.weight(1f),
             maxLines = 2,

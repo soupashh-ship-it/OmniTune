@@ -13,8 +13,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import javax.inject.Inject
+
+data class ListeningDay(
+    val date: LocalDate,
+    val minutes: Long,
+)
 
 data class StatsUiState(
     val songCount: Int = 0,
@@ -25,6 +31,7 @@ data class StatsUiState(
     val playedThisWeek: Int = 0,
     val totalPlayed: Int = 0,
     val minutesListened: Long = 0,
+    val dailyListeningMinutes: List<ListeningDay> = emptyList(),
     val topSongs: List<Pair<Song, Int>> = emptyList(),
     val topArtists: List<Pair<ArtistEntity, Int>> = emptyList(),
     val isLoading: Boolean = true,
@@ -56,7 +63,16 @@ class StatsViewModel @Inject constructor(
                 val albums = database.albumsBySongCountAsc().first()
                 val events = database.events().first()
                 val likedCount = database.likedSongsCount().first()
-                val oneWeekAgo = LocalDateTime.now().minusDays(7)
+                val now = LocalDateTime.now()
+                val oneWeekAgo = now.minusDays(7)
+                val today = now.toLocalDate()
+                val minutesByDay = events
+                    .groupBy { it.event.timestamp.toLocalDate() }
+                    .mapValues { (_, dayEvents) -> dayEvents.sumOf { it.event.playTime } / 60_000L }
+                val dailyListeningMinutes = (0L..29L).map { daysAgo ->
+                    val date = today.minusDays(29L - daysAgo)
+                    ListeningDay(date = date, minutes = minutesByDay[date] ?: 0L)
+                }
 
                 val calculatedTopSongs = events
                     .groupBy { it.song.id }
@@ -80,6 +96,7 @@ class StatsViewModel @Inject constructor(
                     playedThisWeek = events.count { it.event.timestamp.isAfter(oneWeekAgo) },
                     totalPlayed = events.size,
                     minutesListened = events.sumOf { it.event.playTime } / 60000,
+                    dailyListeningMinutes = dailyListeningMinutes,
                     topSongs = calculatedTopSongs,
                     topArtists = calculatedTopArtists,
                     isLoading = false,

@@ -199,9 +199,14 @@ object YTPlayerUtils {
         val signatureTimestamp = getSignatureTimestampOrNull(videoId)
         Timber.tag(logTag).v("Signature timestamp: $signatureTimestamp")
 
-        val isLoggedIn = YouTube.cookie != null
-        val sessionId = if (isLoggedIn) YouTube.dataSyncId else YouTube.visitorData
-        Timber.tag(logTag).v("Session authentication status: ${if (isLoggedIn) "Logged in" else "Not logged in"} (sessionId=${sessionId.orEmpty()})")
+        // A cookie by itself is not enough to make authenticated player calls.
+        // Treating a partial restored session as logged in pushes the resolver
+        // through clients that can only return LOGIN_REQUIRED and delays the
+        // usable no-auth Android VR response.
+        val isLoggedIn = YouTube.authState.hasPlaybackLoginContext
+        Timber.tag(logTag).v(
+            "Session authentication status: ${if (isLoggedIn) "Logged in" else "Not logged in"}",
+        )
 
         var format: PlayerResponse.StreamingData.Format? = null
         var streamUrl: String? = null
@@ -219,7 +224,10 @@ object YTPlayerUtils {
 
         val preferredYouTubeClient =
             when (preferredStreamClient) {
-                PlayerStreamClient.ANDROID_VR -> IOS // Aliased to IOS to bypass bot detection currently blocking VR clients
+                // The no-auth Android VR client currently returns direct audio
+                // URLs. Prefer it before encrypted iOS/Web formats, whose
+                // signatures may require a newer player-JS decoder.
+                PlayerStreamClient.ANDROID_VR -> ANDROID_VR_NO_AUTH
                 PlayerStreamClient.WEB_REMIX -> WEB_REMIX
                 PlayerStreamClient.IOS -> IOS
                 PlayerStreamClient.MOBILE -> ANDROID_MUSIC

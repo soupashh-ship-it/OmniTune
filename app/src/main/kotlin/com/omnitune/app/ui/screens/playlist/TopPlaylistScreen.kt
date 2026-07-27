@@ -105,6 +105,7 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
 
 import com.omnitune.app.constants.MyTopFilter
+import com.omnitune.app.constants.TopPlaylistSortDescendingKey
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.extensions.togglePlayPause
@@ -191,6 +192,10 @@ fun TopPlaylistScreen(
     }
 
     val sortType by viewModel.topPeriod.collectAsState()
+    val (sortDescending, onSortDescendingChange) = rememberPreference(
+        TopPlaylistSortDescendingKey,
+        true,
+    )
     val name = stringResource(R.string.my_top) + " $maxSize"
 
     val downloadUtil = LocalDownloadUtil.current
@@ -271,13 +276,14 @@ fun TopPlaylistScreen(
         )
     }
 
-    val filteredSongs = remember(wrappedSongs, query) {
-        if (query.text.isEmpty()) wrappedSongs
+    val filteredSongs = remember(wrappedSongs, query, sortDescending) {
+        val matchingSongs = if (query.text.isEmpty()) wrappedSongs
         else wrappedSongs.filter { wrapper ->
             val song = wrapper.item
             song.song.title.contains(query.text, true) ||
                     song.artists.any { it.name.contains(query.text, true) }
         }
+        if (sortDescending) matchingSongs else matchingSongs.asReversed()
     }
 
     val lazyListState = rememberLazyListState()
@@ -747,11 +753,11 @@ fun TopPlaylistScreen(
                         ) {
                             SortHeader(
                                 sortType = sortType,
-                                sortDescending = false,
+                                sortDescending = sortDescending,
                                 onSortTypeChange = {
                                     viewModel.topPeriod.value = it
                                 },
-                                onSortDescendingChange = {},
+                                onSortDescendingChange = onSortDescendingChange,
                                 sortTypeText = { sortType ->
                                     when (sortType) {
                                         MyTopFilter.ALL_TIME -> stringResource(R.string.all_time)

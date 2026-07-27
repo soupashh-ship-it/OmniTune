@@ -11,17 +11,17 @@ object HomeDefaultCatalog {
     private const val PROVIDER_SEPARATOR = "||"
 
     val moodChips = listOf(
-        MoodChip("romance", "Romance", "romance songs hindi"),
+        MoodChip("chill", "Chill", "chill mix"),
         MoodChip("relax", "Relax", "relaxing music"),
         MoodChip("feel_good", "Feel good", "feel good songs"),
         MoodChip("energize", "Energize", "energizing music"),
+        MoodChip("romance", "Romance", "romance songs hindi"),
         MoodChip("sad", "Sad", "sad songs hindi"),
         MoodChip("focus", "Focus", "focus music"),
         MoodChip("commute", "Commute", "commute playlist"),
         MoodChip("workout", "Workout", "workout music"),
         MoodChip("party", "Party", "party songs"),
         MoodChip("gaming", "Gaming", "gaming music"),
-        MoodChip("chill", "Chill", "chill mix"),
     )
 
     val genreGrid = listOf(

@@ -51,6 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -86,113 +88,146 @@ import timber.log.Timber
 fun SearchTopBar(
     query: TextFieldValue,
     isSearching: Boolean,
+    focusRequester: FocusRequester,
     onQueryChange: (TextFieldValue) -> Unit,
     onClear: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
-
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SearchIconButton(
-                icon = R.drawable.ic_arrow_back,
-                contentDescription = "Back",
-                onClick = onBack,
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.small))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Search",
-                    style = OmniTextStyles.screenTitle,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+        if (query.text.isBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = OmniSpacing.micro),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SearchIconButton(
+                    icon = R.drawable.ic_arrow_back,
+                    contentDescription = "Back",
+                    onClick = onBack,
                 )
-                Text(
-                    text = "Find songs, artists, albums, and playlists",
-                    style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-
-        OmniFloatingSurface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(OmniChrome.SearchBarHeight)
-                .border(
-                    width = 1.dp,
-                    color = OmniColors.SurfaceHairline,
-                    shape = OmniShapes.ExtraLarge,
-                ),
-            shape = OmniShapes.ExtraLarge,
-        ) {
-            TextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxSize(),
-                placeholder = {
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Search songs, artists, albums...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = OmniColors.TextTertiary,
+                        text = "Search",
+                        style = MaterialTheme.typography.headlineMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_search),
-                        contentDescription = null,
-                        tint = OmniColors.OmniAccentSecondary,
-                        modifier = Modifier.size(22.dp),
+                    Text(
+                        text = "Find your music, your way.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OmniColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                },
-                trailingIcon = {
-                    when {
-                        isSearching -> OmniTuneLoader(size = 22.dp, color = OmniColors.ActivePlayback)
-                        query.text.isNotEmpty() -> IconButton(
-                            onClick = {
-                                focusManager.clearFocus(force = true)
-                                onClear()
-                            },
-                            modifier = Modifier.size(40.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_close),
-                                contentDescription = "Clear search",
-                                tint = OmniColors.TextSecondary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                    }
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = OmniColors.OmniAccentPrimary,
-                    focusedTextColor = OmniColors.TextPrimary,
-                    unfocusedTextColor = OmniColors.TextPrimary,
-                ),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    color = OmniColors.TextPrimary,
-                    fontWeight = FontWeight.Medium,
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { focusManager.clearFocus(force = true) },
-                ),
-                singleLine = true,
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (query.text.isNotBlank()) {
+                SearchIconButton(
+                    icon = R.drawable.ic_arrow_back,
+                    contentDescription = "Back",
+                    onClick = onBack,
+                )
+                Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            }
+            SearchQueryField(
+                query = query,
+                isSearching = isSearching,
+                focusRequester = focusRequester,
+                onQueryChange = onQueryChange,
+                onClear = onClear,
+                modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+@Composable
+private fun SearchQueryField(
+    query: TextFieldValue,
+    isSearching: Boolean,
+    focusRequester: FocusRequester,
+    onQueryChange: (TextFieldValue) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusManager = LocalFocusManager.current
+    OmniFloatingSurface(
+        modifier = modifier
+            .height(44.dp)
+            .border(
+                width = 1.dp,
+                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.36f),
+                shape = OmniShapes.ExtraLarge,
+            ),
+        shape = OmniShapes.ExtraLarge,
+    ) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(focusRequester),
+            placeholder = {
+                Text(
+                    text = "Search songs, albums, artists, playlists...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OmniColors.TextTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            trailingIcon = {
+                when {
+                    isSearching -> OmniTuneLoader(size = 22.dp, color = OmniColors.ActivePlayback)
+                    query.text.isNotEmpty() -> IconButton(
+                        onClick = {
+                            focusManager.clearFocus(force = true)
+                            onClear()
+                        },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close),
+                            contentDescription = "Clear search",
+                            tint = OmniColors.TextSecondary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    else -> Icon(
+                        painter = painterResource(R.drawable.ic_search),
+                        contentDescription = null,
+                        tint = OmniColors.TextPrimary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                cursorColor = OmniColors.OmniAccentPrimary,
+                focusedTextColor = OmniColors.TextPrimary,
+                unfocusedTextColor = OmniColors.TextPrimary,
+            ),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.Medium,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = { focusManager.clearFocus(force = true) },
+            ),
+            singleLine = true,
+        )
     }
 }
 
@@ -208,9 +243,10 @@ fun SearchIconButton(
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .size(44.dp)
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceQuiet)
+            .size(36.dp)
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.42f))
+            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.32f), OmniShapes.Pill)
             .omniPressScale(interactionSource),
         interactionSource = interactionSource,
     ) {
@@ -218,7 +254,7 @@ fun SearchIconButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = OmniColors.TextPrimary,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }

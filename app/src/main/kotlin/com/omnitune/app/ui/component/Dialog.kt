@@ -179,6 +179,7 @@ fun TextFieldDialog(
     icon: (@Composable () -> Unit)? = null,
     title: (@Composable () -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
+    initialValue: String = "",
     singleLine: Boolean = true,
     maxLines: Int = if (singleLine) 1 else 10,
     isInputValid: (String) -> Boolean = { it.isNotEmpty() },
@@ -189,7 +190,9 @@ fun TextFieldDialog(
     onDismiss: () -> Unit,
     extraContent: (@Composable () -> Unit)? = null,
 ) {
-    val legacyFieldState = remember { mutableStateOf(TextFieldValue()) }
+    val legacyFieldState = remember(initialValue) {
+        mutableStateOf(TextFieldValue(initialValue))
+    }
     val keyboardController = LocalSoftwareKeyboardController.current
 
     DefaultDialog(

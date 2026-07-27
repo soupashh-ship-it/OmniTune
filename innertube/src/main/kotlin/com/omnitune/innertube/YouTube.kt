@@ -301,6 +301,9 @@ object YouTube {
             .musicThumbnailRenderer
             ?.getThumbnailUrl()
             ?: throw IllegalStateException("Missing album thumbnail url for $browseId")
+        val albumExplicit = header.subtitleBadges?.any {
+            it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
+        } == true
         AlbumPage(
             album = AlbumItem(
                 browseId = browseId,
@@ -309,7 +312,7 @@ object YouTube {
                 artists = albumArtists,
                 year = albumYear,
                 thumbnail = albumThumbnail,
-                explicit = false, // TODO: Extract explicit badge for albums from YouTube response
+                explicit = albumExplicit,
             ),
             songs = if (withSongs) albumSongs(playlistId, AlbumItem(
                 browseId = browseId,
@@ -318,7 +321,7 @@ object YouTube {
                 artists = albumArtists,
                 year = albumYear,
                 thumbnail = albumThumbnail,
-                explicit = false
+                explicit = albumExplicit,
             )).getOrThrow() else emptyList(),
             otherVersions = twoColumn.secondaryContents?.sectionListRenderer?.contents?.getOrNull(1)?.musicCarouselShelfRenderer?.contents
                 ?.mapNotNull { it.musicTwoRowItemRenderer }

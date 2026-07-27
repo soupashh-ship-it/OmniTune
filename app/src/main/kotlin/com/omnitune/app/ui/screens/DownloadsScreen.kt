@@ -32,6 +32,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +63,8 @@ import coil3.compose.AsyncImage
 @Composable
 fun DownloadsScreen(
     onBack: () -> Unit,
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onPlayDownload: (Download) -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
@@ -76,6 +80,16 @@ fun DownloadsScreen(
     }
     val failedCount = uiState.downloads.count { it.state == Download.STATE_FAILED }
     val queuedCount = uiState.downloads.count { it.state == Download.STATE_QUEUED }
+    val downloadedBytes = uiState.downloads.sumOf { it.bytesDownloaded.coerceAtLeast(0L) }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val filteredDownloads = when (selectedTab) {
+        0 -> uiState.downloads.filter { it.state == Download.STATE_COMPLETED }
+        1 -> uiState.downloads.filter {
+            it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED ||
+                it.state == Download.STATE_STOPPED || it.state == Download.STATE_REMOVING
+        }
+        else -> uiState.downloads.filter { it.state == Download.STATE_FAILED }
+    }
 
     Column(
         modifier = Modifier
@@ -90,28 +104,39 @@ fun DownloadsScreen(
             activeCount = activeCount,
             failedCount = failedCount,
             queuedCount = queuedCount,
-            onBack = onBack,
+            downloadedBytes = downloadedBytes,
+            onSettings = onNavigateToSettings,
             onClearFailed = viewModel::clearFailedDownloads,
             onClearQueued = viewModel::clearQueuedDownloads,
         )
 
-        if (uiState.downloads.isEmpty()) {
+        DownloadTabRow(selectedTab = selectedTab, onSelect = { selectedTab = it })
+
+        if (filteredDownloads.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(OmniShapes.ExtraLarge)
-                    .background(OmniColors.OmniGlassSubtle)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                OmniColors.SurfaceRaised,
+                                OmniColors.OmniAccentPrimary.copy(alpha = 0.12f),
+                                OmniColors.SurfaceRaised,
+                            ),
+                        ),
+                    )
                     .border(
-                        BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
+                        BorderStroke(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f)),
                         OmniShapes.ExtraLarge,
                     )
                     .padding(OmniSpacing.section),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    EmptyPlaceholder(
-                        icon = R.drawable.ic_download,
-                        text = "No downloaded songs yet\nSearch and download music to play it offline.",
+                    DownloadEmptyState(
+                        tab = selectedTab,
+                        onFindMusic = onNavigateToSearch,
                     )
                 }
             }
@@ -122,7 +147,7 @@ fun DownloadsScreen(
                 contentPadding = PaddingValues(bottom = OmniChrome.BottomContentPadding),
             ) {
                 items(
-                    items = uiState.downloads,
+                    items = filteredDownloads,
                     key = { it.request.id },
                     contentType = { "downloadRow" },
                 ) { download ->
@@ -171,7 +196,8 @@ private fun DownloadsHeader(
     activeCount: Int,
     failedCount: Int,
     queuedCount: Int,
-    onBack: () -> Unit,
+    downloadedBytes: Long,
+    onSettings: () -> Unit,
     onClearFailed: () -> Unit,
     onClearQueued: () -> Unit,
 ) {
@@ -181,25 +207,6 @@ private fun DownloadsHeader(
             .padding(top = OmniSpacing.medium, bottom = OmniSpacing.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(OmniColors.OmniGlassMedium)
-                .border(
-                    BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
-                    CircleShape,
-                ),
-        ) {
-            Icon(
-                painterResource(R.drawable.ic_arrow_back),
-                contentDescription = "Back",
-                tint = OmniColors.TextPrimary,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Downloads",
@@ -208,11 +215,26 @@ private fun DownloadsHeader(
                 color = OmniColors.TextPrimary,
             )
             Text(
-                text = "Completed songs are ready for offline playback.",
+                text = "Your music, available offline.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(
+            onClick = onSettings,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(OmniColors.OmniGlassMedium)
+                .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_settings),
+                contentDescription = "Download settings",
+                tint = OmniColors.TextPrimary,
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -223,9 +245,10 @@ private fun DownloadsHeader(
             .padding(bottom = OmniSpacing.medium),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
-        DownloadMetric("Ready", completedCount, OmniColors.Downloaded, Modifier.weight(1f))
-        DownloadMetric("Active", activeCount, OmniColors.Warning, Modifier.weight(1f))
-        DownloadMetric("Failed", failedCount, OmniColors.Error, Modifier.weight(1f))
+        DownloadMetric("Ready", completedCount, R.drawable.ic_check_circle, OmniColors.Downloaded, Modifier.weight(1f))
+        DownloadMetric("Active", activeCount, R.drawable.ic_download, OmniColors.Warning, Modifier.weight(1f))
+        DownloadMetric("Failed", failedCount, R.drawable.ic_warning, OmniColors.Error, Modifier.weight(1f))
+        DownloadMetric("Used", formatDownloadSize(downloadedBytes), R.drawable.ic_storage, OmniColors.Downloaded, Modifier.weight(1f))
     }
 
     if (failedCount > 0) {
@@ -262,22 +285,32 @@ private fun DownloadsHeader(
 @Composable
 private fun DownloadMetric(
     label: String,
-    count: Int,
+    value: Any,
+    icon: Int,
     accent: Color,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
+            .height(96.dp)
             .clip(OmniShapes.Large)
-            .background(OmniColors.OmniGlassSubtle)
+            .background(OmniColors.SurfaceRaised)
             .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
+                BorderStroke(1.dp, accent.copy(alpha = 0.36f)),
                 OmniShapes.Large,
             )
-            .padding(OmniSpacing.small),
+            .padding(OmniSpacing.compact),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(21.dp),
+        )
         Text(
-            text = count.toString(),
+            text = value.toString(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = accent,
@@ -290,6 +323,102 @@ private fun DownloadMetric(
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+@Composable
+private fun DownloadTabRow(
+    selectedTab: Int,
+    onSelect: (Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = OmniSpacing.compact)
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceQuiet)
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Pill)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        listOf("Ready", "Active", "Failed").forEachIndexed { index, title ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(40.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(if (index == selectedTab) OmniColors.OmniAccentPrimary else Color.Transparent)
+                    .clickable { onSelect(index) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (index == selectedTab) OmniColors.TextOnAccent else OmniColors.TextPrimary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadEmptyState(tab: Int, onFindMusic: () -> Unit) {
+    val message = when (tab) {
+        0 -> "Nothing downloaded yet"
+        1 -> "No active downloads"
+        else -> "No failed downloads"
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                painter = painterResource(R.drawable.ic_cloud),
+                contentDescription = null,
+                tint = OmniColors.OmniAccentPrimary.copy(alpha = 0.82f),
+                modifier = Modifier.size(88.dp),
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_download),
+                contentDescription = null,
+                tint = OmniColors.SurfaceFloating,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(OmniSpacing.large))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = OmniColors.TextPrimary,
+        )
+        Spacer(modifier = Modifier.height(OmniSpacing.small))
+        Text(
+            text = if (tab == 0) "Download your favorite music to listen anytime, anywhere." else "Downloads will appear here when their state changes.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = OmniColors.TextSecondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        if (tab == 0) {
+            Spacer(modifier = Modifier.height(OmniSpacing.large))
+            Button(
+                onClick = onFindMusic,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = OmniColors.OmniAccentPrimary,
+                    contentColor = OmniColors.TextOnAccent,
+                ),
+            ) {
+                Icon(painterResource(R.drawable.ic_download), contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Text("Find music to download", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+private fun formatDownloadSize(bytes: Long): String = when {
+    bytes >= 1_073_741_824L -> "%.1f GB".format(bytes / 1_073_741_824.0)
+    bytes >= 1_048_576L -> "%.1f MB".format(bytes / 1_048_576.0)
+    bytes >= 1024L -> "%.1f KB".format(bytes / 1024.0)
+    else -> "$bytes B"
 }
 
 @androidx.media3.common.util.UnstableApi

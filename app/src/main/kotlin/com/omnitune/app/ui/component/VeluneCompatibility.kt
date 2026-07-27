@@ -21,8 +21,6 @@ import com.omnitune.app.db.entities.Album
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.innertube.models.YTItem
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @Composable
 fun AlbumListItem(
@@ -131,17 +129,22 @@ fun AddToPlaylistDialog(
         },
         onCreatePlaylist = { name ->
             coroutineScope.launch {
+                val newPlaylist = com.omnitune.app.db.entities.PlaylistEntity(name = name)
+                val playlist = Playlist(
+                    playlist = newPlaylist,
+                    songCount = 0,
+                    songThumbnails = emptyList(),
+                )
                 withContext(Dispatchers.IO) {
-                    val newPlaylistId = java.util.UUID.randomUUID().toString()
-                    val newPlaylist = com.omnitune.app.db.entities.PlaylistEntity(
-                        id = newPlaylistId,
-                        name = name
-                    )
                     database.insert(newPlaylist)
-                    // Let user add to it later, or add immediately?
-                    // Actually Velune AddToPlaylistDialog had create playlist flow internally?
-                    // For now just create it.
                 }
+                val songIds = onGetSong(playlist)
+                if (songIds.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        database.addSongToPlaylist(playlist, songIds)
+                    }
+                }
+                onAddComplete(songIds.size, listOf(name))
                 onDismiss()
             }
         }
@@ -173,28 +176,6 @@ fun YouTubeListItem(
 }
 
 @Composable
-fun AddToPlaylistDialog(
-    isVisible: Boolean,
-    onGetSong: (Playlist) -> Unit,
-    onDismiss: () -> Unit
-) {
-    if (!isVisible) return
-    val database = LocalDatabase.current
-    val playlists by database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false).collectAsState(initial = emptyList())
-    com.omnitune.app.ui.component.AddToPlaylistDialog(
-        playlists = playlists,
-        onDismissRequest = onDismiss,
-        onPlaylistSelected = { playlist ->
-            onGetSong(playlist)
-            onDismiss()
-        },
-        onCreatePlaylist = { name ->
-            // Menus will handle this or we can just mock it for now since we just need it to compile
-        }
-    )
-}
-
-@Composable
 fun EditPlaylistDialog(
     initialName: String,
     initialThumbnailUrl: String?,
@@ -202,10 +183,10 @@ fun EditPlaylistDialog(
     onDismiss: () -> Unit,
     onSave: (String, String?) -> Unit
 ) {
-    var name by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(initialName) }
     TextFieldDialog(
         title = { Text("Edit Playlist") },
         placeholder = { Text("Playlist Name") },
+        initialValue = initialName,
         onDismiss = onDismiss,
         onDone = {
             onSave(it, initialThumbnailUrl)

@@ -10,6 +10,7 @@ import com.omnitune.innertube.YouTube
 
 object YouTubeSubtitleLyricsProvider : LyricsProvider {
     override val name = "YouTube Subtitle"
+    override val isTrackBound = true
 
     override fun isEnabled(context: Context) = true
 

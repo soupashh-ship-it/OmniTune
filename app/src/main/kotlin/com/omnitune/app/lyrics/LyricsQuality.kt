@@ -15,11 +15,16 @@ internal object LyricsQuality {
         lyrics: String,
         mediaMetadata: MediaMetadata,
         isSynced: Boolean,
+        isTrackBound: Boolean = false,
+        isMetadataBound: Boolean = false,
     ): Int? {
         if (!hasMeaningfulText(lyrics)) return null
-        if (hasLikelyLanguageMismatch(lyrics, mediaMetadata)) return null
+        if (!isTrackBound && hasLikelyLanguageMismatch(lyrics, mediaMetadata)) return null
+        if (!isTrackBound && !isMetadataBound && !hasStrongFallbackIdentityEvidence(lyrics, mediaMetadata)) return null
 
         var score = 10
+        if (isTrackBound) score += 1_000
+        if (isMetadataBound) score += 950
         if (isSynced) score += 40
         score += providerScore(providerName)
 
@@ -30,6 +35,28 @@ internal object LyricsQuality {
         if (artistTokens.isNotEmpty() && artistTokens.any { it.length >= 4 && it in text }) score += 4
 
         return score
+    }
+
+    /**
+     * Search providers expose only lyrics text, not the matched recording's
+     * metadata. Do not accept an unverified same-title result. Requiring both
+     * a meaningful title token and artist token is deliberately conservative:
+     * no lyrics is safer than attaching another song's words to this track.
+     */
+    private fun hasStrongFallbackIdentityEvidence(
+        lyrics: String,
+        mediaMetadata: MediaMetadata,
+    ): Boolean {
+        val text = lyrics.normalizedSearchText()
+        val titleMatches = mediaMetadata.title.normalizedSearchText().tokens()
+            .filter { it.length >= 4 }
+            .count { it in text }
+        val artistMatches = mediaMetadata.artists.joinToString(" ") { it.name }
+            .normalizedSearchText()
+            .tokens()
+            .filter { it.length >= 4 }
+            .any { it in text }
+        return titleMatches >= 1 && artistMatches
     }
 
     fun hasMeaningfulText(lyrics: String): Boolean {

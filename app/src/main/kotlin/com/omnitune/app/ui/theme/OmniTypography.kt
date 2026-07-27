@@ -127,53 +127,61 @@ fun omniTypography(fontFamily: FontFamily = FontFamily.Default) = Typography(
 )
 
 object OmniTextStyles {
-    val heroTitle = TextStyle(
-        fontFamily = AppFontFamily,
-        fontWeight = FontWeight.ExtraBold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp,
-        color = OmniColors.TextPrimary,
-    )
-    val screenTitle = TextStyle(
+    val displayTitle = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 34.sp,
+        fontSize = 34.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.5).sp,
+        color = OmniColors.TextPrimary,
+    )
+    val sectionHeader = TextStyle(
+        fontFamily = AppFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
         letterSpacing = 0.sp,
         color = OmniColors.TextPrimary,
     )
-    val sectionTitle = TextStyle(
+    val mediaTitle = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp,
         color = OmniColors.TextPrimary,
     )
     val songTitle = TextStyle(
         fontFamily = AppFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
         lineHeight = 22.sp,
-        letterSpacing = 0.3.sp,
+        letterSpacing = 0.sp,
         color = OmniColors.TextPrimary,
     )
     val metadata = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.3.sp,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        letterSpacing = 0.sp,
         color = OmniColors.TextSecondary,
     )
     val caption = TextStyle(
         fontFamily = AppFontFamily,
         fontWeight = FontWeight.Medium,
-        fontSize = 10.sp,
-        lineHeight = 13.sp,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
         letterSpacing = 0.5.sp,
         color = OmniColors.TextTertiary,
+    )
+    val eyebrow = TextStyle(
+        fontFamily = AppFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 1.5.sp,
+        color = OmniColors.OmniAccentPrimary,
     )
 }
 

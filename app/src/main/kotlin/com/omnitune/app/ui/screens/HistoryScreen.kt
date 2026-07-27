@@ -1,6 +1,7 @@
 package com.omnitune.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,22 +56,25 @@ import java.time.LocalDate
 @Composable
 fun HistoryScreen(
     onPlaySong: (Song) -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val groupedEvents = remember(uiState.events) { groupHistory(uiState.events) }
+    var showClearConfirmation by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .padding(horizontal = OmniSpacing.section),
+            .background(OmniColors.BackgroundGradient)
+            .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
         item(contentType = "header") {
             Spacer(modifier = Modifier.statusBarsPadding())
             Spacer(modifier = Modifier.height(OmniSpacing.large))
-            HistoryHeader()
+            HistoryHeader(onSearch = onNavigateToSearch)
         }
 
         when {
@@ -82,40 +86,134 @@ fun HistoryScreen(
                 HistoryEmptyState()
             }
 
-            else -> groupedEvents.forEach { section ->
+            else -> {
+                groupedEvents.forEach { section ->
                 item(key = "header_${section.title}", contentType = "history-section") {
-                    OmniPreferenceCard(title = section.title) {
+                    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = section.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = OmniColors.TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = "${section.events.size} ${if (section.events.size == 1) "track" else "tracks"}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OmniColors.OmniAccentSecondary,
+                            )
+                        }
                         Column(modifier = Modifier.padding(vertical = OmniSpacing.micro)) {
-                            section.events.forEach { event ->
-                                HistoryRow(
-                                    event = event,
-                                    onPlaySong = { onPlaySong(event.song) },
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(OmniShapes.Large)
+                                    .background(OmniColors.SurfaceRaised)
+                                    .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.26f), OmniShapes.Large)
+                                    .padding(horizontal = OmniSpacing.compact),
+                            ) {
+                                section.events.forEachIndexed { index, event ->
+                                    HistoryRow(event = event, onPlaySong = { onPlaySong(event.song) })
+                                    if (index < section.events.lastIndex) {
+                                        Spacer(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(1.dp)
+                                                .background(OmniColors.SurfaceHairline),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+
+            item(key = "clear-history", contentType = "clear-history") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(OmniShapes.Pill)
+                        .border(1.dp, OmniColors.OmniAccentPrimary, OmniShapes.Pill)
+                        .clickable { showClearConfirmation = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_trash),
+                            contentDescription = null,
+                            tint = OmniColors.OmniAccentPrimary,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = "Clear listening history",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OmniColors.OmniAccentPrimary,
+                        )
+                    }
+                }
+            }
+            }
         }
 
         item(contentType = "bottom-spacer") { Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer)) }
     }
+
+    if (showClearConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showClearConfirmation = false },
+            containerColor = OmniColors.SurfaceRaised,
+            title = { Text("Clear listening history?", color = OmniColors.TextPrimary) },
+            text = { Text("This removes your local listening history. It cannot be undone.", color = OmniColors.TextSecondary) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.clearListenHistory()
+                        showClearConfirmation = false
+                    },
+                ) { Text("Clear", color = OmniColors.Error) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showClearConfirmation = false }) {
+                    Text("Cancel", color = OmniColors.TextSecondary)
+                }
+            },
+        )
+    }
 }
 
 @Composable
-private fun HistoryHeader() {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-        Text(
-            text = "History",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.ExtraBold,
-            color = OmniColors.TextPrimary,
-        )
-        Text(
-            text = "Recently played tracks from this device",
-            style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
-        )
+private fun HistoryHeader(onSearch: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro)) {
+            Text(
+                text = "History",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = "Your recently played tracks",
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
+            )
+        }
+        IconButton(
+            onClick = onSearch,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(OmniShapes.Pill)
+                .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Pill),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = "Search",
+                tint = OmniColors.TextPrimary,
+            )
+        }
     }
 }
 
@@ -130,10 +228,8 @@ private fun HistoryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceRaised)
             .clickable(onClick = onPlaySong)
-            .padding(OmniSpacing.small),
+            .padding(vertical = 6.dp, horizontal = OmniSpacing.compact),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtworkBox(thumbnailUrl = event.song.thumbnailUrl)
@@ -155,6 +251,12 @@ private fun HistoryRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        Text(
+            text = event.event.timestamp.toLocalTime().toString().take(5),
+            style = MaterialTheme.typography.labelMedium,
+            color = OmniColors.TextSecondary,
+            modifier = Modifier.padding(horizontal = OmniSpacing.compact),
+        )
         Box {
             IconButton(
                 onClick = { showMenu = true },
@@ -182,7 +284,7 @@ private fun HistoryRow(
 private fun ArtworkBox(thumbnailUrl: String?) {
     Box(
         modifier = Modifier
-            .size(64.dp)
+            .size(52.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(OmniColors.SurfaceQuiet),
         contentAlignment = Alignment.Center,

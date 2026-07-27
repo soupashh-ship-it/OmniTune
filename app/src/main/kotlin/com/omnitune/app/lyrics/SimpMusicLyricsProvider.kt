@@ -13,6 +13,7 @@ import com.omnitune.app.utils.get
 
 object SimpMusicLyricsProvider : LyricsProvider {
     override val name: String = "SimpMusic"
+    override val isTrackBound = true
 
     override fun isEnabled(context: Context): Boolean =
         context.dataStore[EnableSimpMusicLyricsKey] ?: true

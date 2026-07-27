@@ -179,7 +179,7 @@ private fun HomeCollectionScreen(
             item(contentType = "tracks-label") {
                 Text(
                     text = trackSectionTitle,
-                    style = OmniTextStyles.sectionTitle,
+                    style = OmniTextStyles.sectionHeader,
                     color = OmniColors.TextPrimary,
                 )
             }
@@ -367,7 +367,7 @@ private fun ArtistFeaturedStrip(
     Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
         Text(
             text = "Featured",
-            style = OmniTextStyles.sectionTitle,
+            style = OmniTextStyles.sectionHeader,
             color = OmniColors.TextPrimary,
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {

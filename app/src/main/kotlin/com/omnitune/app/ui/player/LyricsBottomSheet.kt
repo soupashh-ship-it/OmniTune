@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
+import com.omnitune.app.constants.LyricsScrollKey
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniLoadingPulse
@@ -62,6 +63,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 
@@ -75,8 +77,14 @@ fun LyricsBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val uiState by viewModel.uiState.collectAsState()
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val (autoScrollEnabled) = rememberPreference(LyricsScrollKey, defaultValue = true)
     
-    LaunchedEffect(mediaMetadata) {
+    LaunchedEffect(
+        mediaMetadata?.id,
+        mediaMetadata?.title,
+        mediaMetadata?.artists,
+        mediaMetadata?.duration,
+    ) {
         val metadata = mediaMetadata
         if (metadata != null && metadata.title.isNotBlank()) {
             val songId = metadata.id
@@ -116,7 +124,7 @@ fun LyricsBottomSheet(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "Lyrics",
-                    style = OmniTextStyles.sectionTitle,
+                    style = OmniTextStyles.sectionHeader,
                     color = OmniColors.TextPrimary,
                 )
                 if (trackTitle != null) {
@@ -162,9 +170,10 @@ fun LyricsBottomSheet(
                         EmptyState(message = "No lyrics found for this track.")
                     }
                     is LyricsUiState.Success -> {
-                        com.omnitune.app.ui.component.LyricsV2(
-                            sliderPositionProvider = { playerConnection?.player?.currentPosition },
-                            fallbackLines = state.lines,
+                        LyricsContent(
+                            lines = state.lines,
+                            playerConnection = playerConnection,
+                            autoScrollEnabled = autoScrollEnabled,
                         )
                     }
                 }
@@ -184,7 +193,7 @@ private fun LyricsLoadingState(trackTitle: String?) {
         Spacer(modifier = Modifier.height(OmniSpacing.large))
         Text(
             text = "Finding lyrics",
-            style = OmniTextStyles.sectionTitle,
+            style = OmniTextStyles.sectionHeader,
             color = OmniColors.TextPrimary,
             textAlign = TextAlign.Center,
         )
@@ -400,7 +409,7 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
         Text(
             text = "Couldn't load lyrics",
-            style = OmniTextStyles.screenTitle,
+            style = OmniTextStyles.displayTitle,
             color = OmniColors.TextPrimary
         )
         Spacer(modifier = Modifier.height(OmniSpacing.compact))

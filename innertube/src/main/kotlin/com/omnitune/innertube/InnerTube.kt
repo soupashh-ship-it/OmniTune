@@ -189,11 +189,21 @@ class InnerTube {
         signatureTimestamp: Int?,
         poToken: String? = null,
     ) = withRetry {
+        // A bare cookie without a data-sync ID is not a complete playback-login
+        // context. Sending it to /player produces repeated rejected responses and
+        // leaves first-play waiting through every client fallback. Keep the stored
+        // account untouched, but make this request anonymous until the account
+        // supplies a complete playback session.
+        val usePlaybackLogin = authState.hasPlaybackLoginContext
         httpClient.post("player") {
-        ytClient(client, setLogin = true)
+        ytClient(client, setLogin = usePlaybackLogin)
         setBody(
             PlayerBody(
-                context = client.toContext(locale, visitorData, dataSyncId).let {
+                context = client.toContext(
+                    locale,
+                    visitorData,
+                    if (usePlaybackLogin) dataSyncId else null,
+                ).let {
                     if (client.isEmbedded) {
                         it.copy(
                             thirdParty = Context.ThirdParty(

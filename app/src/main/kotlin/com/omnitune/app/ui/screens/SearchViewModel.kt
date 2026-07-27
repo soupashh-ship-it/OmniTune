@@ -10,6 +10,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
+import com.omnitune.app.constants.RestrictExplicitContentKey
+import com.omnitune.app.constants.SafeSearchKey
+import com.omnitune.app.utils.PreferenceStore
+import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.ProviderErrorType
 import com.omnitune.app.utils.classifyProviderError
@@ -28,7 +32,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -136,6 +142,28 @@ class SearchViewModel @Inject constructor(
                     }
                 }
         }
+        viewModelScope.launch {
+            context.dataStore.data
+                .map { preferences ->
+                    (preferences[SafeSearchKey] ?: true) to
+                        (preferences[RestrictExplicitContentKey] ?: false)
+                }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect {
+                    val currentQuery = _query.value.trim()
+                    if (currentQuery.isNotBlank()) {
+                        searchJob?.cancel()
+                        searchJob = viewModelScope.launch {
+                            performSearch(
+                                query = currentQuery,
+                                filter = _uiState.value.selectedFilter,
+                                forceRefresh = true,
+                            )
+                        }
+                    }
+                }
+        }
     }
 
     fun retrySearch() {
@@ -197,7 +225,7 @@ class SearchViewModel @Inject constructor(
 
         Timber.tag("OmniTuneSearch").i("Starting search: length=${query.length}, filter=$filter")
 
-        val bucket = try {
+        val rawBucket = try {
             val networkAvailable = isInternetAvailable(context)
             if (!networkAvailable) {
                 val cached = lastGoodResults[cacheKey]
@@ -224,6 +252,7 @@ class SearchViewModel @Inject constructor(
                 )
             }
         }
+        val bucket = rawBucket.visibleResults(query)
 
         Timber.tag("OmniTuneSearch").i(
             "Search complete: filter=$filter songs=${bucket.songs.size}, artists=${bucket.artists.size}, albums=${bucket.albums.size}, playlists=${bucket.playlists.size}",
@@ -421,23 +450,49 @@ class SearchViewModel @Inject constructor(
         else -> SearchStatus.Success
     }
 
-    private fun cacheKey(query: String, filter: SearchFilterTab): String = "${query.lowercase()}|${filter.name}"
+    private fun cacheKey(query: String, filter: SearchFilterTab): String {
+        val safeSearch = PreferenceStore.get(SafeSearchKey) ?: true
+        val restrictExplicit = PreferenceStore.get(RestrictExplicitContentKey) ?: false
+        return "${query.lowercase()}|${filter.name}|safe=$safeSearch|restricted=$restrictExplicit"
+    }
 
     private val SearchBucketState.hasResults: Boolean
         get() = songs.isNotEmpty() || artists.isNotEmpty() || albums.isNotEmpty() || playlists.isNotEmpty()
 
     private fun SearchBucketState.withResolvedStatus(query: String): SearchBucketState =
-        copy(
-            status = if (hasResults) SearchStatus.Success else SearchStatus.Empty,
-            error = if (hasResults) null else "No results found for '$query'",
-        ).dedupe()
+        visibleResults(query)
 
-    private fun SearchBucketState.dedupe(): SearchBucketState = copy(
-        songs = songs.distinctBy { it.id },
-        artists = artists.distinctBy { it.id },
-        albums = albums.distinctBy { it.id },
-        playlists = playlists.distinctBy { it.id },
-    )
+    private fun SearchBucketState.visibleResults(query: String): SearchBucketState {
+        val visible = dedupe()
+        if (visible.hasResults) {
+            return visible.copy(
+                status = when (status) {
+                    SearchStatus.PartialResults,
+                    SearchStatus.CachedResultsShown -> status
+                    else -> SearchStatus.Success
+                },
+                error = null,
+            )
+        }
+        if (error != null && status !in setOf(SearchStatus.Success, SearchStatus.PartialResults, SearchStatus.CachedResultsShown)) {
+            return visible
+        }
+        return visible.copy(
+            status = SearchStatus.Empty,
+            error = "No safe results found for '$query'",
+        )
+    }
+
+    private fun SearchBucketState.dedupe(): SearchBucketState {
+        val hideExplicit = (PreferenceStore.get(SafeSearchKey) ?: true) ||
+            (PreferenceStore.get(RestrictExplicitContentKey) ?: false)
+        return copy(
+            songs = songs.distinctBy { it.id }.filterNot { hideExplicit && it.explicit },
+            artists = artists.distinctBy { it.id }.filterNot { hideExplicit && it.explicit },
+            albums = albums.distinctBy { it.id }.filterNot { hideExplicit && it.explicit },
+            playlists = playlists.distinctBy { it.id }.filterNot { hideExplicit && it.explicit },
+        )
+    }
 
     private fun SearchUiState.withBucket(
         query: String,

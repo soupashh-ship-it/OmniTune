@@ -32,7 +32,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 
 
-val DefaultThemeColor = Color(0xFFED5564)
+val DefaultThemeColor = Color(0xFFE47A82)
 
 /**
  * Dynamic accent colors used with CompositionLocal to trigger recomposition.
@@ -133,13 +133,13 @@ fun OmniTuneTheme(
         pureBlack = darkTheme && pureBlack,
     )
 
-    val dynamicAccents = remember(colorScheme) {
+    val dynamicAccents = remember {
         OmniDynamicAccents(
-            primary = colorScheme.primary,
-            secondary = colorScheme.secondary,
-            tertiary = colorScheme.tertiary,
-            glow = colorScheme.primary.copy(alpha = 0.30f),
-            soft = colorScheme.secondary.copy(alpha = 0.12f),
+            primary = Color(0xFFE47A82),
+            secondary = Color(0xFFFF9AA2),
+            tertiary = Color(0xFFF99392),
+            glow = Color(0xFFE47A82).copy(alpha = 0.30f),
+            soft = Color(0xFFE47A82).copy(alpha = 0.12f),
         )
     }
 

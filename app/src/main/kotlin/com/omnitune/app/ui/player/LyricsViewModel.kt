@@ -34,10 +34,11 @@ class LyricsViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     fun loadLyrics(songId: String, title: String, artist: String, duration: Long) {
-        if (currentQueryId == songId && _uiState.value !is LyricsUiState.Error && _uiState.value !is LyricsUiState.NoLyrics) {
+        val queryId = listOf(songId, title, artist, duration.toString()).joinToString(separator = "\u0000")
+        if (currentQueryId == queryId && _uiState.value !is LyricsUiState.Error && _uiState.value !is LyricsUiState.NoLyrics) {
             return // Already loaded or loading for this song
         }
-        currentQueryId = songId
+        currentQueryId = queryId
         _uiState.value = LyricsUiState.Loading
 
         loadJob?.cancel()
@@ -54,7 +55,7 @@ class LyricsViewModel @Inject constructor(
                 } catch (error: Exception) {
                     AppResult.Error(error.message ?: "Unknown error", error)
                 }
-                if (currentQueryId != songId) return@launch
+                if (currentQueryId != queryId) return@launch
                 when (result) {
                     is AppResult.Success -> {
                         if (result.data.isEmpty()) {
@@ -73,7 +74,7 @@ class LyricsViewModel @Inject constructor(
                     delay(RETRY_DELAYS_MS[attempt])
                 }
             }
-            if (currentQueryId != songId) return@launch
+            if (currentQueryId != queryId) return@launch
             _uiState.value = if (lastError.equals("Lyrics not found", ignoreCase = true)) {
                 LyricsUiState.NoLyrics
             } else {

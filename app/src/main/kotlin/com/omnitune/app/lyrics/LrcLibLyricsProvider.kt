@@ -13,6 +13,7 @@ import com.omnitune.lrclib.LrcLib
 
 object LrcLibLyricsProvider : LyricsProvider {
     override val name = "LrcLib"
+    override val isMetadataBound = true
 
     override fun isEnabled(context: Context): Boolean = context.dataStore[EnableLrcLibKey] ?: true
 

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -65,6 +66,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.R
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.screens.SettingsViewModel
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
@@ -440,13 +442,13 @@ fun Enum<*>.displayName(): String {
 fun OmniPreferenceIcon(
     iconRes: Int,
     accent: Color,
-    size: Dp = 42.dp,
-    iconSize: Dp = 22.dp,
+    size: Dp = 32.dp,
+    iconSize: Dp = 16.dp,
 ) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(OmniShapes.Pill)
             .background(
                 Brush.linearGradient(
                     listOf(accent.copy(alpha = 0.22f), accent.copy(alpha = 0.08f))
@@ -488,25 +490,25 @@ fun OmniPreferenceEntry(
                     )
                 else Modifier
             )
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (iconRes != null) {
             OmniPreferenceIcon(iconRes = iconRes, accent = accent)
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(OmniSpacing.compact))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = OmniColors.TextPrimary,
             )
             if (description != null) {
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(1.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = OmniColors.TextTertiary,
                 )
             }
@@ -566,20 +568,26 @@ fun <T : Enum<T>> OmniEnumPreference(
         accent = accent,
         onClick = { showDialog = true },
         trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .clip(OmniShapes.Pill)
+                    .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.36f), OmniShapes.Pill)
+                    .padding(horizontal = OmniSpacing.compact, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = valueText(selectedValue),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = OmniColors.OmniAccentSecondary,
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(OmniSpacing.micro))
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = null,
                     tint = OmniColors.TextTertiary.copy(alpha = 0.4f),
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(12.dp)
                         .graphicsLayer { rotationZ = 180f },
                 )
             }
@@ -606,12 +614,12 @@ fun OmniPreferenceGroupTitle(
 ) {
     Text(
         text = title,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         color = OmniColors.OmniAccentSecondary,
         modifier = Modifier
-            .padding(top = 16.dp)
-            .padding(horizontal = 20.dp, vertical = 8.dp),
+            .padding(top = 12.dp)
+            .padding(vertical = 6.dp),
     )
 }
 
@@ -627,12 +635,12 @@ fun OmniPreferenceCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = OmniColors.SurfaceQuiet),
+                .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.26f), OmniShapes.Medium),
+            shape = OmniShapes.Medium,
+            colors = CardDefaults.cardColors(containerColor = OmniColors.SurfaceRaised),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            Column(modifier = Modifier.padding(vertical = 2.dp)) {
                 content()
             }
         }
@@ -641,49 +649,84 @@ fun OmniPreferenceCard(
 
 // ─── Sub-screen scaffold ─────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsSubScreenScaffold(
     title: String,
     onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
+    val (referenceTitle, subtitle) = settingsReferenceHeading(title)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(modifier = Modifier.statusBarsPadding())
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = OmniSpacing.screenHorizontalCompact, vertical = OmniSpacing.compact),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(OmniShapes.Pill)
+                        .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.25f), OmniShapes.Pill)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_back),
+                        contentDescription = "Back",
+                        tint = OmniColors.TextPrimary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(OmniSpacing.small))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = title,
+                        text = referenceTitle,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = OmniColors.TextPrimary,
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = "Back",
-                            tint = OmniColors.TextPrimary,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = OmniColors.TextPrimary,
-                    navigationIconContentColor = OmniColors.TextPrimary,
-                ),
-            )
-        },
-        containerColor = OmniColors.OmniBackgroundBase,
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            content()
-            Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OmniColors.TextSecondary,
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = OmniSpacing.screenHorizontalCompact),
+            ) {
+                content()
+                Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer))
+            }
         }
     }
+}
+
+private fun settingsReferenceHeading(title: String): Pair<String, String> = when (title) {
+    "Playback & Audio" -> "Playback" to "Audio quality, crossfade, equalizer"
+    "Appearance" -> "Player Appearance" to "Now playing screen, themes, animations"
+    "Behavior" -> "Behavior" to "Autoplay, resume, headset & car"
+    "Downloads" -> "Downloads" to "Offline library and automatic downloads"
+    "Library" -> "Library" to "Shortcuts, layout, and discovery"
+    "Content" -> "Library" to "Manage tabs, hidden songs & filters"
+    "Parental Controls" -> "Parental Controls" to "Limit explicit content and manage access"
+    "Notifications" -> "Notifications" to "Manage alerts and in-app messages"
+    "Storage" -> "Storage" to "Cache, downloads, and device storage"
+    "Scrobbling" -> "Scrobbling & Integrations" to "Last.fm and ListenBrainz services"
+    "Updates" -> "Updates" to "Check for updates and release notes"
+    else -> title to "OmniTune settings"
 }

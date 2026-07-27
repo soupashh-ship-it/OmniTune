@@ -47,4 +47,9 @@ class SettingsViewModel @Inject constructor(
         context.imageLoader.memoryCache?.clear()
         context.imageLoader.diskCache?.clear()
     }
+
+    fun clearArtworkCache(context: Context) {
+        context.imageLoader.memoryCache?.clear()
+        context.imageLoader.diskCache?.clear()
+    }
 }

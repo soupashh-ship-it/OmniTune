@@ -2,9 +2,13 @@ package com.omnitune.app.update
 
 import android.content.Context
 import android.net.ConnectivityManager
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.BuildConfig
+import com.omnitune.app.constants.LastUpdateCheckKey
+import com.omnitune.app.constants.UpdateChannel
+import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,10 +26,14 @@ class UpdateViewModel @Inject constructor(
     private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val state: StateFlow<UpdateState> = _state.asStateFlow()
 
-    fun checkForUpdates() {
+    fun checkForUpdates(channel: UpdateChannel = UpdateChannel.STABLE) {
         viewModelScope.launch {
             _state.value = UpdateState.Checking
-            runCatching { appUpdateChecker.checkForUpdate() }
+            runCatching {
+                appUpdateChecker.checkForUpdate(
+                    allowPrereleases = channel == UpdateChannel.NIGHTLY,
+                )
+            }
                 .onSuccess { update ->
                     _state.value = if (update == null) {
                         UpdateState.NoUpdate
@@ -38,6 +46,9 @@ class UpdateViewModel @Inject constructor(
                         error.message ?: "Could not check for updates. Check your connection."
                     )
                 }
+            context.dataStore.edit { preferences ->
+                preferences[LastUpdateCheckKey] = System.currentTimeMillis()
+            }
         }
     }
 

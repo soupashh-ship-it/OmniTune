@@ -7,13 +7,16 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +69,7 @@ import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.ui.component.OmniFloatingSurface
+import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniLoadingPulse
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTrackLoadingRow
@@ -124,44 +129,13 @@ fun SearchStartState(
     history: List<SearchHistory>,
     onHistoryClick: (String) -> Unit,
     onClearHistory: () -> Unit,
+    onStartSearch: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {
-        item {
-            OmniFloatingSurface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = OmniShapes.ExtraLarge,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    OmniColors.OmniAccentPrimary.copy(alpha = 0.18f),
-                                    OmniColors.OmniAccentSecondary.copy(alpha = 0.08f),
-                                    Color.Transparent,
-                                )
-                            )
-                        )
-                        .padding(OmniSpacing.large),
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-                        Text(
-                            text = "Start with a song",
-                            style = OmniTextStyles.sectionTitle,
-                        )
-                        Text(
-                            text = "Search for real tracks and play them through the existing OmniTune player.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextSecondary,
-                        )
-                    }
-                }
-            }
-        }
+        item { SearchDiscoveryHero(onStartSearch = onStartSearch) }
 
         if (history.isNotEmpty()) {
             item {
@@ -176,33 +150,275 @@ fun SearchStartState(
                     )
                     TextButton(onClick = onClearHistory) {
                         Text(
-                            text = "Clear",
+                            text = "Clear all",
                             color = OmniColors.OmniAccentSecondary,
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
                 }
             }
-
-            items(
-                items = history,
-                key = { "history-${it.query}" },
-                contentType = { "history" },
-            ) { item ->
-                SearchHistoryRow(
-                    query = item.query,
-                    onClick = { onHistoryClick(item.query) },
-                )
-            }
-        } else {
-            item {
-                SearchMessageCard(
-                    icon = R.drawable.ic_search,
-                    title = "Search for a song to start listening",
-                    message = "Results will appear here as songs, artists, albums, and playlists when real data is available.",
-                )
+            item(key = "search-history-chips") {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+                    items(
+                        items = history,
+                        key = { "history-${it.query}" },
+                        contentType = { "history" },
+                    ) { item ->
+                        SearchHistoryChip(
+                            query = item.query,
+                            onClick = { onHistoryClick(item.query) },
+                        )
+                    }
+                }
             }
         }
+
+        item(key = "search-discovery-queries") {
+            Spacer(modifier = Modifier.height(OmniSpacing.medium))
+            OmniSectionHeader(title = "Suggested searches")
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                listOf("Chill", "Workout", "Focus", "New releases", "Instrumental").forEach { query ->
+                    SearchDiscoveryQueryChip(query = query, onClick = { onHistoryClick(query) })
+                }
+            }
+        }
+
+        item(key = "search-discovery-moods") {
+            Spacer(modifier = Modifier.height(OmniSpacing.large))
+            OmniSectionHeader(title = "Discover moods")
+            Spacer(modifier = Modifier.height(OmniSpacing.small))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
+                items(
+                    items = listOf(
+                        SearchMood("Feel Good", "Uplifting hits", R.drawable.ic_sparkle),
+                        SearchMood("Late Night Drive", "Smooth and mellow", R.drawable.ic_mood),
+                        SearchMood("Rainy Days", "Calm your mind", R.drawable.ic_cloud),
+                        SearchMood("Heartbreak", "Reflect and reset", R.drawable.ic_favorite_border),
+                    ),
+                    key = { it.title },
+                ) { mood ->
+                    SearchMoodCard(mood = mood, onClick = { onHistoryClick(mood.title) })
+                }
+            }
+        }
+
+        item(key = "search-start-bottom-spacer") {
+            Spacer(modifier = Modifier.height(OmniChrome.BottomContentPaddingWithPlayer))
+        }
+    }
+}
+
+@Composable
+private fun SearchDiscoveryHero(
+    onStartSearch: () -> Unit,
+) {
+    OmniFloatingSurface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(158.dp),
+        shape = OmniShapes.ExtraLarge,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF5C2034),
+                            Color(0xFF2A1D27),
+                            OmniColors.SurfaceRaised,
+                        ),
+                    ),
+                ),
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(116.dp)
+                    .fillMaxHeight()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                OmniColors.OmniAccentPrimary.copy(alpha = 0.46f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(OmniShapes.Pill)
+                        .border(2.dp, OmniColors.OmniAccentSecondary.copy(alpha = 0.72f), OmniShapes.Pill)
+                        .background(Color(0xFF201B25).copy(alpha = 0.72f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_search),
+                        contentDescription = null,
+                        tint = OmniColors.OmniAccentSecondary,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(214.dp)
+                    .padding(end = OmniSpacing.medium),
+                verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            ) {
+                Text(
+                    text = "Search real music.",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = OmniColors.TextPrimary,
+                )
+                Text(
+                    text = "Find songs, artists, albums and playlists from millions of tracks.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                TextButton(
+                    onClick = onStartSearch,
+                    modifier = Modifier
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.PrimaryGradient)
+                        .border(1.dp, OmniColors.OmniAccentSecondary.copy(alpha = 0.64f), OmniShapes.Pill),
+                ) {
+                    Text(
+                        text = "Start searching  ↗",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class SearchMood(
+    val title: String,
+    val subtitle: String,
+    val icon: Int,
+)
+
+@Composable
+private fun SearchDiscoveryQueryChip(query: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceRaised)
+            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Pill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_bolt),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = query,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextPrimary,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun SearchHistoryChip(query: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(OmniShapes.Pill)
+            .background(OmniColors.SurfaceRaised)
+            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Pill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_history),
+            contentDescription = null,
+            tint = OmniColors.TextSecondary,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = query,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun SearchMoodCard(mood: SearchMood, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .width(120.dp)
+            .height(146.dp)
+            .clip(OmniShapes.Large)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        OmniColors.OmniAccentPrimary.copy(alpha = 0.38f),
+                        OmniColors.SurfaceRaised,
+                    ),
+                ),
+            )
+            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.26f), OmniShapes.Large)
+            .clickable(onClick = onClick)
+            .padding(OmniSpacing.compact),
+    ) {
+        Icon(
+            painter = painterResource(mood.icon),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentSecondary,
+            modifier = Modifier.size(28.dp),
+        )
+        Column(modifier = Modifier.align(Alignment.BottomStart)) {
+            Text(
+                text = mood.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = mood.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.ic_play_arrow),
+            contentDescription = "Search ${mood.title}",
+            tint = OmniColors.TextOnAccent,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(28.dp)
+                .clip(OmniShapes.Pill)
+                .background(OmniColors.OmniAccentPrimary)
+                .padding(8.dp),
+        )
     }
 }
 
@@ -357,7 +573,7 @@ fun SearchMessageCard(
             }
             Text(
                 text = title,
-                style = OmniTextStyles.sectionTitle,
+                style = OmniTextStyles.sectionHeader,
                 color = OmniColors.TextPrimary,
             )
             Text(

@@ -30,7 +30,9 @@ class HistoryViewModel @Inject constructor(
             try {
                 database.events().collect { events ->
                     _uiState.value = HistoryUiState(
-                        events = events.distinctBy { it.song.id },
+                        // History is chronological: repeated plays are meaningful and must
+                        // retain their individual timestamps for the grouped UI and stats.
+                        events = events,
                         isLoading = false,
                     )
                 }
@@ -40,6 +42,12 @@ class HistoryViewModel @Inject constructor(
                     error = e.localizedMessage,
                 )
             }
+        }
+    }
+
+    fun clearListenHistory() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.clearListenHistory()
         }
     }
 }

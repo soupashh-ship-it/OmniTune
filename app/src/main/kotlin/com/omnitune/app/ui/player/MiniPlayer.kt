@@ -39,7 +39,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,7 +56,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -76,10 +74,6 @@ import coil3.request.ImageRequest
 import com.omnitune.app.R
 import com.omnitune.app.constants.OmniMiniPlayerDesign
 import com.omnitune.app.constants.OmniMiniPlayerDesignKey
-import com.omnitune.app.constants.OmniPlayerButtonColorMode
-import com.omnitune.app.constants.OmniPlayerButtonColorModeKey
-import com.omnitune.app.constants.OmniSliderStyle
-import com.omnitune.app.constants.OmniSliderStyleKey
 import com.omnitune.app.constants.SwipeSensitivityKey
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
@@ -128,47 +122,7 @@ fun MiniPlayer(
         OmniMiniPlayerDesignKey,
         OmniMiniPlayerDesign.DEFAULT,
     )
-    val buttonColorMode by rememberEnumPreference(
-        OmniPlayerButtonColorModeKey,
-        OmniPlayerButtonColorMode.DYNAMIC,
-    )
-    val sliderStyle by rememberEnumPreference(
-        OmniSliderStyleKey,
-        OmniSliderStyle.DEFAULT,
-    )
     val swipeSensitivity by rememberPreference(SwipeSensitivityKey, 0.73f)
-
-    var position by remember { mutableFloatStateOf(0f) }
-    var duration by remember { mutableFloatStateOf(0f) }
-    val currentMediaId = mediaMetadata?.id
-
-    LaunchedEffect(playerConnection, currentMediaId, isPlaying, playbackState) {
-        while (true) {
-            val pc = playerConnection
-            if (pc != null) {
-                val dur = pc.duration
-                val pos = pc.currentPosition
-                if (playbackState == Player.STATE_ENDED && dur > 0) {
-                    duration = dur.toFloat()
-                    position = dur.toFloat()
-                } else {
-                    duration = if (dur > 0) dur.toFloat() else 0f
-                    position = if (pos in 0..dur) pos.toFloat() else 0f
-                }
-            } else {
-                duration = 0f
-                position = 0f
-            }
-            delay(if (isPlaying) 250 else 750)
-        }
-    }
-
-    val progressTarget = if (duration > 0f) (position / duration).coerceIn(0f, 1f) else 0f
-    val progress by animateFloatAsState(
-        targetValue = progressTarget,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
-        label = "mini_progress",
-    )
 
     val offsetXAnimatable = remember { Animatable(0f) }
     var dragStartTime by remember { mutableLongStateOf(0L) }
@@ -180,43 +134,24 @@ fun MiniPlayer(
     val autoSwipeThreshold = (600 / (1f + exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
     val bodyInteraction = remember { MutableInteractionSource() }
 
-    val miniGradient = rememberPlayerGradient(
-        thumbnailUrl = mediaMetadata?.thumbnailUrl,
-        videoId = mediaMetadata?.id,
-    )
-    val songPalette = miniGradient.palette
     val compactMiniPlayer = miniPlayerDesign == OmniMiniPlayerDesign.COMPACT
     val miniArtworkSize = if (compactMiniPlayer) 42.dp else OmniChrome.MiniPlayerArtwork
     val miniContentHeight = if (compactMiniPlayer) 50.dp else OmniChrome.MiniPlayerContentHeight
     val miniButtonSize = if (compactMiniPlayer) 36.dp else OmniChrome.MiniPlayerButton
     val miniIconSize = if (compactMiniPlayer) 21.dp else 24.dp
-    val miniProgressHeight = when (sliderStyle) {
-        OmniSliderStyle.DEFAULT -> 2.dp
-        OmniSliderStyle.THIN -> 1.dp
-        OmniSliderStyle.ROUNDED -> 3.dp
-    }
-    val miniProgressCap = if (sliderStyle == OmniSliderStyle.ROUNDED) StrokeCap.Round else StrokeCap.Square
-    val controlAccent = when (buttonColorMode) {
-        OmniPlayerButtonColorMode.DYNAMIC -> songPalette.accent
-        OmniPlayerButtonColorMode.DEFAULT -> OmniColors.OmniAccentPrimary
-        OmniPlayerButtonColorMode.MONOCHROME -> OmniColors.TextPrimary
-    }
-    val controlOnAccent = when (buttonColorMode) {
-        OmniPlayerButtonColorMode.DYNAMIC -> songPalette.onAccent
-        OmniPlayerButtonColorMode.DEFAULT -> OmniColors.OmniAccentOnPrimary
-        OmniPlayerButtonColorMode.MONOCHROME -> Color.Black
-    }
     val miniGlassStyle = OmniGlassDefaults.miniPlayerStyle(
         isDark = true,
         isPureBlack = pureBlack,
     ).copy(
-        surfaceTint = songPalette.miniPlayerSurface,
-        surfaceAlpha = if (pureBlack) 0.88f else 0.96f,
-        overlayColor = songPalette.backgroundSecondary,
-        overlayAlpha = if (pureBlack) 0.18f else 0.42f,
-        borderColor = songPalette.accent,
-        borderAlpha = if (miniGradient.isFromArtwork) 0.16f else 0.05f,
-        shadowSpot = songPalette.accent.copy(alpha = if (miniGradient.isFromArtwork) 0.10f else 0.04f),
+        // The supplied chrome is intentionally stable: artwork belongs inside the
+        // card, while the player itself keeps the same burgundy surface on every song.
+        surfaceTint = Color(0xFF2B1D27),
+        surfaceAlpha = if (pureBlack) 0.90f else 0.98f,
+        overlayColor = Color(0xFF4A2733),
+        overlayAlpha = if (pureBlack) 0.22f else 0.40f,
+        borderColor = OmniColors.OmniAccentPrimary,
+        borderAlpha = 0.42f,
+        shadowSpot = OmniColors.OmniAccentPrimary.copy(alpha = 0.12f),
     )
 
     OmniGlassSurface(
@@ -226,7 +161,7 @@ fun MiniPlayer(
             .fillMaxWidth()
             .height(OmniChrome.MiniPlayerHeight)
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-            .padding(horizontal = OmniSpacing.small),
+            .padding(horizontal = OmniChrome.BottomDockHorizontalPadding),
     ) {
         Box(
             modifier = Modifier
@@ -272,37 +207,48 @@ fun MiniPlayer(
                     )
                 },
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val showPreviousControl = canSkipPrevious && maxWidth >= 390.dp
+            Box(modifier = Modifier.fillMaxSize()) {
+                // The small centered handle is part of the reference mini-player,
+                // not an affordance that opens another route.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 6.dp)
+                        .width(42.dp)
+                        .height(4.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(Color.White.copy(alpha = 0.42f)),
+                )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(OmniShapes.Dock)
-                    .omniPressScale(bodyInteraction)
-                    .clickable(
-                        interactionSource = bodyInteraction,
-                        indication = androidx.compose.material3.ripple(
-                            bounded = true,
-                            color = songPalette.accent.copy(alpha = 0.12f),
-                        ),
-                        onClick = onClick,
-                    )
-                    .padding(horizontal = OmniSpacing.compact, vertical = 6.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
+                        .clip(OmniShapes.Dock)
+                    .padding(start = OmniSpacing.compact, end = OmniSpacing.micro, top = 12.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .height(miniContentHeight)
+                        .clip(OmniShapes.Medium)
+                        .omniPressScale(bodyInteraction)
+                        .clickable(
+                            interactionSource = bodyInteraction,
+                            indication = androidx.compose.material3.ripple(
+                                bounded = true,
+                                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.12f),
+                            ),
+                            onClick = onClick,
+                        )
                         .padding(horizontal = OmniSpacing.micro),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     MiniArtwork(
                         mediaMetadata = mediaMetadata,
                         isPlaying = isPlaying,
-                        accentColor = songPalette.accent,
+                        accentColor = OmniColors.OmniAccentPrimary,
                         artworkSize = miniArtworkSize,
                     )
                     Spacer(modifier = Modifier.width(if (compactMiniPlayer) OmniSpacing.compact else OmniSpacing.small))
@@ -313,22 +259,19 @@ fun MiniPlayer(
                 }
 
                 playerConnection?.let { pc ->
-                    Spacer(modifier = Modifier.width(OmniSpacing.micro))
-                    if (showPreviousControl) {
-                        MiniControlButton(
-                            icon = R.drawable.ic_skip_previous,
-                            contentDescription = "Previous",
-                            onClick = { pc.seekToPrevious() },
-                            buttonSize = miniButtonSize,
-                            iconSize = miniIconSize,
-                        )
-                    }
+                    MiniPlaybackBars(
+                        isPlaying = isPlaying,
+                        modifier = Modifier
+                            .width(if (compactMiniPlayer) 28.dp else 36.dp)
+                            .height(28.dp),
+                    )
+                    Spacer(modifier = Modifier.width(OmniSpacing.small))
                     MiniPlayPauseButton(
                         isPlaying = isPlaying,
                         isLoading = isLoading,
                         playbackState = playbackState,
-                        accentColor = controlAccent,
-                        onAccent = controlOnAccent,
+                        accentColor = OmniColors.OmniAccentPrimary,
+                        onAccent = Color.White,
                         buttonSize = miniButtonSize,
                         iconSize = miniIconSize,
                         onClick = {
@@ -339,16 +282,6 @@ fun MiniPlayer(
                             }
                         },
                     )
-                    if (canSkipNext) {
-                        MiniControlButton(
-                            icon = R.drawable.ic_skip_next,
-                            contentDescription = "Next",
-                            onClick = { pc.seekToNext() },
-                            buttonSize = miniButtonSize,
-                            iconSize = miniIconSize,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(OmniSpacing.micro))
                     Box {
                         MiniControlButton(
                             icon = R.drawable.ic_more_vert,
@@ -379,7 +312,7 @@ fun MiniPlayer(
                                         )
                                     },
                                 )
-                                if (!showPreviousControl && canSkipPrevious) {
+                                if (canSkipPrevious) {
                                     DropdownMenuItem(
                                         text = { Text("Previous") },
                                         onClick = {
@@ -389,6 +322,22 @@ fun MiniPlayer(
                                         leadingIcon = {
                                             Icon(
                                                 painter = painterResource(R.drawable.ic_skip_previous),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        },
+                                    )
+                                }
+                                if (canSkipNext) {
+                                    DropdownMenuItem(
+                                        text = { Text("Next") },
+                                        onClick = {
+                                            showMenu = false
+                                            pc.seekToNext()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_skip_next),
                                                 contentDescription = null,
                                                 modifier = Modifier.size(20.dp),
                                             )
@@ -461,16 +410,28 @@ fun MiniPlayer(
                 }
             }
             }
+        }
+    }
+}
 
-            LinearProgressIndicator(
-                progress = { progress },
+@Composable
+private fun MiniPlaybackBars(
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val bars = if (isPlaying) intArrayOf(11, 20, 15, 25, 17, 23, 12) else intArrayOf(7, 10, 8, 12, 8, 10, 7)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        bars.forEach { height ->
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(miniProgressHeight)
-                    .align(Alignment.BottomCenter),
-                color = controlAccent,
-                trackColor = songPalette.playerControlSurface.copy(alpha = 0.42f),
-                strokeCap = miniProgressCap,
+                    .width(3.dp)
+                    .height(height.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.OmniAccentSecondary.copy(alpha = if (isPlaying) 0.95f else 0.48f)),
             )
         }
     }
@@ -546,12 +507,12 @@ private fun MiniMediaInfo(
     mediaMetadata: MediaMetadata?,
     modifier: Modifier = Modifier,
 ) {
-    val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "Unknown track"
+    val title = mediaMetadata?.title?.takeIf { it.isNotBlank() }.orEmpty()
     val artist = mediaMetadata
         ?.artists
         ?.joinToString(", ") { it.name }
         ?.takeIf { it.isNotBlank() }
-        ?: "Unknown artist"
+        .orEmpty()
 
     Column(
         modifier = modifier,
@@ -573,18 +534,20 @@ private fun MiniMediaInfo(
             )
         }
 
-        AnimatedContent(
-            targetState = artist,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
-            label = "mini_artist",
-        ) { currentArtist ->
-            Text(
-                text = currentArtist,
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        if (artist.isNotBlank()) {
+            AnimatedContent(
+                targetState = artist,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "mini_artist",
+            ) { currentArtist ->
+                Text(
+                    text = currentArtist,
+                    style = OmniTextStyles.metadata,
+                    color = OmniColors.TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

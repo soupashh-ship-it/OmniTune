@@ -21,6 +21,7 @@ object BetterLyricsProvider : LyricsProvider {
     }
 
     override val name = "BetterLyrics"
+    override val isMetadataBound = true
 
     override fun isEnabled(context: Context): Boolean = context.dataStore[EnableBetterLyricsKey] ?: true
 

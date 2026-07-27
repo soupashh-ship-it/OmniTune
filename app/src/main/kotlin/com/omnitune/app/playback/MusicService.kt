@@ -33,7 +33,9 @@ import com.omnitune.app.utils.NetworkConnectivityObserver
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
+import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.constants.RepeatModeKey
+import com.omnitune.app.constants.RestrictExplicitContentKey
 import com.omnitune.app.constants.ShuffleEnabledKey
 import com.omnitune.app.constants.AutoplaySimilarSongsKey
 import com.omnitune.app.constants.HistoryDuration
@@ -403,7 +405,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private suspend fun restoreQueueMetadataOnly(queue: Queue) {
-        val initialStatus = queue.getInitialStatus()
+        val unfilteredStatus = queue.getInitialStatus()
+        val restrictExplicit = dataStore.data.first()[RestrictExplicitContentKey] ?: false
+        val selectedId = unfilteredStatus.items
+            .getOrNull(unfilteredStatus.mediaItemIndex.coerceIn(0, unfilteredStatus.items.lastIndex.coerceAtLeast(0)))
+            ?.mediaId
+        val visibleItems = if (restrictExplicit) {
+            unfilteredStatus.items.filterNot { it.metadata?.explicit == true }
+        } else {
+            unfilteredStatus.items
+        }
+        val initialStatus = unfilteredStatus.copy(
+            items = visibleItems,
+            mediaItemIndex = selectedId
+                ?.let { id -> visibleItems.indexOfFirst { it.mediaId == id } }
+                ?.takeIf { it >= 0 }
+                ?: 0,
+        )
         if (initialStatus.items.isEmpty()) {
             Timber.tag("OmniTunePlaybackTrace").w("Restore skipped: saved queue is empty")
             return
@@ -544,14 +562,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     fun playQueue(queue: Queue, playWhenReady: Boolean = true) {
+        val restrictExplicit = PreferenceStore.get(RestrictExplicitContentKey) ?: false
+        if (restrictExplicit && queue.preloadItem?.explicit == true) {
+            Toast.makeText(this, "Explicit content is restricted on this device.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         playQueueJob?.cancel()
         preResolveJob?.cancel()
         StartupTracker.reset()
-        currentQueue = queue
-        currentPlaybackContext = queue.playbackContext
-        failedAutoplayCandidateIds.clear()
-        resetPlaybackHistory()
-        queueTitle = null
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
         queue.preloadItem?.let { preload ->
@@ -561,7 +580,39 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         playQueueJob = scope.launch {
-            val initialStatus = queue.getInitialStatus()
+            val unfilteredStatus = queue.getInitialStatus()
+            val originalIndex = unfilteredStatus.mediaItemIndex.coerceIn(
+                0,
+                unfilteredStatus.items.lastIndex.coerceAtLeast(0),
+            )
+            val requestedItem = unfilteredStatus.items.getOrNull(originalIndex)
+            if (restrictExplicit && requestedItem?.metadata?.explicit == true) {
+                Toast.makeText(
+                    this@MusicService,
+                    "Explicit content is restricted on this device.",
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return@launch
+            }
+
+            val visibleItems = if (restrictExplicit) {
+                unfilteredStatus.items.filterNot { it.metadata?.explicit == true }
+            } else {
+                unfilteredStatus.items
+            }
+            val visibleIndex = requestedItem?.let { selected ->
+                visibleItems.indexOfFirst { it.mediaId == selected.mediaId }
+            }?.takeIf { it >= 0 } ?: 0
+            val initialStatus = unfilteredStatus.copy(
+                items = visibleItems,
+                mediaItemIndex = visibleIndex,
+            )
+
+            currentQueue = queue
+            currentPlaybackContext = queue.playbackContext
+            failedAutoplayCandidateIds.clear()
+            resetPlaybackHistory()
+            queueTitle = null
             currentPlaybackContext = queue.playbackContext.withSeedItem(
                 initialStatus.items.getOrNull(initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.lastIndex.coerceAtLeast(0))),
             )
@@ -583,8 +634,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.tag("OmniTunePlaybackTrace").i(
                     "Player set unresolved queue: count=${queueItems.size}, index=$requestedIndex, position=${initialStatus.position}"
                 )
-                player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
+                // Queue entries intentionally start with a bare YouTube ID so the
+                // resolver can replace it with a signed stream URL.  Make the player
+                // non-playing *before* inserting them: otherwise a currently playing
+                // player can briefly attempt that ID as a local file (ENOENT) before
+                // the resolver finishes, which surfaces as an immediate pause/error.
                 player.playWhenReady = false
+                player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
             }
             val resolvedCurrent = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
@@ -1254,6 +1310,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             } ?: run {
                 Timber.tag("OmniTuneContinuation").i("Autoplay stopped: no valid candidate")
                 return
+            }
+            if ((prefs[RestrictExplicitContentKey] ?: false) &&
+                candidate.mediaItem.metadata?.explicit == true
+            ) {
+                failedAutoplayCandidateIds.add(candidate.mediaItem.mediaId)
+                Timber.tag("OmniTuneContinuation").i(
+                    "Autoplay skipped explicit candidate ${candidate.mediaItem.mediaId}",
+                )
+                return@repeat
             }
 
             val resolved = resolveAutoplayCandidate(candidate)

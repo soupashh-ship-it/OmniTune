@@ -400,7 +400,10 @@ class HomeDiscoveryViewModel @Inject constructor(
             exploreSections = providerFeed.exploreSections.withHydration(previews),
             shelfSections = HomeDefaultCatalog.shelves
                 .map { section -> section.copy(items = section.items.map { it.withHydration(previews) }) },
-            moodChips = (providerMoodChips.ifEmpty { HomeDefaultCatalog.moodChips }).distinctBy { it.id },
+            // Keep the reference-derived mood entry points stable while retaining
+            // provider categories after them.  Each chip still opens a real query or
+            // provider browse route; this only controls discovery ordering.
+            moodChips = (HomeDefaultCatalog.moodChips + providerMoodChips).distinctBy { it.id },
             genreChips = providerGenreChips,
             playAllQuickPicks = quickPickSongsForPlayAll,
             isLoading = false,

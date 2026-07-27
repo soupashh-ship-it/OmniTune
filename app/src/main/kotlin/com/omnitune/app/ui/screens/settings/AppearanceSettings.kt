@@ -42,7 +42,9 @@ import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.launch
 
 @Composable
-fun AppearanceSettings() {
+fun AppearanceSettings(
+    onNavigateToLyrics: () -> Unit = {},
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -256,6 +258,13 @@ fun AppearanceSettings() {
             values = OmniLyricsPresentation.entries,
             valueText = { it.label },
             onValueSelected = { lyricsPresentation = it },
+        )
+        OmniPreferenceEntry(
+            title = "Lyrics sources & sync",
+            description = "Choose providers and automatic scrolling",
+            iconRes = R.drawable.ic_lyrics,
+            accent = OmniColors.OmniAccentSecondary,
+            onClick = onNavigateToLyrics,
         )
     }
 

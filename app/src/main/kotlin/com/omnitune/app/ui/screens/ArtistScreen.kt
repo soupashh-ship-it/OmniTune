@@ -79,6 +79,7 @@ fun ArtistScreen(
     var artistPage by remember { mutableStateOf<ArtistPage?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var descriptionExpanded by remember(artistId) { mutableStateOf(false) }
     val isBookmarked by viewModel.isBookmarked.collectAsState()
     val localArtist by viewModel.artist.collectAsState()
     val localSongs by viewModel.songs.collectAsState()
@@ -186,17 +187,17 @@ fun ArtistScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
-                                    maxLines = 3,
+                                    maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                                 Text(
-                                    text = "more",
+                                    text = if (descriptionExpanded) "less" else "more",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
                                         .padding(top = 4.dp)
-                                        .clickable { /* TODO: show full bio */ }
+                                        .clickable { descriptionExpanded = !descriptionExpanded }
                                 )
                             }
 

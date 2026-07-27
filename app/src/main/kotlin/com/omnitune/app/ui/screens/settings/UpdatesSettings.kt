@@ -35,12 +35,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
+import com.omnitune.app.constants.LastUpdateCheckKey
+import com.omnitune.app.constants.UpdateChannel
+import com.omnitune.app.constants.UpdateChannelKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.update.ApkInstallLauncher
 import com.omnitune.app.update.UpdateState
 import com.omnitune.app.update.UpdateViewModel
+import com.omnitune.app.utils.rememberEnumPreference
+import com.omnitune.app.utils.rememberPreference
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun UpdatesSettings(
@@ -49,6 +56,8 @@ fun UpdatesSettings(
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
+    var updateChannel by rememberEnumPreference(UpdateChannelKey, UpdateChannel.STABLE)
+    val (lastCheckedAt) = rememberPreference(LastUpdateCheckKey, 0L)
     var installMessage by remember { mutableStateOf<String?>(null) }
     val installPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -88,6 +97,35 @@ fun UpdatesSettings(
 
     Spacer(Modifier.height(8.dp))
 
+    OmniPreferenceCard(title = "Automation") {
+        OmniEnumPreference(
+            title = "Update channel",
+            description = "Choose stable releases or opt in to prerelease builds",
+            iconRes = R.drawable.ic_sync,
+            accent = OmniColors.OmniAccentPrimary,
+            selectedValue = updateChannel,
+            values = UpdateChannel.entries,
+            valueText = { it.displayName },
+            onValueSelected = {
+                updateChannel = it
+                viewModel.reset()
+            },
+        )
+        OmniPreferenceEntry(
+            title = "Last checked",
+            description = if (lastCheckedAt == 0L) {
+                "Updates have not been checked on this installation"
+            } else {
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                    .format(Date(lastCheckedAt))
+            },
+            iconRes = R.drawable.ic_clock,
+            accent = OmniColors.OmniAccentSecondary,
+        )
+    }
+
+    Spacer(Modifier.height(8.dp))
+
     when (val current = state) {
         UpdateState.Idle -> {
             UpdateStateCard(
@@ -97,7 +135,7 @@ fun UpdatesSettings(
             )
             Spacer(Modifier.height(8.dp))
             SettingsActionButton("Check for updates") {
-                viewModel.checkForUpdates()
+                viewModel.checkForUpdates(updateChannel)
             }
         }
         UpdateState.Checking -> {
@@ -116,7 +154,7 @@ fun UpdatesSettings(
             )
             Spacer(Modifier.height(8.dp))
             SettingsActionButton("Check again") {
-                viewModel.checkForUpdates()
+                viewModel.checkForUpdates(updateChannel)
             }
         }
         is UpdateState.UpdateAvailable -> {
@@ -175,11 +213,17 @@ fun UpdatesSettings(
             )
             Spacer(Modifier.height(8.dp))
             SettingsActionButton("Try again") {
-                viewModel.checkForUpdates()
+                viewModel.checkForUpdates(updateChannel)
             }
         }
     }
 }
+
+private val UpdateChannel.displayName: String
+    get() = when (this) {
+        UpdateChannel.STABLE -> "Stable"
+        UpdateChannel.NIGHTLY -> "Prerelease"
+    }
 
 
 @Composable

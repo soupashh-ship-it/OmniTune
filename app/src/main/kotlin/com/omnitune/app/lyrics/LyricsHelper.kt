@@ -73,7 +73,7 @@ constructor(
         val providers = if (preferredProviderOnly) {
             listOf(ordered.first())
         } else {
-            ordered.filterNot { it == YouTubeSubtitleLyricsProvider }
+            ordered
         }
         val lyrics = helperScope.async {
             fetchFirstMeaningful(providers, mediaMetadata)?.let { lyrics ->
@@ -102,7 +102,14 @@ constructor(
                         ).fold(
                             onSuccess = { lyrics ->
                                 val isSynced = isSyncedLyrics(lyrics)
-                                LyricsQuality.score(provider.name, lyrics, mediaMetadata, isSynced)
+                                LyricsQuality.score(
+                                    providerName = provider.name,
+                                    lyrics = lyrics,
+                                    mediaMetadata = mediaMetadata,
+                                    isSynced = isSynced,
+                                    isTrackBound = provider.isTrackBound,
+                                    isMetadataBound = provider.isMetadataBound,
+                                )
                                     ?.let { score -> LyricsCandidate(provider.name, lyrics, isSynced, score) }
                             },
                             onFailure = {
@@ -139,7 +146,9 @@ constructor(
     ) {
         currentLyricsJob?.cancel()
 
-        val cacheKey = "$songArtists-$songTitle".replace(" ", "")
+        // The media ID is the only stable cache identity. Title/artist keys
+        // collide for covers, remasters, and identically named songs.
+        val cacheKey = mediaId
         cache.get(cacheKey)?.let { results ->
             results.forEach {
                 callback(it)
@@ -173,7 +182,14 @@ constructor(
                                     duration = duration,
                                 )
                                 val isSynced = isSyncedLyrics(lyrics)
-                                LyricsQuality.score(provider.name, lyrics, metadata, isSynced) ?: return@lyricsCallback
+                                LyricsQuality.score(
+                                    providerName = provider.name,
+                                    lyrics = lyrics,
+                                    mediaMetadata = metadata,
+                                    isSynced = isSynced,
+                                    isTrackBound = provider.isTrackBound,
+                                    isMetadataBound = provider.isMetadataBound,
+                                ) ?: return@lyricsCallback
                                 val result = LyricsResult(provider.name, lyrics)
                                 allResult += result
                                 callback(result)

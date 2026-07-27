@@ -15,19 +15,26 @@ import org.mockito.Mockito
 
 class LyricsRepositoryImplTest {
     @Test
-    fun `cached lyrics are returned without another provider request`() = runBlocking {
+    fun `verified provider lyrics replace a potentially stale cache`() = runBlocking {
         val helper = Mockito.mock(LyricsHelper::class.java)
         val database = Mockito.mock(DatabaseDao::class.java)
         Mockito.`when`(database.lyrics("song-id")).thenReturn(
             flowOf(LyricsEntity(id = "song-id", lyrics = "[00:01.00]Cached line")),
         )
+        val metadata = MediaMetadata(
+            id = "song-id",
+            title = "Song",
+            artists = listOf(MediaMetadata.Artist(id = "", name = "Artist")),
+            duration = 180,
+        )
+        Mockito.`when`(helper.getLyrics(metadata)).thenReturn("[00:02.00]Verified line")
         val repository = LyricsRepositoryImpl(helper, database)
 
         val result = repository.loadLyrics("song-id", "Song", "Artist", 180)
 
         assertTrue(result is AppResult.Success)
-        assertEquals("Cached line", (result as AppResult.Success).data.single().text)
-        Mockito.verifyNoInteractions(helper)
+        assertEquals("Verified line", (result as AppResult.Success).data.single().text)
+        Mockito.verify(database).upsert(LyricsEntity(id = "song-id", lyrics = "[00:02.00]Verified line"))
     }
 
     @Test
@@ -62,14 +69,42 @@ class LyricsRepositoryImplTest {
         Mockito.`when`(database.lyrics("song-id")).thenReturn(
             flowOf(LyricsEntity(id = "song-id", lyrics = "[00:04.00]Main-safe line")),
         )
+        val metadata = MediaMetadata(
+            id = "song-id",
+            title = "Song",
+            artists = listOf(MediaMetadata.Artist(id = "", name = "Artist")),
+            duration = 180,
+        )
+        Mockito.`when`(helper.getLyrics(metadata)).thenReturn("[00:04.00]Main-safe verified line")
         val repository = LyricsRepositoryImpl(helper, database)
 
         val result = repository.loadLyrics("song-id", "Song", "Artist", 180)
 
         assertTrue(result is AppResult.Success)
         val lines = (result as AppResult.Success).data
-        assertEquals("Main-safe line", lines.single().text)
+        assertEquals("Main-safe verified line", lines.single().text)
         assertEquals(4_000L, lines.single().timestamp)
+    }
+
+    @Test
+    fun `unverified cached lyrics are not displayed when providers cannot confirm the track`() = runBlocking {
+        val helper = Mockito.mock(LyricsHelper::class.java)
+        val database = Mockito.mock(DatabaseDao::class.java)
+        Mockito.`when`(database.lyrics("song-id")).thenReturn(
+            flowOf(LyricsEntity(id = "song-id", lyrics = "[00:01.00]Potentially wrong cached line")),
+        )
+        val metadata = MediaMetadata(
+            id = "song-id",
+            title = "Song",
+            artists = listOf(MediaMetadata.Artist(id = "", name = "Artist")),
+            duration = 180,
+        )
+        Mockito.`when`(helper.getLyrics(metadata)).thenReturn(LyricsEntity.LYRICS_NOT_FOUND)
+        val repository = LyricsRepositoryImpl(helper, database)
+
+        val result = repository.loadLyrics("song-id", "Song", "Artist", 180)
+
+        assertTrue(result is AppResult.Error)
     }
 
     @Test

@@ -15,6 +15,8 @@ import androidx.media3.exoplayer.scheduler.PlatformScheduler
 import androidx.media3.exoplayer.scheduler.Requirements
 import androidx.media3.exoplayer.scheduler.Scheduler
 import com.omnitune.app.R
+import com.omnitune.app.constants.RetryFailedDownloadsKey
+import com.omnitune.app.utils.PreferenceStore
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -54,7 +56,9 @@ class ExoDownloadService : DownloadService(
             if (download.state == Download.STATE_COMPLETED) {
                 resolveRetryCounts.remove(download.request.id)
             }
-            if (download.state == Download.STATE_FAILED) {
+            if (download.state == Download.STATE_FAILED &&
+                (PreferenceStore.get(RetryFailedDownloadsKey) ?: true)
+            ) {
                 retryWithResolvedStream(download)
             }
         }
@@ -94,7 +98,7 @@ class ExoDownloadService : DownloadService(
 
         serviceScope.launch {
             streamExtractor.invalidate(videoId)
-            val result = streamExtractor.extractWithFallback(videoId, com.omnitune.app.models.StreamQuality.HIGH)
+            val result = streamExtractor.extractWithFallback(videoId, preferredDownloadStreamQuality())
             if (result != null) {
                 val newRequest = androidx.media3.exoplayer.offline.DownloadRequest.Builder(videoId, android.net.Uri.parse(result.url))
                     .setCustomCacheKey(download.request.customCacheKey ?: videoId)

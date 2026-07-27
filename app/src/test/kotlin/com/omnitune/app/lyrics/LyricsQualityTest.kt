@@ -27,22 +27,60 @@ class LyricsQualityTest {
     }
 
     @Test
-    fun `scores synced lyrics from trusted providers above plain text`() {
-        val syncedScore = LyricsQuality.score(
+    fun `accepts exact-video lyrics without title or artist words`() {
+        val exactVideoScore = LyricsQuality.score(
             providerName = "YouTube",
-            lyrics = "[00:01.00] Midnight city waits for us\n[00:05.00] The lights are calling",
+            lyrics = "[00:01.00] The neon waits for us\n[00:05.00] The lights are calling",
             mediaMetadata = englishSong,
             isSynced = true,
+            isTrackBound = true,
         )
-        val plainScore = LyricsQuality.score(
+        val unverifiedSearchScore = LyricsQuality.score(
             providerName = "KuGou",
-            lyrics = "Midnight city waits for us\nThe lights are calling",
+            lyrics = "The neon waits for us\nThe lights are calling",
             mediaMetadata = englishSong,
             isSynced = false,
         )
 
-        assertNotNull(syncedScore)
-        assertNotNull(plainScore)
-        assertTrue(syncedScore!! > plainScore!!)
+        assertNotNull(exactVideoScore)
+        assertNull(unverifiedSearchScore)
+    }
+
+    @Test
+    fun `accepts search lyrics only with strong title and artist evidence`() {
+        val metadata = englishSong.copy(
+            artists = listOf(MediaMetadata.Artist(id = "artist", name = "Example Artist")),
+        )
+
+        val score = LyricsQuality.score(
+            providerName = "LrcLib",
+            lyrics = "Midnight City\nPerformed by Example Artist\nThe lights are calling",
+            mediaMetadata = metadata,
+            isSynced = false,
+        )
+
+        assertNotNull(score)
+    }
+
+    @Test
+    fun `prefers synchronized metadata match over exact-video plain lyrics`() {
+        val exactVideoPlain = LyricsQuality.score(
+            providerName = "YouTube Music",
+            lyrics = "The neon waits for us\nThe lights are calling",
+            mediaMetadata = englishSong,
+            isSynced = false,
+            isTrackBound = true,
+        )
+        val metadataMatchedSynced = LyricsQuality.score(
+            providerName = "LrcLib",
+            lyrics = "[00:01.00] The neon waits for us\n[00:05.00] The lights are calling",
+            mediaMetadata = englishSong,
+            isSynced = true,
+            isMetadataBound = true,
+        )
+
+        assertNotNull(exactVideoPlain)
+        assertNotNull(metadataMatchedSynced)
+        assertTrue(metadataMatchedSynced!! > exactVideoPlain!!)
     }
 }

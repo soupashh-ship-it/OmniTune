@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
 import com.omnitune.app.ui.theme.OmniColors
@@ -66,18 +67,25 @@ object OmniChrome {
     val IconMedium = 20.dp
     val IconLarge = 24.dp
     val IconTouchTarget = 44.dp
-    val CompactRowHeight = 60.dp
+    val CompactRowHeight = 64.dp
     val ComfortableRowHeight = 72.dp
-    val SearchBarHeight = 62.dp
-    val MiniPlayerHeight = 66.dp
-    val MiniPlayerContentHeight = 60.dp
-    val MiniPlayerArtwork = 50.dp
-    val MiniPlayerButton = 42.dp
-    val BottomDockHeight = 72.dp
-    val BottomDockHorizontalPadding = 16.dp
-    val BottomContentPadding = 164.dp
-    val BottomContentPaddingWithPlayer = 188.dp
-    val BottomDockBottomMargin = 8.dp
+    val SearchBarHeight = 56.dp
+    val ChipHeight = 48.dp
+    val ActionPillHeight = 56.dp
+    val MiniPlayerHeight = 68.dp
+    val MiniPlayerContentHeight = 56.dp
+    val MiniPlayerArtwork = 52.dp
+    val MiniPlayerButton = 44.dp
+    val BottomDockHeight = 60.dp
+    val BottomDockHorizontalPadding = 4.dp
+    val BottomContentPadding = 176.dp
+    val BottomContentPaddingWithPlayer = 204.dp
+    val BottomDockBottomMargin = 0.dp
+    val RailArtworkHeight = 152.dp
+    val RailArtworkWidth = 152.dp
+    val HeroCardHeight = 124.dp
+    val SongRowArtwork = 48.dp
+    val ChipIconSize = 16.dp
 }
 
 @Composable
@@ -145,23 +153,19 @@ fun OmniSectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = OmniTextStyles.sectionHeader,
             color = OmniColors.TextPrimary,
             modifier = Modifier.weight(1f),
         )
         if (action != null && onAction != null) {
             Text(
-                text = "$action \u2192",
-                style = MaterialTheme.typography.labelLarge,
+                text = action,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = OmniColors.OmniAccentSecondary,
+                color = OmniColors.OmniAccentPrimary,
                 modifier = Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = androidx.compose.material3.ripple(
-                        bounded = false,
-                        color = OmniColors.OmniAccentSecondary.copy(alpha = 0.2f),
-                    ),
+                    indication = null,
                     onClick = onAction,
                 ),
             )

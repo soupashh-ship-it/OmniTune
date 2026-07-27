@@ -89,6 +89,13 @@ class PlaylistDetailViewModel @Inject constructor(
         }
     }
 
+    fun toggleBookmark() {
+        val current = playlist.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            database.update(current.playlist.toggleLike())
+        }
+    }
+
     fun removeSong(songId: String) {
         val current = playlist.value ?: return
         if (!current.playlist.isEditable) return

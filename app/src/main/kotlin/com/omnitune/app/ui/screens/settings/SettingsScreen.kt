@@ -8,6 +8,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +48,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.R
 import com.omnitune.app.ui.theme.OmniColors
@@ -65,9 +69,73 @@ private data class SettingsCategoryItem(
     val onClick: () -> Unit,
 )
 
+private fun referenceSettingsCategories(
+    onNavigateToCategory: (String) -> Unit,
+): List<SettingsCategory> = listOf(
+    SettingsCategory(
+        title = "PLAYBACK",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_play_arrow, "Playback", "Audio quality, crossfade, equalizer", OmniColors.OmniAccentPrimary) { onNavigateToCategory("playback") },
+            SettingsCategoryItem(R.drawable.ic_settings, "Player Appearance", "Now playing screen, themes, animations", OmniColors.OmniAccentPrimary) { onNavigateToCategory("appearance") },
+            SettingsCategoryItem(R.drawable.ic_moon, "Behavior", "Autoplay, resume, headset & car", OmniColors.OmniAccentPrimary) { onNavigateToCategory("behavior") },
+        ),
+    ),
+    SettingsCategory(
+        title = "CONTENT",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_download, "Downloads", "Offline library and automatic downloads", OmniColors.OmniAccentPrimary) { onNavigateToCategory("downloads") },
+            SettingsCategoryItem(R.drawable.ic_storage, "Library", "Shortcuts, layout, and discovery", OmniColors.OmniAccentPrimary) { onNavigateToCategory("library") },
+            SettingsCategoryItem(R.drawable.ic_verified, "Parental Controls", "Limit explicit content & manage access", OmniColors.OmniAccentPrimary) { onNavigateToCategory("parental_controls") },
+        ),
+    ),
+    SettingsCategory(
+        title = "NOTIFICATIONS",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_notification_play, "Notifications", "Manage alerts and in-app messages", OmniColors.OmniAccentPrimary) { onNavigateToCategory("notifications") },
+        ),
+    ),
+    SettingsCategory(
+        title = "STORAGE",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_storage, "Storage", "Cache, downloads, and device storage", OmniColors.OmniAccentPrimary) { onNavigateToCategory("storage") },
+        ),
+    ),
+    SettingsCategory(
+        title = "SCROBBLING & INTEGRATIONS",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_sync, "Scrobbling & Integrations", "Last.fm and ListenBrainz services", OmniColors.OmniAccentPrimary) { onNavigateToCategory("scrobbling") },
+        ),
+    ),
+    SettingsCategory(
+        title = "UPDATES",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_download, "Updates", "Check for updates and release notes", OmniColors.OmniAccentPrimary) { onNavigateToCategory("updates") },
+        ),
+    ),
+    SettingsCategory(
+        title = "BACKUP & RESTORE",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_storage, "Backup & Restore", "Backup your library and preferences", OmniColors.OmniAccentPrimary) { onNavigateToCategory("backup_restore") },
+        ),
+    ),
+    SettingsCategory(
+        title = "DIAGNOSTICS",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_insights, "Diagnostics", "Logs, crash reports, and advanced info", OmniColors.OmniAccentPrimary) { onNavigateToCategory("diagnostics") },
+        ),
+    ),
+    SettingsCategory(
+        title = "ABOUT",
+        items = listOf(
+            SettingsCategoryItem(R.drawable.ic_info, "About OmniTune", "Version, terms, privacy & licenses", OmniColors.OmniAccentPrimary) { onNavigateToCategory("about") },
+        ),
+    ),
+)
+
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit = {},
+    onNavigateToSearch: () -> Unit = {},
     onNavigateToEqualizer: () -> Unit = {},
     onNavigateToCategory: (String) -> Unit = {},
 ) {
@@ -78,141 +146,20 @@ fun SettingsScreen(
         contentVisible = true
     }
 
-    val categories = listOf(
-        SettingsCategory(
-            title = "Account and Social",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_settings,
-                    title = "OmniTune Account",
-                    subtitle = "Manage your OmniTune account",
-                    accentColor = OmniColors.OmniAccentPrimary,
-                    onClick = { onNavigateToCategory("account_settings") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "UI and Display",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_settings,
-                    title = "Appearance",
-                    subtitle = "Dynamic colors, OLED mode, font",
-                    accentColor = OmniColors.OmniAccentPrimary,
-                    onClick = { onNavigateToCategory("appearance") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "Playback and Audio",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_play_arrow,
-                    title = "Playback & Audio",
-                    subtitle = "Quality, crossfade, equalizer",
-                    accentColor = OmniColors.ActivePlayback,
-                    onClick = { onNavigateToCategory("playback") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_list,
-                    title = "Lyrics",
-                    subtitle = "Providers, animation, display",
-                    accentColor = OmniColors.Hot,
-                    onClick = { onNavigateToCategory("lyrics") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "Content and Privacy",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_insights,
-                    title = "Content",
-                    subtitle = "Quick Picks, history",
-                    accentColor = OmniColors.OmniAccentSecondary,
-                    onClick = { onNavigateToCategory("content") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_notification_play,
-                    title = "Notifications",
-                    subtitle = "Media controls, battery",
-                    accentColor = OmniColors.Warning,
-                    onClick = { onNavigateToCategory("notifications") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "Storage",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_download,
-                    title = "Storage",
-                    subtitle = "Cache, downloads, trimmer",
-                    accentColor = OmniColors.Downloaded,
-                    onClick = { onNavigateToCategory("storage") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "Integrations",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_favorite,
-                    title = "Scrobbling",
-                    subtitle = "Last.fm, ListenBrainz",
-                    accentColor = OmniColors.HotLight,
-                    onClick = { onNavigateToCategory("scrobbling") },
-                ),
-            ),
-        ),
-        SettingsCategory(
-            title = "System",
-            items = listOf(
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_download,
-                    title = "Updates",
-                    subtitle = "Check for new versions",
-                    accentColor = OmniColors.OmniAccentSecondary,
-                    onClick = { onNavigateToCategory("updates") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_download,
-                    title = "Backup & Restore",
-                    subtitle = "Export and import your data",
-                    accentColor = OmniColors.Downloaded,
-                    onClick = { onNavigateToCategory("backup_restore") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_share,
-                    title = "Diagnostics",
-                    subtitle = "Share diagnostic report",
-                    accentColor = OmniColors.Hot,
-                    onClick = { onNavigateToCategory("diagnostics") },
-                ),
-                SettingsCategoryItem(
-                    icon = R.drawable.ic_info,
-                    title = "About",
-                    subtitle = "Version, license, credits",
-                    accentColor = OmniColors.TextSecondary,
-                    onClick = { onNavigateToCategory("about") },
-                ),
-            ),
-        ),
-    )
+    val categories = referenceSettingsCategories(onNavigateToCategory)
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase),
+            .background(OmniColors.OmniBackgroundBase)
+            .background(OmniColors.BackgroundGradient),
         contentPadding = PaddingValues(bottom = 112.dp),
     ) {
         item { Spacer(Modifier.statusBarsPadding()) }
-        item { Spacer(Modifier.height(OmniSpacing.compact)) }
-
         item {
             SettingsTopBar(
-                onBack = onBack,
-                modifier = Modifier.padding(horizontal = 20.dp),
+                onSearch = onNavigateToSearch,
+                modifier = Modifier.padding(horizontal = OmniSpacing.screenHorizontalCompact),
             )
         }
 
@@ -229,7 +176,7 @@ fun SettingsScreen(
                     ),
             ) {
                 SettingsIdentityRow(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp),
+                    modifier = Modifier.padding(horizontal = OmniSpacing.screenHorizontalCompact, vertical = 0.dp),
                 )
             }
         }
@@ -254,9 +201,9 @@ fun SettingsScreen(
                     SettingsCategorySection(
                         category = category,
                         modifier = Modifier.padding(
-                            start = 24.dp,
-                            end = 24.dp,
-                            top = if (index == 0) 2.dp else 16.dp,
+                            start = OmniSpacing.screenHorizontalCompact,
+                            end = OmniSpacing.screenHorizontalCompact,
+                            top = if (index == 0) 8.dp else 10.dp,
                         ),
                     )
                 }
@@ -267,38 +214,49 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsTopBar(
-    onBack: () -> Unit,
+    onSearch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(54.dp),
+            .height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
     ) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(OmniShapes.Pill),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = "Back",
-                tint = OmniColors.TextPrimary,
-                modifier = Modifier.size(24.dp),
+        Icon(
+            painter = painterResource(R.drawable.ic_omnitune_logo),
+            contentDescription = null,
+            tint = OmniColors.OmniAccentPrimary,
+            modifier = Modifier.size(32.dp),
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+                text = "OmniTune",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = OmniColors.TextPrimary,
+            )
+            Text(
+                text = "Your music, your vibe.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = OmniColors.TextSecondary,
             )
         }
-
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Medium,
-            color = OmniColors.TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        IconButton(
+            onClick = onSearch,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(OmniShapes.Pill)
+                .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.24f), OmniShapes.Pill),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = "Search",
+                tint = OmniColors.TextPrimary,
+                modifier = Modifier.size(19.dp),
+            )
+        }
     }
 }
 
@@ -306,42 +264,18 @@ private fun SettingsTopBar(
 private fun SettingsIdentityRow(
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(OmniColors.SurfaceRaised),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_settings),
-                contentDescription = null,
-                tint = OmniColors.OmniAccentPrimary,
-                modifier = Modifier.size(34.dp),
-            )
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "OmniTune",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Normal,
-                color = OmniColors.TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "v${BuildConfig.VERSION_NAME}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextTertiary,
-                maxLines = 1,
-            )
-        }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.ExtraBold,
+            color = OmniColors.TextPrimary,
+        )
+        Text(
+            text = "Personalize your experience",
+            style = MaterialTheme.typography.bodyMedium,
+            color = OmniColors.TextSecondary,
+        )
     }
 }
 
@@ -351,19 +285,40 @@ private fun SettingsCategorySection(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = category.title,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextTertiary.copy(alpha = 0.62f),
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
-
-        category.items.forEachIndexed { index, item ->
-            SettingsCategoryRow(
-                item = item,
-                showDivider = index < category.items.size - 1,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = category.title,
+                fontSize = 9.sp,
+                lineHeight = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = OmniColors.OmniAccentSecondary,
             )
+            Spacer(modifier = Modifier.width(OmniSpacing.compact))
+            HorizontalDivider(
+                modifier = Modifier.weight(1f),
+                thickness = 0.5.dp,
+                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.30f),
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(OmniShapes.Small)
+                .background(OmniColors.SurfaceRaised)
+                .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.25f), OmniShapes.Small),
+        ) {
+            category.items.forEachIndexed { index, item ->
+                SettingsCategoryRow(
+                    item = item,
+                    showDivider = index < category.items.size - 1,
+                )
+            }
         }
     }
 }
@@ -374,39 +329,41 @@ private fun SettingsCategoryRow(
     showDivider: Boolean,
 ) {
     Column {
-        Surface(
-            onClick = item.onClick,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp)),
-            color = Color.Transparent,
-            contentColor = OmniColors.TextPrimary,
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 18.dp),
+                    .clickable(onClick = item.onClick)
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier
+                        .size(25.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(item.accentColor.copy(alpha = 0.16f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(item.icon),
                         contentDescription = null,
                         tint = item.accentColor.copy(alpha = 0.9f),
-                        modifier = Modifier.size(23.dp),
+                        modifier = Modifier.size(14.dp),
                     )
                 }
 
-                Spacer(Modifier.width(22.dp))
+                Spacer(Modifier.width(OmniSpacing.compact))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Medium,
                         color = OmniColors.TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -414,21 +371,22 @@ private fun SettingsCategoryRow(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = item.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 9.sp,
+                        lineHeight = 11.sp,
                         color = OmniColors.TextTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(OmniSpacing.compact))
 
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = null,
                     tint = OmniColors.TextTertiary.copy(alpha = 0.55f),
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(14.dp)
                         .graphicsLayer { rotationZ = 180f },
                 )
             }
@@ -436,7 +394,7 @@ private fun SettingsCategoryRow(
 
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = 54.dp, end = 4.dp),
+                modifier = Modifier.padding(start = 10.dp, end = 10.dp),
                 thickness = 0.5.dp,
                 color = OmniColors.SurfaceHairline.copy(alpha = 0.42f),
             )

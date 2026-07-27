@@ -141,6 +141,8 @@ val EqualizerCustomProfilesJsonKey = stringPreferencesKey("equalizerCustomProfil
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
+val RestrictExplicitContentKey = booleanPreferencesKey("restrictExplicitContent")
+val SafeSearchKey = booleanPreferencesKey("safeSearch")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
 val MaxCanvasCacheSizeKey = intPreferencesKey("maxCanvasCacheSize")
 
@@ -203,6 +205,7 @@ val ArtistSongSortTypeKey = stringPreferencesKey("artistSongSortType")
 val ArtistSongSortDescendingKey = booleanPreferencesKey("artistSongSortDescending")
 val MixSortTypeKey = stringPreferencesKey("mixSortType")
 val MixSortDescendingKey = booleanPreferencesKey("mixSortDescending")
+val TopPlaylistSortDescendingKey = booleanPreferencesKey("topPlaylistSortDescending")
 
 val SongFilterKey = stringPreferencesKey("songFilter")
 val ArtistFilterKey = stringPreferencesKey("artistFilter")
@@ -605,6 +608,8 @@ val EqualizerPresetKey = stringPreferencesKey("equalizerPreset") // preset name
 // Downloads
 val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // default 3
 val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
+val DownloadWifiOnlyKey = booleanPreferencesKey("downloadWifiOnly")
+val RetryFailedDownloadsKey = booleanPreferencesKey("retryFailedDownloads")
 
 enum class LyricsPosition { LEFT, CENTER, RIGHT }
 

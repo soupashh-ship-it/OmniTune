@@ -30,35 +30,20 @@ class LyricsRepositoryImpl @Inject constructor(
                 artists = listOf(MediaMetadata.Artist(id = "", name = artist)),
                 duration = duration.toInt()
             )
-            val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
-            if (!dbLyrics.isNullOrBlank() && dbLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
-                val cachedLines = parseLrc(dbLyrics)
-                if (cachedLines.any { it.timestamp >= 0L }) {
-                    return@withContext AppResult.Success(cachedLines)
-                }
-
-                val refreshed = lyricsHelper.getLyrics(metadata)
-                if (refreshed != LyricsEntity.LYRICS_NOT_FOUND && refreshed.isNotBlank()) {
-                    val refreshedLines = parseLrc(refreshed)
-                    if (refreshedLines.any { it.timestamp >= 0L } || cachedLines.isEmpty()) {
-                        databaseDao.upsert(LyricsEntity(id = songId, lyrics = refreshed))
-                        return@withContext AppResult.Success(refreshedLines)
-                    }
-                }
-                return@withContext AppResult.Success(cachedLines)
-            }
             val fetched = lyricsHelper.getLyrics(metadata)
-            val lrcText = if (fetched != LyricsEntity.LYRICS_NOT_FOUND) {
+            if (fetched != LyricsEntity.LYRICS_NOT_FOUND && fetched.isNotBlank()) {
                 databaseDao.upsert(LyricsEntity(id = songId, lyrics = fetched))
-                fetched
-            } else {
-                dbLyrics ?: LyricsEntity.LYRICS_NOT_FOUND
+                return@withContext AppResult.Success(parseLrc(fetched))
             }
 
-            if (lrcText == LyricsEntity.LYRICS_NOT_FOUND) {
+            // Database rows written before track identity validation may belong
+            // to a different song with the same title. Preserve the row for
+            // recovery, but never display unverified cached lyrics.
+            val dbLyrics = databaseDao.lyrics(songId).firstOrNull()?.lyrics
+            if (dbLyrics == LyricsEntity.LYRICS_NOT_FOUND || dbLyrics.isNullOrBlank()) {
                 AppResult.Error("Lyrics not found")
             } else {
-                AppResult.Success(parseLrc(lrcText))
+                AppResult.Error("Verified lyrics are not available for this track")
             }
         } catch (e: Exception) {
             AppResult.Error(e.message ?: "Failed to load lyrics", e)

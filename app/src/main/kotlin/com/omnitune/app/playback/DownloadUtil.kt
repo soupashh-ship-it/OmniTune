@@ -7,6 +7,8 @@ package com.omnitune.app.playback
 
 import android.content.Context
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -16,9 +18,10 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.omnitune.app.backup.OfflineDownloadArchive
+import com.omnitune.app.constants.DownloadWifiOnlyKey
 import com.omnitune.app.data.StreamExtractor
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.models.StreamQuality
+import com.omnitune.app.utils.PreferenceStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +82,7 @@ class DownloadUtil @Inject constructor(
             dataSourceFactory,
             executor
         ).apply {
-            maxParallelDownloads = 8
+            maxParallelDownloads = preferredDownloadParallelism()
             minRetryCount = 5
             addListener(object : androidx.media3.exoplayer.offline.DownloadManager.Listener {
                 override fun onDownloadChanged(
@@ -162,9 +165,15 @@ class DownloadUtil @Inject constructor(
             onResult(true, "Download already starting")
             return
         }
+        if ((PreferenceStore.get(DownloadWifiOnlyKey) ?: true) && !isConnectedToWifi()) {
+            resolvingIds.remove(videoId)
+            onResult(false, "Download requires a Wi-Fi connection")
+            return
+        }
 
         downloadScope.launch {
             try {
+                downloadManager.maxParallelDownloads = preferredDownloadParallelism()
                 val existing = downloadManager.downloadIndex.getDownload(videoId)
                 if (existing?.state in setOf(
                         Download.STATE_QUEUED,
@@ -177,7 +186,7 @@ class DownloadUtil @Inject constructor(
                 }
 
                 val streamUrl = resolvedStreamUrl ?: resolveSlots.withPermit {
-                    streamExtractor.extractWithFallback(videoId, StreamQuality.BEST)?.url
+                    streamExtractor.extractWithFallback(videoId, preferredDownloadStreamQuality())?.url
                 }
                 if (streamUrl == null) {
                     withContext(Dispatchers.Main) { onResult(false, "Download failed: stream unavailable") }
@@ -198,6 +207,13 @@ class DownloadUtil @Inject constructor(
                 resolvingIds.remove(videoId)
             }
         }
+    }
+
+    private fun isConnectedToWifi(): Boolean {
+        val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = manager.activeNetwork ?: return false
+        return manager.getNetworkCapabilities(network)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
     /**

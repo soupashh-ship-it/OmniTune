@@ -11,6 +11,7 @@ import com.omnitune.innertube.models.WatchEndpoint
 
 object YouTubeLyricsProvider : LyricsProvider {
     override val name = "YouTube Music"
+    override val isTrackBound = true
 
     override fun isEnabled(context: Context) = true
 

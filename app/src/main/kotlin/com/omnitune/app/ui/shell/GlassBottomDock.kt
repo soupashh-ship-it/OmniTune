@@ -31,10 +31,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omnitune.app.R
@@ -57,29 +62,20 @@ private val navItems = listOf(
     NavItem(R.drawable.ic_list, "Library", "library"),
 )
 
-/**
- * Fluid bottom navigation dock with a spring-animated sliding pill indicator.
- *
- * Architecture:
- * ```
- * OmniGlassSurface (shadow + blurred background + border)
- *   └── BoxWithConstraints
- *        ├── Pill indicator (spring-animated x-offset)
- *        └── Row of clickable nav items
- * ```
- *
- * The pill smoothly interpolates between tab positions using a low-stiffness
- * spring, giving the fluid feel. Each item also has per‑tab micro‑animations
- * (icon scale, tint).
- */
 @Composable
 fun GlassBottomDock(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     pureBlack: Boolean = false,
 ) {
-    val slimNavBar by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.SlimNavBarKey, false)
-    val selectedIndex = navItems.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    // Header search retains Home selection; Downloads is a Library destination.
+    val selectedIndex = when {
+        currentRoute == "search" -> 0
+        currentRoute == "downloads" -> navItems.indexOfFirst { it.route == "library" }
+        else -> navItems.indexOfFirst { item ->
+            currentRoute == item.route || currentRoute?.startsWith("${item.route}?") == true
+        }.coerceAtLeast(0)
+    }
 
     OmniGlassSurface(
         shape = OmniShapes.Dock,
@@ -87,7 +83,7 @@ fun GlassBottomDock(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = OmniChrome.BottomDockHorizontalPadding)
-            .height(if (slimNavBar) 56.dp else OmniChrome.BottomDockHeight),
+            .height(OmniChrome.BottomDockHeight),
     ) {
         BoxWithConstraints(
             modifier = Modifier
@@ -95,11 +91,10 @@ fun GlassBottomDock(
                 .padding(horizontal = 6.dp),
         ) {
             val tabWidth = maxWidth / navItems.size
-            // Pill is roughly centered on the icon column area of each tab
-            val pillWidth = 40.dp
-            val pillHeight = 28.dp
+            // The reference uses a shallow, wide coral capsule behind the selected icon.
+            val pillWidth = 46.dp
+            val pillHeight = 24.dp
 
-            // ── Spring-animated pill offset ──────────────────────────────
             val indicatorOffset by animateDpAsState(
                 targetValue = (tabWidth * selectedIndex) + ((tabWidth - pillWidth) / 2),
                 animationSpec = spring(
@@ -109,17 +104,18 @@ fun GlassBottomDock(
                 label = "nav_pill_slider",
             )
 
-            // ── Pill indicator (behind items) ─────────────────────────────
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(indicatorOffset.roundToPx(), 10.dp.roundToPx()) }
+                    .offset { IntOffset(indicatorOffset.roundToPx(), 6.dp.roundToPx()) }
                     .width(pillWidth)
                     .height(pillHeight)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.15f)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.20f))
+                    .let { mod ->
+                        if (selectedIndex >= 0) mod.let { it } else mod
+                    },
             )
 
-            // ── Nav items (sharp, interactive) ────────────────────────────
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -144,22 +140,13 @@ private fun RowScope.NavTabItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    // Per‑tab micro‑animations
     val tint by animateColorAsState(
-        targetValue = if (isSelected) OmniColors.OmniAccentSecondary else OmniColors.TextMuted,
+        targetValue = if (isSelected) OmniColors.OmniAccentPrimary else OmniColors.TextMuted,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "nav_tint_${item.route}",
-    )
-    val iconSize by animateDpAsState(
-        targetValue = if (isSelected) 26.dp else 23.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "nav_icon_size_${item.route}",
     )
 
     Column(
@@ -170,26 +157,28 @@ private fun RowScope.NavTabItem(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onNavigate,
-            ),
+            )
+            .semantics {
+                role = Role.Tab
+                selected = isSelected
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Spacer(Modifier.height(3.dp))
-
         Icon(
             painter = painterResource(item.iconRes),
             contentDescription = item.label,
             tint = tint,
-            modifier = Modifier.size(iconSize),
+            modifier = Modifier.size(20.dp),
         )
 
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
 
         Text(
             text = item.label,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = tint.copy(alpha = if (isSelected) 1f else 0.60f),
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = tint,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
