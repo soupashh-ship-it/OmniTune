@@ -65,6 +65,23 @@ This revalidation used the same audited commit (`360387a`) with no subsequent co
 
 No production behavior changed during Goal 0. Goal 1 is the next programme goal and remains intentionally unstarted in this baseline section.
 
+## Goal 1 UPI payment contract — 2026-07-28
+
+Goal 1 resolves the P0 UPI/JVM-test CI blocker. `buildUpiPaymentUri` is now a pure Kotlin serializer with an injectable transaction reference, locale-independent `BigDecimal` amount handling, complete percent encoding, and deliberate invalid/empty-amount behaviour. Production references use a UUID-derived `OMNI…` value; tests inject fixed references instead of depending on clock or randomness.
+
+The About support flow now accepts valid dot-decimal INR amounts, performs an enabled-activity preflight before dispatching `ACTION_VIEW`, handles invalid/no-handler failures, and offers a clipboard-based manual-pay fallback. A launch result means only that Android accepted the activity launch: the UI does not claim that a payment was completed, and a user cancelling the external app simply returns to OmniTune.
+
+| Goal 1 validation | Result | Evidence |
+| --- | --- | --- |
+| Focused UPI JVM contract test | Passed | `:app:testDebugUnitTest --tests com.omnitune.app.ui.screens.settings.AboutMetadataTest`; covers deterministic URI, Unicode/reserved characters, decimal formatting, invalid/empty amounts, invalid destination/reference, and missing-handler classification. |
+| CI-equivalent application gate | Passed | `:app:testDebugUnitTest :app:lintDebug :app:lintRelease :app:compileDebugAndroidTestKotlin :app:assembleDebug :app:assembleRelease --no-daemon --max-workers=1 --console=plain`; final run completed successfully in 8m 05s. |
+| Debug install/update | Passed | `adb -s 138898743000055 install -r app/build/outputs/apk/debug/app-debug.apk` succeeded without clearing data. |
+| About/support UI | Passed | Amount presets, selected ₹100, truthful completion disclosure, payment action, and manual copy action displayed on the connected I2202 device. Screenshot: `docs/audit/device-qa/goal1-upi-fallback.png`. |
+| External intent launch | Passed, limited | Android launched the UPI resolver and listed Navi, WhatsApp, Amazon Pay UPI, GPay, BHIM, and FamApp for the generated URI. GPay required the device encrypted-app fingerprint gate; BHIM refused to show payment details while USB debugging was connected. No payment was approved. |
+| No-handler/copy fallback device test | Not run | The user asked to stop USB/device testing. The no-handler branch remains directly covered by JVM classification tests; manual clipboard action was displayed but clipboard contents cannot be inspected safely through this device session. |
+
+The final source-level runtime result is intentionally narrow: handler launch is verified, but correct payee/amount presentation inside a UPI app and the physical no-handler fallback require a later non-USB, disposable-device session. This supersedes the Goal 0 UPI-test portion of AUD-001; unrelated audit findings remain open.
+
 ## Feature status matrix
 
 | Feature | Status | UI | Backend | Persistence | Tests | Runtime verified | Evidence | Main gap |

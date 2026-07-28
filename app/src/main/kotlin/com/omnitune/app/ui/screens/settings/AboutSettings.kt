@@ -416,7 +416,7 @@ private fun DonationSection(
                 color = OmniColors.TextPrimary,
             )
             Text(
-                text = "If you enjoy OmniTune, consider buying me a chai. Enter an amount and tap Pay.",
+                text = "If you enjoy OmniTune, consider buying me a chai. OmniTune can open your UPI app, but cannot confirm a payment.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextSecondary,
             )
@@ -448,7 +448,12 @@ private fun DonationSection(
 
             OutlinedTextField(
                 value = amount,
-                onValueChange = { amount = it.filter { c -> c.isDigit() } },
+                onValueChange = { entered ->
+                    val normalized = entered.filter { character -> character.isDigit() || character == '.' }
+                    if (normalized.count { it == '.' } <= 1) {
+                        amount = normalized
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("Custom amount (₹)") },
                 singleLine = true,
@@ -464,14 +469,29 @@ private fun DonationSection(
 
             Button(
                 onClick = {
-                    val amt = amount.toIntOrNull()
-                    if (amt == null || amt <= 0) {
+                    val amt = parseUpiAmount(amount)
+                    if (amt == null) {
                         onSnackbar("Enter a valid amount")
-                    } else if (!context.openUpiPayment(destination, amt)) {
-                        onSnackbar("No UPI app found on this device")
+                    } else {
+                        when (context.launchUpiPayment(destination, amt)) {
+                            UpiPaymentLaunchResult.LaunchInitiated -> Unit
+                            UpiPaymentLaunchResult.InvalidRequest -> {
+                                onSnackbar("Couldn't create the UPI payment request")
+                            }
+                            UpiPaymentLaunchResult.NoHandler -> {
+                                val copied = context.copyUpiId(destination.upiId)
+                                onSnackbar(
+                                    if (copied) {
+                                        "No UPI app found — UPI ID copied for manual payment"
+                                    } else {
+                                        "No UPI app found — copy the UPI ID to pay manually"
+                                    },
+                                )
+                            }
+                        }
                     }
                 },
-                enabled = amount.toIntOrNull() != null && amount.toIntOrNull()!! > 0,
+                enabled = parseUpiAmount(amount) != null,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = OmniShapes.Medium,
                 colors = ButtonDefaults.buttonColors(
@@ -489,11 +509,11 @@ private fun DonationSection(
 
             TextButton(
                 onClick = {
-                    context.getSystemService(android.content.ClipboardManager::class.java)
-                        ?.setPrimaryClip(
-                            android.content.ClipData.newPlainText("OmniTune UPI ID", destination.upiId),
-                        )
-                    onSnackbar("UPI ID copied — paste in your UPI app")
+                    if (context.copyUpiId(destination.upiId)) {
+                        onSnackbar("UPI ID copied — paste in your UPI app")
+                    } else {
+                        onSnackbar("Couldn't copy the UPI ID")
+                    }
                 },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             ) {

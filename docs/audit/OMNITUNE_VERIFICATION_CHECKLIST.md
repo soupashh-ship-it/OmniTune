@@ -61,6 +61,7 @@ Run this on a disposable profile whenever a core feature changes. Record device 
 - [ ] Test each visible setting: control is interactive, value persists, current value is correct, a runtime reader changes behavior, and restart requirement is disclosed.
 - [ ] Verify account cookie/PoToken/Last.fm/ListenBrainz encryption migration, invalid token, disconnect/logout, re-auth and error states.
 - [ ] UPI action builds the expected URI and fails gracefully with no handler; copy fallback works.
+- [ ] When an external UPI app is used, verify the payee, VPA, amount, currency, note, and transaction reference before any payment is approved. Do this without USB-gated app restrictions and do not treat handler launch as payment success.
 - [ ] Update check/download/signature/install flow behaves correctly with no unknown-source permission surprise.
 
 ## Backup, restore, notifications and security
