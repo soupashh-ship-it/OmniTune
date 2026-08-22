@@ -30,9 +30,19 @@ fun DiagnosticsSettings() {
     OmniPreferenceCard(title = "Diagnostics") {
         OmniPreferenceEntry(
             title = "Export diagnostic report",
-            description = "Useful for debugging playback, downloads, update checks, and device-specific behavior. This uses the existing exporter and does not collect new data.",
+            description = "Includes app/device state and up to 200 redacted log lines. Account data, query text, URLs, and credentials are removed.",
             iconRes = R.drawable.ic_share,
             accent = OmniColors.Hot,
+        )
+        OmniPreferenceEntry(
+            title = "Delete diagnostic data",
+            description = "Remove local diagnostic reports and stored crash summaries from this device.",
+            iconRes = R.drawable.ic_trash,
+            accent = OmniColors.Warning,
+            onClick = {
+                DiagnosticReportExporter.clearStoredDiagnostics(context)
+                message = "Diagnostic data deleted."
+            },
         )
     }
 

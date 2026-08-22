@@ -57,7 +57,7 @@ import kotlin.coroutines.resume
 import timber.log.Timber
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 7
+const val CURRENT_ROOM_DATABASE_SCHEMA_VERSION = 7
 
 internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
     val message = generateSequence(error) { it.cause }
@@ -68,6 +68,8 @@ internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
         "room cannot verify the data integrity",
         "pre-packaged database has an invalid schema",
         "duplicate column name",
+        "no such table",
+        "no such index",
     ).any(message::contains)
 }
 
@@ -143,7 +145,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = CURRENT_VERSION,
+    version = CURRENT_ROOM_DATABASE_SCHEMA_VERSION,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -162,54 +164,54 @@ abstract class InternalDatabase : RoomDatabase() {
         }
 
         internal val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "ALTER TABLE Song ADD COLUMN download_state INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
 
         internal val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                     "CREATE TABLE IF NOT EXISTS `queue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT, `mediaIdList` TEXT NOT NULL, `startIndex` INTEGER NOT NULL, `position` INTEGER NOT NULL)"
                 )
             }
         }
 
         internal val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `song` (`inLibrary`)")
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isLocal` ON `song` (`isLocal`)")
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_song_liked` ON `song` (`liked`)")
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_album_inLibrary` ON `album` (`inLibrary`)")
-                database.execSQL("CREATE INDEX IF NOT EXISTS `index_artist_bookmarkedAt` ON `artist` (`bookmarkedAt`)")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_inLibrary` ON `song` (`inLibrary`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isLocal` ON `song` (`isLocal`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_liked` ON `song` (`liked`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_album_inLibrary` ON `album` (`inLibrary`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_artist_bookmarkedAt` ON `artist` (`bookmarkedAt`)")
             }
         }
 
         internal val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceType` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceId` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceTitle` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSeedSongId` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackGenre` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackMood` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackArtist` TEXT")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackAllowAutoplay` INTEGER NOT NULL DEFAULT 1")
-                database.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackShuffledCollection` INTEGER NOT NULL DEFAULT 0")
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceType` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceId` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSourceTitle` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackSeedSongId` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackGenre` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackMood` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackArtist` TEXT")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackAllowAutoplay` INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE `queue` ADD COLUMN `playbackShuffledCollection` INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         internal val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                val hasDownloadedColumn = database.query("PRAGMA table_info(`playlist`)").use { cursor ->
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val hasDownloadedColumn = db.query("PRAGMA table_info(`playlist`)").use { cursor ->
                     val nameIndex = cursor.getColumnIndex("name")
                     generateSequence { if (cursor.moveToNext()) cursor.getString(nameIndex) else null }
                         .any { it == "isDownloaded" }
                 }
                 if (!hasDownloadedColumn) {
-                    database.execSQL("ALTER TABLE `playlist` ADD COLUMN `isDownloaded` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `playlist` ADD COLUMN `isDownloaded` INTEGER NOT NULL DEFAULT 0")
                 }
             }
         }
@@ -253,7 +255,7 @@ abstract class InternalDatabase : RoomDatabase() {
 private class DatabaseCallback : RoomDatabase.Callback() {
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
-        java.util.concurrent.Executors.newSingleThreadExecutor().execute {
+        maintenanceExecutor.execute {
             try {
                 db.query("PRAGMA busy_timeout = 60000").close()
                 db.query("PRAGMA cache_size = -16000").close()
@@ -265,6 +267,7 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 cleanupDuplicatePlaylistsOnOpen(db)
                 ensurePlaylistBrowseIdIndex(db)
                 repairLibraryRelations(db)
+                reportOrphanedRecords(db)
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to set PRAGMA settings")
             }
@@ -376,6 +379,78 @@ private class DatabaseCallback : RoomDatabase.Callback() {
         }
 
     }
+
+    /**
+     * Legacy databases can predate Room foreign keys. Report counts only so a repair
+     * investigation never exposes media IDs or deletes user data during startup.
+     */
+    private fun reportOrphanedRecords(db: SupportSQLiteDatabase) {
+        orphanRecordChecks.forEach { (name, sql) ->
+            runCatching {
+                db.query(sql).use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getLong(0) else 0L
+                }
+            }.onSuccess { count ->
+                if (count > 0L) {
+                    Timber.tag(TAG).w("Detected %d orphaned %s records", count, name)
+                }
+            }.onFailure { error ->
+                Timber.tag(TAG).w(error, "Orphan check skipped for %s", name)
+            }
+        }
+    }
+
+    private companion object {
+        /** One process-scoped worker keeps startup maintenance off Room's caller thread. */
+        val maintenanceExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "OmniTune-db-maintenance").apply { isDaemon = true }
+        }
+
+        val orphanRecordChecks = listOf(
+            "song_artist_map" to """
+                SELECT COUNT(*) FROM song_artist_map map
+                LEFT JOIN song song ON song.id = map.songId
+                LEFT JOIN artist artist ON artist.id = map.artistId
+                WHERE song.id IS NULL OR artist.id IS NULL
+            """.trimIndent(),
+            "song_album_map" to """
+                SELECT COUNT(*) FROM song_album_map map
+                LEFT JOIN song song ON song.id = map.songId
+                LEFT JOIN album album ON album.id = map.albumId
+                WHERE song.id IS NULL OR album.id IS NULL
+            """.trimIndent(),
+            "album_artist_map" to """
+                SELECT COUNT(*) FROM album_artist_map map
+                LEFT JOIN album album ON album.id = map.albumId
+                LEFT JOIN artist artist ON artist.id = map.artistId
+                WHERE album.id IS NULL OR artist.id IS NULL
+            """.trimIndent(),
+            "playlist_song_map" to """
+                SELECT COUNT(*) FROM playlist_song_map map
+                LEFT JOIN playlist playlist ON playlist.id = map.playlistId
+                LEFT JOIN song song ON song.id = map.songId
+                WHERE playlist.id IS NULL OR song.id IS NULL
+            """.trimIndent(),
+            "playlist_tag_map" to """
+                SELECT COUNT(*) FROM playlist_tag_map map
+                LEFT JOIN playlist playlist ON playlist.id = map.playlistId
+                LEFT JOIN tag tag ON tag.id = map.tagId
+                WHERE playlist.id IS NULL OR tag.id IS NULL
+            """.trimIndent(),
+            "related_song_map" to """
+                SELECT COUNT(*) FROM related_song_map map
+                LEFT JOIN song song ON song.id = map.songId
+                LEFT JOIN song related ON related.id = map.relatedSongId
+                WHERE song.id IS NULL OR related.id IS NULL
+            """.trimIndent(),
+            "event" to "SELECT COUNT(*) FROM event LEFT JOIN song ON song.id = event.songId WHERE song.id IS NULL",
+            "playCount" to "SELECT COUNT(*) FROM playCount LEFT JOIN song ON song.id = playCount.song WHERE song.id IS NULL",
+            "song_skip" to "SELECT COUNT(*) FROM song_skip LEFT JOIN song ON song.id = song_skip.songId WHERE song.id IS NULL",
+            "format" to "SELECT COUNT(*) FROM format LEFT JOIN song ON song.id = format.id WHERE song.id IS NULL",
+            "lyrics" to "SELECT COUNT(*) FROM lyrics LEFT JOIN song ON song.id = lyrics.id WHERE song.id IS NULL",
+            "set_video_id" to "SELECT COUNT(*) FROM set_video_id LEFT JOIN song ON song.id = set_video_id.videoId WHERE song.id IS NULL",
+        )
+    }
 }
 
 // =============================================================================
@@ -411,13 +486,15 @@ private class UniversalMigration(
     }
 }
 
-private object SchemaTools {
+/** Internal so Android fixture tests can exercise the same repair path as production. */
+internal object SchemaTools {
     private val IGNORED_TABLES = setOf("android_metadata", "room_master_table", "sqlite_sequence")
 
     fun repairDatabaseFile(
         context: Context,
         name: String,
     ) {
+        createSafetyCopy(context.getDatabasePath(name))
         val expectedDb = Room.inMemoryDatabaseBuilder(context, InternalDatabase::class.java).build()
         val fileHelper =
             FrameworkSQLiteOpenHelperFactory()
@@ -426,7 +503,7 @@ private object SchemaTools {
                         .builder(context)
                         .name(name)
                         .callback(
-                            object : SupportSQLiteOpenHelper.Callback(CURRENT_VERSION) {
+                            object : SupportSQLiteOpenHelper.Callback(CURRENT_ROOM_DATABASE_SCHEMA_VERSION) {
                                 override fun onCreate(db: SupportSQLiteDatabase) = Unit
 
                                 override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -442,6 +519,10 @@ private object SchemaTools {
             val db = fileHelper.writableDatabase
 
             reconcileDatabase(db = db, expectedDb = expected)
+            validateForeignKeys(db)
+            // A repaired database may have originated from an interrupted or unsupported
+            // version. Do not leave its user_version claiming a schema we just replaced.
+            db.execSQL("PRAGMA user_version = $CURRENT_ROOM_DATABASE_SCHEMA_VERSION")
             if (identityHash != null) {
                 updateIdentityHash(db = db, identityHash = identityHash)
             }
@@ -449,6 +530,32 @@ private object SchemaTools {
             runCatching { fileHelper.close() }
             runCatching { expectedDb.close() }
         }
+    }
+
+    /**
+     * Repair is deliberately fail-closed: never mutate an on-disk database until a
+     * byte-for-byte copy (and its SQLite sidecars, when present) has been retained.
+     */
+    private fun createSafetyCopy(databaseFile: java.io.File) {
+        check(databaseFile.isFile) { "Cannot repair a database that has no on-disk source file" }
+        val backupDirectory = java.io.File(databaseFile.parentFile, "${databaseFile.name}.repair-backups")
+        check(backupDirectory.exists() || backupDirectory.mkdirs()) {
+            "Cannot create database repair safety-copy directory"
+        }
+
+        val suffix = System.currentTimeMillis().toString()
+        val mainCopy = java.io.File(backupDirectory, "${databaseFile.name}.$suffix.bak")
+        databaseFile.copyTo(mainCopy, overwrite = false)
+        listOf("-wal", "-shm").forEach { sidecarSuffix ->
+            val sidecar = java.io.File(databaseFile.path + sidecarSuffix)
+            if (sidecar.isFile) {
+                sidecar.copyTo(
+                    java.io.File(backupDirectory, "${databaseFile.name}.$suffix$sidecarSuffix.bak"),
+                    overwrite = false,
+                )
+            }
+        }
+        Timber.tag(TAG).i("Retained database safety copy before schema repair")
     }
 
     fun reconcileDatabase(
@@ -478,6 +585,12 @@ private object SchemaTools {
             }
         } finally {
             db.execSQL("PRAGMA foreign_keys=ON")
+        }
+    }
+
+    private fun validateForeignKeys(db: SupportSQLiteDatabase) {
+        db.query("PRAGMA foreign_key_check").use { cursor ->
+            check(!cursor.moveToFirst()) { "Foreign-key validation failed after schema repair" }
         }
     }
 

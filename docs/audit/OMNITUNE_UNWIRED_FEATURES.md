@@ -1,5 +1,11 @@
 # OmniTune unwired, static, and unreachable inventory
 
+> Historical baseline note (2026-07-28): Together, Discord RPC/Kizzy, and the duplicate
+> `ForYouSuggestionEngine` were subsequently removed; the fixed-artist Home fallback was
+> removed; backup copy/metadata and signed-out sync behavior were corrected. Retired preference
+> values now have a scoped cleanup migration. Retain this document as the evidence that prompted
+> the work, not as a current feature inventory.
+
 This inventory is evidence-based static analysis of the audited checkout. It does not call a visible screen “working” merely because its composable exists. Runtime was unavailable, so non-proven UI flows are not included as verified.
 
 ## Highest user impact

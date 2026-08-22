@@ -56,13 +56,13 @@ fun MediaControlsHelp() {
             .isIgnoringBatteryOptimizations(context.packageName)
     }
 
-    OmniPreferenceCard(title = "Playback controls") {
+    OmniPreferenceCard(title = "System media controls") {
         OmniPreferenceEntry(
-            title = "Push notifications",
+            title = "Playback notification permission",
             description = if (notificationsEnabled) {
-                "Allowed by Android"
+                "Allowed by Android for media controls"
             } else {
-                "Blocked — tap to enable in Android settings"
+                "Blocked — playback controls cannot appear until enabled"
             },
             iconRes = R.drawable.ic_notification_play,
             accent = if (notificationsEnabled) OmniColors.Downloaded else OmniColors.Warning,
@@ -74,7 +74,7 @@ fun MediaControlsHelp() {
         )
         OmniPreferenceEntry(
             title = "Player notification",
-            description = channelStatus,
+            description = "$channelStatus. Shows track artwork, title, artist, and transport controls.",
             iconRes = R.drawable.ic_play_arrow,
             accent = OmniColors.OmniAccentPrimary,
             onClick = {
@@ -117,7 +117,7 @@ fun MediaControlsHelp() {
         )
         OmniPreferenceEntry(
             title = "App notification settings",
-            description = "Review lock-screen visibility, background activity, and autostart options",
+            description = "Review playback notification visibility and background activity options",
             iconRes = R.drawable.ic_settings,
             accent = OmniColors.OmniAccentTertiary,
             onClick = {

@@ -6,7 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.media3.exoplayer.offline.Download
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.models.MediaMetadata

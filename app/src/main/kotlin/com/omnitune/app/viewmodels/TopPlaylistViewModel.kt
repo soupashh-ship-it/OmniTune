@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 
 @HiltViewModel
+@OptIn(ExperimentalCoroutinesApi::class)
 class TopPlaylistViewModel @Inject constructor(
     database: MusicDatabase
 ) : ViewModel() {

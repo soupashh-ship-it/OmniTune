@@ -9,10 +9,17 @@ package com.omnitune.app.utils
 
 import android.content.Context
 import android.content.res.Configuration
+import com.omnitune.app.BuildConfig
 import java.util.Locale
+import timber.log.Timber
 
 fun reportException(throwable: Throwable) {
-    throwable.printStackTrace()
+    if (BuildConfig.DEBUG) {
+        Timber.e(throwable, "Unexpected failure")
+    } else {
+        // Exception messages can contain provider URLs, query text, or credentials.
+        Timber.e("Unexpected failure: %s", throwable.javaClass.simpleName)
+    }
 }
 
 @Suppress("DEPRECATION")

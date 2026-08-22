@@ -50,4 +50,20 @@ data class OmniBackupImportResult(
     val formatVersion: Int,
     val createdAtEpochMillis: Long,
     val offlineAudioRestorePending: Boolean = false,
+    val safetyBackup: RestoreSafetyBackup? = null,
 )
+
+enum class RestoreFailurePhase(val userLabel: String) {
+    ARCHIVE_READ("archive read"),
+    PREFLIGHT("backup preflight"),
+    SAFETY_BACKUP("safety backup"),
+    DATABASE_TRANSACTION("database transaction"),
+    MEDIA_RESTORE("offline media restore"),
+    ROLLBACK("recovery rollback"),
+}
+
+class RestoreFailureException(
+    val phase: RestoreFailurePhase,
+    message: String,
+    cause: Throwable? = null,
+) : IllegalStateException("${phase.userLabel}: $message", cause)

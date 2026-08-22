@@ -158,12 +158,12 @@ class MainActivity : ComponentActivity() {
                 pc.mediaMetadata.collectLatest { metadata ->
                     Timber.tag("OmniTuneColor").d("Received metadata: ${metadata?.title ?: "null"}")
                     val thumbnailUrl = metadata?.thumbnailUrl
-                    Timber.tag("OmniTuneColor").d("Thumbnail URL: ${thumbnailUrl ?: "null/blank"}")
+                    Timber.tag("OmniTuneColor").d("Thumbnail present: ${!thumbnailUrl.isNullOrBlank()}")
                     if (thumbnailUrl.isNullOrBlank()) {
                         themeColor = DefaultThemeColor
                         return@collectLatest
                     }
-                    Timber.tag("OmniTuneColor").d("Loading image from: $thumbnailUrl")
+                    Timber.tag("OmniTuneColor").d("Loading artwork for dynamic colors")
                     // Run heavy work (image loading + palette extraction) on background thread
                     withContext(kotlinx.coroutines.Dispatchers.Default) {
                         try {

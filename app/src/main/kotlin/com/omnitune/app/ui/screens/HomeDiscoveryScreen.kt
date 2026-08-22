@@ -348,40 +348,9 @@ fun HomeDiscoveryRoute(
 
 @Composable
 private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
-    val accents = LocalOmniAccents.current
     Box(
-        modifier = modifier.background(OmniColors.BackgroundGradient),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            accents.primary.copy(alpha = 0.16f),
-                            accents.secondary.copy(alpha = 0.08f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(90f, 120f),
-                        radius = 620f,
-                    ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            accents.tertiary.copy(alpha = 0.10f),
-                            Color.Transparent,
-                        ),
-                        center = Offset(980f, 360f),
-                        radius = 760f,
-                    ),
-                ),
-        )
-    }
+        modifier = modifier.background(OmniColors.OmniBackgroundBase),
+    )
 }
 
 @Composable
@@ -393,39 +362,48 @@ private fun HomeTopHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_omnitune_logo),
-                contentDescription = "OmniTune",
-                tint = OmniColors.OmniAccentPrimary,
-                modifier = Modifier.size(32.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(OmniShapes.Small)
+                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_omnitune_logo),
+                    contentDescription = "OmniTune",
+                    tint = OmniColors.OmniAccentPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text = "OmniTune",
-                    fontSize = 22.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = OmniColors.TextPrimary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "Your music, your vibe.",
-                    fontSize = 11.sp,
-                    color = OmniColors.TextSecondary,
+                    text = "DISCOVER & PLAY",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = OmniColors.TextTertiary,
                     maxLines = 1,
                 )
             }
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
@@ -457,131 +435,93 @@ private fun ContinueListeningCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(OmniChrome.HeroCardHeight)
-            .clip(OmniShapes.Large)
+            .clip(OmniShapes.Medium)
             .background(OmniColors.SurfacePanel)
             .border(
                 width = 1.dp,
-                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.15f),
-                shape = OmniShapes.Large,
+                color = OmniColors.BorderSubtle,
+                shape = OmniShapes.Medium,
             )
             .clickable(onClick = onClick),
     ) {
-        // Keep the card tied to the actual playing item while giving it the
-        // artwork-derived atmosphere used by the reference design.
-        DiscoveryArtwork(
-            thumbnailUrl = mediaMetadata.thumbnailUrl,
-            contentDescription = null,
-            title = mediaMetadata.title,
-            artworkKey = "${mediaMetadata.id}_ambient",
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(alpha = 0.34f),
-            imageSize = HERO_IMAGE_SIZE,
-            shape = OmniShapes.Large,
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            OmniColors.OmniAccentPrimary.copy(alpha = 0.62f),
-                            OmniColors.OmniBackgroundBase.copy(alpha = 0.68f),
-                            OmniColors.SurfacePanel.copy(alpha = 0.90f),
-                        ),
-                    ),
-                ),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(OmniSpacing.medium),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DiscoveryArtwork(
-                thumbnailUrl = mediaMetadata.thumbnailUrl,
-                contentDescription = mediaMetadata.title,
-                title = mediaMetadata.title,
-                artworkKey = mediaMetadata.id,
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .size(90.dp)
-                    .clip(OmniShapes.ArtworkMedium),
-                imageSize = HERO_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkMedium,
-            )
-            Spacer(modifier = Modifier.width(OmniSpacing.medium))
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = OmniSpacing.small),
-                verticalArrangement = Arrangement.Center,
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
+                DiscoveryArtwork(
+                    thumbnailUrl = mediaMetadata.thumbnailUrl,
+                    contentDescription = mediaMetadata.title,
+                    title = mediaMetadata.title,
+                    artworkKey = mediaMetadata.id,
                     modifier = Modifier
-                        .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.56f))
-                        .padding(horizontal = OmniSpacing.small, vertical = 4.dp),
+                        .size(56.dp)
+                        .clip(OmniShapes.ArtworkSmall),
+                    imageSize = HERO_IMAGE_SIZE,
+                    shape = OmniShapes.ArtworkSmall,
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = "Continue listening",
-                        style = OmniTextStyles.metadata,
-                        color = OmniColors.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "CONTINUE LISTENING",
+                        style = OmniTextStyles.eyebrow.copy(
+                            fontSize = 9.sp,
+                            letterSpacing = 1.2.sp,
+                            color = OmniColors.OmniAccentPrimary,
+                        ),
                         maxLines = 1,
                     )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = mediaMetadata.title,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = OmniColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                    fontSize = 13.sp,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(modifier = Modifier.height(OmniSpacing.medium))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(OmniColors.SurfaceHairline),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progress)
-                            .fillMaxHeight()
-                            .background(OmniColors.OmniAccentPrimary),
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = mediaMetadata.title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OmniColors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
+                        fontSize = 12.sp,
+                        color = OmniColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${formatPlaybackTime(positionMs)} / ${formatPlaybackTime(durationMs)}",
-                    style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
-                    maxLines = 1,
-                )
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(OmniColors.OmniAccentPrimary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_arrow),
+                        contentDescription = "Resume playback",
+                        tint = OmniColors.TextOnAccent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
+            // Sleek inline progress bar
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniAccentPrimary),
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(OmniColors.BorderSubtle),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_play_arrow),
-                    contentDescription = "Resume playback",
-                    tint = OmniColors.TextOnAccent,
-                    modifier = Modifier.size(24.dp),
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .fillMaxHeight()
+                        .background(OmniColors.OmniAccentPrimary),
                 )
             }
         }
@@ -879,9 +819,10 @@ private fun QuickPickRailCard(
     )
     Column(
         modifier = Modifier
-            .width(80.dp)
+            .width(118.dp)
+            .clip(OmniShapes.Small)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box {
             DiscoveryArtwork(
@@ -890,30 +831,30 @@ private fun QuickPickRailCard(
                 title = item.title,
                 artworkKey = item.artworkKey ?: item.id,
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(OmniShapes.ArtworkSmall),
+                    .size(118.dp)
+                    .clip(OmniShapes.ArtworkMedium),
                 imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkSmall,
+                shape = OmniShapes.ArtworkMedium,
             )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .size(26.dp)
+                    .padding(6.dp)
+                    .size(28.dp)
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.90f)),
+                    .background(OmniColors.OmniAccentPrimary),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_play_arrow),
                     contentDescription = "Play ${item.title}",
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp),
+                    tint = OmniColors.TextOnAccent,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
-        Text(item.title, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(item.subtitle, fontSize = 9.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.subtitle, fontSize = 11.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1133,10 +1074,10 @@ private fun ShelfArtworkCard(
 
     Column(
         modifier = Modifier
-            .width(102.dp)
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.24f))
+            .width(132.dp)
+            .clip(OmniShapes.Small)
             .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (item.thumbnailUrls.size >= 2) {
             CollageArtwork(
@@ -1148,7 +1089,7 @@ private fun ShelfArtworkCard(
                     .fillMaxWidth()
                     .aspectRatio(1f),
                 imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkSmall,
+                shape = OmniShapes.ArtworkMedium,
             )
         } else {
             DiscoveryArtwork(
@@ -1160,12 +1101,12 @@ private fun ShelfArtworkCard(
                     .fillMaxWidth()
                     .aspectRatio(1f),
                 imageSize = SHELF_IMAGE_SIZE,
-                shape = OmniShapes.ArtworkSmall,
+                shape = OmniShapes.ArtworkMedium,
             )
         }
-        Column(modifier = Modifier.padding(top = OmniSpacing.compact, start = OmniSpacing.micro, end = OmniSpacing.micro, bottom = OmniSpacing.micro)) {
-            Text(item.title, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(item.subtitle, fontSize = 9.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(modifier = Modifier.padding(top = 2.dp)) {
+            Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OmniColors.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, fontSize = 11.sp, color = OmniColors.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -1248,13 +1189,11 @@ private fun MoodGenreCard(
         modifier = modifier
             .heightIn(min = 62.dp)
             .clip(OmniShapes.Medium)
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        OmniColors.SurfaceSubtle.copy(alpha = 0.80f),
-                        accent.copy(alpha = 0.08f),
-                    ),
-                ),
+            .background(OmniColors.SurfacePanel)
+            .border(
+                width = 1.dp,
+                color = OmniColors.BorderSubtle,
+                shape = OmniShapes.Medium,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),

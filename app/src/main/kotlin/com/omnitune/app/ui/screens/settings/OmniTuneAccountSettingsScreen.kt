@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +73,13 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
 
     val decryptedCookie = SecurePreferenceCipher.decryptOrPlain(innerTubeCookie)
     val isLoggedIn = "SAPISID" in parseCookieString(decryptedCookie)
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn && ytmSync) {
+            ytmSync = false
+            scheduleYouTubePlaylistSync(context, false)
+        }
+    }
 
     SettingsSubScreenScaffold(
         title = "OmniTune Account",
@@ -131,15 +139,21 @@ fun OmniTuneAccountSettingsScreen(navController: NavController) {
                 title = "YouTube Music Sync",
                 description = if (isLoggedIn) "Import selected YouTube Music playlists" else "Sign in first to sync playlists",
                 iconRes = R.drawable.ic_settings,
-                checked = ytmSync,
+                checked = ytmSync && isLoggedIn,
                 onCheckedChange = {
-                    ytmSync = it
-                    scheduleYouTubePlaylistSync(context, it)
+                    if (isLoggedIn) {
+                        ytmSync = it
+                        scheduleYouTubePlaylistSync(context, it)
+                    }
                 }
             )
             OmniPreferenceEntry(
                 title = "Select playlists to sync",
-                description = if (isSyncBusy) "Loading YouTube Music playlists..." else "Choose playlists from your YouTube Music library",
+                description = when {
+                    !isLoggedIn -> "Sign in first to choose playlists for sync"
+                    isSyncBusy -> "Loading YouTube Music playlists..."
+                    else -> "Choose playlists from your YouTube Music library"
+                },
                 iconRes = R.drawable.ic_list,
                 accent = OmniColors.OmniAccentSecondary,
                 onClick = if (isLoggedIn && !isSyncBusy) {

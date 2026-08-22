@@ -7,12 +7,9 @@ import com.omnitune.app.models.MediaMetadata
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 val DownloadUtil.downloads: Flow<Map<String, Download>>
@@ -33,13 +30,6 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
 
         sendDownloads()
 
-        val poller = launch {
-            while (isActive) {
-                delay(500)
-                sendDownloads()
-            }
-        }
-
         val listener = object : DownloadManager.Listener {
             override fun onDownloadChanged(
                 downloadManager: DownloadManager,
@@ -58,7 +48,6 @@ val DownloadUtil.downloads: Flow<Map<String, Download>>
 
         downloadManager.addListener(listener)
         awaitClose {
-            poller.cancel()
             downloadManager.removeListener(listener)
         }
     }

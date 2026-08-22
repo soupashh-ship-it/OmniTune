@@ -90,12 +90,13 @@ import timber.log.Timber
 private const val QUEUE_ARTWORK_SIZE = 160
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Suppress("DEPRECATION") // Swipe veto migration requires an anchored-draggable redesign.
 @Composable
 fun QueueScreen(
     playerConnection: PlayerConnection?,
     onBack: () -> Unit = {},
-    downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
-    libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
+    downloadsViewModel: com.omnitune.app.ui.screens.DownloadsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
+    libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
 ) {
     Timber.tag("QueueNav").i("QueueScreen entered: playerConnection=%s", playerConnection)
     val context = LocalContext.current
@@ -193,7 +194,7 @@ fun QueueScreen(
                                 val mediaItem = pc.getMediaItemAt(windowIndex)
                                 val meta = mediaItem.localConfiguration?.tag as? MediaMetadata
                                 val videoId = meta?.id ?: return@forEach
-                                val title = meta.title ?: "Unknown"
+                                val title = meta.title
                                 downloadsViewModel.startDownload(videoId, title, null) { _, _ -> }
                             }
                             android.widget.Toast.makeText(context, "Started ${selectedIndices.size} downloads", android.widget.Toast.LENGTH_SHORT).show()
@@ -728,9 +729,9 @@ private fun NowPlayingCard(
 @Composable
 private fun FormatInfoText(format: FormatEntity) {
     val parts = mutableListOf<String>()
-    format.codecs?.let { if (it.isNotBlank()) parts.add(it) }
-    format.bitrate?.let { if (it > 0) parts.add("${it / 1000}kbps") }
-    format.sampleRate?.let { if (it > 0) parts.add("${it / 1000}kHz") }
+    if (format.codecs.isNotBlank()) parts.add(format.codecs)
+    if (format.bitrate > 0) parts.add("${format.bitrate / 1000}kbps")
+    format.sampleRate?.takeIf { it > 0 }?.let { parts.add("${it / 1000}kHz") }
     if (parts.isNotEmpty()) {
         Text(
             text = parts.joinToString(" · "),

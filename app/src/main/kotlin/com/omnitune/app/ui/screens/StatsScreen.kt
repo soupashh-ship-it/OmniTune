@@ -64,7 +64,6 @@ fun StatsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.screenHorizontalCompact),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {

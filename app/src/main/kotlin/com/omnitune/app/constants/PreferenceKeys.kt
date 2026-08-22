@@ -65,24 +65,12 @@ val YtmLastSyncAtKey = longPreferencesKey("ytm_last_sync_at")
 val YtmLastSyncStatusKey = stringPreferencesKey("ytm_last_sync_status")
 val YtmLastSyncErrorKey = stringPreferencesKey("ytm_last_sync_error")
 
-val TogetherDisplayNameKey = stringPreferencesKey("together_display_name")
-val TogetherClientIdKey = stringPreferencesKey("together_client_id")
-val TogetherDefaultPortKey = intPreferencesKey("together_default_port")
-val TogetherAllowGuestsToAddTracksKey = booleanPreferencesKey("together_allow_guests_add_tracks")
-val TogetherAllowGuestsToControlPlaybackKey = booleanPreferencesKey("together_allow_guests_control_playback")
-val TogetherRequireHostApprovalToJoinKey = booleanPreferencesKey("together_require_host_approval_to_join")
-val TogetherLastJoinLinkKey = stringPreferencesKey("together_last_join_link")
-val TogetherWelcomeShownKey = booleanPreferencesKey("together_welcome_shown")
-    
 // ListenBrainz scrobbling
 val ListenBrainzEnabledKey = booleanPreferencesKey("listenbrainz_enabled")
 val ListenBrainzTokenKey = stringPreferencesKey("listenbrainz_token")
 
-// Last.fm scrobbling
-val LastFMSessionKey = stringPreferencesKey("lastfmSession")
-val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
-val EnableLastFMScrobblingKey = booleanPreferencesKey("lastfmScrobblingEnable")
-val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
+// ListenBrainz scrobbling
+val ListenBrainzNowPlayingKey = booleanPreferencesKey("listenbrainz_now_playing")
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
 val ScrobbleMinSongDurationKey = intPreferencesKey("scrobbleMinSongDuration")
 val ScrobbleDelaySecondsKey = intPreferencesKey("scrobbleDelaySeconds")
@@ -147,42 +135,6 @@ val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
 val MaxCanvasCacheSizeKey = intPreferencesKey("maxCanvasCacheSize")
 
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
-
-val DiscordTokenKey = stringPreferencesKey("discordToken")
-val DiscordInfoDismissedKey = booleanPreferencesKey("discordInfoDismissed")
-val DiscordUsernameKey = stringPreferencesKey("discordUsername")
-val DiscordNameKey = stringPreferencesKey("discordName")
-val EnableDiscordRPCKey = booleanPreferencesKey("discordRPCEnable")
-// Discord activity customization keys
-val DiscordActivityNameKey = stringPreferencesKey("discordActivityName")
-val DiscordActivityDetailsKey = stringPreferencesKey("discordActivityDetails")
-val DiscordActivityStateKey = stringPreferencesKey("discordActivityState")
-// Custom button labels and urls for Discord activity buttons
-val DiscordActivityButton1LabelKey = stringPreferencesKey("discordActivityButton1Label")
-val DiscordActivityButton1UrlSourceKey = stringPreferencesKey("discordActivityButton1UrlSource")
-val DiscordActivityButton1CustomUrlKey = stringPreferencesKey("discordActivityButton1CustomUrl")
-val DiscordActivityButton2LabelKey = stringPreferencesKey("discordActivityButton2Label")
-val DiscordActivityButton2UrlSourceKey = stringPreferencesKey("discordActivityButton2UrlSource")
-val DiscordActivityButton2CustomUrlKey = stringPreferencesKey("discordActivityButton2CustomUrl")
-val DiscordActivityButton1EnabledKey = booleanPreferencesKey("discordActivityButton1Enabled")
-val DiscordActivityButton2EnabledKey = booleanPreferencesKey("discordActivityButton2Enabled")
-val DiscordShowWhenPausedKey = booleanPreferencesKey("discordShowWhenPaused")
-// Activity type for Discord presence (PLAYING, STREAMING, LISTENING, WATCHING, COMPETING)
-val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
-val DiscordPresenceIntervalValueKey = intPreferencesKey("discordPresenceIntervalValue")
-val DiscordPresenceIntervalUnitKey = stringPreferencesKey("discordPresenceIntervalUnit") // "S", "M", "H"
-val DiscordPresenceStatusKey = stringPreferencesKey("discordPresenceStatus") // "ONLINE", "IDLE", "DND", "INVISIBLE"
-
-// Discord image selection keys
-// Values for type keys: "thumbnail", "artist", "appicon", "custom"
-val DiscordLargeImageTypeKey = stringPreferencesKey("discordLargeImageType")
-val DiscordLargeTextSourceKey = stringPreferencesKey("discordLargeTextSource")
-val DiscordLargeTextCustomKey = stringPreferencesKey("discordLargeTextCustom")
-val DiscordLargeImageCustomUrlKey = stringPreferencesKey("discordLargeImageCustomUrl")
-val DiscordSmallImageTypeKey = stringPreferencesKey("discordSmallImageType")
-val DiscordSmallImageCustomUrlKey = stringPreferencesKey("discordSmallImageCustomUrl")
-// Activity platform (discord client platform) selection
-val DiscordActivityPlatformKey = stringPreferencesKey("discordActivityPlatform")
 
 val TranslatorContextsKey = stringPreferencesKey("translatorContexts")
 val TranslatorTargetLangKey = stringPreferencesKey("translatorTargetLang")
@@ -588,8 +540,8 @@ val GitHubReleasesJsonKey = stringPreferencesKey("github_releases_json")
 val GitHubReleasesLastCheckedAtKey = longPreferencesKey("github_releases_last_checked_at")
 val GitHubReleasesFingerprintKey = stringPreferencesKey("github_releases_fingerprint")
 
-val TogetherOnlineEndpointCacheKey = stringPreferencesKey("together_online_endpoint_cache")
-val TogetherOnlineEndpointLastCheckedAtKey = longPreferencesKey("together_online_endpoint_last_checked_at")
+val HomeProviderFeedCacheKey = stringPreferencesKey("home_provider_feed_cache")
+val HomeProviderFeedCacheAtKey = longPreferencesKey("home_provider_feed_cache_at")
 
 enum class UpdateChannel {
     STABLE,

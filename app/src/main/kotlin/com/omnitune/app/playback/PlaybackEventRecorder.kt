@@ -38,17 +38,14 @@ class PlaybackEventRecorder(
             while (durationMs == C.TIME_UNSET || durationMs <= 0L) {
                 delay(1000)
                 if (!isActive) return@launch
-                // Safe way to get duration on main thread
                 durationMs = withContext(Dispatchers.Main) { player.duration }
             }
 
-            if (durationMs < 30_000L) return@launch // Skip very short tracks
+            if (durationMs < 30_000L) return@launch
 
             val ds = context.dataStore
             val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
             val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
-
-            // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
             val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
 
             while (isActive) {

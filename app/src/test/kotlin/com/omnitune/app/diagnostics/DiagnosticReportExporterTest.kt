@@ -28,7 +28,7 @@ class DiagnosticReportExporterTest {
             Headers:
             authorization: <REDACTED>
             cookie: <REDACTED>
-            visitor: <REDACTED>
+            visitor_id: <REDACTED>
             access_token: <REDACTED>
             X-Some-Other-Header: safe_value
         """.trimIndent()
@@ -65,6 +65,39 @@ class DiagnosticReportExporterTest {
         val actual = DiagnosticReportExporter.sanitize(input)
         val lineCount = actual.lines().size
         assertEquals(200, lineCount)
+    }
+
+    @Test
+    fun `sanitize redacts search query values`() {
+        val input = "query=private song title\nsearch_query: private artist\nq=private album"
+
+        val actual = DiagnosticReportExporter.sanitize(input)
+
+        assertEquals("query: <REDACTED>\nsearch_query: <REDACTED>\nq: <REDACTED>", actual)
+    }
+
+    @Test
+    fun `sanitize redacts account and provider identifiers`() {
+        val input = "user_id=private-user\nchannelId: private-channel\nvisitorData=private-visitor"
+
+        val actual = DiagnosticReportExporter.sanitize(input)
+
+        assertEquals(
+            "user_id: <REDACTED>\nchannelId: <REDACTED>\nvisitorData: <REDACTED>",
+            actual,
+        )
+    }
+
+    @Test
+    fun `sanitize redacts quoted json credentials queries and identifiers`() {
+        val input = """{"access_token":"secret token", "query":"private song title", "channelId":"UC-secret"}"""
+
+        val actual = DiagnosticReportExporter.sanitize(input)
+
+        assertEquals(
+            """{"access_token":<REDACTED>, "query":<REDACTED>, "channelId":<REDACTED>}""",
+            actual,
+        )
     }
 
     @Test

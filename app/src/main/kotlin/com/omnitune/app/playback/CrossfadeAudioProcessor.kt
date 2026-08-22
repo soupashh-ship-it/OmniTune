@@ -158,10 +158,12 @@ class CrossfadeAudioProcessor : AudioProcessor {
         return dequeueOutputToByteBuffer(outSizeBytes)
     }
 
+    @Deprecated("Required by the current Media3 AudioProcessor interface")
     override fun isEnded(): Boolean {
         return isEnding && outSizeBytes == 0 && tailSizeBytes == 0
     }
 
+    @Deprecated("Required by the current Media3 AudioProcessor interface")
     override fun flush() {
         framesOutputInStream = 0L
         isEnding = false
@@ -172,6 +174,7 @@ class CrossfadeAudioProcessor : AudioProcessor {
         outSizeBytes = 0
     }
 
+    @Suppress("DEPRECATION")
     override fun reset() {
         flush()
         inputAudioFormat = AudioFormat.NOT_SET

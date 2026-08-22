@@ -33,7 +33,7 @@ import kotlin.math.pow
 
 @Composable
 fun StorageSettings(
-    viewModel: SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    viewModel: SettingsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
 ) {
     val context = LocalContext.current
     var showClearCacheDialog by remember { mutableStateOf(false) }

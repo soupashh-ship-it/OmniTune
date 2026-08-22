@@ -110,15 +110,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-private data class PendingSongQueue(
-    val title: String,
-    val songs: List<SongItem>,
-    val index: Int,
-    val sourceType: PlaybackSourceType,
-    val verifiedGenre: String? = null,
-    val verifiedMood: String? = null,
-)
-
 private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): String {
     val base = "homeCollection/${Uri.encode(collectionId)}"
     return artworkUrl
@@ -154,34 +145,48 @@ private fun playSongList(
     verifiedGenre: String? = null,
     verifiedMood: String? = null,
     playerConnection: PlayerConnection?,
-    onPlayerNotReady: (PendingSongQueue) -> Unit,
+    onPlayerNotReady: (SongPlaybackRequest) -> Unit,
 ) {
-    val songItem = songs[index]
+    val request = songPlaybackRequest(
+        title = queueTitle,
+        songs = songs,
+        startIndex = index,
+        sourceType = sourceType,
+        verifiedGenre = verifiedGenre,
+        verifiedMood = verifiedMood,
+    ) ?: run {
+        Timber.tag("OmniTunePlaybackTrace").w(
+            "$queueTitle playback ignored: selected index $index is not present in ${songs.size} songs",
+        )
+        Toast.makeText(context, "That song is no longer available.", Toast.LENGTH_SHORT).show()
+        return
+    }
+    val songItem = request.selectedSong
     Timber.tag("OmniTunePlaybackTrace").i("$queueTitle play requested: ${songItem.title} (${songItem.id})")
     val connection = playerConnection ?: run {
         Timber.tag("OmniTunePlaybackTrace").w("$queueTitle play queued: player connection not ready")
-        onPlayerNotReady(PendingSongQueue(queueTitle, songs, index, sourceType, verifiedGenre, verifiedMood))
+        onPlayerNotReady(request)
         Toast.makeText(context, "Starting player...", Toast.LENGTH_SHORT).show()
         return
     }
-    val mediaItems = songs.map {
+    val mediaItems = request.songs.map {
         it.toMediaItem().withPlaybackMetadata(
-            genre = verifiedGenre,
-            mood = verifiedMood,
+            genre = request.verifiedGenre,
+            mood = request.verifiedMood,
         )
     }
     connection.playQueue(
         ListQueue(
-            title = queueTitle,
+            title = request.title,
             items = mediaItems,
-            startIndex = index,
+            startIndex = request.startIndex,
             playbackContext = PlaybackContext(
-                sourceType = sourceType,
-                sourceTitle = queueTitle,
-                seedSongId = songs.getOrNull(index)?.id,
-                artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
-                genre = verifiedGenre,
-                mood = verifiedMood,
+                sourceType = request.sourceType,
+                sourceTitle = request.title,
+                seedSongId = request.selectedSong.id,
+                artist = request.selectedSong.artists.firstOrNull()?.name,
+                genre = request.verifiedGenre,
+                mood = request.verifiedMood,
                 sessionItems = mediaItems,
             ),
         ),
@@ -200,7 +205,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
         .collectAsState(initial = null)
-    var pendingSongQueue by remember { mutableStateOf<PendingSongQueue?>(null) }
+    var pendingSongQueue by remember { mutableStateOf<SongPlaybackRequest?>(null) }
     var showPlayerOverlay by remember { mutableStateOf(false) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }
     // The replacement reference keeps its persistent dock on header destinations and
@@ -218,27 +223,26 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
         val queueData = pendingSongQueue
         val connection = localPlayerConnection
         if (queueData != null && connection != null) {
-            val (title, songs, index, sourceType, verifiedGenre, verifiedMood) = queueData
-            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${songs[index].title}")
+            Timber.tag("OmniTunePlaybackTrace").i("Playing queued search: ${queueData.selectedSong.title}")
             pendingSongQueue = null
-            val mediaItems = songs.map {
+            val mediaItems = queueData.songs.map {
                 it.toMediaItem().withPlaybackMetadata(
-                    genre = verifiedGenre,
-                    mood = verifiedMood,
+                    genre = queueData.verifiedGenre,
+                    mood = queueData.verifiedMood,
                 )
             }
             connection.playQueue(
                 ListQueue(
-                    title = title,
+                    title = queueData.title,
                     items = mediaItems,
-                    startIndex = index,
+                    startIndex = queueData.startIndex,
                     playbackContext = PlaybackContext(
-                        sourceType = sourceType,
-                        sourceTitle = title,
-                        seedSongId = songs.getOrNull(index)?.id,
-                        artist = songs.getOrNull(index)?.artists?.firstOrNull()?.name,
-                        genre = verifiedGenre,
-                        mood = verifiedMood,
+                        sourceType = queueData.sourceType,
+                        sourceTitle = queueData.title,
+                        seedSongId = queueData.selectedSong.id,
+                        artist = queueData.selectedSong.artists.firstOrNull()?.name,
+                        genre = queueData.verifiedGenre,
+                        mood = queueData.verifiedMood,
                         sessionItems = mediaItems,
                     ),
                 ),
@@ -692,7 +696,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("settings/storage") { SettingsSubScreenScaffold(title = "Storage", onBack = { navController.popBackStack() }) { StorageSettings() } }
             composable("settings/lyrics") { SettingsSubScreenScaffold(title = "Lyrics", onBack = { navController.popBackStack() }) { LyricsSettings() } }
             composable("settings/parental_controls") { SettingsSubScreenScaffold(title = "Parental Controls", onBack = { navController.popBackStack() }) { ParentalControlsSettings() } }
-            composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "Scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
+            composable("settings/scrobbling") { SettingsSubScreenScaffold(title = "ListenBrainz scrobbling", onBack = { navController.popBackStack() }) { ScrobblingSettings() } }
             composable("settings/updates") {
                 SettingsSubScreenScaffold(title = "Updates", onBack = { navController.popBackStack() }) {
                     UpdatesSettings(onNavigateToChangelog = { navController.navigate(Screens.Changelog.route) })
@@ -701,7 +705,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
             composable("settings/diagnostics") { SettingsSubScreenScaffold(title = "Diagnostics", onBack = { navController.popBackStack() }) { DiagnosticsSettings() } }
             composable("settings/about") { SettingsSubScreenScaffold(title = "About", onBack = { navController.popBackStack() }) { AboutSettings() } }
             composable("settings/backup_restore") { SettingsSubScreenScaffold(title = "Backup & Restore", onBack = { navController.popBackStack() }) { BackupRestoreScreen() } }
-            composable("settings/notifications") { SettingsSubScreenScaffold(title = "Notifications", onBack = { navController.popBackStack() }) { MediaControlsHelp() } }
+            composable("settings/notifications") { SettingsSubScreenScaffold(title = "Playback notification", onBack = { navController.popBackStack() }) { MediaControlsHelp() } }
             composable(ROUTE_DOWNLOADS) {
                 DownloadsScreen(
                     onBack = { navController.popBackStack() },

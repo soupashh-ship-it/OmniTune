@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -312,16 +313,13 @@ fun PlayerScreen(
                             accentColor = dynamicAccent,
                         )
                     }
-                    // Keep the identity block close to the artwork, as in the
-                    // reference player, while retaining the real metadata below it.
-                    Spacer(modifier = Modifier.height(OmniSpacing.hero))
+                    Spacer(modifier = Modifier.height(OmniSpacing.medium))
                     MetadataBlock(
                         playerConnection = playerConnection,
                         lyricsUiState = lyricsUiState,
                         lyricAccentColor = dynamicPalette.accent,
                         onOpenLyrics = { showLyricsSheet = true },
                         onShare = {
-                            showOptionsSheet = false
                             val videoId = mediaMetadata?.id
                             val titleText = mediaMetadata?.title
                             if (!videoId.isNullOrBlank()) {
@@ -332,7 +330,7 @@ fun PlayerScreen(
                                 }
                                 context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
                             }
-                        }
+                        },
                     )
                     Spacer(modifier = Modifier.height(OmniSpacing.micro))
                     PlayerSeekBar(
@@ -523,39 +521,86 @@ private fun PlayerTopBar(
     hasQueue: Boolean,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        GlassIconButton(
-            icon = R.drawable.ic_arrow_back,
-            contentDescription = "Navigate up",
+        IconButton(
             onClick = onDismiss,
-        )
+            modifier = Modifier
+                .size(38.dp)
+                .clip(OmniShapes.Pill)
+                .background(OmniColors.SurfacePanel)
+                .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_arrow_back),
+                contentDescription = "Dismiss",
+                tint = OmniColors.TextPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer { rotationZ = -90f },
+            )
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = OmniSpacing.medium),
+                .padding(horizontal = OmniSpacing.small),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Now playing",
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                text = "NOW PLAYING",
+                style = OmniTextStyles.eyebrow.copy(
+                    fontSize = 9.sp,
+                    letterSpacing = 1.3.sp,
+                    color = OmniColors.OmniAccentPrimary,
+                ),
                 maxLines = 1,
             )
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
-                color = OmniColors.TextSecondary,
+                style = OmniTextStyles.songTitle.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = OmniColors.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        GlassIconButton(
-            icon = R.drawable.ic_more_vert,
-            contentDescription = "More options",
-            onClick = onShowOptions,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconButton(
+                onClick = onOpenQueue,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.SurfacePanel)
+                    .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_list),
+                    contentDescription = "Queue",
+                    tint = OmniColors.TextPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            IconButton(
+                onClick = onShowOptions,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(OmniShapes.Pill)
+                    .background(OmniColors.SurfacePanel)
+                    .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_more_vert),
+                    contentDescription = "More options",
+                    tint = OmniColors.TextPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 

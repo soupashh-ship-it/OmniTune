@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -91,22 +90,9 @@ class PlayerConnection(
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
-    // OMNITUNE: Sleep timer state
-    val sleepTimerRunning: StateFlow<Boolean> = flow {
-        while (true) {
-            emit(service.sleepTimer.isRunning)
-            kotlinx.coroutines.delay(500)
-        }
-    }.stateIn(scope, SharingStarted.Eagerly, false)
-
-    val sleepTimerRemaining: StateFlow<Long> = flow {
-        while (true) {
-            emit(service.sleepTimer.remainingMs)
-            kotlinx.coroutines.delay(1000)
-        }
-    }.stateIn(scope, SharingStarted.Eagerly, 0L)
-
-    val discordPresenceRunning: StateFlow<Boolean> = service.discordPresenceManager.isRunning
+    // The service owns timer progression and emits state only when it changes.
+    val sleepTimerRunning: StateFlow<Boolean> = service.sleepTimer.isRunning
+    val sleepTimerRemaining: StateFlow<Long> = service.sleepTimer.remainingMs
 
     init {
         player.addListener(this)
@@ -324,7 +310,4 @@ class PlayerConnection(
     val playbackSpeed: Float get() = player.playbackParameters.speed
     val playbackPitch: Float get() = player.playbackParameters.pitch
 
-    fun restartDiscordPresence() {
-        service.restartDiscordPresence()
-    }
 }

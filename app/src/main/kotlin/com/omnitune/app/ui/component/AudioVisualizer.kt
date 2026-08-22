@@ -58,7 +58,7 @@ fun AudioVisualizer(
                 abs(sin(phase * 0.5f + i * 0.6f)) * 0.1f
             } else 0.05f
 
-            val barHeight = rawAmplitude.toFloat() * maxBarHeight
+            val barHeight = rawAmplitude * maxBarHeight
             val top = height / 2f - barHeight / 2f
             val bottom = height / 2f + barHeight / 2f
             val barColor = if (rawAmplitude > 0.5f) activeColor else color

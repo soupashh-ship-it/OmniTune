@@ -5,9 +5,10 @@
 
 package com.omnitune.app.backup
 
-import android.annotation.SuppressLint
 import android.content.Context
+import android.annotation.SuppressLint
 import com.omnitune.app.BuildConfig
+import com.omnitune.app.db.CURRENT_ROOM_DATABASE_SCHEMA_VERSION
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.AlbumArtistMap
 import com.omnitune.app.db.entities.AlbumEntity
@@ -32,6 +33,7 @@ import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.FilterOutputStream
@@ -39,6 +41,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -62,62 +65,8 @@ class OmniBackupRepository @Inject constructor(
         outputStream: OutputStream,
         includeDownloadedAudio: Boolean = false,
     ): OmniBackupExportResult = withContext(Dispatchers.IO) {
-        val snapshot = createSnapshot()
-        val libraryBytes = json.encodeToString(snapshot).toByteArray(StandardCharsets.UTF_8)
-
-        if (!includeDownloadedAudio) {
-            outputStream.use { stream ->
-                stream.write(libraryBytes)
-                stream.flush()
-            }
-            return@withContext OmniBackupExportResult(
-                counts = snapshot.exportedCounts(),
-                byteCount = libraryBytes.size.toLong(),
-                createdAtEpochMillis = snapshot.createdAtEpochMillis,
-            )
-        }
-
-        var archiveBytes = 0L
-        var audioFileCount = 0
-        var audioBytes = 0L
-        CountingOutputStream(outputStream).use { counting ->
-            ZipOutputStream(BufferedOutputStream(counting)).use { zip ->
-                zip.putNextEntry(ZipEntry(OfflineDownloadArchive.LIBRARY_JSON_ENTRY))
-                zip.write(libraryBytes)
-                zip.closeEntry()
-
-                val downloadDir = OfflineDownloadArchive.downloadDirectory(context)
-                if (downloadDir.exists()) {
-                    downloadDir.walkTopDown()
-                        .filter { it.isFile }
-                        .forEach { file ->
-                            val relativePath = downloadDir.toPath().relativize(file.toPath()).toString()
-                                .replace(File.separatorChar, '/')
-                            zip.putNextEntry(ZipEntry(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX + relativePath))
-                            file.inputStream().use { input -> input.copyTo(zip) }
-                            zip.closeEntry()
-                            audioFileCount++
-                            audioBytes += file.length()
-                        }
-                }
-
-                OfflineDownloadArchive.media3DatabaseFiles(context).forEach { file ->
-                    zip.putNextEntry(ZipEntry(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX + file.name))
-                    file.inputStream().use { input -> input.copyTo(zip) }
-                    zip.closeEntry()
-                }
-            }
-            archiveBytes = counting.bytesWritten
-        }
-
-        OmniBackupExportResult(
-            counts = snapshot.exportedCounts().copy(
-                downloadedAudioFiles = audioFileCount,
-                downloadedAudioBytes = audioBytes,
-            ),
-            byteCount = archiveBytes,
-            createdAtEpochMillis = snapshot.createdAtEpochMillis,
-        )
+        val snapshot = database.withTransaction { createSnapshot() }
+        outputStream.use { stream -> writeSnapshot(stream, snapshot, includeDownloadedAudio) }
     }
 
     private suspend fun createSnapshot(): OmniBackupSnapshot {
@@ -139,7 +88,7 @@ class OmniBackupRepository @Inject constructor(
             createdAtEpochMillis = createdAt,
             appVersionName = BuildConfig.VERSION_NAME,
             appVersionCode = BuildConfig.VERSION_CODE.toLong(),
-            databaseSchemaVersion = 5,
+            roomSchemaVersion = CURRENT_ROOM_DATABASE_SCHEMA_VERSION,
             library = BackupLibrarySection(
                 exportedSongCount = songs.size,
                 exportedLikedSongCount = songs.count { it.liked },
@@ -168,51 +117,268 @@ class OmniBackupRepository @Inject constructor(
         )
     }
 
+    private fun writeSnapshot(
+        outputStream: OutputStream,
+        snapshot: OmniBackupSnapshot,
+        includeDownloadedAudio: Boolean,
+    ): OmniBackupExportResult {
+        val libraryBytes = json.encodeToString(snapshot).toByteArray(StandardCharsets.UTF_8)
+        if (!includeDownloadedAudio) {
+            outputStream.write(libraryBytes)
+            outputStream.flush()
+            return OmniBackupExportResult(
+                counts = snapshot.toPreviewCounts(),
+                byteCount = libraryBytes.size.toLong(),
+                createdAtEpochMillis = snapshot.createdAtEpochMillis,
+            )
+        }
+
+        val downloadRoot = OfflineDownloadArchive.downloadDirectory(context)
+        val downloadFiles = if (downloadRoot.exists()) {
+            downloadRoot.walkTopDown().filter { it.isFile }.sortedBy { it.absolutePath }.toList()
+        } else {
+            emptyList()
+        }
+        val media3Files = OfflineDownloadArchive.media3DatabaseFiles(context).sortedBy { it.name }
+        require(downloadFiles.isEmpty() || media3Files.any { it.name == OfflineDownloadArchive.MEDIA3_DATABASE_NAME }) {
+            "Offline audio cannot be archived without its Media3 download index"
+        }
+
+        val counting = CountingOutputStream(outputStream)
+        ZipOutputStream(BufferedOutputStream(counting)).use { zip ->
+            writeZipEntry(zip, OfflineDownloadArchive.LIBRARY_JSON_ENTRY, libraryBytes)
+            val files = mutableListOf<BackupArchiveFile>()
+            downloadFiles.forEach { file ->
+                val relative = downloadRoot.toPath().relativize(file.toPath()).toString()
+                    .replace(File.separatorChar, '/')
+                files += writeArchiveFile(zip, OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX + relative, file)
+            }
+            media3Files.forEach { file ->
+                files += writeArchiveFile(zip, OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX + file.name, file)
+            }
+            val manifest = BackupArchiveManifest(
+                librarySha256 = sha256(libraryBytes),
+                files = files.sortedBy { it.entryName },
+            )
+            writeZipEntry(
+                zip,
+                OfflineDownloadArchive.MANIFEST_JSON_ENTRY,
+                json.encodeToString(manifest).toByteArray(StandardCharsets.UTF_8),
+            )
+        }
+        return OmniBackupExportResult(
+            counts = snapshot.toPreviewCounts().copy(
+                downloadedAudioFiles = downloadFiles.size,
+                downloadedAudioBytes = downloadFiles.sumOf { it.length() },
+            ),
+            byteCount = counting.bytesWritten,
+            createdAtEpochMillis = snapshot.createdAtEpochMillis,
+        )
+    }
+
+    private fun writeZipEntry(zip: ZipOutputStream, name: String, content: ByteArray) {
+        zip.putNextEntry(ZipEntry(name))
+        zip.write(content)
+        zip.closeEntry()
+    }
+
+    private fun writeArchiveFile(zip: ZipOutputStream, entryName: String, file: File): BackupArchiveFile {
+        zip.putNextEntry(ZipEntry(entryName))
+        val digest = MessageDigest.getInstance("SHA-256")
+        var byteCount = 0L
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                byteCount += read
+                zip.write(buffer, 0, read)
+                digest.update(buffer, 0, read)
+            }
+        }
+        zip.closeEntry()
+        return BackupArchiveFile(entryName, byteCount, digest.digest().toHex())
+    }
+
+    suspend fun previewBackup(
+        inputStream: InputStream,
+        mode: OmniRestoreMode,
+        selection: OmniRestoreSelection = OmniRestoreSelection.ALL,
+    ): OmniBackupPreview = withContext(Dispatchers.IO) {
+        selection.requireSupportedFor(mode)
+        val packageResult = try {
+            readBackupPackage(inputStream, stageDownloads = false)
+        } catch (error: Exception) {
+            throw RestoreFailureException(RestoreFailurePhase.ARCHIVE_READ, error.message ?: "Could not read backup archive", error)
+        }
+        val selectedSnapshot = packageResult.snapshot.selectForRestore(selection)
+        try {
+            OmniBackupPreflight.validate(selectedSnapshot, mode, packageResult.archiveInfo)
+                .copy(selection = selection)
+        } catch (error: BackupPreflightException) {
+            throw RestoreFailureException(RestoreFailurePhase.PREFLIGHT, error.message ?: "Backup validation failed", error)
+        }
+    }
+
+    fun latestSafetyBackup(): RestoreSafetyBackup? = safetyBackupStore(context).latest()
+
+    suspend fun recoverLatestSafetyBackup(): OmniBackupImportResult = withContext(Dispatchers.IO) {
+        val backup = latestSafetyBackup()
+            ?: throw RestoreFailureException(RestoreFailurePhase.SAFETY_BACKUP, "No retained Replace safety backup is available")
+        FileInputStream(backup.file).use { input -> importBackup(input, OmniRestoreMode.REPLACE) }
+    }
+
     suspend fun importBackup(
         inputStream: InputStream,
         mode: OmniRestoreMode = OmniRestoreMode.MERGE,
+        selection: OmniRestoreSelection = OmniRestoreSelection.ALL,
     ): OmniBackupImportResult = withContext(Dispatchers.IO) {
-        val packageResult = readBackupPackage(inputStream)
+        selection.requireSupportedFor(mode)
+        val packageResult = try {
+            readBackupPackage(inputStream, stageDownloads = true)
+        } catch (error: Exception) {
+            throw RestoreFailureException(RestoreFailurePhase.ARCHIVE_READ, error.message ?: "Could not read backup archive", error)
+        }
+        var mediaRestore: AppliedOfflineRestore? = null
+        var readyMediaStage: File? = null
+        var safetySnapshot: OmniBackupSnapshot? = null
+        var databaseCommitted = false
         try {
-            validate(packageResult.snapshot)
-
-            val hasDownloadPayload = packageResult.stagedDownloadDir
-                ?.let { OfflineDownloadArchive.hasDownloadPayload(it) } == true
-            val counts = database.withTransaction {
-                if (mode == OmniRestoreMode.REPLACE) clearLibraryForReplace()
-                restoreMerge(
-                    snapshot = packageResult.snapshot,
-                    restoreDownloadedAudioState = hasDownloadPayload,
-                )
+            val selectedSnapshot = packageResult.snapshot.selectForRestore(selection)
+            try {
+                OmniBackupPreflight.validate(selectedSnapshot, mode, packageResult.archiveInfo)
+            } catch (error: BackupPreflightException) {
+                throw RestoreFailureException(RestoreFailurePhase.PREFLIGHT, error.message ?: "Backup validation failed", error)
             }
 
-            val stagedDownloadDir = packageResult.stagedDownloadDir
-            if (hasDownloadPayload) {
-                OfflineDownloadArchive.markReady(requireNotNull(stagedDownloadDir))
+            val safetyBackup = if (mode == OmniRestoreMode.REPLACE) {
+                safetySnapshot = database.withTransaction { createSnapshot() }
+                try {
+                    safetyBackupStore(context).create(requireNotNull(safetySnapshot)) { output ->
+                        writeSnapshot(output, requireNotNull(safetySnapshot), includeDownloadedAudio = true)
+                    }.also { backup ->
+                        verifySafetyBackup(backup)
+                    }
+                } catch (error: Exception) {
+                    throw RestoreFailureException(
+                        RestoreFailurePhase.SAFETY_BACKUP,
+                        error.message ?: "Could not create a verified safety backup",
+                        error,
+                    )
+                }
             } else {
-                stagedDownloadDir?.deleteRecursively()
+                null
             }
+
+            val hasDownloadPayload = packageResult.archiveInfo.downloadedAudioFiles > 0 ||
+                packageResult.archiveInfo.media3DatabaseFiles > 0
+            // A Media3 index is a complete database, not a safely mergeable
+            // collection. Applying it during Merge can orphan the current
+            // profile's audio files, so only Replace restores offline media.
+            val restoreOfflineMedia = mode == OmniRestoreMode.REPLACE &&
+                selection.downloads && packageResult.archiveInfo.isFullArchive
+            val counts = RestoreTransactionBoundary.run {
+                database.withTransaction {
+                    if (mode == OmniRestoreMode.REPLACE) clearLibraryForReplace()
+                    val restored = restoreMerge(
+                        snapshot = selectedSnapshot,
+                        restoreDownloadedAudioState = restoreOfflineMedia && hasDownloadPayload,
+                    )
+                    if (mode == OmniRestoreMode.REPLACE) verifyReplaceRestore(selectedSnapshot)
+                    restored
+                }
+            }
+            databaseCommitted = true
+
+            if (restoreOfflineMedia) {
+                val stage = packageResult.stagedDownloadDir ?: OfflineDownloadArchive.newStagingDirectory(context)
+                try {
+                    // Persist the post-transaction handoff before touching
+                    // media. A process restart will finish only this verified
+                    // stage through OfflineDownloadArchive.applyPending.
+                    OfflineDownloadArchive.markReady(stage, replaceExisting = true)
+                    readyMediaStage = stage
+                    val appliedRestore = OfflineDownloadArchive.applyStaged(
+                        context = context,
+                        stageDir = stage,
+                        replaceExisting = mode == OmniRestoreMode.REPLACE,
+                    )
+                    mediaRestore = appliedRestore
+                    appliedRestore.commit()
+                    mediaRestore = null
+                    readyMediaStage = null
+                } catch (error: Exception) {
+                    throw RestoreFailureException(
+                        RestoreFailurePhase.MEDIA_RESTORE,
+                        error.message ?: "Could not restore offline media",
+                        error,
+                    )
+                } finally {
+                    if (stage != packageResult.stagedDownloadDir) stage.deleteRecursively()
+                }
+            }
+            packageResult.stagedDownloadDir?.deleteRecursively()
 
             OmniBackupImportResult(
-                counts = counts + packageResult.downloadCounts,
-                formatVersion = packageResult.snapshot.formatVersion,
-                createdAtEpochMillis = packageResult.snapshot.createdAtEpochMillis,
-                offlineAudioRestorePending = hasDownloadPayload,
+                counts = counts + if (restoreOfflineMedia) packageResult.downloadCounts else OmniBackupCounts(),
+                formatVersion = selectedSnapshot.formatVersion,
+                createdAtEpochMillis = selectedSnapshot.createdAtEpochMillis,
+                offlineAudioRestorePending = false,
+                safetyBackup = safetyBackup,
             )
         } catch (e: Exception) {
+            readyMediaStage?.let(OfflineDownloadArchive::clearReadyMarker)
+            try {
+                mediaRestore?.rollback()
+            } catch (rollbackError: Exception) {
+                throw RestoreFailureException(
+                    RestoreFailurePhase.ROLLBACK,
+                    "Media rollback failed; the retained safety backup is available for recovery. ${rollbackError.message}",
+                    rollbackError,
+                )
+            }
+            if (databaseCommitted && mode == OmniRestoreMode.REPLACE && safetySnapshot != null) {
+                try {
+                    database.withTransaction {
+                        clearLibraryForReplace()
+                        restoreMerge(requireNotNull(safetySnapshot), restoreDownloadedAudioState = true)
+                        verifyReplaceRestore(requireNotNull(safetySnapshot))
+                    }
+                } catch (rollbackError: Exception) {
+                    throw RestoreFailureException(
+                        RestoreFailurePhase.ROLLBACK,
+                        "Database recovery failed; the retained safety backup is available for recovery. ${rollbackError.message}",
+                        rollbackError,
+                    )
+                }
+            }
             packageResult.stagedDownloadDir?.deleteRecursively()
             throw e
         }
     }
 
-    private fun readBackupPackage(inputStream: InputStream): BackupPackageReadResult {
+    private fun verifySafetyBackup(backup: RestoreSafetyBackup) {
+        val read = FileInputStream(backup.file).use { input -> readBackupPackage(input, stageDownloads = false) }
+        OmniBackupPreflight.validate(
+            snapshot = read.snapshot,
+            mode = OmniRestoreMode.REPLACE,
+            archive = read.archiveInfo,
+            allowEmpty = true,
+        )
+        require(read.snapshot.toPreviewCounts() == backup.counts) { "Safety backup verification counts do not match" }
+    }
+
+    private fun readBackupPackage(
+        inputStream: InputStream,
+        stageDownloads: Boolean,
+    ): BackupPackageReadResult {
         val buffered = BufferedInputStream(inputStream)
         buffered.mark(4)
         val header = ByteArray(4)
         val read = buffered.read(header)
         buffered.reset()
         return if (read >= 2 && header[0] == 'P'.code.toByte() && header[1] == 'K'.code.toByte()) {
-            readZipBackup(buffered)
+            readZipBackup(buffered, stageDownloads)
         } else {
             BackupPackageReadResult(snapshot = readSnapshot(buffered))
         }
@@ -233,59 +399,76 @@ class OmniBackupRepository @Inject constructor(
     }
 
     @SuppressLint("UsableSpace")
-    private fun readZipBackup(inputStream: InputStream): BackupPackageReadResult {
+    private fun readZipBackup(
+        inputStream: InputStream,
+        stageDownloads: Boolean,
+    ): BackupPackageReadResult {
         var snapshot: OmniBackupSnapshot? = null
+        var libraryBytes: ByteArray? = null
+        var manifest: BackupArchiveManifest? = null
         var stagedDir: File? = null
         var audioFileCount = 0
         var audioBytes = 0L
+        var media3DatabaseFiles = 0
         var entryCount = 0
+        val actualFiles = mutableListOf<BackupArchiveFile>()
+        val seenEntries = mutableSetOf<String>()
 
         try {
             ZipInputStream(inputStream).use { zip ->
                 var entry = zip.nextEntry
                 while (entry != null) {
-                entryCount++
-                require(entryCount <= MAX_ARCHIVE_ENTRIES) { "Backup archive contains too many entries" }
-                if (!entry.isDirectory) {
-                    when {
-                        entry.name == OfflineDownloadArchive.LIBRARY_JSON_ENTRY -> {
-                            snapshot = json.decodeFromString(
-                                zip.readBytesLimited(MAX_LIBRARY_JSON_BYTES).toString(StandardCharsets.UTF_8),
-                            )
-                        }
-                        entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
-                            val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
-                            val relative = safeArchiveRelativePath(
-                                entry.name,
-                                OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX,
-                            )
-                            val target = OfflineDownloadArchive.resolveStagingTarget(stage, "files/$relative")
-                            val remaining = (stage.usableSpace - MIN_FREE_SPACE_BYTES).coerceAtLeast(0L)
-                            require(remaining > 0) { "Not enough storage to restore downloaded audio" }
-                            val copied = target.outputStream().use { output ->
-                                zip.copyToLimited(output, minOf(MAX_AUDIO_ENTRY_BYTES, remaining))
+                    entryCount++
+                    require(entryCount <= MAX_ARCHIVE_ENTRIES) { "Backup archive contains too many entries" }
+                    require(seenEntries.add(entry.name)) { "Backup archive contains duplicate entry ${entry.name}" }
+                    if (entry.isDirectory) {
+                        validateArchiveDirectory(entry.name)
+                    } else {
+                        when {
+                            entry.name == OfflineDownloadArchive.LIBRARY_JSON_ENTRY -> {
+                                require(snapshot == null) { "Backup archive contains multiple library.json entries" }
+                                libraryBytes = zip.readBytesLimited(MAX_LIBRARY_JSON_BYTES)
+                                snapshot = decodeSnapshot(requireNotNull(libraryBytes))
                             }
-                            audioFileCount++
-                            audioBytes += copied
-                        }
-                        entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX) -> {
-                            val stage = stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it }
-                            val relative = safeArchiveRelativePath(
-                                entry.name,
-                                OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX,
-                            )
-                            val allowedNames = setOf(
-                                OfflineDownloadArchive.MEDIA3_DATABASE_NAME,
-                                "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-wal",
-                                "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-shm",
-                            )
-                            if (relative in allowedNames) {
-                                val target = OfflineDownloadArchive.resolveStagingTarget(stage, "databases/$relative")
-                                target.outputStream().use { output -> zip.copyToLimited(output, MAX_DATABASE_ENTRY_BYTES) }
+                            entry.name == OfflineDownloadArchive.MANIFEST_JSON_ENTRY -> {
+                                require(manifest == null) { "Backup archive contains multiple manifest.json entries" }
+                                manifest = decodeManifest(zip.readBytesLimited(MAX_MANIFEST_JSON_BYTES))
                             }
+                            entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
+                                val relative = safeArchiveRelativePath(entry.name, OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX)
+                                val stage = if (stageDownloads) stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it } else null
+                                val output = stage?.let { current ->
+                                    val remaining = (current.usableSpace - MIN_FREE_SPACE_BYTES).coerceAtLeast(0L)
+                                    require(remaining > 0) { "Not enough storage to stage downloaded audio" }
+                                    OfflineDownloadArchive.resolveStagingTarget(current, "files/$relative").outputStream()
+                                }
+                                val copied = if (output != null) {
+                                    output.use { zip.copyToLimitedAndDigest(it, MAX_AUDIO_ENTRY_BYTES) }
+                                } else {
+                                    zip.copyToLimitedAndDigest(null, MAX_AUDIO_ENTRY_BYTES)
+                                }
+                                actualFiles += BackupArchiveFile(entry.name, copied.byteCount, copied.sha256)
+                                audioFileCount++
+                                audioBytes += copied.byteCount
+                            }
+                            entry.name.startsWith(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX) -> {
+                                val relative = safeArchiveRelativePath(entry.name, OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX)
+                                require(relative in media3DatabaseNames()) { "Unsupported Media3 database entry" }
+                                val stage = if (stageDownloads) stagedDir ?: OfflineDownloadArchive.newStagingDirectory(context).also { stagedDir = it } else null
+                                val output = stage?.let { current ->
+                                    OfflineDownloadArchive.resolveStagingTarget(current, "databases/$relative").outputStream()
+                                }
+                                val copied = if (output != null) {
+                                    output.use { zip.copyToLimitedAndDigest(it, MAX_DATABASE_ENTRY_BYTES) }
+                                } else {
+                                    zip.copyToLimitedAndDigest(null, MAX_DATABASE_ENTRY_BYTES)
+                                }
+                                actualFiles += BackupArchiveFile(entry.name, copied.byteCount, copied.sha256)
+                                media3DatabaseFiles++
+                            }
+                            else -> throw IllegalArgumentException("Backup archive contains unsupported entry ${entry.name}")
                         }
                     }
-                }
                     zip.closeEntry()
                     entry = zip.nextEntry
                 }
@@ -303,6 +486,15 @@ class OmniBackupRepository @Inject constructor(
                 downloadedAudioBytes = audioBytes,
             ),
             stagedDownloadDir = stagedDir,
+            archiveInfo = BackupArchiveInfo(
+                isFullArchive = true,
+                manifest = manifest,
+                actualLibrarySha256 = libraryBytes?.let(::sha256),
+                actualFiles = actualFiles.sortedBy { it.entryName },
+                downloadedAudioFiles = audioFileCount,
+                downloadedAudioBytes = audioBytes,
+                media3DatabaseFiles = media3DatabaseFiles,
+            ),
         )
     }
 
@@ -320,6 +512,28 @@ class OmniBackupRepository @Inject constructor(
         }
 
         return parts.joinToString("/")
+    }
+
+    private fun validateArchiveDirectory(entryName: String) {
+        require(entryName.endsWith('/')) { "Invalid backup archive directory" }
+        when {
+            entryName == "downloads/" ||
+                entryName == OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX ||
+                entryName == OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX -> Unit
+            entryName.startsWith(OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX) -> {
+                safeArchiveRelativePath(
+                    entryName.removeSuffix("/"),
+                    OfflineDownloadArchive.DOWNLOAD_FILES_PREFIX,
+                )
+            }
+            entryName.startsWith(OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX) -> {
+                safeArchiveRelativePath(
+                    entryName.removeSuffix("/"),
+                    OfflineDownloadArchive.DOWNLOAD_DATABASE_PREFIX,
+                )
+            }
+            else -> throw IllegalArgumentException("Backup archive contains unsupported directory $entryName")
+        }
     }
 
     private fun InputStream.readBytesLimited(limit: Long): ByteArray {
@@ -340,18 +554,55 @@ class OmniBackupRepository @Inject constructor(
         }
     }
 
+    private fun InputStream.copyToLimitedAndDigest(output: OutputStream?, limit: Long): CopiedArchiveEntry {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) return CopiedArchiveEntry(total, digest.digest().toHex())
+            total += read
+            require(total <= limit) { "Backup entry exceeds the allowed size" }
+            output?.write(buffer, 0, read)
+            digest.update(buffer, 0, read)
+        }
+    }
+
+    private fun decodeSnapshot(bytes: ByteArray): OmniBackupSnapshot = try {
+        json.decodeFromString(bytes.toString(StandardCharsets.UTF_8))
+    } catch (error: SerializationException) {
+        throw IllegalArgumentException("Backup archive library.json is invalid", error)
+    } catch (error: IllegalArgumentException) {
+        throw IllegalArgumentException("Backup archive library.json is invalid", error)
+    }
+
+    private fun decodeManifest(bytes: ByteArray): BackupArchiveManifest = try {
+        json.decodeFromString(bytes.toString(StandardCharsets.UTF_8))
+    } catch (error: SerializationException) {
+        throw IllegalArgumentException("Backup archive manifest.json is invalid", error)
+    } catch (error: IllegalArgumentException) {
+        throw IllegalArgumentException("Backup archive manifest.json is invalid", error)
+    }
+
+    private fun media3DatabaseNames() = setOf(
+        OfflineDownloadArchive.MEDIA3_DATABASE_NAME,
+        "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-wal",
+        "${OfflineDownloadArchive.MEDIA3_DATABASE_NAME}-shm",
+    )
+
     companion object {
         private const val MAX_LIBRARY_JSON_BYTES = 64L * 1024 * 1024
+        private const val MAX_MANIFEST_JSON_BYTES = 16L * 1024 * 1024
         private const val MAX_DATABASE_ENTRY_BYTES = 512L * 1024 * 1024
         private const val MAX_AUDIO_ENTRY_BYTES = 2L * 1024 * 1024 * 1024
         private const val MIN_FREE_SPACE_BYTES = 256L * 1024 * 1024
         private const val MAX_ARCHIVE_ENTRIES = 100_000
     }
 
-    private fun validate(snapshot: OmniBackupSnapshot) {
-        require(snapshot.appName == "OmniTune") { "This backup was not created by OmniTune" }
-        require(snapshot.formatVersion in 1..OMNI_BACKUP_FORMAT_VERSION) {
-            "Unsupported backup format version ${snapshot.formatVersion}"
+    private suspend fun MusicDatabase.verifyReplaceRestore(snapshot: OmniBackupSnapshot) {
+        val restored = createSnapshot().toPreviewCounts()
+        require(restored == snapshot.toPreviewCounts()) {
+            "Database verification does not match the selected backup"
         }
     }
 
@@ -545,6 +796,15 @@ class OmniBackupRepository @Inject constructor(
     }
 
     private suspend fun MusicDatabase.clearLibraryForReplace() {
+        // Queue, playback metadata, and caches refer to the old library and are
+        // not part of a restorable snapshot. Clear them inside the same Room
+        // transaction so Replace cannot leave orphaned records behind.
+        backupClearQueue()
+        backupClearSongSkips()
+        backupClearSetVideoIds()
+        backupClearRelatedSongMaps()
+        backupClearFormats()
+        backupClearLyrics()
         backupClearPlaylistTagMaps()
         backupClearTags()
         backupClearEvents()
@@ -601,21 +861,22 @@ class OmniBackupRepository @Inject constructor(
         val snapshot: OmniBackupSnapshot,
         val downloadCounts: OmniBackupCounts = OmniBackupCounts(),
         val stagedDownloadDir: File? = null,
+        val archiveInfo: BackupArchiveInfo = BackupArchiveInfo(),
+    )
+
+    private data class CopiedArchiveEntry(
+        val byteCount: Long,
+        val sha256: String,
     )
 }
 
-private fun OmniBackupSnapshot.exportedCounts() = OmniBackupCounts(
-    songs = songs.size,
-    likedSongs = songs.count { it.liked },
-    playlists = playlists.size,
-    playlistEntries = playlistSongs.size,
-    artists = artists.size,
-    albums = albums.size,
-    historyItems = history.size,
-    statRecords = stats.size,
-    tags = tags.size,
-    playlistTags = playlistTags.size,
-)
+private fun OmniBackupSnapshot.exportedCounts() = toPreviewCounts()
+
+private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
+    .digest(bytes)
+    .toHex()
+
+private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
 private fun SongEntity.toBackupSong() = BackupSong(
     id = id,

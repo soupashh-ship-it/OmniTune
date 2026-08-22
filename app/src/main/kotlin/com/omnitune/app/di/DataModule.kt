@@ -9,8 +9,14 @@ import com.omnitune.app.data.LyricsRepository
 import com.omnitune.app.data.LyricsRepositoryImpl
 import com.omnitune.app.data.MusicRepository
 import com.omnitune.app.data.MusicRepositoryImpl
+import com.omnitune.app.data.SearchProvider
 import com.omnitune.app.data.StreamRepository
 import com.omnitune.app.data.StreamRepositoryImpl
+import com.omnitune.app.data.YouTubeSearchProvider
+import com.omnitune.app.ui.screens.AndroidSearchNetworkStatus
+import com.omnitune.app.ui.screens.ProductionSearchTiming
+import com.omnitune.app.ui.screens.SearchNetworkStatus
+import com.omnitune.app.ui.screens.SearchTiming
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -38,4 +44,22 @@ abstract class DataModule {
     abstract fun bindMusicRepository(
         impl: MusicRepositoryImpl
     ): MusicRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSearchProvider(
+        impl: YouTubeSearchProvider,
+    ): SearchProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSearchNetworkStatus(
+        impl: AndroidSearchNetworkStatus,
+    ): SearchNetworkStatus
+
+    @Binds
+    @Singleton
+    abstract fun bindSearchTiming(
+        impl: ProductionSearchTiming,
+    ): SearchTiming
 }

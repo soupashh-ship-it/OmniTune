@@ -6,64 +6,42 @@
 package com.omnitune.app.playback
 
 import android.content.Context
-import com.omnitune.app.constants.EnableLastFMScrobblingKey
-import com.omnitune.app.constants.LastFMSessionKey
-import com.omnitune.app.constants.LastFMUseNowPlaying
+import com.omnitune.app.constants.ListenBrainzEnabledKey
+import com.omnitune.app.constants.ListenBrainzNowPlayingKey
+import com.omnitune.app.constants.ListenBrainzTokenKey
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
-import com.omnitune.lastfm.LastFM
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import timber.log.Timber
+import kotlinx.coroutines.launch
 
+/** Owns user-authorized ListenBrainz scrobbling for the playback service. */
 class ScrobblingManager(
     private val context: Context,
     private val scope: CoroutineScope,
 ) {
-
-    private suspend fun isEnabled(): Boolean {
-        val prefs = context.dataStore.data.first()
-        val enabled = prefs[EnableLastFMScrobblingKey] ?: false
-        val hasSession = SecurePreferenceCipher.decryptOrPlain(prefs[LastFMSessionKey]).isNotBlank()
-        return enabled && hasSession
+    private suspend fun activeToken(): String? {
+        val preferences = context.dataStore.data.first()
+        if (preferences[ListenBrainzEnabledKey] != true) return null
+        return SecurePreferenceCipher.decryptOrPlain(preferences[ListenBrainzTokenKey])
+            .takeIf { it.isNotBlank() }
     }
 
-    /**
-     * Called when a new track starts playing. Sends "now playing" update to Last.fm
-     * if the user has enabled scrobbling and the now-playing toggle.
-     */
     fun onTrackChanged(title: String, artist: String, album: String?) {
         scope.launch(Dispatchers.IO) {
-            try {
-                if (!isEnabled()) return@launch
-                val useNowPlaying = context.dataStore.data.first()[LastFMUseNowPlaying] ?: true
-                if (!useNowPlaying) return@launch
-
-                LastFM.updateNowPlaying(artist = artist, track = title, album = album)
-                Timber.tag("Scrobbling").d("Now playing updated: %s - %s", artist, title)
-            } catch (e: Exception) {
-                Timber.tag("Scrobbling").e(e, "Failed to update now playing: %s - %s", artist, title)
-            }
+            val preferences = context.dataStore.data.first()
+            if (preferences[ListenBrainzNowPlayingKey] != true) return@launch
+            val token = activeToken() ?: return@launch
+            ListenBrainzScrobblingClient.submitPlayingNow(token, title, artist, album)
         }
     }
 
-    /**
-     * Called when the user has listened past the scrobble threshold. Submits
-     * a scrobble to Last.fm.
-     */
     fun onScrobbleThreshold(title: String, artist: String, album: String?, durationMs: Long) {
         scope.launch(Dispatchers.IO) {
-            try {
-                if (!isEnabled()) return@launch
-
-                val timestamp = System.currentTimeMillis() / 1000L
-                LastFM.scrobble(artist = artist, track = title, timestamp = timestamp, album = album)
-                Timber.tag("Scrobbling").d("Scrobbled: %s - %s", artist, title)
-            } catch (e: Exception) {
-                Timber.tag("Scrobbling").e(e, "Failed to scrobble: %s - %s", artist, title)
-            }
+            val token = activeToken() ?: return@launch
+            val startedAt = (System.currentTimeMillis() - durationMs.coerceAtLeast(0L)) / 1000L
+            ListenBrainzScrobblingClient.submitSingle(token, title, artist, album, startedAt)
         }
     }
 }

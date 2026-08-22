@@ -143,17 +143,15 @@ fun MiniPlayer(
         isDark = true,
         isPureBlack = pureBlack,
     ).copy(
-        // The supplied chrome is intentionally stable: artwork belongs inside the
-        // card, while the player itself keeps the same burgundy surface on every song.
-        surfaceTint = Color(0xFF2B1D27),
-        surfaceAlpha = if (pureBlack) 0.90f else 0.98f,
-        overlayColor = Color(0xFF4A2733),
-        overlayAlpha = if (pureBlack) 0.22f else 0.40f,
-        borderColor = OmniColors.OmniAccentPrimary,
-        borderAlpha = 0.42f,
-        shadowSpot = OmniColors.OmniAccentPrimary.copy(alpha = 0.12f),
+        surfaceTint = if (pureBlack) Color(0xFF0C0C10) else Color(0xFF181822),
+        surfaceAlpha = 1f,
+        borderColor = if (pureBlack) Color(0xFF1E1E26) else Color(0xFF2E2E3E),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 10.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.5f),
+        shadowSpot = Color.Black.copy(alpha = 0.4f),
     )
-
     OmniGlassSurface(
         shape = OmniShapes.Dock,
         style = miniGlassStyle,
@@ -208,26 +206,14 @@ fun MiniPlayer(
                 },
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                // The small centered handle is part of the reference mini-player,
-                // not an affordance that opens another route.
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 6.dp)
-                        .width(42.dp)
-                        .height(4.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(Color.White.copy(alpha = 0.42f)),
-                )
-
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                         .clip(OmniShapes.Dock)
-                    .padding(start = OmniSpacing.compact, end = OmniSpacing.micro, top = 12.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+                        .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                 Row(
                     modifier = Modifier
                         .weight(1f)

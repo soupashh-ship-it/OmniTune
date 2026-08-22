@@ -82,7 +82,7 @@ class CoilBitmapLoader(
                             }
                         }
                         is ErrorResult -> {
-                            result.throwable?.let { reportException(it) }
+                            reportException(result.throwable)
                         }
                     }
                 } catch (e: Exception) {

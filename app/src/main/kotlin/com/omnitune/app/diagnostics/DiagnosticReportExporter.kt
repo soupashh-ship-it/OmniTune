@@ -16,10 +16,16 @@ import java.io.File
 import java.time.Instant
 
 object DiagnosticReportExporter {
-    private val queryUrlPattern = """https?://[^\s"']+\?[^\s"']+""".toRegex(RegexOption.IGNORE_CASE)
-    private val sensitiveHeaderPattern = """(?i)\b(authorization|cookie)\s*[:=]\s*.*""".toRegex()
+    private const val MAX_LOG_LINES = 200
+    private const val MAX_REPORT_CHARACTERS = 48 * 1024
+    private val providerUrlPattern = """https?://[^\s"']+""".toRegex(RegexOption.IGNORE_CASE)
+    private val sensitiveHeaderPattern = """(?i)\b(authorization|cookie|set-cookie|cookie2)\s*[:=]\s*.*""".toRegex()
     private val sensitiveKeyValuePattern =
-        """(?i)\b((?:access|refresh|id)[_-]?token|x[_-]?api[_-]?(?:key|token)|api[_-]?key|po[_-]?token|potoken|token|session|password|keystore|key_password|visitor)[\w-]*\s*[:=]\s*([^\s,;"']+)""".toRegex()
+        """(?i)\b(((?:access|refresh|id)[_-]?token|x[_-]?api[_-]?(?:key|token)|api[_-]?key|po[_-]?token|potoken|token|session|password|keystore|key_password|visitor|sapisid|apisid|sid|hsid|ssid|(?:user|account|channel)[_-]?id|query|search[_-]?query|q)[\w-]*)\s*[:=]\s*([^\s,;"']+)""".toRegex()
+    private val quotedSensitiveKeyValuePattern =
+        """(?i)(["'](?:access|refresh|id)[_-]?token[\w-]*["']\s*:\s*|["']x[_-]?api[_-]?(?:key|token)[\w-]*["']\s*:\s*|["']api[_-]?key[\w-]*["']\s*:\s*|["']po[_-]?token[\w-]*["']\s*:\s*|["'](?:potoken|token|session|password|keystore|key_password|visitor|sapisid|apisid|sid|hsid|ssid)[\w-]*["']\s*:\s*|["'](?:user|account|channel)[_-]?id[\w-]*["']\s*:\s*|["'](?:query|search[_-]?query|q)[\w-]*["']\s*:\s*)(?:"[^"]*"|'[^']*'|[^\s,;}\]]+)""".toRegex()
+    private val sensitiveQueryPattern =
+        """(?im)\b(query|search[_-]?query|q)\s*[:=]\s*[^\r\n]*""".toRegex()
     private val bearerTokenPattern = """(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+""".toRegex()
 
     fun createShareIntent(context: Context): Intent {
@@ -39,6 +45,16 @@ object DiagnosticReportExporter {
             },
             "Share diagnostic report",
         )
+    }
+
+    /** Removes every local diagnostic artifact, including the legacy pre-redaction crash file. */
+    fun clearStoredDiagnostics(context: Context) {
+        File(context.cacheDir, "diagnostics").deleteRecursively()
+        context.getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .remove("last_crash")
+            .apply()
+        context.getExternalFilesDir(null)?.resolve("crash.txt")?.delete()
     }
 
     private fun writeReport(context: Context): File {
@@ -73,7 +89,7 @@ object DiagnosticReportExporter {
         appendLine()
         appendLine("Recent logs")
         appendLine(sanitizedLogs())
-    }
+    }.take(MAX_REPORT_CHARACTERS)
 
     private fun networkState(context: Context): String {
         val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
@@ -101,10 +117,13 @@ object DiagnosticReportExporter {
 
     @androidx.annotation.VisibleForTesting
     internal fun sanitize(text: String): String {
-        return text.lineSequence().take(200).joinToString("\n")
-            .replace(queryUrlPattern, "<REDACTED_URL>")
+        return text.lineSequence().take(MAX_LOG_LINES).joinToString("\n")
+            .replace(providerUrlPattern, "<REDACTED_URL>")
             .replace(sensitiveHeaderPattern) { "${it.groupValues[1]}: <REDACTED>" }
+            .replace(quotedSensitiveKeyValuePattern) { "${it.groupValues[1]}<REDACTED>" }
+            .replace(sensitiveQueryPattern) { "${it.groupValues[1]}: <REDACTED>" }
             .replace(sensitiveKeyValuePattern) { "${it.groupValues[1]}: <REDACTED>" }
             .replace(bearerTokenPattern, "Bearer <REDACTED>")
+            .take(MAX_REPORT_CHARACTERS)
     }
 }

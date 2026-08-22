@@ -94,6 +94,7 @@ class DebugActivity : ComponentActivity() {
 }
 
 @Composable
+@Suppress("DEPRECATION") // Debug-only clipboard action; migrate when this screen adopts suspend callbacks.
 private fun CrashReportScreen(
     previewText: String,
     timestampText: String,

@@ -6,6 +6,7 @@
 package com.omnitune.app.playback
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
@@ -20,6 +21,7 @@ import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -28,8 +30,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class PlaybackPreferenceObserver(
-    context: Context,
+class PlaybackPreferenceObserver internal constructor(
+    private val preferences: Flow<Preferences>,
     private val player: ExoPlayer,
     private val scope: CoroutineScope,
     private val playerVolume: MutableStateFlow<Float>,
@@ -39,7 +41,28 @@ class PlaybackPreferenceObserver(
     private val audioNormalizationEnabled: MutableStateFlow<Boolean>,
     private val onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
 ) {
-    private val dataStore = context.applicationContext.dataStore
+    constructor(
+        context: Context,
+        player: ExoPlayer,
+        scope: CoroutineScope,
+        playerVolume: MutableStateFlow<Float>,
+        playbackFadeFactor: MutableStateFlow<Float>,
+        normalizationFactor: MutableStateFlow<Float>,
+        crossfadeDurationMs: MutableStateFlow<Int>,
+        audioNormalizationEnabled: MutableStateFlow<Boolean>,
+        onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
+    ) : this(
+        preferences = context.applicationContext.dataStore.data,
+        player = player,
+        scope = scope,
+        playerVolume = playerVolume,
+        playbackFadeFactor = playbackFadeFactor,
+        normalizationFactor = normalizationFactor,
+        crossfadeDurationMs = crossfadeDurationMs,
+        audioNormalizationEnabled = audioNormalizationEnabled,
+        onAutoSkipNextOnErrorChanged = onAutoSkipNextOnErrorChanged,
+    )
+
     private val jobs = mutableListOf<Job>()
 
     fun start() {
@@ -47,7 +70,7 @@ class PlaybackPreferenceObserver(
 
         // Skip Silence
         jobs += scope.launch {
-            dataStore.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
+            preferences.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
                 player.skipSilenceEnabled = skipSilence
                 Timber.tag("MusicService").d("Skip silence: $skipSilence")
             }
@@ -56,9 +79,9 @@ class PlaybackPreferenceObserver(
         // Crossfade needs decoded PCM so both players can mix without an offload transition gap.
         jobs += scope.launch {
             combine(
-                dataStore.data.map { it[AudioOffload] ?: false }.distinctUntilChanged(),
-                dataStore.data.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged(),
-                dataStore.data.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged(),
+                preferences.map { it[AudioOffload] ?: false }.distinctUntilChanged(),
+                preferences.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged(),
+                preferences.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged(),
             ) { offload, durationMs, skipSilence -> Triple(offload, durationMs, skipSilence) }
                 .distinctUntilChanged()
                 .collect { (offload, durationMs, skipSilence) ->
@@ -72,7 +95,7 @@ class PlaybackPreferenceObserver(
 
         // Player Volume
         jobs += scope.launch {
-            dataStore.data.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
+            preferences.map { it[PlayerVolumeKey] ?: 1f }.distinctUntilChanged().collect { volume ->
                 setPlayerVolume(volume.coerceIn(0f, 1f))
             }
         }
@@ -88,7 +111,7 @@ class PlaybackPreferenceObserver(
 
         // Repeat Mode
         jobs += scope.launch {
-            dataStore.data.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
+            preferences.map { it[RepeatModeKey] ?: Player.REPEAT_MODE_OFF }.distinctUntilChanged().collect { mode ->
                 player.repeatMode = mode
                 Timber.tag("MusicService").d("Repeat mode: $mode")
             }
@@ -96,7 +119,7 @@ class PlaybackPreferenceObserver(
 
         // Shuffle Mode
         jobs += scope.launch {
-            dataStore.data.map { it[ShuffleEnabledKey] ?: false }.distinctUntilChanged().collect { enabled ->
+            preferences.map { it[ShuffleEnabledKey] ?: false }.distinctUntilChanged().collect { enabled ->
                 player.shuffleModeEnabled = enabled
                 Timber.tag("OmniTuneQueue").d("Shuffle restored/changed: enabled=$enabled")
             }
@@ -104,14 +127,14 @@ class PlaybackPreferenceObserver(
 
         // Audio Normalization
         jobs += scope.launch {
-            dataStore.data.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
+            preferences.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
                 audioNormalizationEnabled.value = enabled
             }
         }
 
         // Auto skip on error
         jobs += scope.launch {
-            dataStore.data.map { it[AutoSkipNextOnErrorKey] ?: true }.distinctUntilChanged().collect { autoSkip ->
+            preferences.map { it[AutoSkipNextOnErrorKey] ?: true }.distinctUntilChanged().collect { autoSkip ->
                 onAutoSkipNextOnErrorChanged(autoSkip)
             }
         }

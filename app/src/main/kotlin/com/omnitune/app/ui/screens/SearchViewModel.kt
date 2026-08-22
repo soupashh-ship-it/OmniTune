@@ -9,12 +9,12 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.data.SearchProvider
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.constants.RestrictExplicitContentKey
 import com.omnitune.app.constants.SafeSearchKey
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.dataStore
-import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.ProviderErrorType
 import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.innertube.YouTube
@@ -27,6 +27,7 @@ import timber.log.Timber
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import dagger.hilt.android.qualifiers.ApplicationContext
 
@@ -74,12 +76,13 @@ data class SearchUiState(
     val continuation: String? = null,
 )
 
-private const val SEARCH_DEBOUNCE_MS = 400L
-
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
+    private val searchProvider: SearchProvider,
+    private val networkStatus: SearchNetworkStatus,
+    private val searchTiming: SearchTiming,
 ) : ViewModel() {
     private data class SearchBucketState(
         val songs: List<SongItem> = emptyList(),
@@ -98,6 +101,7 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+    private val requestGate = SearchRequestGate()
     private val lastGoodResults = object : java.util.LinkedHashMap<String, SearchBucketState>(24, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, SearchBucketState>?) = size > 24
     }
@@ -111,6 +115,7 @@ class SearchViewModel @Inject constructor(
 
                     searchJob?.cancel()
                     if (q.isBlank()) {
+                        requestGate.invalidate()
                         _uiState.value = _uiState.value.copy(
                             isSearching = false,
                             songs = emptyList(),
@@ -135,9 +140,10 @@ class SearchViewModel @Inject constructor(
                             searchHistory = emptyList(),
                             error = null,
                         )
+                        val request = requestGate.begin(q.trim(), selectedFilter)
                         searchJob = viewModelScope.launch {
-                            delay(SEARCH_DEBOUNCE_MS)
-                            performSearch(q.trim(), selectedFilter)
+                            delay(searchTiming.debounceMillis)
+                            performSearch(request)
                         }
                     }
                 }
@@ -154,12 +160,9 @@ class SearchViewModel @Inject constructor(
                     val currentQuery = _query.value.trim()
                     if (currentQuery.isNotBlank()) {
                         searchJob?.cancel()
+                        val request = requestGate.begin(currentQuery, _uiState.value.selectedFilter)
                         searchJob = viewModelScope.launch {
-                            performSearch(
-                                query = currentQuery,
-                                filter = _uiState.value.selectedFilter,
-                                forceRefresh = true,
-                            )
+                            performSearch(request, forceRefresh = true)
                         }
                     }
                 }
@@ -170,8 +173,9 @@ class SearchViewModel @Inject constructor(
         val q = _query.value
         if (q.isNotBlank()) {
             searchJob?.cancel()
+            val request = requestGate.begin(q.trim(), _uiState.value.selectedFilter)
             searchJob = viewModelScope.launch {
-                performSearch(q.trim(), _uiState.value.selectedFilter, forceRefresh = true)
+                performSearch(request, forceRefresh = true)
             }
         }
     }
@@ -182,8 +186,9 @@ class SearchViewModel @Inject constructor(
         val q = _query.value.trim()
         if (q.isBlank()) return
         searchJob?.cancel()
+        val request = requestGate.begin(q, filter)
         searchJob = viewModelScope.launch {
-            performSearch(q, filter)
+            performSearch(request)
         }
     }
 
@@ -191,19 +196,23 @@ class SearchViewModel @Inject constructor(
         val current = _uiState.value
         val continuation = current.continuation ?: return
         if (current.isSearching || current.isLoadingMore) return
+        val request = requestGate.currentFor(current.query.trim(), current.selectedFilter) ?: return
         searchJob = viewModelScope.launch {
-            loadMore(current.query.trim(), current.selectedFilter, continuation)
+            loadMore(request, continuation)
         }
     }
 
     private suspend fun performSearch(
-        query: String,
-        filter: SearchFilterTab,
+        request: SearchRequest,
         forceRefresh: Boolean = false,
     ) {
+        if (!requestGate.accepts(request)) return
+        val query = request.query
+        val filter = request.filter
         val cacheKey = cacheKey(query, filter)
         if (!forceRefresh) {
             lastGoodResults[cacheKey]?.let { cached ->
+                if (!requestGate.accepts(request)) return
                 _uiState.value = _uiState.value.withBucket(
                     query = query,
                     filter = filter,
@@ -214,6 +223,7 @@ class SearchViewModel @Inject constructor(
             }
         }
 
+        if (!requestGate.accepts(request)) return
         _uiState.value = _uiState.value.copy(
             selectedFilter = filter,
             isSearching = true,
@@ -226,7 +236,7 @@ class SearchViewModel @Inject constructor(
         Timber.tag("OmniTuneSearch").i("Starting search: length=${query.length}, filter=$filter")
 
         val rawBucket = try {
-            val networkAvailable = isInternetAvailable(context)
+            val networkAvailable = networkStatus.isOnline()
             if (!networkAvailable) {
                 val cached = lastGoodResults[cacheKey]
                 if (cached != null) {
@@ -240,6 +250,8 @@ class SearchViewModel @Inject constructor(
             } else {
                 searchFilter(query, filter)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             val cached = lastGoodResults[cacheKey]
             if (cached != null) {
@@ -252,11 +264,25 @@ class SearchViewModel @Inject constructor(
                 )
             }
         }
-        val bucket = rawBucket.visibleResults(query)
+        val visibleBucket = rawBucket.visibleResults(query)
+        // Provider APIs represent many failures as Result.failure rather than throwing. Treat
+        // those the same as thrown failures so a refresh never discards known-good results.
+        val bucket = if (visibleBucket.error != null) {
+            lastGoodResults[cacheKey]?.copy(status = SearchStatus.CachedResultsShown) ?: visibleBucket
+        } else {
+            visibleBucket
+        }
+
+        if (!requestGate.accepts(request)) return
 
         Timber.tag("OmniTuneSearch").i(
             "Search complete: filter=$filter songs=${bucket.songs.size}, artists=${bucket.artists.size}, albums=${bucket.albums.size}, playlists=${bucket.playlists.size}",
         )
+
+        if (bucket.error == null && bucket.hasResults) {
+            saveSearchQuery(query)
+            lastGoodResults[cacheKey] = bucket
+        }
 
         _uiState.value = _uiState.value.withBucket(
             query = query,
@@ -264,11 +290,6 @@ class SearchViewModel @Inject constructor(
             bucket = bucket,
             isSearching = false,
         )
-
-        if (bucket.error == null && bucket.hasResults) {
-            saveSearchQuery(query)
-            lastGoodResults[cacheKey] = bucket
-        }
     }
 
     private suspend fun searchFilter(query: String, filter: SearchFilterTab): SearchBucketState =
@@ -289,10 +310,10 @@ class SearchViewModel @Inject constructor(
         var bucketFailures = 0
 
         kotlinx.coroutines.supervisorScope {
-            val songDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_SONG) }
-            val albumDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ALBUM) }
-            val artistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST) }
-            val playlistDeferred = async { YouTube.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST) }
+            val songDeferred = async { searchProvider.search(query, YouTube.SearchFilter.FILTER_SONG) }
+            val albumDeferred = async { searchProvider.search(query, YouTube.SearchFilter.FILTER_ALBUM) }
+            val artistDeferred = async { searchProvider.search(query, YouTube.SearchFilter.FILTER_ARTIST) }
+            val playlistDeferred = async { searchProvider.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST) }
 
             songDeferred.await()
                 .onSuccess { songsList = it.items.filterIsInstance<SongItem>() }
@@ -309,7 +330,7 @@ class SearchViewModel @Inject constructor(
         }
 
         if (songsList.isEmpty() && artistsList.isEmpty() && albumsList.isEmpty() && playlistsList.isEmpty()) {
-            YouTube.searchSummary(query)
+            searchProvider.searchSummary(query)
                 .onSuccess { summaryResult ->
                     summaryResult.summaries.forEach { summary ->
                         when {
@@ -341,7 +362,7 @@ class SearchViewModel @Inject constructor(
         providerFilter: YouTube.SearchFilter,
         tab: SearchFilterTab,
     ): SearchBucketState {
-        return YouTube.search(query, providerFilter).fold(
+        return searchProvider.search(query, providerFilter).fold(
             onSuccess = { result ->
                 val songs = result.items.filterIsInstance<SongItem>()
                 val albums = result.items.filterIsInstance<AlbumItem>()
@@ -373,14 +394,14 @@ class SearchViewModel @Inject constructor(
     }
 
     private suspend fun searchPlaylists(query: String): SearchBucketState {
-        val featured = YouTube.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
+        val featured = searchProvider.search(query, YouTube.SearchFilter.FILTER_FEATURED_PLAYLIST)
         val featuredItems = featured.getOrNull()?.items?.filterIsInstance<PlaylistItem>().orEmpty()
         val continuation = featured.getOrNull()?.continuation
         if (featuredItems.isNotEmpty()) {
             return SearchBucketState(playlists = featuredItems, continuation = continuation).withResolvedStatus(query)
         }
 
-        return YouTube.search(query, YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST).fold(
+        return searchProvider.search(query, YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST).fold(
             onSuccess = { result ->
                 SearchBucketState(
                     playlists = result.items.filterIsInstance<PlaylistItem>(),
@@ -398,10 +419,14 @@ class SearchViewModel @Inject constructor(
         )
     }
 
-    private suspend fun loadMore(query: String, filter: SearchFilterTab, continuation: String) {
+    private suspend fun loadMore(request: SearchRequest, continuation: String) {
+        if (!requestGate.accepts(request)) return
+        val query = request.query
+        val filter = request.filter
         _uiState.value = _uiState.value.copy(isLoadingMore = true, error = null)
-        YouTube.searchContinuation(continuation).fold(
+        searchProvider.searchContinuation(continuation).fold(
             onSuccess = { result ->
+                if (!requestGate.accepts(request)) return@fold
                 val current = _uiState.value
                 val bucket = when (filter) {
                     SearchFilterTab.Songs,
@@ -434,6 +459,7 @@ class SearchViewModel @Inject constructor(
                 if (bucket.hasResults) lastGoodResults[cacheKey(query, filter)] = bucket
             },
             onFailure = { throwable ->
+                if (!requestGate.accepts(request)) return@fold
                 reportException(throwable)
                 _uiState.value = _uiState.value.copy(
                     isLoadingMore = false,
@@ -522,9 +548,16 @@ class SearchViewModel @Inject constructor(
         _query.value = ""
     }
 
-    private fun saveSearchQuery(query: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            database.insert(SearchHistory(query = query))
+    private suspend fun saveSearchQuery(query: String) {
+        try {
+            withContext(Dispatchers.IO) {
+                database.insert(SearchHistory(query = query))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Search results remain useful if local history storage is unavailable.
+            Timber.tag("OmniTuneSearch").w(e, "Could not save search history")
         }
     }
 

@@ -8,6 +8,7 @@ import com.omnitune.app.db.entities.QueueEntity
 import com.omnitune.app.playback.queues.Queue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,7 +19,8 @@ import timber.log.Timber
 class QueuePersistenceManager(
     private val player: Player,
     private val database: MusicDatabase,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private var saveQueueJob: Job? = null
 
@@ -55,7 +57,7 @@ class QueuePersistenceManager(
 
     fun saveQueueState(queueTitle: String?) {
         saveQueueJob?.cancel()
-        saveQueueJob = scope.launch(Dispatchers.IO) {
+        saveQueueJob = scope.launch(ioDispatcher) {
             try {
                 delay(1000) // Debounce
 

@@ -59,23 +59,12 @@ android {
             .takeIf { it.exists() }
             ?.let { Properties().apply { load(it.inputStream()) } }
 
-        val lastfmApiKey = localProperties?.getProperty("LASTFM_API_KEY")
-            ?: System.getenv("LASTFM_API_KEY")
-            ?: ""
-        val lastfmSecret = localProperties?.getProperty("LASTFM_SECRET")
-            ?: System.getenv("LASTFM_SECRET")
-            ?: ""
         val youtubeMusicApiKey = localProperties?.getProperty("YOUTUBE_MUSIC_API_KEY")
             ?: System.getenv("YOUTUBE_MUSIC_API_KEY")
             ?: ""
 
-        buildConfigField("String", "LASTFM_API_KEY", "\"$lastfmApiKey\"")
-        buildConfigField("String", "LASTFM_SECRET", "\"$lastfmSecret\"")
         buildConfigField("String", "YOUTUBE_MUSIC_API_KEY", "\"$youtubeMusicApiKey\"")
 
-        val togetherBearerToken = localProperties?.getProperty("TOGETHER_BEARER_TOKEN")
-            ?: System.getenv("TOGETHER_BEARER_TOKEN") ?: ""
-        buildConfigField("String", "TOGETHER_BEARER_TOKEN", "\"$togetherBearerToken\"")
     }
 
 
@@ -134,6 +123,13 @@ android {
         )
     }
 
+    sourceSets {
+        getByName("androidTest") {
+            // MigrationTestHelper loads Room's exported schema JSON from the test APK.
+            assets.directories.add("$projectDir/schemas")
+        }
+    }
+
     lint {
         disable.add("UnsafeOptInUsageError")
         disable.add("IconLauncherShape")
@@ -164,7 +160,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         freeCompilerArgs.addAll(
             "-Xannotation-default-target=param-property",
             "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=androidx.media3.common.util.UnstableApi"
         )
     }
 }
@@ -214,15 +209,8 @@ dependencies {
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.websockets)
     implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.encoding)
     implementation(libs.ktor.serialization.json)
-    implementation(libs.ktor.server.core)
-    implementation(libs.ktor.server.cio)
-    implementation(libs.ktor.server.websockets)
-    implementation(libs.ktor.server.content.negotiation)
 
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
@@ -246,8 +234,6 @@ dependencies {
     implementation(project(":betterlyrics"))
     implementation(project(":lrclib"))
     implementation(project(":kugou"))
-    implementation(project(":lastfm"))
-    implementation(project(":kizzy"))
     implementation(project(":canvas"))
 
     testImplementation("junit:junit:4.13.2")

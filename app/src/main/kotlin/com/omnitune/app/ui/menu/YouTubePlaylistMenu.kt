@@ -92,6 +92,7 @@ import com.omnitune.app.ui.component.NewActionGrid
 import com.omnitune.app.ui.component.YouTubeListItem
 import com.omnitune.app.utils.joinByBullet
 import com.omnitune.app.utils.makeTimeString
+import com.omnitune.app.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -600,7 +601,7 @@ fun YouTubePlaylistMenu(
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    reportException(e)
                                     withContext(Dispatchers.Main) {
                                         val errorMsg = "$importFailedText: ${e.message ?: "Unknown error"}"
                                         if (snackbarHostState != null) {

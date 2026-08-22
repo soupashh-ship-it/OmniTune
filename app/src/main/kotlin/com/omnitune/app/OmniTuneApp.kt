@@ -25,7 +25,7 @@ import com.omnitune.app.constants.ContentLanguageKey
 import com.omnitune.app.constants.CustomThemeColorKey
 import com.omnitune.app.constants.DataSyncIdKey
 import com.omnitune.app.constants.InnerTubeCookieKey
-import com.omnitune.app.constants.LastFMSessionKey
+import com.omnitune.app.constants.ListenBrainzTokenKey
 import com.omnitune.app.constants.MaxImageCacheSizeKey
 import com.omnitune.app.constants.PoTokenGvsKey
 import com.omnitune.app.constants.PoTokenKey
@@ -44,7 +44,6 @@ import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
 import com.omnitune.kugou.KuGou
-import com.omnitune.lastfm.LastFM
 import com.omnitune.app.ui.player.CanvasArtworkPlaybackCache
 import com.omnitune.app.ui.screens.settings.ThemePalettes
 import com.omnitune.app.ui.theme.ThemeSeedPalette
@@ -53,6 +52,7 @@ import com.omnitune.app.sync.scheduleYouTubePlaylistSync
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
+import com.omnitune.app.utils.RetiredFeaturePreferenceCleanup
 import com.omnitune.app.utils.GlobalLogTree
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.forgetAccount
@@ -68,8 +68,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import okio.Path.Companion.toPath
-import java.io.PrintWriter
-import java.io.StringWriter
 import java.net.Proxy
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -142,15 +140,14 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             KuGou.useTraditionalChinese = true
         }
 
-        LastFM.initialize(
-            apiKey = BuildConfig.LASTFM_API_KEY,
-            secret = BuildConfig.LASTFM_SECRET
-        )
     }
 
     private fun initializeDeferredAsync() {
         applicationScope.launch(Dispatchers.IO) {
             try {
+                if (RetiredFeaturePreferenceCleanup.apply(dataStore)) {
+                    Timber.i("Removed preferences owned by retired features")
+                }
                 val prefs = dataStore.data.first()
 
                 prefs[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { country ->
@@ -160,8 +157,6 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 prefs[ContentLanguageKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { lang ->
                     YouTube.locale = YouTube.locale.copy(hl = lang)
                 }
-
-                LastFM.sessionKey = SecurePreferenceCipher.decryptOrPlain(prefs[LastFMSessionKey]).ifBlank { null }
 
                 if (prefs[ProxyEnabledKey] == true) {
                     try {
@@ -225,19 +220,8 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 try {
-                    val sw = StringWriter()
-                    val pw = PrintWriter(sw)
-                    throwable.printStackTrace(pw)
-                    val stack = sw.toString()
-                    
-                    // Save to SharedPreferences so we can read it on next launch
                     val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
-                    writeCrashSnapshot(prefs, stack)
-                    
-                    // Write to external files dir as fallback
-                    val crashFile = java.io.File(getExternalFilesDir(null), "crash.txt")
-                    crashFile.writeText("CRASH LOG:\n$stack")
-
+                    writeCrashSnapshot(prefs, throwable)
                 } catch (e: Exception) {
                     // Ignore
                 } finally {
@@ -280,7 +264,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                         }
                         YouTube.cookie = cookie
                     } catch (e: Exception) {
-                        Timber.e("Could not parse cookie. Clearing existing cookie. %s", e.message)
+                        Timber.e("Could not parse account cookie; clearing existing account session")
                         forgetAccount(this@OmniTuneApp)
                     }
                 }
@@ -326,17 +310,15 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                 }
         }
 
-        // Observe Last.fm session changes
+        // Migrate previously stored ListenBrainz tokens into Keystore-backed encryption.
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
-                .map { it[LastFMSessionKey] }
+                .map { it[ListenBrainzTokenKey] }
                 .distinctUntilChanged()
-                .collect { storedSessionKey ->
-                    val sessionKey = SecurePreferenceCipher.decryptOrPlain(storedSessionKey)
-                    if (!storedSessionKey.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedSessionKey)) {
-                        dataStore.edit { it[LastFMSessionKey] = SecurePreferenceCipher.encrypt(storedSessionKey) }
+                .collect { storedToken ->
+                    if (!storedToken.isNullOrBlank() && !SecurePreferenceCipher.isEncrypted(storedToken)) {
+                        dataStore.edit { it[ListenBrainzTokenKey] = SecurePreferenceCipher.encrypt(storedToken) }
                     }
-                    LastFM.sessionKey = sessionKey.takeIf { it.isNotBlank() }
                 }
         }
 
@@ -349,8 +331,20 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
     }
 
     @SuppressLint("ApplySharedPref")
-    private fun writeCrashSnapshot(prefs: android.content.SharedPreferences, stack: String) {
-        prefs.edit().putString("last_crash", stack).commit()
+    private fun writeCrashSnapshot(prefs: android.content.SharedPreferences, throwable: Throwable) {
+        // Do not persist exception messages: provider responses regularly include user text,
+        // URLs, and occasionally credentials. Frame names retain enough debug context.
+        val snapshot = buildString {
+            appendLine("Crash snapshot")
+            appendLine("exception=${throwable.javaClass.name}")
+            throwable.stackTrace.take(32).forEach { frame ->
+                appendLine(
+                    "at ${frame.className}.${frame.methodName}" +
+                        "(${frame.fileName ?: "Unknown"}:${frame.lineNumber})",
+                )
+            }
+        }.take(16 * 1024)
+        prefs.edit().putString("last_crash", snapshot).commit()
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {

@@ -215,6 +215,24 @@ interface BackupDao {
     @Query("DELETE FROM playlist_tag_map")
     suspend fun backupClearPlaylistTagMaps()
 
+    @Query("DELETE FROM queue")
+    suspend fun backupClearQueue()
+
+    @Query("DELETE FROM song_skip")
+    suspend fun backupClearSongSkips()
+
+    @Query("DELETE FROM set_video_id")
+    suspend fun backupClearSetVideoIds()
+
+    @Query("DELETE FROM related_song_map")
+    suspend fun backupClearRelatedSongMaps()
+
+    @Query("DELETE FROM format")
+    suspend fun backupClearFormats()
+
+    @Query("DELETE FROM lyrics")
+    suspend fun backupClearLyrics()
+
     @Query("DELETE FROM tag")
     suspend fun backupClearTags()
 

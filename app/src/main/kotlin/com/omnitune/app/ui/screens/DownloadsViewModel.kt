@@ -56,15 +56,6 @@ class DownloadsViewModel @Inject constructor(
     init {
         downloadUtil.downloadManager.addListener(listener)
         refreshDownloads()
-        
-        viewModelScope.launch {
-            while (true) {
-                if (_uiState.value.downloads.any { it.state == Download.STATE_DOWNLOADING }) {
-                    refreshDownloads()
-                }
-                kotlinx.coroutines.delay(300)
-            }
-        }
     }
 
     override fun onCleared() {

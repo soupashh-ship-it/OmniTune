@@ -13,8 +13,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.backup.OmniBackupCounts
+import com.omnitune.app.backup.OmniBackupPreview
 import com.omnitune.app.backup.OmniBackupRepository
+import com.omnitune.app.backup.OmniRestoreSelection
 import com.omnitune.app.backup.OmniRestoreMode
+import com.omnitune.app.backup.RestoreSafetyBackup
 import com.omnitune.app.constants.LastLibraryBackupAtKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,13 +38,28 @@ data class BackupRestoreProgress(
 
 sealed class BackupRestoreResult {
     data object Idle : BackupRestoreResult()
+    data class Preview(
+        val uri: Uri,
+        val details: OmniBackupPreview,
+        val replaceExisting: Boolean,
+        val selection: OmniRestoreSelection,
+    ) : BackupRestoreResult()
     data class Success(
         val title: String,
         val message: String,
         val counts: OmniBackupCounts,
     ) : BackupRestoreResult()
-    data class Error(val message: String) : BackupRestoreResult()
+    data class Error(
+        val message: String,
+        val retryAvailable: Boolean = false,
+    ) : BackupRestoreResult()
 }
+
+private data class RestoreRequest(
+    val uri: Uri,
+    val replaceExisting: Boolean,
+    val selection: OmniRestoreSelection,
+)
 
 @HiltViewModel
 class BackupRestoreViewModel @Inject constructor(
@@ -54,6 +72,11 @@ class BackupRestoreViewModel @Inject constructor(
 
     private val _result = MutableStateFlow<BackupRestoreResult>(BackupRestoreResult.Idle)
     val result: StateFlow<BackupRestoreResult> = _result.asStateFlow()
+
+    private val _latestSafetyBackup = MutableStateFlow(backupRepository.latestSafetyBackup())
+    val latestSafetyBackup: StateFlow<RestoreSafetyBackup?> = _latestSafetyBackup.asStateFlow()
+
+    private var latestRestoreRequest: RestoreRequest? = null
 
     val lastBackupAt: StateFlow<Long?> = dataStore.data
         .map { it[LastLibraryBackupAtKey] }
@@ -106,18 +129,61 @@ class BackupRestoreViewModel @Inject constructor(
         }
     }
 
+    fun previewRestore(
+        context: Context,
+        uri: Uri,
+        replaceExisting: Boolean,
+        selection: OmniRestoreSelection = OmniRestoreSelection.ALL,
+    ) = viewModelScope.launch {
+        _result.value = BackupRestoreResult.Idle
+        _progress.value = BackupRestoreProgress(
+            title = "Reading library backup",
+            step = if (replaceExisting) {
+                "Validating the backup before showing Replace preview"
+            } else {
+                "Validating the backup before showing Merge preview"
+            },
+            percent = 0,
+            indeterminate = true,
+        )
+
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+                ?: throw IllegalStateException("Could not open backup file")
+            val preview = backupRepository.previewBackup(
+                inputStream = inputStream,
+                mode = if (replaceExisting) OmniRestoreMode.REPLACE else OmniRestoreMode.MERGE,
+                selection = selection,
+            )
+            _progress.value = null
+            _result.value = BackupRestoreResult.Preview(
+                uri = uri,
+                details = preview,
+                replaceExisting = replaceExisting,
+                selection = selection,
+            )
+        } catch (e: Exception) {
+            _progress.value = null
+            _result.value = BackupRestoreResult.Error(
+                "Backup preview failed: ${e.message ?: "Unknown error"}. No library data was changed.",
+            )
+        }
+    }
+
     fun restore(
         context: Context,
         uri: Uri,
         replaceExisting: Boolean,
+        selection: OmniRestoreSelection = OmniRestoreSelection.ALL,
     ) = viewModelScope.launch {
+        latestRestoreRequest = RestoreRequest(uri, replaceExisting, selection)
         _result.value = BackupRestoreResult.Idle
         _progress.value = BackupRestoreProgress(
-            title = "Importing library backup",
+            title = "Restoring library backup",
             step = if (replaceExisting) {
-                "Validating backup and replacing library records"
+                "Creating verified safety backup, then replacing library records"
             } else {
-                "Validating backup and merging records"
+                "Restoring validated backup with merge conflict protection"
             },
             percent = 0,
             indeterminate = true,
@@ -129,11 +195,12 @@ class BackupRestoreViewModel @Inject constructor(
             val importResult = backupRepository.importBackup(
                 inputStream = inputStream,
                 mode = if (replaceExisting) OmniRestoreMode.REPLACE else OmniRestoreMode.MERGE,
+                selection = selection,
             )
-
+            _latestSafetyBackup.value = importResult.safetyBackup ?: backupRepository.latestSafetyBackup()
             _progress.value = null
             _result.value = BackupRestoreResult.Success(
-                title = "Backup imported",
+                title = "Backup restored",
                 message = buildString {
                     append(
                         if (replaceExisting) {
@@ -145,13 +212,48 @@ class BackupRestoreViewModel @Inject constructor(
                     if (importResult.offlineAudioRestorePending) {
                         append(" Offline audio will be applied after app restart.")
                     }
+                    importResult.safetyBackup?.let { safety ->
+                        append(" Verified safety backup retained at ${safety.locationDescription}.")
+                    }
                 },
                 counts = importResult.counts,
             )
         } catch (e: Exception) {
             _progress.value = null
             _result.value = BackupRestoreResult.Error(
-                "Import failed: ${e.message ?: "Unknown error"}. Existing data was preserved.",
+                "Restore failed: ${e.message ?: "Unknown error"}. No success was recorded; retry from the backup screen when ready.",
+                retryAvailable = true,
+            )
+        }
+    }
+
+    fun retryRestore(context: Context) {
+        latestRestoreRequest?.let { request ->
+            restore(context, request.uri, request.replaceExisting, request.selection)
+        }
+    }
+
+    fun recoverLatestSafetyBackup() = viewModelScope.launch {
+        _result.value = BackupRestoreResult.Idle
+        _progress.value = BackupRestoreProgress(
+            title = "Recovering safety backup",
+            step = "Creating a safety backup of the current library before recovery",
+            percent = 0,
+            indeterminate = true,
+        )
+        try {
+            val importResult = backupRepository.recoverLatestSafetyBackup()
+            _latestSafetyBackup.value = importResult.safetyBackup ?: backupRepository.latestSafetyBackup()
+            _progress.value = null
+            _result.value = BackupRestoreResult.Success(
+                title = "Safety backup recovered",
+                message = "Recovered the retained Replace safety archive.",
+                counts = importResult.counts,
+            )
+        } catch (e: Exception) {
+            _progress.value = null
+            _result.value = BackupRestoreResult.Error(
+                "Safety recovery failed: ${e.message ?: "Unknown error"}. The retained archive was not deleted.",
             )
         }
     }

@@ -10,6 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -22,25 +25,24 @@ class SleepTimer(private val player: Player, private val scope: CoroutineScope) 
 
     private var timerJob: Job? = null
 
-    var isRunning: Boolean = false
-        private set
-
-    var remainingMs: Long = 0L
-        private set
+    private val _isRunning = MutableStateFlow(false)
+    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+    private val _remainingMs = MutableStateFlow(0L)
+    val remainingMs: StateFlow<Long> = _remainingMs.asStateFlow()
 
     fun start(durationMs: Long, stopAtEndOfSong: Boolean = false) {
         cancel()
-        isRunning = true
-        remainingMs = durationMs
+        _isRunning.value = true
+        _remainingMs.value = durationMs
 
         timerJob = scope.launch {
             val startTime = android.os.SystemClock.elapsedRealtime()
-            while (remainingMs > 0) {
+            while (_remainingMs.value > 0) {
                 delay(1000L)
-                remainingMs = durationMs - (android.os.SystemClock.elapsedRealtime() - startTime)
-                if (remainingMs < 0) remainingMs = 0
+                _remainingMs.value = (durationMs - (android.os.SystemClock.elapsedRealtime() - startTime))
+                    .coerceAtLeast(0L)
             }
-            isRunning = false
+            _isRunning.value = false
             if (stopAtEndOfSong) {
                 // Let current song finish — attach a one-shot media transition listener
                 val listener = object : Player.Listener {
@@ -62,7 +64,7 @@ class SleepTimer(private val player: Player, private val scope: CoroutineScope) 
     fun cancel() {
         timerJob?.cancel()
         timerJob = null
-        isRunning = false
-        remainingMs = 0L
+        _isRunning.value = false
+        _remainingMs.value = 0L
     }
 }

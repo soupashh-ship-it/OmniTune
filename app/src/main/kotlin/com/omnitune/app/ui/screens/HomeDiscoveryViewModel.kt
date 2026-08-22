@@ -101,7 +101,6 @@ class HomeDiscoveryViewModel @Inject constructor(
     private val thumbnailPreviews = MutableStateFlow<Map<String, HomeThumbnailPreview>>(emptyMap())
     private val _hydratedQuickPicks = MutableStateFlow<List<SongItem>>(emptyList())
     private val _isHydratingQuickPicks = MutableStateFlow(false)
-    private val _refreshTrigger = MutableStateFlow(0L)
     private val hydrationRequests = Channel<HomeThumbnailRequest>(Channel.UNLIMITED)
     private val requestedThumbnailIds = ConcurrentHashMap.newKeySet<String>()
 
@@ -231,16 +230,6 @@ class HomeDiscoveryViewModel @Inject constructor(
         }
         viewModelScope.launch {
             combine(_hydratedQuickPicks, _isHydratingQuickPicks) { _, _ -> rebuildUiState() }.collect { }
-        }
-        viewModelScope.launch {
-            _refreshTrigger.collect { rebuildUiState() }
-        }
-        viewModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(30 * 60 * 1000L)
-                _refreshTrigger.value = System.currentTimeMillis()
-                startQuickPickHydration()
-            }
         }
         downloadUtil.downloadManager.addListener(downloadListener)
         refreshDownloads()
@@ -409,6 +398,7 @@ class HomeDiscoveryViewModel @Inject constructor(
             isLoading = false,
             isHydratingQuickPicks = isHydratingQuickPicks,
             isProviderLoading = isProviderLoading,
+            providerError = providerFeed.failures.takeIf { it.isNotEmpty() }?.joinToString(". "),
         )
     }
 
@@ -480,13 +470,10 @@ class HomeDiscoveryViewModel @Inject constructor(
             val result = runCatching { homeFeedRepository.loadProviderFeed() }
             result.onSuccess { feed ->
                 providerFeed.value = feed
-                // Clear error on success, even with partial data
-                _uiState.update { it.copy(providerError = null) }
             }.onFailure { error ->
                 reportException(error)
                 val pe = classifyProviderError(error)
-                providerFeed.value = HomeProviderFeed()
-                _uiState.update { it.copy(providerError = pe.message) }
+                providerFeed.value = HomeProviderFeed(failures = listOf(pe.message))
             }
             isProviderLoading.value = false
         }
@@ -586,15 +573,6 @@ class HomeDiscoveryViewModel @Inject constructor(
                 if (song.title.isNotBlank() && artist.isNotBlank()) {
                     add("${song.title} $artist")
                 }
-            }
-            // Default to popular English hits when no personalization data yet
-            if (isEmpty()) {
-                add("Taylor Swift songs")
-                add("Ed Sheeran songs")
-                add("The Weeknd songs")
-                add("Dua Lipa songs")
-                add("top english hits 2025")
-                add("english pop songs")
             }
         }.distinct().take(6)
 

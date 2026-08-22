@@ -43,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
@@ -85,7 +86,6 @@ fun LibraryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = OmniSpacing.screenHorizontalCompact),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -208,7 +208,7 @@ private fun LibraryCategoryTabs(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         LibraryTabChip("Playlists", playlistCount.toString(), selected = true, onPlaylists, Modifier.weight(1f))
         LibraryTabChip("Songs", songCount.toString(), selected = false, onSongs, Modifier.weight(1f))
@@ -225,31 +225,30 @@ private fun LibraryTabChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val containerBg = if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.14f) else OmniColors.OmniGlassSubtle
+    val borderColor = if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.40f) else OmniColors.SurfaceHairline
+    val textColor = if (selected) OmniColors.OmniAccentPrimary else OmniColors.TextSecondary
+
     Box(
         modifier = modifier
-            .height(32.dp)
+            .height(34.dp)
             .clip(OmniShapes.Pill)
-            .background(if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceQuiet)
-            .border(
-                width = 1.dp,
-                color = if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceHairline,
-                shape = OmniShapes.Pill,
-            )
+            .background(containerBg)
+            .border(0.5.dp, borderColor, OmniShapes.Pill)
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.micro),
+            .padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = if (selected) OmniColors.TextOnAccent else OmniColors.TextPrimary,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = textColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
-
 @Composable
 private fun LibraryQuickAccessRail(
     songs: List<Song>,
@@ -295,20 +294,33 @@ private fun LibraryQuickAccessItem(
 ) {
     Column(
         modifier = Modifier
-            .width(80.dp)
+            .width(112.dp)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .size(112.dp)
                 .clip(OmniShapes.ArtworkMedium)
                 .background(
-                    Brush.linearGradient(
-                        listOf(accent.copy(alpha = 0.38f), OmniColors.SurfaceRaised),
-                    ),
+                    if (thumbnailUrl.isNullOrBlank()) {
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFFE84142),
+                                Color(0xFFB31217),
+                                Color(0xFF1E1012),
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF161922),
+                                Color(0xFF0F1116),
+                            )
+                        )
+                    }
                 )
-                .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.ArtworkMedium),
+                .border(0.5.dp, OmniColors.SurfaceHairline, OmniShapes.ArtworkMedium),
             contentAlignment = Alignment.Center,
         ) {
             if (!thumbnailUrl.isNullOrBlank()) {
@@ -319,43 +331,51 @@ private fun LibraryQuickAccessItem(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(38.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(OmniShapes.ArtworkSmall)
+                        .background(Color.White.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
             if (!thumbnailUrl.isNullOrBlank()) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(6.dp)
-                        .size(26.dp)
+                        .size(28.dp)
                         .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.88f)),
+                        .background(OmniColors.OmniAccentPrimary),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_play_arrow),
                         contentDescription = "Play $title",
                         tint = OmniColors.TextOnAccent,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
             color = OmniColors.TextPrimary,
-            fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
+            fontSize = 11.sp,
             color = OmniColors.TextSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -382,13 +402,21 @@ private fun LibraryCollectionGrid(
     onDownloads: () -> Unit,
     onLiked: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (showLiked) {
+            LibraryHeroLikedCard(
+                likedCount = likedCount,
+                onClick = onLiked,
+            )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LibraryCollectionCard(
                 title = "Recently played",
                 detail = countLabel(recentCount, "item"),
                 icon = R.drawable.ic_history,
-                accent = OmniColors.OmniAccentSecondary,
+                badgeTint = Color(0xFF818CF8),
+                badgeBg = Color(0xFF1B1E2D),
                 modifier = Modifier.weight(1f),
                 onClick = onRecent,
             )
@@ -396,17 +424,19 @@ private fun LibraryCollectionGrid(
                 title = "Playlists",
                 detail = countLabel(playlistCount, "playlist"),
                 icon = R.drawable.ic_list,
-                accent = OmniColors.OmniAccentPrimary,
+                badgeTint = Color(0xFF38BDF8),
+                badgeBg = Color(0xFF14222B),
                 modifier = Modifier.weight(1f),
                 onClick = onPlaylists,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LibraryCollectionCard(
-                title = "Songs",
+                title = "Tracks",
                 detail = countLabel(songCount, "song"),
-                icon = R.drawable.ic_album,
-                accent = OmniColors.OmniAccentTertiary,
+                icon = R.drawable.ic_music_note,
+                badgeTint = Color(0xFFA78BFA),
+                badgeBg = Color(0xFF201B2B),
                 modifier = Modifier.weight(1f),
                 onClick = onSongs,
             )
@@ -414,17 +444,19 @@ private fun LibraryCollectionGrid(
                 title = "Artists",
                 detail = countLabel(artistCount, "artist"),
                 icon = R.drawable.ic_artist,
-                accent = OmniColors.OmniAccentWarm,
+                badgeTint = Color(0xFFFBBF24),
+                badgeBg = Color(0xFF262016),
                 modifier = Modifier.weight(1f),
                 onClick = onArtists,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LibraryCollectionCard(
                 title = "Albums",
                 detail = countLabel(albumCount, "album"),
                 icon = R.drawable.ic_album,
-                accent = OmniColors.TextSecondary,
+                badgeTint = Color(0xFF94A3B8),
+                badgeBg = Color(0xFF1C2028),
                 modifier = Modifier.weight(1f),
                 onClick = onAlbums,
             )
@@ -433,7 +465,8 @@ private fun LibraryCollectionGrid(
                     title = "Downloads",
                     detail = countLabel(downloadCount, "song"),
                     icon = R.drawable.ic_download,
-                    accent = OmniColors.Downloaded,
+                    badgeTint = Color(0xFF34D399),
+                    badgeBg = Color(0xFF13251D),
                     modifier = Modifier.weight(1f),
                     onClick = onDownloads,
                 )
@@ -441,16 +474,85 @@ private fun LibraryCollectionGrid(
                 Spacer(modifier = Modifier.weight(1f))
             }
         }
-        if (showLiked) {
-            LibraryCollectionCard(
-                title = "Liked Songs",
-                detail = countLabel(likedCount, "song"),
-                icon = R.drawable.ic_favorite,
-                accent = OmniColors.Hot,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onLiked,
+    }
+}
+
+@Composable
+private fun LibraryHeroLikedCard(
+    likedCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(78.dp)
+            .clip(OmniShapes.Medium)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF281114),
+                        Color(0xFF181B22),
+                        Color(0xFF11141A),
+                    )
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                color = Color(0xFFE84142).copy(alpha = 0.28f),
+                shape = OmniShapes.Medium,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(OmniShapes.Small)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color(0xFFE84142),
+                            Color(0xFFFF5252),
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_favorite),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
             )
         }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Liked Songs",
+                style = MaterialTheme.typography.bodyLarge,
+                color = OmniColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "$likedCount favorite tracks",
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.ic_arrow_back),
+            contentDescription = null,
+            tint = Color(0xFFE84142).copy(alpha = 0.70f),
+            modifier = Modifier
+                .size(16.dp)
+                .graphicsLayer(rotationZ = 180f),
+        )
     }
 }
 
@@ -459,59 +561,75 @@ private fun LibraryCollectionCard(
     title: String,
     detail: String,
     icon: Int,
-    accent: Color,
+    badgeTint: Color,
+    badgeBg: Color,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = modifier
-            .height(86.dp)
+            .height(74.dp)
             .clip(OmniShapes.Medium)
             .background(
-                Brush.linearGradient(
-                    listOf(accent.copy(alpha = 0.20f), OmniColors.SurfaceRaised),
-                ),
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF161A22),
+                        Color(0xFF101318),
+                    )
+                )
             )
-            .border(1.dp, accent.copy(alpha = 0.30f), OmniShapes.Medium)
+            .border(
+                width = 0.5.dp,
+                color = Color(0xFF262B38).copy(alpha = 0.45f),
+                shape = OmniShapes.Medium,
+            )
             .clickable(onClick = onClick)
-            .padding(OmniSpacing.compact),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(OmniShapes.Pill)
-                .background(accent.copy(alpha = 0.18f)),
+                .size(38.dp)
+                .clip(OmniShapes.Small)
+                .background(badgeBg),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(20.dp),
+                tint = badgeTint,
+                modifier = Modifier.size(19.dp),
             )
         }
-        Spacer(modifier = Modifier.width(OmniSpacing.compact))
+        Spacer(modifier = Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 color = OmniColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = OmniColors.TextSecondary,
+                fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        Icon(
+            painter = painterResource(R.drawable.ic_arrow_back),
+            contentDescription = null,
+            tint = OmniColors.TextTertiary.copy(alpha = 0.40f),
+            modifier = Modifier
+                .size(14.dp)
+                .graphicsLayer(rotationZ = 180f),
+        )
     }
 }
-
 @Composable
 private fun LibraryRouteRow(
     painter: Painter,
@@ -525,17 +643,29 @@ private fun LibraryRouteRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.46f))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF161A22),
+                        Color(0xFF101318),
+                    )
+                )
+            )
+            .border(
+                width = 0.5.dp,
+                color = Color(0xFF262B38).copy(alpha = 0.45f),
+                shape = OmniShapes.Medium,
+            )
             .clickable(onClick = onClick)
-            .padding(if (compact) OmniSpacing.compact else OmniSpacing.medium),
+            .padding(if (compact) 10.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LibraryIconTile(painter = painter, accent = accent, size = if (compact) 40.dp else 48.dp)
-        Spacer(modifier = Modifier.width(if (compact) OmniSpacing.compact else OmniSpacing.medium))
+        LibraryIconTile(painter = painter, accent = accent, size = if (compact) 38.dp else 44.dp)
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = OmniColors.TextPrimary,
             )
@@ -543,6 +673,7 @@ private fun LibraryRouteRow(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = OmniColors.TextSecondary,
+                fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -550,9 +681,9 @@ private fun LibraryRouteRow(
         Icon(
             painter = painterResource(R.drawable.ic_arrow_back),
             contentDescription = null,
-            tint = OmniColors.TextTertiary,
+            tint = OmniColors.TextTertiary.copy(alpha = 0.45f),
             modifier = Modifier
-                .size(18.dp)
+                .size(16.dp)
                 .graphicsLayer(rotationZ = 180f),
         )
     }
@@ -600,20 +731,20 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
 private fun LibraryIconTile(
     painter: Painter,
     accent: Color,
-    size: androidx.compose.ui.unit.Dp = 48.dp,
+    size: androidx.compose.ui.unit.Dp = 44.dp,
 ) {
     Box(
         modifier = Modifier
             .size(size)
             .clip(OmniShapes.Small)
-            .background(accent.copy(alpha = 0.14f)),
+            .background(accent.copy(alpha = 0.16f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painter,
             contentDescription = null,
             tint = accent,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size((size.value * 0.5f).dp),
         )
     }
 }

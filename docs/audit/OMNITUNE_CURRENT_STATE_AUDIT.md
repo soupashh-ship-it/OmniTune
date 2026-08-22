@@ -1,5 +1,10 @@
 # OmniTune current-state audit
 
+> Historical baseline note (2026-07-28): findings in this document describe the pre-Goals-6–10
+> checkout unless explicitly marked otherwise. The implemented resolutions and current contracts
+> are recorded in `GOAL_6_BACKUP_CONTRACT.md`, `GOAL_7_CREDENTIAL_INVENTORY.md`, and
+> `SETTINGS_BEHAVIOR_REGISTRY.md`; do not treat superseded historical findings as current state.
+
 **Audit date:** 2026-07-28
 **Repository state audited:** `main` at `360387a3f9b138b523cf40326a303e76a90b3745`
 **Scope:** forensic audit and planning only. No application source, UI, generated file, user data, or Git history was changed.
@@ -88,11 +93,11 @@ The final source-level runtime result is intentionally narrow: handler launch is
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | App launch/navigation | IMPLEMENTED BUT UNVERIFIED | Compose routes are registered. | `MainActivity`, `MusicService`, Hilt. | DataStore/Room injected. | Build only. | No device. | `MainActivity.kt`, `OmniNavGraph.kt`. | Fresh/existing user launch not exercised. |
 | Home feed | PARTIALLY IMPLEMENTED | Shelves, chips, retry/error state exist. | `HomeFeedRepository` calls provider home/explore/moods. | Local history/likes/downloads inform engine. | Engine unit coverage only. | No. | `HomeDiscoveryViewModel.kt`, `HomeFeedRepository.kt`. | Static catalog and generic fallback queries remain in the live path. |
-| Search | IMPLEMENTED BUT UNVERIFIED | Query, tabs, history, retry, pagination UI. | Debounced provider requests and fallback summary. | Room search history. | No SearchViewModel test. | No. | `SearchViewModel.kt`. | Stale cancellation is caught as a normal exception; no device/network test. |
-| Online playback | IMPLEMENTED BUT UNVERIFIED | Queue/player controls call `PlayerConnection`. | `MusicService` resolves streams and prepares Media3. | Queue/history/format persisted. | Policy/resolver tests, not service integration. | No. | `MusicService.kt:582-691`, `StreamExtractor.kt`. | Play/pause/seek/recovery not retested on device. |
-| Queue restore | IMPLEMENTED BUT UNVERIFIED | Queue screen exists. | Service restores a saved `QueueEntity`. | Room queue table. | `QueuePersistenceManagerTest`, entity test. | No. | `MusicService.kt:319-352`. | Process death, position, and stream re-resolution unverified. |
+| Search | IMPLEMENTED BUT UNVERIFIED | Query, tabs, history, retry, pagination UI. | Debounced provider requests, generation gate, provider fallback summary. | Room search history. | Request-gate unit test and compiled fake-provider ViewModel fixture. | No. | `SearchViewModel.kt`, `SearchViewModelInstrumentedTest.kt`. | Manual device/network/pagination evidence remains deferred. |
+| Online playback | IMPLEMENTED BUT UNVERIFIED | Queue/player controls call `PlayerConnection`. | `MusicService` resolves streams and prepares Media3. Preload queues now wait for the resolved source instead of preparing a raw YouTube ID. | Queue/history/format persisted. | Policy/resolver tests, compile-only verification of the corrected service path; no service integration run. | No. | `MusicService.kt`, `StreamExtractor.kt`. | Play/pause/seek/recovery still require disposable-device evidence. |
+| Queue restore | IMPLEMENTED BUT UNVERIFIED | Queue screen exists. | Service restores a saved `QueueEntity`. | Room queue table. | Queue unit tests verify ordering/index/position save and restore; Android process fixture compiles. | No. | `MusicService.kt:319-352`, `QueuePersistenceManagerTest.kt`. | Full service process recreation and stream re-resolution remain unverified. |
 | Downloads | PARTIALLY IMPLEMENTED | Queue/progress/retry/remove UI. | Media3 `DownloadManager` and `ExoDownloadService`. | Media3 DB/cache plus Room state. | No end-to-end test. | No. | `DownloadUtil.kt`, `ExoDownloadService.kt`. | Download content, retry, storage and resume path unverified. |
-| Offline playback | BROKEN | Completed downloads can be selected. | Resolver recognizes completed downloads. | Bytes are written to `downloadCache`. | No offline test. | No. | `DownloadUtil.kt:62-66`; `PlayerFactory.kt:97-100`; `StreamUrlResolver.kt:67-80`. | Player reads `playbackCache`, not `downloadCache`. |
+| Offline playback | IMPLEMENTED BUT UNVERIFIED | Completed downloads can be selected. | Key-aware router selects completed download cache without upstream fallback. | Persistent download cache plus bounded stream cache. | Unit + compiled cache persistence/deletion fixture. | No. | `OfflinePlaybackCacheRouting.kt`, `DownloadUtil.kt`, `PlayerFactory.kt`. | Airplane-mode playback/restart/delete evidence remains deferred. |
 | Lyrics | IMPLEMENTED BUT UNVERIFIED | Now-playing lyrics UI and retry state. | Multi-provider repository and quality filtering. | Room lyrics entity. | Repository/quality/inline/ViewModel tests. | No. | `LyricsRepositoryImpl.kt`, `LyricsQuality.kt`, `LyricsViewModelTest.kt`. | Real provider, sync, language rejection and scroll behavior unverified. |
 | Liked songs | IMPLEMENTED BUT UNVERIFIED | Like controls appear in menus/player/library. | `PlayerConnection.toggleLike`, library sync. | Song `liked` data in Room. | No user-journey test. | No. | `PlayerConnection.kt:190-220`. | Cross-screen consistency and sync failures unverified. |
 | Local playlists | IMPLEMENTED BUT UNVERIFIED | Create/edit/detail screens/routes exist. | DAO/playlist planner/menu paths. | Playlist maps and foreign keys. | Planner test only. | No. | `PlaylistEntity.kt`, `PlaylistSongMap.kt`, `PlaylistPlaybackPlannerTest.kt`. | CRUD, reorder, bulk operations, restore and large lists unverified. |
@@ -106,68 +111,47 @@ The final source-level runtime result is intentionally narrow: handler launch is
 | Database migrations | IMPLEMENTED BUT UNVERIFIED | N/A | Explicit 1→7 Room migrations and repair path. | Room schema/foreign keys/WAL. | Android migration tests compile only. | No. | `MusicDatabase.kt:119-243`, `MusicDatabaseMigrationTest.kt`. | Migrations and recovery fallback not executed on a device. |
 | Account/token encryption | IMPLEMENTED BUT UNVERIFIED | Login/PoToken/scrobble screens. | Android Keystore cipher plus migration on app start. | Encrypted DataStore values. | No encryption integration test. | No. | `SecurePreferenceCipher.kt`, `OmniTuneApp.kt:278-337`. | Invalid/expired token and logout flows unverified. |
 | Last.fm/ListenBrainz | IMPLEMENTED BUT UNVERIFIED | Scrobbling settings UI. | Managers and Media3 playback integration. | Encrypted session/token preferences. | No integration test. | No. | `ScrobblingSettings.kt`, `ScrobblingManager.kt`. | Real authentication/scrobble/error recovery unverified. |
-| UPI donation | IMPLEMENTED BUT UNVERIFIED | Amount and copy fallback UI. | External `ACTION_VIEW` UPI intent. | No app persistence required. | One currently failing unit test. | No. | `AboutSettings.kt`, `AboutMetadata.kt`. | URI serialization test is invalid/stale; no installed UPI-app check. |
+| UPI donation | IMPLEMENTED BUT UNVERIFIED | Amount and copy fallback UI. | External `ACTION_VIEW` UPI intent. | No app persistence required. | JVM URI-contract tests pass. | Device resolver launch previously observed; not rerun in this goal. | `AboutSettings.kt`, `AboutMetadata.kt`. | Installed-handler variations remain device-specific. |
 | Updates/install | IMPLEMENTED BUT UNVERIFIED | Update settings UI. | GitHub API, verified APK download/install intent. | Version preferences. | API test. | No. | `ApkDownloadManager.kt`, `UpdatesSettings.kt`. | Real signature/update/unknown-sources flow unverified. |
 | Together listening party | BACKEND-ONLY | No screen or route. | Local/online server/client classes exist. | Dead preference declarations. | No tests. | No. | `together/*.kt`; no UI/nav caller. | Entire feature is unreachable. |
 | For You suggestion engine | BACKEND-ONLY | No screen uses it. | `@Singleton` can query related songs. | Reads DB. | No tests. | No. | `utils/ForYouSuggestionEngine.kt`; only declaration reference. | Dead duplicate recommendation implementation. |
 | Discord presence | OBSOLETE OR UNUSED | Only a Discord community link is exposed. | Service injects manager then clears token/disables it. | Legacy preference keys remain. | No tests. | No. | `MusicService.kt:397-404`, `discord/*.kt`. | Retained dead code and settings data. |
-| Release pipeline | BROKEN | N/A | CI builds/tests/lints/signs. | GitHub Actions. | Local equivalent reproduced. | N/A | `.github/workflows/build.yml`, `release.yml`; failing `AboutMetadataTest`. | Required test fails before signed APK. |
+| Release pipeline | IMPLEMENTED BUT CI-UNVERIFIED | N/A | CI builds/tests/lints/signs. | GitHub Actions. | `:app:testDebugUnitTest` currently passes 124/124 locally. | N/A | `.github/workflows/build.yml`, `release.yml`. | A remote CI and signed-release run remain required. |
 
 ## Detailed findings
 
-### AUD-001 — CI unit-test gate is failing
+### AUD-001 — CI unit-test gate is restored locally
 
-- **Status:** BROKEN
-- **Severity:** P0 release blocker
+- **Status:** IMPLEMENTED — local unit gate passed; remote CI remains unverified.
+- **Severity:** P0 release gate (mitigated locally)
 - **Affected feature:** release engineering and UPI metadata validation
-- **User impact:** Any branch/tag workflow that reaches `testDebugUnitTest` fails; the tag release workflow cannot produce its signed asset.
-- **Evidence:** `./gradlew.bat test --no-daemon --max-workers=1 --console=plain` completed 90 tests with one failure: `AboutMetadataTest.upiPaymentUriEncodesPayeeAndNote`, NPE at `AboutMetadata.kt:101`. Test XML states `Uri.Builder.scheme(String)` returned `null`. Both workflows invoke `testDebugUnitTest`.
+- **User impact:** The earlier unit failure no longer blocks the local debug test gate. A remote CI run is still needed before making a release-pipeline claim.
+- **Evidence:** `./gradlew.bat :app:testDebugUnitTest` passed on 2026-07-28; current XML reports 124 tests and zero failures. `buildUpiPaymentUri` now serializes the URI as a plain string and tests pass deterministic transaction references.
 - **File paths:** `app/src/test/kotlin/com/omnitune/app/ui/screens/settings/AboutMetadataTest.kt:62-72`; `app/src/main/kotlin/com/omnitune/app/ui/screens/settings/AboutMetadata.kt:94-113`; `.github/workflows/build.yml`; `.github/workflows/release.yml`.
 - **Relevant symbols:** `buildUpiPaymentUri`, `upiPaymentUriEncodesPayeeAndNote`.
-- **Reproduction:** Run the stated Gradle command on the audited checkout.
-- **Expected:** A deterministic unit test validates query encoding.
-- **Actual:** Plain JVM Android stubs cause NPE; after that is removed, the expectation is still stale because production always includes `tr=OMNI…`.
-- **Likely root cause:** Android framework URI construction in a non-Robolectric unit test and an unupdated expected string.
-- **Recommended fix:** Make URI serialization JVM-safe and test an explicit deterministic transaction reference, or move the Android URI test to an instrumented/Robolectric test. Do not accept a test that merely stops failing.
-- **Dependencies:** None.
-- **Regression risk:** High; it masks the release gate and UPI encoding changes.
-- **Verification required:** `:app:testDebugUnitTest`, CI run, and an Android intent test with a UPI handler.
+- **Verification required:** local `:app:testDebugUnitTest` passed. CI run and Android intent checks with a UPI handler remain pending.
 
 ### AUD-002 — Offline downloads are not connected to playback cache
 
-- **Status:** BROKEN
+- **Status:** IMPLEMENTED — source/unit-test verified; device airplane-mode verification intentionally deferred.
 - **Severity:** P1 core functionality
 - **Affected feature:** downloaded/offline playback
-- **User impact:** A completed download can appear playable but Media3 cannot read its bytes from the download cache when offline.
-- **Evidence:** `DownloadUtil.downloadManager` writes to `downloadCache` (`DownloadUtil.kt:62-82`). `StreamUrlResolver.resolveMediaItem` treats a completed request as an offline hit and returns the request URI with cache key (`StreamUrlResolver.kt:67-80`). Both `createPlayer` and `createOverlapPlayer` construct a `CacheDataSource.Factory` over `downloadUtil.playbackCache`, not `downloadUtil.downloadCache` (`PlayerFactory.kt:85-110`).
-- **File paths:** `DownloadUtil.kt`, `StreamUrlResolver.kt`, `PlayerFactory.kt`, `DownloadsViewModel.kt`.
-- **Relevant symbols:** `downloadCache`, `playbackCache`, `createCacheDataSourceFactory`, `resolveMediaItem`.
-- **Reproduction:** Download a track, disable network, then play it from Downloads or any queue. This is pending device verification; the cache mismatch is static proof of the broken handoff.
-- **Expected:** Resolver and player use the same completed-download cache/key.
-- **Actual:** Resolver labels the item offline but player is wired to another cache and falls through to its upstream network source.
-- **Likely root cause:** Split cache design was introduced without a cache-routing `DataSource`.
-- **Recommended fix:** Build a cache data source that checks `downloadCache` for completed custom keys before playback cache/upstream, or use one correctly bounded cache; preserve cache-key and request URI semantics. Add an offline integration test.
-- **Dependencies:** AUD-006 download test fixture.
-- **Regression risk:** High; a superficial cache swap can break streaming cache eviction or signed stream handling.
-- **Verification required:** physical device: download → airplane mode → play/seek/next → app restart → delete download.
+- **Resolution:** `OfflineCacheRoutingDataSourceFactory` selects the persistent `downloadCache` only for a byte-complete `DownloadManager` entry using its exact custom cache key. That source has no upstream and is read-only, so a completed download cannot fall through to the network. All other media remains on the bounded `playbackCache` plus the existing signed-stream upstream. Both `createPlayer` and `createOverlapPlayer` share this factory.
+- **Stale-state handling:** completion now requires a known content length and a contiguous cached range from byte zero. A completed index record without those bytes is marked unavailable in Room, its cache resource is removed, and its download entry is removed instead of being offered as offline media.
+- **File paths:** `app/src/main/kotlin/com/omnitune/app/playback/OfflinePlaybackCacheRouting.kt`, `DownloadUtil.kt`, `StreamUrlResolver.kt`, `PlayerFactory.kt`, `DownloadsViewModel.kt`.
+- **Fixture coverage:** completed/byte-complete routing, partial and unknown-length rejection, in-progress rejection, custom-key preservation, and legacy request-id fallback in `OfflinePlaybackCacheRoutingTest`.
+- **Verification required:** static/unit verification is complete. A disposable device/emulator check remains required before this can be labelled device-verified: download → airplane mode → play/seek/next → app restart → delete download. It was not run because the user requested that USB/device testing be left disabled.
 
-### AUD-003 — Replace restore can erase a library without a safety copy
+### AUD-003 — Replace restore safety and recovery
 
-- **Status:** REGRESSION RISK
-- **Severity:** P0 data-loss risk
+- **Status:** IMPLEMENTED — source/unit-test verified; disposable-device verification remains pending.
+- **Severity:** P0 data-loss risk (mitigated in source)
 - **Affected feature:** backup/restore
-- **User impact:** Selecting Replace with a structurally valid but incomplete backup clears the current library. There is no automatic pre-restore backup to recover it.
-- **Evidence:** `importBackup` validates only app name and format version (`OmniBackupRepository.kt:171-205`, `351-356`) then calls `clearLibraryForReplace()` before `restoreMerge()` in one transaction (`181-187`). No safety export is created. Empty collections are not rejected by `validate`.
-- **File paths:** `app/src/main/kotlin/com/omnitune/app/backup/OmniBackupRepository.kt`.
-- **Relevant symbols:** `importBackup`, `validate`, `clearLibraryForReplace`, `restoreMerge`.
-- **Reproduction:** Use a valid-format backup with empty or unexpectedly incomplete lists and choose Replace; this was not run against user data.
-- **Expected:** Replace restoration should offer a recoverable safety backup and reject suspiciously incomplete payloads before clearing data.
-- **Actual:** Format-only validation permits clearing followed by a minimal merge.
-- **Likely root cause:** Transactional atomicity was implemented, but user-level rollback/safety backup policy was not.
-- **Recommended fix:** Export a local safety snapshot before Replace, require explicit destructive confirmation with counts, validate relationship/count plausibility, and retain rollback metadata until post-restore verification succeeds.
-- **Dependencies:** Backup fixture tests.
-- **Regression risk:** High; never test this path with production user data first.
-- **Verification required:** disposable device database, corrupt/empty/old/large archives, process interruption, and rollback recovery.
+- **Resolution:** `OmniBackupPreflight` validates counts, identifiers, relationships, ordering, queue references, archive paths, limits, and full-archive manifests before any Replace operation. `OmniBackupRepository` creates and re-reads a retained app-private full safety archive before clearing Room data. Replace stages archive files first, verifies its Room transaction, promotes media through a reversible filesystem transaction, and restores the safety snapshot if media promotion fails.
+- **Recovery:** the Backup & Restore screen previews counts/warnings before confirmation and exposes a confirmation-gated recovery action for the latest retained Replace safety archive. Safety archives exclude preferences, account data, cookies, tokens, and API keys.
+- **File paths:** `app/src/main/kotlin/com/omnitune/app/backup/OmniBackupPreflight.kt`, `RestoreSafetyBackupStore.kt`, `OmniBackupRepository.kt`, `OfflineDownloadArchive.kt`, `BackupRestoreScreen.kt`.
+- **Fixture coverage:** valid Merge/Replace preflight, empty/unsupported/corrupt-manifest/missing-file/missing-relation/duplicate/invalid-order/invalid-queue/large/legacy input, safety-store failure, database-transaction failure boundary, reversible media promotion, interrupted media promotion rollback, and reverse-order rollback primitive.
+- **Verification required:** run the full flow on a disposable local profile, including interrupted file staging, Room transaction failure injection, and successful recovery. This was not run on the USB device because the user requested that device testing be left disabled.
 
 ### AUD-004 — Backup claim exceeds exported data
 
@@ -217,12 +201,12 @@ The final source-level runtime result is intentionally narrow: handler launch is
 
 ### AUD-009 — Search cancellation may publish stale failure/results
 
-- **Status:** REGRESSION RISK
+- **Status:** IMPLEMENTED — source/unit-test verified; Android integration fixture compiled but not device-run.
 - **Severity:** P3
 - **Affected feature:** search responsiveness
-- **User impact:** Rapid typing/filter changes can allow a cancelled request to be handled by `catch (e: Exception)` and write stale state if provider code throws cancellation through that branch.
-- **Evidence:** `SearchViewModel` cancels `searchJob` on every query/filter (`78-164`) then surrounds the search with `catch (e: Exception)` (`211-227`) without rethrowing `CancellationException`; it has no request generation check before applying the bucket.
-- **Recommended fix:** rethrow `CancellationException`, or use `flatMapLatest`/query token validation, then add a deterministic rapid-query test.
+- **Resolution:** `SearchRequestGate` assigns a generation to each query/filter request and `SearchViewModel` checks it before publishing cached, loading, success, pagination, or failure state. Cancellation is rethrown rather than classified as a provider failure. `SearchProvider`, `SearchNetworkStatus`, and `SearchTiming` are injected seams, with the production Hilt bindings preserving the YouTube and Android implementations.
+- **Fixture coverage:** `SearchRequestGateTest` proves stale query, stale filter, and blank-query invalidation behaviour. `SearchViewModelInstrumentedTest` uses an in-memory Room database and a deterministic provider fake to exercise the real ViewModel's filter, deduplication, and empty-query wiring without live network.
+- **Verification required:** Run the instrumented fixture and a manual rapid-typing/network-loss smoke case on a disposable profile. This has not been run on the USB device because device testing remains disabled by user instruction.
 
 ### AUD-010 — Polling and long-lived work add avoidable background churn
 

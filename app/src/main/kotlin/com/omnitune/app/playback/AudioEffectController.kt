@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // Virtualizer has no like-for-like Android replacement.
+
 /*
  * OmniTune - An open-source music player for Android
  * Licensed under GPL-3.0

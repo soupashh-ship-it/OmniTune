@@ -120,7 +120,6 @@ fun SearchScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .statusBarsPadding()
             .padding(horizontal = OmniSpacing.medium),
     ) {

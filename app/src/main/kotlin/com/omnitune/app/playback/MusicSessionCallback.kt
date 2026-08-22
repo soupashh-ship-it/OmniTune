@@ -27,6 +27,7 @@ import javax.inject.Inject
 class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibrarySession.Callback {
 
     private var player: Player? = null
+    private var playerListener: Player.Listener? = null
     var onToggleLike: (() -> Unit)? = null
     var onToggleLibrary: (() -> Unit)? = null
     var onStartRadio: (() -> Unit)? = null
@@ -38,52 +39,60 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
     val currentMediaItem: StateFlow<MediaItem?> = _currentMediaItem.asStateFlow()
 
     fun onPlayerReady(player: Player) {
+        detachPlayerListener()
         this.player = player
-        player.addListener(
-            object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    _playbackState.value = state
-                    val label = when (state) {
-                        Player.STATE_IDLE -> "IDLE"
-                        Player.STATE_BUFFERING -> "BUFFERING"
-                        Player.STATE_READY -> "READY"
-                        Player.STATE_ENDED -> "ENDED"
-                        else -> "UNKNOWN"
-                    }
-                    Timber.tag("OmniTunePlaybackTrace")
-                        .i("Player state: %s", label)
+        _playbackState.value = player.playbackState
+        _currentMediaItem.value = player.currentMediaItem
+        playerListener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                _playbackState.value = state
+                val label = when (state) {
+                    Player.STATE_IDLE -> "IDLE"
+                    Player.STATE_BUFFERING -> "BUFFERING"
+                    Player.STATE_READY -> "READY"
+                    Player.STATE_ENDED -> "ENDED"
+                    else -> "UNKNOWN"
                 }
-
-                override fun onMediaItemTransition(
-                    mediaItem: MediaItem?,
-                    reason: Int,
-                ) {
-                    _currentMediaItem.value = mediaItem
-                    Timber.tag("OmniTunePlaybackTrace")
-                        .i("MediaItem transition: id=%s reason=%d",
-                            mediaItem?.mediaId, reason)
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    Timber.tag("OmniTunePlaybackTrace")
-                        .e(error, "Player error: code=%d msg=%s",
-                            error.errorCode, error.message)
-                }
-
-                override fun onPlayWhenReadyChanged(
-                    playWhenReady: Boolean,
-                    reason: Int,
-                ) {
-                    Timber.tag("OmniTunePlaybackTrace")
-                        .i("PlayWhenReady: %b reason=%d", playWhenReady, reason)
-                }
+                Timber.tag("OmniTunePlaybackTrace")
+                    .i("Player state: %s", label)
             }
-        )
+
+            override fun onMediaItemTransition(
+                mediaItem: MediaItem?,
+                reason: Int,
+            ) {
+                _currentMediaItem.value = mediaItem
+                Timber.tag("OmniTunePlaybackTrace")
+                    .i("MediaItem transition: id=%s reason=%d",
+                        mediaItem?.mediaId, reason)
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                Timber.tag("OmniTunePlaybackTrace")
+                    .e(error, "Player error: code=%d msg=%s",
+                        error.errorCode, error.message)
+            }
+
+            override fun onPlayWhenReadyChanged(
+                playWhenReady: Boolean,
+                reason: Int,
+            ) {
+                Timber.tag("OmniTunePlaybackTrace")
+                    .i("PlayWhenReady: %b reason=%d", playWhenReady, reason)
+            }
+        }.also(player::addListener)
     }
 
     fun onDestroy() {
-        // Listener is garbage-collected with the player release
+        detachPlayerListener()
         player = null
+        _playbackState.value = Player.STATE_IDLE
+        _currentMediaItem.value = null
+    }
+
+    private fun detachPlayerListener() {
+        playerListener?.let { listener -> player?.removeListener(listener) }
+        playerListener = null
     }
 
     override fun onConnect(

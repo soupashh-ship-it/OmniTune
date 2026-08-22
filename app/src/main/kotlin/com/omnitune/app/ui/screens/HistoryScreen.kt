@@ -67,7 +67,6 @@ fun HistoryScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(OmniColors.OmniBackgroundBase)
-            .background(OmniColors.BackgroundGradient)
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
     ) {

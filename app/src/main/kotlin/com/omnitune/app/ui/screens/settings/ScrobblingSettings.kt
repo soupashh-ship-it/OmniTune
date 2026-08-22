@@ -1,4 +1,7 @@
-@file:Suppress("UNCHECKED_CAST", "IMPLICIT_CAST_TO_ANY")
+/*
+ * OmniTune - An open-source music player for Android
+ * Licensed under GPL-3.0
+ */
 
 package com.omnitune.app.ui.screens.settings
 
@@ -7,10 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -19,20 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.R
-import com.omnitune.app.constants.EnableLastFMScrobblingKey
-import com.omnitune.app.constants.LastFMSessionKey
-import com.omnitune.app.constants.LastFMUseNowPlaying
-import com.omnitune.app.constants.LastFMUsernameKey
 import com.omnitune.app.constants.ListenBrainzEnabledKey
+import com.omnitune.app.constants.ListenBrainzNowPlayingKey
 import com.omnitune.app.constants.ListenBrainzTokenKey
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
@@ -40,97 +34,65 @@ import com.omnitune.app.constants.ScrobbleMinSongDurationKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.rememberPreference
-import com.omnitune.lastfm.LastFM
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun ScrobblingSettings() {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    var username by rememberPreference(LastFMUsernameKey, "")
-    var sessionKey by rememberPreference(LastFMSessionKey, "")
-    var scrobblingEnabled by rememberPreference(EnableLastFMScrobblingKey, false)
-    var useNowPlaying by rememberPreference(LastFMUseNowPlaying, true)
+    var enabled by rememberPreference(ListenBrainzEnabledKey, false)
+    var nowPlaying by rememberPreference(ListenBrainzNowPlayingKey, true)
+    var storedToken by rememberPreference(ListenBrainzTokenKey, "")
     var delayPercent by rememberPreference(ScrobbleDelayPercentKey, 50f)
     var delaySeconds by rememberPreference(ScrobbleDelaySecondsKey, 30)
     var minSongDuration by rememberPreference(ScrobbleMinSongDurationKey, 30)
-    var listenBrainzEnabled by rememberPreference(ListenBrainzEnabledKey, false)
-    var listenBrainzToken by rememberPreference(ListenBrainzTokenKey, "")
-    var showListenBrainzDialog by remember { mutableStateOf(false) }
-
-    var showLoginDialog by remember { mutableStateOf(false) }
-    var showLogoutDialog by remember { mutableStateOf(false) }
-    var loginError by remember { mutableStateOf<String?>(null) }
-
-    val isLoggedIn = sessionKey.isNotBlank()
-    val decryptedListenBrainzToken = SecurePreferenceCipher.decryptOrPlain(listenBrainzToken)
+    var showTokenDialog by remember { mutableStateOf(false) }
+    val token = SecurePreferenceCipher.decryptOrPlain(storedToken)
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
     ) {
         Spacer(Modifier.height(8.dp))
-
-        // Account section
-        OmniPreferenceCard(title = "Account") {
-            if (isLoggedIn) {
+        OmniPreferenceCard(title = "ListenBrainz") {
+            OmniSwitchPreference(
+                title = "Enable scrobbling",
+                description = if (token.isBlank()) "Add your token before enabling scrobbling" else "Send completed listens to ListenBrainz",
+                iconRes = R.drawable.ic_history,
+                accent = OmniColors.OmniAccentTertiary,
+                checked = enabled,
+                onCheckedChange = { checked -> if (token.isNotBlank()) enabled = checked },
+            )
+            OmniSwitchPreference(
+                title = "Now playing updates",
+                description = "Send the current track while playback is active",
+                iconRes = R.drawable.ic_play_arrow,
+                accent = OmniColors.OmniAccentSecondary,
+                checked = nowPlaying,
+                onCheckedChange = { nowPlaying = it },
+            )
+            OmniPreferenceEntry(
+                title = "User token",
+                description = if (token.isBlank()) "Tap to configure your token" else "Token configured and encrypted on this device",
+                iconRes = R.drawable.ic_settings,
+                accent = OmniColors.OmniAccentSecondary,
+                onClick = { showTokenDialog = true },
+            )
+            if (token.isNotBlank()) {
                 OmniPreferenceEntry(
-                    title = "Logged in",
-                    description = username.ifBlank { "Connected to Last.fm" },
-                    iconRes = R.drawable.ic_favorite,
-                    accent = OmniColors.Downloaded,
-                )
-                OmniPreferenceEntry(
-                    title = "Log out",
-                    description = "Disconnect your Last.fm account",
+                    title = "Remove token",
+                    description = "Stops ListenBrainz scrobbling and removes the local credential",
                     iconRes = R.drawable.ic_close,
                     accent = OmniColors.Warning,
-                    onClick = { showLogoutDialog = true },
-                )
-            } else {
-                OmniPreferenceEntry(
-                    title = "Log in",
-                    description = "Connect your Last.fm account to scrobble",
-                    iconRes = R.drawable.ic_favorite,
-                    accent = OmniColors.OmniAccentPrimary,
-                    onClick = { showLoginDialog = true },
+                    onClick = {
+                        storedToken = ""
+                        enabled = false
+                    },
                 )
             }
         }
 
         Spacer(Modifier.height(12.dp))
-
-        // Scrobbling toggle
-        OmniPreferenceCard(title = "Scrobbling") {
-            OmniSwitchPreference(
-                title = "Enable scrobbling",
-                description = "Submit plays to Last.fm",
-                iconRes = R.drawable.ic_favorite,
-                accent = OmniColors.Hot,
-                checked = scrobblingEnabled && isLoggedIn,
-                onCheckedChange = { scrobblingEnabled = it },
-            )
-            OmniSwitchPreference(
-                title = "Now playing updates",
-                description = "Show currently playing track on Last.fm",
-                iconRes = R.drawable.ic_play_arrow,
-                accent = OmniColors.OmniAccentSecondary,
-                checked = useNowPlaying,
-                onCheckedChange = { useNowPlaying = it },
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // Scrobble threshold
         OmniPreferenceCard(title = "Scrobble threshold") {
             FloatPreferenceSliderRow(
                 label = "Percent of song",
-                description = "Scrobble when this percentage has played",
+                description = "Scrobble after this percentage has played",
                 value = delayPercent,
                 onValueChange = { delayPercent = it },
                 valueRange = 10f..100f,
@@ -147,8 +109,8 @@ fun ScrobblingSettings() {
                 valueFormat = { "${it.toInt()}s" },
             )
             FloatPreferenceSliderRow(
-                label = "Min song duration",
-                description = "Only scrobble songs longer than this",
+                label = "Minimum song duration",
+                description = "Do not scrobble tracks shorter than this",
                 value = minSongDuration.toFloat(),
                 onValueChange = { minSongDuration = it.toInt() },
                 valueRange = 10f..300f,
@@ -156,235 +118,42 @@ fun ScrobblingSettings() {
                 valueFormat = { "${it.toInt()}s" },
             )
         }
-
-
-        OmniPreferenceCard(title = "ListenBrainz") {
-            OmniSwitchPreference(
-                title = "Enable scrobbling",
-                description = "Send your listening history to ListenBrainz",
-                iconRes = R.drawable.ic_history,
-                accent = OmniColors.OmniAccentTertiary,
-                checked = listenBrainzEnabled,
-                onCheckedChange = { listenBrainzEnabled = it },
-            )
-            OmniPreferenceEntry(
-                title = "User Token",
-                description = if (decryptedListenBrainzToken.isBlank()) "Tap to configure token" else "Token configured",
-                iconRes = R.drawable.ic_settings,
-                accent = OmniColors.OmniAccentSecondary,
-                onClick = { showListenBrainzDialog = true }
-            )
-        }
-
-        if (showListenBrainzDialog) {
-            var tokenInput by remember(showListenBrainzDialog) { mutableStateOf(decryptedListenBrainzToken) }
-            AlertDialog(
-                onDismissRequest = { showListenBrainzDialog = false },
-                containerColor = OmniColors.OmniBackgroundElevated,
-                titleContentColor = OmniColors.TextPrimary,
-                textContentColor = OmniColors.TextSecondary,
-                title = { Text("ListenBrainz Token", fontWeight = FontWeight.Bold) },
-                text = {
-                    OutlinedTextField(
-                        value = tokenInput,
-                        onValueChange = { tokenInput = it },
-                        singleLine = true,
-                        placeholder = { Text("Enter user token") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OmniColors.OmniAccentPrimary,
-                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                            focusedTextColor = OmniColors.TextPrimary,
-                            unfocusedTextColor = OmniColors.TextPrimary
-                        )
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        listenBrainzToken = SecurePreferenceCipher.encrypt(tokenInput.trim())
-                        showListenBrainzDialog = false
-                    }) { Text("Save") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showListenBrainzDialog = false }) { Text("Cancel") }
-                },
-            )
-        }
-
         Spacer(Modifier.height(32.dp))
     }
 
-    // ── Login dialog ──────────────────────────────────────────────────
-
-    if (showLoginDialog) {
-        LoginDialog(
-            error = loginError,
-            onDismiss = {
-                showLoginDialog = false
-                loginError = null
-            },
-            onLoginSuccess = { user, session ->
-                username = user
-                sessionKey = SecurePreferenceCipher.encrypt(session)
-                scrobblingEnabled = true
-                showLoginDialog = false
-                loginError = null
-            },
-            onError = { loginError = it },
-        )
-    }
-
-    // ── Logout dialog ──────────────────────────────────────────────────
-
-    if (showLogoutDialog) {
+    if (showTokenDialog) {
+        var tokenInput by remember(showTokenDialog) { mutableStateOf(token) }
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
+            onDismissRequest = { showTokenDialog = false },
             containerColor = OmniColors.OmniBackgroundElevated,
             titleContentColor = OmniColors.TextPrimary,
             textContentColor = OmniColors.TextSecondary,
-            title = { Text("Log out of Last.fm?", fontWeight = FontWeight.Bold) },
-            text = { Text("Your session key will be removed. Scrobbling will stop.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    username = ""
-                    sessionKey = ""
-                    scrobblingEnabled = false
-                    showLogoutDialog = false
-                }) {
-                    Text("Log out", fontWeight = FontWeight.Bold, color = OmniColors.Warning)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel", color = OmniColors.TextSecondary)
-                }
-            },
-        )
-    }
-
-    // ── Error banner ──────────────────────────────────────────────────
-
-    loginError?.let { error ->
-        Text(
-            text = error,
-            style = MaterialTheme.typography.bodySmall,
-            color = OmniColors.Warning,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-        )
-    }
-}
-
-@Composable
-private fun LoginDialog(
-    error: String? = null,
-    onDismiss: () -> Unit,
-    onLoginSuccess: (username: String, sessionKey: String) -> Unit,
-    onError: (String) -> Unit,
-) {
-    var login by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    val performLogin: () -> Unit = {
-        if (login.isNotBlank() && password.isNotBlank() && !isLoading) {
-            isLoading = true
-            scope.launch {
-                try {
-                    val session = withContext(Dispatchers.IO) {
-                        LastFM.getMobileSession(login.trim(), password)
-                    }
-                    val sessionKey = session?.key
-                    if (sessionKey != null) {
-                        onLoginSuccess(login.trim(), sessionKey)
-                    } else {
-                        onError("Login failed. Check your credentials.")
-                    }
-                } catch (e: Exception) {
-                    onError(e.message ?: "Login failed. Check your credentials.")
-                } finally {
-                    isLoading = false
-                }
-            }
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = OmniColors.OmniBackgroundElevated,
-        titleContentColor = OmniColors.TextPrimary,
-        textContentColor = OmniColors.TextSecondary,
-        title = { Text("Last.fm Login", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            title = { Text("ListenBrainz token", fontWeight = FontWeight.Bold) },
+            text = {
                 OutlinedTextField(
-                    value = login,
-                    onValueChange = { login = it },
-                    label = { Text("Username", color = OmniColors.TextTertiary) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    enabled = !isLoading,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = OmniColors.TextPrimary,
-                        unfocusedTextColor = OmniColors.TextPrimary,
-                        cursorColor = OmniColors.OmniAccentSecondary,
-                        focusedBorderColor = OmniColors.OmniAccentSecondary,
-                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                        focusedLabelColor = OmniColors.OmniAccentSecondary,
-                        unfocusedLabelColor = OmniColors.TextTertiary,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Password", color = OmniColors.TextTertiary) },
+                    value = tokenInput,
+                    onValueChange = { tokenInput = it },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = { performLogin() }
-                    ),
-                    enabled = !isLoading,
+                    placeholder = { Text("Enter your token") },
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = OmniColors.OmniAccentPrimary,
+                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
                         focusedTextColor = OmniColors.TextPrimary,
                         unfocusedTextColor = OmniColors.TextPrimary,
-                        cursorColor = OmniColors.OmniAccentSecondary,
-                        focusedBorderColor = OmniColors.OmniAccentSecondary,
-                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                        focusedLabelColor = OmniColors.OmniAccentSecondary,
-                        unfocusedLabelColor = OmniColors.TextTertiary,
                     ),
-                    modifier = Modifier.fillMaxWidth(),
                 )
-                if (error != null) {
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OmniColors.Warning,
-                    )
-                }
-                if (isLoading) {
-                    Text(
-                        text = "Signing in...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = OmniColors.TextTertiary,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { performLogin() },
-                enabled = login.isNotBlank() && password.isNotBlank() && !isLoading,
-            ) {
-                Text("Log in", fontWeight = FontWeight.Bold, color = OmniColors.OmniAccentSecondary)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) {
-                Text("Cancel", color = OmniColors.TextSecondary)
-            }
-        },
-    )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    storedToken = tokenInput.trim().takeIf { it.isNotBlank() }
+                        ?.let(SecurePreferenceCipher::encrypt)
+                        .orEmpty()
+                    if (storedToken.isBlank()) enabled = false
+                    showTokenDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { showTokenDialog = false }) { Text("Cancel") } },
+        )
+    }
 }

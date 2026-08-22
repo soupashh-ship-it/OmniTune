@@ -53,7 +53,7 @@ import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.component.SongListItem
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Album
 import com.omnitune.app.db.entities.Song

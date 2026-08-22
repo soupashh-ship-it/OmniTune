@@ -9,7 +9,9 @@ import android.content.Context
 import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.StatFs
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
@@ -54,6 +56,7 @@ class DownloadUtil @Inject constructor(
     private val resolveSlots = Semaphore(4)
     private val downloadStateMutex = Mutex()
     private val resolvingIds = ConcurrentHashMap.newKeySet<String>()
+    private val staleRepairIds = ConcurrentHashMap.newKeySet<String>()
 
     val databaseProvider by lazy {
         StandaloneDatabaseProvider(context)
@@ -111,12 +114,12 @@ class DownloadUtil @Inject constructor(
         downloadScope.launch {
             downloadStateMutex.withLock {
                 val current = if (removed) null else downloadManager.downloadIndex.getDownload(download.request.id)
-                val state = when {
-                    removed || current == null || current.state == Download.STATE_REMOVING -> 0
-                    current.state == Download.STATE_COMPLETED -> 2
-                    current.state == Download.STATE_FAILED -> 3
-                    else -> 1
-                }
+                val hasCompleteCache = current?.let(::hasCompleteCache) == true
+                val state = DownloadLifecyclePolicy.persistedState(
+                    downloadState = current?.state,
+                    removed = removed,
+                    hasCompleteCache = hasCompleteCache,
+                )
                 database.withTransaction {
                     updateDownloadState(
                         songId = download.request.id,
@@ -124,6 +127,9 @@ class DownloadUtil @Inject constructor(
                         downloadedAt = if (state == 2) java.time.LocalDateTime.now() else null,
                     )
                     refreshDownloadedPlaylists(download.request.id)
+                }
+                if (current?.state == Download.STATE_COMPLETED && !hasCompleteCache) {
+                    repairStaleCompletedDownload(current, "completed entry has incomplete cache data")
                 }
             }
         }
@@ -157,17 +163,18 @@ class DownloadUtil @Inject constructor(
         resolvedStreamUrl: String? = null,
         onResult: (success: Boolean, message: String) -> Unit = { _, _ -> },
     ) {
-        if (videoId.isBlank()) {
-            onResult(false, "Download failed: invalid song")
+        val admission = DownloadLifecyclePolicy.preflight(
+            videoId = videoId,
+            wifiOnly = PreferenceStore.get(DownloadWifiOnlyKey) ?: true,
+            connectedToWifi = isConnectedToWifi(),
+            availableBytes = availableDownloadStorageBytes(),
+        )
+        if (admission is DownloadAdmission.Rejected) {
+            onResult(false, admission.message)
             return
         }
         if (!resolvingIds.add(videoId)) {
             onResult(true, "Download already starting")
-            return
-        }
-        if ((PreferenceStore.get(DownloadWifiOnlyKey) ?: true) && !isConnectedToWifi()) {
-            resolvingIds.remove(videoId)
-            onResult(false, "Download requires a Wi-Fi connection")
             return
         }
 
@@ -194,7 +201,7 @@ class DownloadUtil @Inject constructor(
                 }
 
                 val request = DownloadRequest.Builder(videoId, Uri.parse(streamUrl))
-                    .setCustomCacheKey(videoId)
+                    .setCustomCacheKey(OfflineDownloadIdentity.cacheKey(videoId, null))
                     .setData(title.toByteArray(Charsets.UTF_8))
                     .build()
                 DownloadService.sendAddDownload(context, ExoDownloadService::class.java, request, false)
@@ -216,29 +223,116 @@ class DownloadUtil @Inject constructor(
             ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
+    private fun availableDownloadStorageBytes(): Long = runCatching {
+        StatFs(context.filesDir.absolutePath).availableBytes.coerceAtLeast(0L)
+    }.getOrDefault(0L)
+
+    /** Returns a completed download only when its persistent cache is byte-complete. */
+    fun findPlayableDownload(downloadId: String): Download? {
+        val download = try {
+            downloadManager.downloadIndex.getDownload(downloadId)
+        } catch (error: Exception) {
+            Timber.w(error, "Unable to read download index for %s", downloadId)
+            null
+        }
+        return download?.takeIf(::isPlayable)
+    }
+
     /**
-     * Reusable playability gate that checks state and safely verifies cache presence.
+     * Used by the player data source after Media3 has supplied the custom cache key. Legacy
+     * requests with a distinct custom key are supported by the fallback index scan.
      */
-    fun isPlayable(download: androidx.media3.exoplayer.offline.Download): Boolean {
-        Timber.i("Diagnostics: Playback request for download ${download.request.id}, state: ${download.state}")
-        
-        if (download.state == androidx.media3.exoplayer.offline.Download.STATE_REMOVING) {
-            Timber.w("Diagnostics: Playback rejected (Removing)")
+    fun isPlayableCacheKey(cacheKey: String): Boolean {
+        val direct = try {
+            downloadManager.downloadIndex.getDownload(cacheKey)
+        } catch (error: Exception) {
+            Timber.w(error, "Unable to read download index for cache key %s", cacheKey)
+            null
+        }
+        if (direct != null && OfflineDownloadIdentity.cacheKey(direct.request.id, direct.request.customCacheKey) == cacheKey) {
+            return isPlayable(direct)
+        }
+
+        val cursor = try {
+            downloadManager.downloadIndex.getDownloads(Download.STATE_COMPLETED)
+        } catch (error: Exception) {
+            Timber.w(error, "Unable to scan completed downloads for cache key %s", cacheKey)
             return false
         }
-        if (download.state != androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
-            Timber.w("Diagnostics: Playback rejected (Not Completed: ${download.state})")
-            return false
+        return try {
+            while (cursor.moveToNext()) {
+                val download = cursor.download
+                if (OfflineDownloadIdentity.cacheKey(download.request.id, download.request.customCacheKey) == cacheKey) {
+                    return isPlayable(download)
+                }
+            }
+            false
+        } finally {
+            cursor.close()
         }
-        
-        // Safe cache detection without brittle file-path assumptions
-        val cachedSpans = downloadCache.getCachedSpans(download.request.id)
-        if (cachedSpans.isEmpty()) {
-            Timber.e("Diagnostics: Playback failed (Missing Cache)")
-            return false
+    }
+
+    /** Reusable playability gate for the downloads UI, queueing, and resolver. */
+    fun isPlayable(download: Download): Boolean {
+        val playable = hasCompleteCache(download)
+        if (!playable && download.state == Download.STATE_COMPLETED) {
+            repairStaleCompletedDownload(download, "completed entry failed byte-completeness check")
         }
-        
-        Timber.i("Diagnostics: Playback approved")
-        return true
+        return playable
+    }
+
+    private fun hasCompleteCache(download: Download): Boolean {
+        if (download.state != Download.STATE_COMPLETED) return false
+        val cacheKey = OfflineDownloadIdentity.cacheKey(download.request.id, download.request.customCacheKey)
+        return try {
+            val metadataLength = ContentMetadata.getContentLength(downloadCache.getContentMetadata(cacheKey))
+            val expectedLength = listOf(download.contentLength, metadataLength)
+                .filter { it > 0 }
+                .maxOrNull()
+                ?: return false
+            val cachedPrefixLength = downloadCache.getCachedLength(cacheKey, 0, expectedLength)
+            OfflinePlaybackCacheRouting.isFullyCached(
+                isCompleted = true,
+                expectedContentLength = expectedLength,
+                cachedPrefixLength = cachedPrefixLength,
+            )
+        } catch (error: Exception) {
+            Timber.w(error, "Unable to validate download cache for %s", download.request.id)
+            false
+        }
+    }
+
+    /**
+     * A terminal index record without all of its bytes is stale. Remove its cache resource and
+     * index entry, then mark the Room row unavailable so it cannot keep being offered offline.
+     */
+    private fun repairStaleCompletedDownload(download: Download, reason: String) {
+        if (!staleRepairIds.add(download.request.id)) return
+        downloadScope.launch {
+            try {
+                val cacheKey = OfflineDownloadIdentity.cacheKey(download.request.id, download.request.customCacheKey)
+                Timber.w("Repairing stale completed download %s: %s", download.request.id, reason)
+                try {
+                    downloadCache.removeResource(cacheKey)
+                } catch (error: Exception) {
+                    Timber.w(error, "Unable to clear stale cache for %s", download.request.id)
+                }
+                try {
+                    database.withTransaction {
+                        updateDownloadState(download.request.id, state = 0, downloadedAt = null)
+                        refreshDownloadedPlaylists(download.request.id)
+                    }
+                } catch (error: Exception) {
+                    Timber.w(error, "Unable to mark stale download unavailable for %s", download.request.id)
+                }
+                try {
+                    DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, download.request.id, false)
+                } catch (error: Exception) {
+                    Timber.w(error, "Unable to remove stale download index entry for %s", download.request.id)
+                }
+            } finally {
+                staleRepairIds.remove(download.request.id)
+            }
+        }
     }
 }

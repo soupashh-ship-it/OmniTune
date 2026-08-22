@@ -21,6 +21,8 @@ import timber.log.Timber
  * so ExoPlayer can play it.
  */
 object StreamUrlResolver {
+    private const val StreamLookupTimeoutMillis = 10_000L
+
     @androidx.annotation.VisibleForTesting
     internal fun mapQuality(qualityMode: PlaybackQualityMode): StreamQuality {
         return when (qualityMode) {
@@ -66,21 +68,44 @@ object StreamUrlResolver {
         streamExtractor: StreamExtractor,
         downloadUtil: DownloadUtil? = null,
         qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO
+    ): MediaItem? = resolveMediaItem(
+        mediaItem = mediaItem,
+        streamLookup = streamExtractor::extract,
+        downloadUtil = downloadUtil,
+        qualityMode = qualityMode,
+    )
+
+    /**
+     * The lookup seam makes the Media3 item/cache wiring deterministic in Android tests while
+     * production continues to route through [StreamExtractor].
+     */
+    @androidx.annotation.VisibleForTesting
+    internal suspend fun resolveMediaItem(
+        mediaItem: MediaItem,
+        streamLookup: suspend (videoId: String, quality: StreamQuality) -> StreamResult?,
+        downloadUtil: DownloadUtil? = null,
+        qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
+        lookupTimeoutMillis: Long = StreamLookupTimeoutMillis,
     ): MediaItem? {
+        require(lookupTimeoutMillis >= 0L) { "lookupTimeoutMillis must not be negative" }
         val videoId = mediaItem.localConfiguration?.uri?.toString()?.trim() ?: return null
         if (!isYouTubeVideoId(mediaItem.localConfiguration?.uri)) return null
 
         // Check if the item is fully downloaded
         if (downloadUtil != null) {
             try {
-                val download = downloadUtil.downloadManager.downloadIndex.getDownload(videoId)
-                if (download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED) {
+                val download = downloadUtil.findPlayableDownload(videoId)
+                if (download != null) {
+                    val cacheKey = OfflineDownloadIdentity.cacheKey(
+                        download.request.id,
+                        download.request.customCacheKey,
+                    )
                     Timber.d("StreamUrlResolver: offline cache hit for $videoId")
                     StartupTracker.cacheHit = true
                     StartupTracker.networkType = "OFFLINE"
                     return mediaItem.buildUpon()
                         .setUri(download.request.uri)
-                        .setCustomCacheKey(videoId)
+                        .setCustomCacheKey(cacheKey)
                         .build()
                 }
             } catch (e: Exception) {
@@ -107,8 +132,8 @@ object StreamUrlResolver {
         Timber.d("StreamUrlResolver: resolving $videoId")
         StartupTracker.logResolverStart()
         val streamQuality = mapQuality(qualityMode)
-        val streamResult = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
-            streamExtractor.extract(videoId, streamQuality)
+        val streamResult = kotlinx.coroutines.withTimeoutOrNull(lookupTimeoutMillis) {
+            streamLookup(videoId, streamQuality)
         }
         StartupTracker.logResolverDone()
         
@@ -167,8 +192,7 @@ object StreamUrlResolver {
         if (streamCache.get(videoId) != null) return true
         if (downloadUtil != null) {
             try {
-                val download = downloadUtil.downloadManager.downloadIndex.getDownload(videoId)
-                return download != null && download.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
+                return downloadUtil.findPlayableDownload(videoId) != null
             } catch (_: Exception) {
                 return false
             }

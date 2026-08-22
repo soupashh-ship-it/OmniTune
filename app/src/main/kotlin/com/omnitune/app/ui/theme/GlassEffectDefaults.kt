@@ -63,90 +63,86 @@ object OmniGlassDefaults {
     // ── Navigation bar styles ───────────────────────────────────────────
 
     val NavigationBarDark = GlassSurfaceStyle(
-        blurRadius = 16.dp,
-        surfaceTint = Color(0xFF080B12),
-        surfaceAlpha = 0.88f,
-        borderColor = Color.White,
-        borderAlpha = 0.018f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 6.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.32f),
-        shadowSpot = OmniColors.OmniAccentGlow.copy(alpha = 0.06f),
+        blurRadius = 0.dp,
+        surfaceTint = Color(0xFF121216),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF242430),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 8.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.4f),
+        shadowSpot = Color.Black.copy(alpha = 0.3f),
     )
 
     val NavigationBarLight = GlassSurfaceStyle(
-        blurRadius = 20.dp,
-        surfaceTint = Color.White,
-        surfaceAlpha = 0.70f,
-        borderColor = Color.White,
-        borderAlpha = 0.15f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 4.dp,
+        blurRadius = 0.dp,
+        surfaceTint = Color(0xFFF0EFF4),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFFD6D4DE),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 6.dp,
     )
 
     val NavigationBarPureBlack = GlassSurfaceStyle(
         blurRadius = 0.dp,
         surfaceTint = Color.Black,
-        surfaceAlpha = 0.96f,
-        borderColor = Color.White,
-        borderAlpha = 0.01f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 6.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.40f),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF1E1E26),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 8.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.5f),
     )
 
     // ── MiniPlayer styles ───────────────────────────────────────────────
 
     val MiniPlayerDark = GlassSurfaceStyle(
-        blurRadius = 20.dp,
-        surfaceTint = Color(0xFF06090E),
-        surfaceAlpha = 0.90f,
-        overlayColor = OmniColors.OmniBackgroundElevated,
-        overlayAlpha = 0.85f,
-        borderColor = Color.White,
-        borderAlpha = 0.015f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 10.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.30f),
-        shadowSpot = OmniColors.OmniAccentGlow.copy(alpha = 0.10f),
+        blurRadius = 0.dp,
+        surfaceTint = Color(0xFF181822),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF282836),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 12.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.5f),
+        shadowSpot = Color.Black.copy(alpha = 0.4f),
     )
 
     val MiniPlayerPureBlack = GlassSurfaceStyle(
         blurRadius = 0.dp,
-        surfaceTint = Color.Black,
-        surfaceAlpha = 0.94f,
-        overlayColor = Color.Black,
-        overlayAlpha = 0.96f,
-        borderColor = Color.White,
-        borderAlpha = 0.01f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 10.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.35f),
+        surfaceTint = Color(0xFF0C0C10),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF1C1C24),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 12.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.5f),
     )
 
     // ── Card / Panel styles ─────────────────────────────────────────────
 
     val CardDark = GlassSurfaceStyle(
-        blurRadius = 8.dp,
-        surfaceTint = Color(0xFF0A0E17),
-        surfaceAlpha = 0.68f,
-        borderColor = Color.White,
-        borderAlpha = 0.01f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 4.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.18f),
+        blurRadius = 0.dp,
+        surfaceTint = Color(0xFF181820),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF262634),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 2.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.2f),
     )
 
     val CardElevated = GlassSurfaceStyle(
-        blurRadius = 12.dp,
-        surfaceTint = Color(0xFF0E1420),
-        surfaceAlpha = 0.78f,
-        borderColor = Color.White,
-        borderAlpha = 0.018f,
-        borderWidth = 0.5.dp,
-        shadowElevation = 8.dp,
-        shadowAmbient = Color.Black.copy(alpha = 0.24f),
-        shadowSpot = OmniColors.OmniAccentGlow.copy(alpha = 0.06f),
+        blurRadius = 0.dp,
+        surfaceTint = Color(0xFF20202A),
+        surfaceAlpha = 1f,
+        borderColor = Color(0xFF2E2E3E),
+        borderAlpha = 1f,
+        borderWidth = 1.dp,
+        shadowElevation = 6.dp,
+        shadowAmbient = Color.Black.copy(alpha = 0.3f),
+        shadowSpot = Color.Black.copy(alpha = 0.2f),
     )
 
     // ── Selectors ───────────────────────────────────────────────────────

@@ -204,7 +204,14 @@ interface PlaylistDao {
 
 
     @Delete
-    fun delete(playlist: PlaylistEntity)
+    fun deletePlaylistRow(playlist: PlaylistEntity)
+
+    /** Delete folder/tag links with the playlist so tag queries never return a ghost playlist ID. */
+    @Transaction
+    fun delete(playlist: PlaylistEntity) {
+        removeAllPlaylistTags(playlist.id)
+        deletePlaylistRow(playlist)
+    }
 
 
     @Delete

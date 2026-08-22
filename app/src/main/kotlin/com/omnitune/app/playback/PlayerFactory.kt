@@ -9,7 +9,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.exoplayer.offline.DownloadManager
+import androidx.media3.datasource.DataSource
 import okhttp3.OkHttpClient
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 
@@ -86,18 +86,31 @@ object PlayerFactory {
         context: Context,
         okHttpClient: OkHttpClient,
         downloadUtil: DownloadUtil
-    ): CacheDataSource.Factory {
+    ): DataSource.Factory {
         val playbackHttpClient = okHttpClient.newBuilder()
             .addInterceptor(youtubeStreamHeaderInterceptor())
             .build()
-        val dataSourceFactory = DefaultDataSource.Factory(
+        val networkDataSourceFactory = DefaultDataSource.Factory(
             context,
             OkHttpDataSource.Factory(playbackHttpClient).setUserAgent(DEFAULT_PLAYBACK_USER_AGENT)
         )
-        return CacheDataSource.Factory()
+
+        val streamCacheSourceFactory = CacheDataSource.Factory()
             .setCache(downloadUtil.playbackCache)
-            .setUpstreamDataSourceFactory(dataSourceFactory)
+            .setUpstreamDataSourceFactory(networkDataSourceFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        val completedDownloadSourceFactory = CacheDataSource.Factory()
+            .setCache(downloadUtil.downloadCache)
+            .setUpstreamDataSourceFactory(null)
+            .setCacheWriteDataSinkFactory(null)
+            .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+
+        return OfflineCacheRoutingDataSourceFactory(
+            completedDownloadSourceFactory = completedDownloadSourceFactory,
+            streamSourceFactory = streamCacheSourceFactory,
+            isCompletedDownloadCacheKey = downloadUtil::isPlayableCacheKey,
+        )
     }
 
     fun createOverlapPlayer(

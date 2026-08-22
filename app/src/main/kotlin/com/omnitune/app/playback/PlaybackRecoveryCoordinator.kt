@@ -38,6 +38,8 @@ class PlaybackRecoveryCoordinator(
     private val playbackRecoveryPolicy = PlaybackRecoveryPolicy()
     private var autoSkipNextOnError = true
     private var playbackWatchdogJob: Job? = null
+    private var streamRecoveryJob: Job? = null
+    private var streamRecoveryTarget: StreamResolutionTarget? = null
 
     fun setAutoSkipNextOnError(enabled: Boolean) {
         autoSkipNextOnError = enabled
@@ -69,9 +71,17 @@ class PlaybackRecoveryCoordinator(
     }
 
     fun onPlayerError(error: PlaybackException) {
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = null
+        streamRecoveryTarget = null
         val errorType = PlaybackErrorClassifier.classify(error)
-        val currentMediaItem = player.currentMediaItem
-        val mediaId = currentMediaItem?.mediaId
+        val currentMediaItem = player.currentMediaItem ?: return
+        val target = StreamResolutionTarget(
+            mediaId = currentMediaItem.mediaId,
+            mediaItemIndex = player.currentMediaItemIndex,
+            resumePositionMs = player.currentPosition.coerceAtLeast(0L),
+        )
+        val mediaId = target.mediaId
 
         if (errorType == PlaybackErrorType.NetworkError) {
             if (networkPlaybackMonitor.handleNetworkError(mediaId)) {
@@ -82,12 +92,10 @@ class PlaybackRecoveryCoordinator(
         if (errorType == PlaybackErrorType.Forbidden403 ||
             errorType == PlaybackErrorType.NotFound404 ||
             errorType == PlaybackErrorType.BotCheck) {
-            if (mediaId != null) {
-                StreamUrlResolver.invalidate(mediaId)
-            }
+            StreamUrlResolver.invalidate(mediaId)
         }
 
-        if (mediaId != null && playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
+        if (playbackRecoveryPolicy.canRetry(mediaId, errorType)) {
             Timber.tag("MusicService").w("Recovering from $errorType for mediaId: $mediaId")
             playbackRecoveryPolicy.incrementRetry(mediaId)
 
@@ -103,10 +111,11 @@ class PlaybackRecoveryCoordinator(
                 streamExtractor.reportPlaybackFailure(mediaId)
             }
 
-            scope.launch(Dispatchers.Main) {
+            streamRecoveryTarget = target
+            streamRecoveryJob = scope.launch(Dispatchers.Main) {
                 try {
                     // Start from the original item, not the resolved one, so the resolver sees the yt ID
-                    val originalItem = currentMediaItem.buildUpon().setUri(mediaId).build()
+                    val originalItem = currentMediaItem.buildUpon().setUri(target.mediaId).build()
                     val resolved = withContext(Dispatchers.IO) {
                         StreamUrlResolver.resolveMediaItem(
                             originalItem,
@@ -115,15 +124,22 @@ class PlaybackRecoveryCoordinator(
                             playbackQualityModeProvider()
                         )
                     }
-                    if (resolved != null) {
-                        val pos = player.currentPosition
-                        val index = player.currentMediaItemIndex
-                        player.replaceMediaItem(index, resolved)
-                        player.seekTo(index, pos)
+                    if (resolved != null && target.isCurrent(
+                            currentMediaId = player.currentMediaItem?.mediaId,
+                            currentMediaItemIndex = player.currentMediaItemIndex,
+                        )
+                    ) {
+                        player.replaceMediaItem(target.mediaItemIndex, resolved)
+                        player.seekTo(target.mediaItemIndex, target.resumePositionMs)
                         player.prepare()
                         player.play()
                         return@launch
+                    } else if (resolved != null) {
+                        Timber.tag("MusicService").d("Ignored stale playback recovery")
+                        return@launch
                     }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
                 } catch (e: Exception) {
                     Timber.tag("MusicService").e(e, "Failed to resolve during recovery")
                 }
@@ -136,12 +152,33 @@ class PlaybackRecoveryCoordinator(
     }
 
     fun resetRetry(mediaId: String) {
+        if (streamRecoveryTarget?.mediaId != mediaId) {
+            streamRecoveryJob?.cancel()
+            streamRecoveryJob = null
+            streamRecoveryTarget = null
+        }
         playbackRecoveryPolicy.resetRetry(mediaId)
+    }
+
+    /** Retries only an item that was explicitly paused by an offline failure. */
+    fun retryAfterNetworkRestored() {
+        if (streamRecoveryJob?.isActive == true || !player.playWhenReady) return
+        if (player.currentMediaItem == null) return
+        onPlayerError(
+            PlaybackException(
+                "Network restored",
+                null,
+                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            ),
+        )
     }
 
     fun release() {
         playbackWatchdogJob?.cancel()
         playbackWatchdogJob = null
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = null
+        streamRecoveryTarget = null
     }
 
     private fun fallbackSkip(errorType: PlaybackErrorType) {

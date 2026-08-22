@@ -10,31 +10,22 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
-import androidx.media3.common.Player
-import com.omnitune.app.data.StreamExtractor
-import com.omnitune.app.models.PlaybackQualityMode
 import com.omnitune.app.utils.isInternetAvailable
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class NetworkPlaybackMonitor(
     private val context: Context,
-    private val player: Player,
-    private val scope: CoroutineScope,
-    private val streamExtractor: StreamExtractor,
-    private val downloadUtil: DownloadUtil,
     private val waitingForNetworkConnection: MutableStateFlow<Boolean>,
-    private val playbackQualityModeProvider: suspend () -> PlaybackQualityMode,
     private val isDownloadCompleted: (String?) -> Boolean,
+    private val onNetworkRestored: () -> Unit,
 ) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var lastNetworkTransport: Int = -1
 
@@ -53,9 +44,19 @@ class NetworkPlaybackMonitor(
                 if (lastNetworkTransport != -1 && lastNetworkTransport != currentTransport) {
                     Timber.tag("MusicService").i("Network transport changed ($lastNetworkTransport -> $currentTransport)")
                     StreamUrlResolver.clearMemoryCache("Network type changed")
-                    recoverCurrentStreamOnNetworkChange()
                 }
                 lastNetworkTransport = currentTransport
+
+                // Keep a healthy stream running through Wi-Fi/mobile/VPN handovers. A new
+                // lookup is only appropriate after an actual offline failure was reported.
+                if (waitingForNetworkConnection.value &&
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                ) {
+                    waitingForNetworkConnection.value = false
+                    // Connectivity callbacks do not promise the player's application
+                    // thread. Player reads/recovery must happen on the main thread.
+                    mainHandler.post(onNetworkRestored)
+                }
             }
         }
 
@@ -99,34 +100,5 @@ class NetworkPlaybackMonitor(
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
         return false
-    }
-
-    private fun recoverCurrentStreamOnNetworkChange() {
-        scope.launch(Dispatchers.Main) {
-            if (!player.isPlaying && player.playbackState != Player.STATE_BUFFERING) return@launch
-
-            val currentPos = player.currentPosition
-            val currentIndex = player.currentMediaItemIndex
-            val currentItem = player.currentMediaItem ?: return@launch
-            val mediaId = currentItem.mediaId
-
-            if (StreamUrlResolver.isYouTubeVideoId(Uri.parse(mediaId))) {
-                val originalItem = currentItem.buildUpon().setUri(mediaId).build()
-                val resolved = withContext(Dispatchers.IO) {
-                    StreamUrlResolver.resolveMediaItem(
-                        originalItem,
-                        streamExtractor,
-                        downloadUtil,
-                        playbackQualityModeProvider(),
-                    )
-                }
-                if (resolved != null) {
-                    player.replaceMediaItem(currentIndex, resolved)
-                    player.seekTo(currentIndex, currentPos)
-                    player.prepare()
-                    player.play()
-                }
-            }
-        }
     }
 }

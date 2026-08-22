@@ -29,7 +29,6 @@ import com.omnitune.app.playback.queues.EmptyQueue
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.Queue
 import com.omnitune.app.sync.YouTubeLibrarySync
-import com.omnitune.app.utils.NetworkConnectivityObserver
 import com.omnitune.app.utils.isInternetAvailable
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
@@ -54,6 +53,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import com.omnitune.app.constants.ScrobbleDelayPercentKey
 import com.omnitune.app.constants.ScrobbleDelaySecondsKey
+import com.omnitune.app.constants.ScrobbleMinSongDurationKey
 import com.omnitune.app.constants.StopMusicOnTaskClearKey
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -64,11 +64,8 @@ import kotlin.math.pow
 import timber.log.Timber
 import javax.inject.Inject
 
-import com.omnitune.app.constants.DiscordTokenKey
-import com.omnitune.app.constants.EnableDiscordRPCKey
 import com.omnitune.app.constants.EqualizerBandLevelsMbKey
 import com.omnitune.app.constants.EqualizerEnabledKey
-import com.omnitune.app.discord.DiscordPresenceManager
 import com.omnitune.app.playback.continuation.AutoplayCandidate
 import com.omnitune.app.playback.continuation.AutoplayRecommendationResolver
 import com.omnitune.app.playback.continuation.AutoplayRetryPolicy
@@ -92,7 +89,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var streamExtractor: com.omnitune.app.data.StreamExtractor
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
-    @Inject lateinit var discordPresenceManager: DiscordPresenceManager
 
     private lateinit var scrobblingManager: ScrobblingManager
 
@@ -126,10 +122,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
         private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
         private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
+        private const val ACTION_STOP = PlaybackNotificationManager.ACTION_STOP
         private const val MAX_RECENT_AUTOPLAY_IDS = 40
         private const val MAX_PLAYBACK_HISTORY_ITEMS = 80
         private const val MIN_LISTEN_HISTORY_MS = 10_000L
         private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
+        // A process can be killed without an orderly service callback. Keep the persisted
+        // queue position close enough to resume the listening session safely.
+        private const val QUEUE_POSITION_CHECKPOINT_MS = 5_000L
     }
 
     private data class PlaybackHistoryEntry(
@@ -170,7 +170,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     fun binder(): MusicBinder = binder
 
-    lateinit var connectivityObserver: NetworkConnectivityObserver
     private val _waitingForNetworkConnection = MutableStateFlow(false)
     val waitingForNetworkConnection = _waitingForNetworkConnection.asStateFlow()
 
@@ -185,6 +184,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val _queueRestoreCompleted = MutableStateFlow(false)
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
     private var saveQueueJob: Job? = null
+    private var queuePositionCheckpointJob: Job? = null
     private var playQueueJob: Job? = null
     private var bluetoothReceiver: android.content.BroadcastReceiver? = null
     private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
@@ -256,6 +256,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 postMediaNotificationFallback("action-repeat", force = true)
                 return START_STICKY
             }
+            ACTION_STOP -> {
+                if (::player.isInitialized) {
+                    player.pause()
+                    player.stop()
+                    player.clearMediaItems()
+                }
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -274,13 +283,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         networkPlaybackMonitor = NetworkPlaybackMonitor(
             context = this,
-            player = player,
-            scope = scope,
-            streamExtractor = streamExtractor,
-            downloadUtil = downloadUtil,
             waitingForNetworkConnection = _waitingForNetworkConnection,
-            playbackQualityModeProvider = ::getPlaybackQualityMode,
             isDownloadCompleted = ::isDownloadCompleted,
+            onNetworkRestored = {
+                if (::playbackRecoveryCoordinator.isInitialized) {
+                    playbackRecoveryCoordinator.retryAfterNetworkRestored()
+                }
+            },
         )
         networkPlaybackMonitor.register()
         playbackRecoveryCoordinator = PlaybackRecoveryCoordinator(
@@ -355,22 +364,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
         val filter = android.content.IntentFilter().apply {
             addAction(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
             addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
         bluetoothReceiver = object : android.content.BroadcastReceiver() {
             override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
-                val connected = when (intent.action) {
+                when (intent.action) {
                     android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
                         val state = intent.getIntExtra(
                             android.bluetooth.BluetoothProfile.EXTRA_STATE,
                             android.bluetooth.BluetoothProfile.STATE_DISCONNECTED,
                         )
-                        state == android.bluetooth.BluetoothProfile.STATE_CONNECTED
+                        when (state) {
+                            android.bluetooth.BluetoothProfile.STATE_CONNECTED -> handleBluetoothConnected()
+                            android.bluetooth.BluetoothProfile.STATE_DISCONNECTED -> handleBluetoothDisconnected()
+                        }
                     }
-                    android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED -> true
-                    else -> false
-                }
-                if (connected) {
-                    handleBluetoothConnected()
+                    android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED -> handleBluetoothConnected()
+                    android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED -> handleBluetoothDisconnected()
                 }
             }
         }
@@ -381,12 +391,16 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     handleBluetoothConnected()
                 }
             }
+
+            override fun onAudioDevicesRemoved(removedDevices: Array<out android.media.AudioDeviceInfo>) {
+                if (removedDevices.any { it.isBluetoothOutput() }) {
+                    handleBluetoothDisconnected()
+                }
+            }
         }.also { callback ->
             val audioManager = getSystemService(android.media.AudioManager::class.java)
             audioManager?.registerAudioDeviceCallback(callback, null)
         }
-
-        connectivityObserver = NetworkConnectivityObserver(this)
 
         scrobblingManager = ScrobblingManager(this, scope)
 
@@ -394,14 +408,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         sessionCallback.onToggleLibrary = { toggleLibrary() }
         sessionCallback.onStartRadio = { toggleStartRadio() }
 
-        // The old Discord WebView login stored user session tokens in plaintext.
-        scope.launch {
-            this@MusicService.dataStore.edit {
-                it.remove(DiscordTokenKey)
-                it[EnableDiscordRPCKey] = false
-            }
-            discordPresenceManager.stop()
-        }
     }
 
     private suspend fun restoreQueueMetadataOnly(queue: Queue) {
@@ -573,12 +579,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         StartupTracker.reset()
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
-        queue.preloadItem?.let { preload ->
-            player.setMediaItem(preload.toMediaItem())
-            player.prepare()
-            player.playWhenReady = playWhenReady
-        }
-
         playQueueJob = scope.launch {
             val unfilteredStatus = queue.getInitialStatus()
             val originalIndex = unfilteredStatus.mediaItemIndex.coerceIn(
@@ -630,18 +630,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             val requestedIndex = initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size - 1)
             val queueItems = initialStatus.items.map { it.withOriginalVideoIdUri() }
             val currentItem = queueItems[requestedIndex]
-            if (queue.preloadItem == null) {
-                Timber.tag("OmniTunePlaybackTrace").i(
-                    "Player set unresolved queue: count=${queueItems.size}, index=$requestedIndex, position=${initialStatus.position}"
-                )
-                // Queue entries intentionally start with a bare YouTube ID so the
-                // resolver can replace it with a signed stream URL.  Make the player
-                // non-playing *before* inserting them: otherwise a currently playing
-                // player can briefly attempt that ID as a local file (ENOENT) before
-                // the resolver finishes, which surfaces as an immediate pause/error.
-                player.playWhenReady = false
-                player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
-            }
+            Timber.tag("OmniTunePlaybackTrace").i(
+                "Player set unresolved queue: count=${queueItems.size}, index=$requestedIndex, position=${initialStatus.position}"
+            )
+            // Queue entries intentionally start with a bare YouTube ID so the
+            // resolver can replace it with a signed stream URL. This applies to
+            // preload queues too: preparing a preload item's raw ID lets ExoPlayer
+            // try it as a local source, which results in an immediate pause/error.
+            player.playWhenReady = false
+            player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
             val resolvedCurrent = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
                     StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
@@ -662,33 +659,24 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
             Timber.tag("OmniTunePlaybackTrace").i("Current item resolved: ${currentItem.mediaId}")
 
-            if (queue.preloadItem != null) {
-                val resolvedItems = queueItems.toMutableList().also {
-                    it[requestedIndex] = resolvedCurrent
-                }
-                val resolvedIndex = requestedIndex
-                player.addMediaItems(0, resolvedItems.subList(0, resolvedIndex))
-                player.addMediaItems(resolvedItems.subList(resolvedIndex + 1, resolvedItems.size))
+            Timber.tag("OmniTunePlaybackTrace").i(
+                "Player current item resolved: index=$requestedIndex, position=${initialStatus.position}"
+            )
+            if (requestedIndex in 0 until player.mediaItemCount &&
+                player.getMediaItemAt(requestedIndex).mediaId == currentItem.mediaId
+            ) {
+                player.replaceMediaItem(requestedIndex, resolvedCurrent)
+                player.seekTo(requestedIndex, initialStatus.position)
             } else {
-                Timber.tag("OmniTunePlaybackTrace").i(
-                    "Player current item resolved: index=$requestedIndex, position=${initialStatus.position}"
-                )
-                if (requestedIndex in 0 until player.mediaItemCount &&
-                    player.getMediaItemAt(requestedIndex).mediaId == currentItem.mediaId
-                ) {
-                    player.replaceMediaItem(requestedIndex, resolvedCurrent)
-                    player.seekTo(requestedIndex, initialStatus.position)
-                } else {
-                    Timber.tag("OmniTunePlaybackTrace").w("Queue changed before current stream resolved")
-                    return@launch
-                }
-                StartupTracker.logPlayerPrepare()
-                player.prepare()
-                player.playWhenReady = playWhenReady
-                Timber.tag("OmniTunePlaybackTrace").i(
-                    "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
-                )
+                Timber.tag("OmniTunePlaybackTrace").w("Queue changed before current stream resolved")
+                return@launch
             }
+            StartupTracker.logPlayerPrepare()
+            player.prepare()
+            player.playWhenReady = playWhenReady
+            Timber.tag("OmniTunePlaybackTrace").i(
+                "Player prepared: count=${player.mediaItemCount}, current=${player.currentMediaItem?.mediaId}, state=${player.playbackState}, playWhenReady=${player.playWhenReady}"
+            )
         }
     }
 
@@ -961,16 +949,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         player.clearMediaItems()
     }
 
-    fun restartDiscordPresence() {
-        playQueueJob = scope.launch {
-            dataStore.edit {
-                it.remove(DiscordTokenKey)
-                it[EnableDiscordRPCKey] = false
-            }
-            discordPresenceManager.stop()
-        }
-    }
-
     fun prefetchLyrics(metadata: MediaMetadata?) {
         if (::lyricsPrefetcher.isInitialized) {
             lyricsPrefetcher.prefetch(metadata)
@@ -978,8 +956,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     override fun onDestroy() {
-        discordPresenceManager.destroy()
         Timber.tag("MusicService").i("MusicService destroyed")
+        queuePositionCheckpointJob?.cancel()
+        queuePositionCheckpointJob = null
         try {
             crossfadePlaybackCoordinator?.release()
             crossfadePlaybackCoordinator = null
@@ -1073,7 +1052,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueState()
         updateVolumeNormalizationFactor(mediaItem?.mediaId)
 
-        // Send now-playing update to Last.fm
+        // Send a now-playing update when the user configured ListenBrainz.
         meta?.let { m ->
             scrobblingManager.onTrackChanged(
                 title = m.title,
@@ -1136,6 +1115,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         postMediaNotificationFallback("is-playing-$isPlaying", force = true)
 
         if (isPlaying) {
+            startQueuePositionCheckpoint()
             preResolveNextTrack()
             val mediaItem = player.currentMediaItem
             val mediaId = mediaItem?.mediaId
@@ -1158,7 +1138,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
             player.playbackState == Player.STATE_READY &&
             player.currentPosition >= MIN_LISTEN_HISTORY_MS
         ) {
+            stopQueuePositionCheckpoint(saveImmediately = true)
             recordTasteSignalForPreviousTransition(completed = false)
+        } else {
+            stopQueuePositionCheckpoint(saveImmediately = true)
         }
     }
 
@@ -1237,6 +1220,28 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
             playOrResolveCurrent()
             postMediaNotificationFallback("bluetooth-connect", force = true)
+        }
+    }
+
+    /** Pause active playback when its last Bluetooth output disappears. */
+    private fun handleBluetoothDisconnected() {
+        scope.launch {
+            if (!::player.isInitialized) return@launch
+            val audioManager = getSystemService(android.media.AudioManager::class.java)
+            val hasRemainingBluetoothOutput = audioManager
+                ?.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+                ?.any { it.isBluetoothOutput() }
+                ?: false
+            if (
+                shouldPauseForBluetoothDisconnect(
+                    isPlaying = player.isPlaying,
+                    removedBluetoothOutput = true,
+                    hasRemainingBluetoothOutput = hasRemainingBluetoothOutput,
+                )
+            ) {
+                pausePlayback()
+                postMediaNotificationFallback("bluetooth-disconnect", force = true)
+            }
         }
     }
 
@@ -1485,9 +1490,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 durationMs = withContext(Dispatchers.Main) { player.duration }
             }
 
-            if (durationMs < 30_000L) return@launch // Skip very short tracks
-
             val ds = applicationContext.dataStore
+            val minimumDurationMs = (ds.data.map { it[ScrobbleMinSongDurationKey] ?: 30 }.first() * 1000L)
+            if (durationMs < minimumDurationMs) return@launch // Skip very short tracks
             val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
             val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
 
@@ -1562,7 +1567,23 @@ class MusicService : MediaLibraryService(), Player.Listener {
         saveQueueState()
     }
 
-    private fun saveQueueState() {
+    private fun startQueuePositionCheckpoint() {
+        if (queuePositionCheckpointJob?.isActive == true) return
+        queuePositionCheckpointJob = scope.launch {
+            while (isActive) {
+                delay(QUEUE_POSITION_CHECKPOINT_MS)
+                if (player.isPlaying) saveQueueState()
+            }
+        }
+    }
+
+    private fun stopQueuePositionCheckpoint(saveImmediately: Boolean) {
+        queuePositionCheckpointJob?.cancel()
+        queuePositionCheckpointJob = null
+        if (saveImmediately) saveQueueState(debounceMillis = 0L)
+    }
+
+    private fun saveQueueState(debounceMillis: Long = 1_000L) {
         saveQueueJob?.cancel()
         saveQueueJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -1570,7 +1591,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
                 if (!persistentQueue) return@launch
 
-                kotlinx.coroutines.delay(1000) // Debounce
+                kotlinx.coroutines.delay(debounceMillis)
 
                 val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition)

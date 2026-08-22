@@ -13,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.omnitune.app.R
 import com.omnitune.app.backup.OmniBackupCounts
+import com.omnitune.app.backup.OmniRestoreSelection
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.viewmodels.BackupRestoreResult
 import com.omnitune.app.viewmodels.BackupRestoreViewModel
@@ -56,9 +56,14 @@ fun BackupRestoreScreen(
     val progress by viewModel.progress.collectAsState()
     val result by viewModel.result.collectAsState()
     val lastBackupAt by viewModel.lastBackupAt.collectAsState()
-    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    val latestSafetyBackup by viewModel.latestSafetyBackup.collectAsState()
     var includeDownloadedAudio by remember { mutableStateOf(false) }
     var replaceExistingOnImport by remember { mutableStateOf(false) }
+    var mergeLibraryAndLikes by remember { mutableStateOf(true) }
+    var mergePlaylists by remember { mutableStateOf(true) }
+    var mergeHistoryAndStats by remember { mutableStateOf(true) }
+    var pendingRestoreSelection by remember { mutableStateOf(OmniRestoreSelection.ALL) }
+    var showSafetyRecoveryConfirmation by remember { mutableStateOf(false) }
 
     val jsonBackupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
@@ -80,7 +85,12 @@ fun BackupRestoreScreen(
         ActivityResultContracts.OpenDocument(),
     ) { uri: Uri? ->
         if (uri != null) {
-            pendingImportUri = uri
+            viewModel.previewRestore(
+                context,
+                uri,
+                replaceExisting = replaceExistingOnImport,
+                selection = pendingRestoreSelection,
+            )
         }
     }
 
@@ -91,31 +101,56 @@ fun BackupRestoreScreen(
         }
     }
 
-    pendingImportUri?.let { uri ->
+    (result as? BackupRestoreResult.Preview)?.let { preview ->
         AlertDialog(
-            onDismissRequest = { pendingImportUri = null },
-            title = { Text("Import library backup?") },
+            onDismissRequest = viewModel::clearResult,
+            title = {
+                Text(if (preview.replaceExisting) "Replace library with this backup?" else "Merge this library backup?")
+            },
             text = {
-                Text(
-                    if (replaceExistingOnImport) {
-                        "This will replace your current liked songs, playlists, saved artists, albums, history, and stats with the selected backup. Cache data is not cleared. Offline audio from a full archive will be applied after app restart."
-                    } else {
-                        "This will merge liked songs, playlists, saved artists, albums, history, and stats into your current library. Existing data will not be deleted. Offline audio from a full archive will be applied after app restart."
-                    },
-                )
+                BackupPreviewDetails(preview.details, preview.replaceExisting)
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pendingImportUri = null
-                        viewModel.restore(context, uri, replaceExisting = replaceExistingOnImport)
+                        viewModel.restore(
+                            context,
+                            preview.uri,
+                            replaceExisting = preview.replaceExisting,
+                            selection = preview.selection,
+                        )
                     },
                 ) {
-                    Text("Import")
+                    Text(if (preview.replaceExisting) "Create safety backup & replace" else "Merge")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingImportUri = null }) {
+                TextButton(onClick = viewModel::clearResult) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (showSafetyRecoveryConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSafetyRecoveryConfirmation = false },
+            title = { Text("Recover the retained safety backup?") },
+            text = {
+                Text(
+                    "This replaces the current restorable library with the retained pre-Replace state. OmniTune first creates another verified safety backup of the current library.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSafetyRecoveryConfirmation = false
+                    viewModel.recoverLatestSafetyBackup()
+                }) {
+                    Text("Recover")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSafetyRecoveryConfirmation = false }) {
                     Text("Cancel")
                 }
             },
@@ -180,11 +215,11 @@ fun BackupRestoreScreen(
                     counts = res.counts,
                 )
                 is BackupRestoreResult.Error -> {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             text = res.message,
@@ -192,8 +227,14 @@ fun BackupRestoreScreen(
                             color = OmniColors.Warning,
                             textAlign = TextAlign.Center,
                         )
+                        if (res.retryAvailable) {
+                            TextButton(onClick = { viewModel.retryRestore(context) }) {
+                                Text("Retry safely")
+                            }
+                        }
                     }
                 }
+                is BackupRestoreResult.Preview -> Unit
                 else -> Unit
             }
         }
@@ -228,13 +269,24 @@ fun BackupRestoreScreen(
             OmniPreferenceEntry(
                 title = "Import library backup",
                 description = if (replaceExistingOnImport) {
-                    "Import an OmniTune backup and replace existing library records."
+                    "Preview an OmniTune backup, then replace existing library records after a verified safety backup is saved."
                 } else {
                     "Merge an OmniTune JSON or full ZIP backup without deleting existing data."
                 },
                 iconRes = R.drawable.ic_share,
                 accent = OmniColors.OmniAccentPrimary,
                 onClick = {
+                    val selection = if (replaceExistingOnImport) {
+                        OmniRestoreSelection.ALL
+                    } else {
+                        OmniRestoreSelection(
+                            libraryAndLikes = mergeLibraryAndLikes,
+                            playlists = mergePlaylists,
+                            historyAndStats = mergeHistoryAndStats,
+                            downloads = false,
+                        )
+                    }
+                    pendingRestoreSelection = selection
                     restoreLauncher.launch(
                         arrayOf(
                             "application/json",
@@ -247,17 +299,54 @@ fun BackupRestoreScreen(
             )
             OmniSwitchPreference(
                 title = "Replace existing library on import",
-                description = "Advanced mode. Clears current library, playlists, history, stats, and tags before importing the backup.",
+                description = "Advanced mode. A verified app-private safety archive is created before replacing library, playlists, history, stats, tags, downloads, and queue state.",
                 iconRes = R.drawable.ic_share,
                 accent = OmniColors.Warning,
                 checked = replaceExistingOnImport,
                 onCheckedChange = { replaceExistingOnImport = it },
             )
+            if (!replaceExistingOnImport) {
+                OmniSwitchPreference(
+                    title = "Merge library and liked songs",
+                    description = "Imports saved songs, metadata, artists, albums, and liked state.",
+                    iconRes = R.drawable.ic_info,
+                    accent = OmniColors.OmniAccentPrimary,
+                    checked = mergeLibraryAndLikes,
+                    onCheckedChange = { mergeLibraryAndLikes = it },
+                )
+                OmniSwitchPreference(
+                    title = "Merge playlists",
+                    description = "Imports playlists, ordering, tags, and the track records they require.",
+                    iconRes = R.drawable.ic_info,
+                    accent = OmniColors.OmniAccentPrimary,
+                    checked = mergePlaylists,
+                    onCheckedChange = { mergePlaylists = it },
+                )
+                OmniSwitchPreference(
+                    title = "Merge history and statistics",
+                    description = "Imports listening records, play counts, and any track records they require.",
+                    iconRes = R.drawable.ic_info,
+                    accent = OmniColors.OmniAccentPrimary,
+                    checked = mergeHistoryAndStats,
+                    onCheckedChange = { mergeHistoryAndStats = it },
+                )
+            }
             OmniPreferenceEntry(
                 title = "Last backup",
                 description = lastBackupAt?.let(::formatBackupTime) ?: "Never",
                 iconRes = R.drawable.ic_info,
                 accent = OmniColors.TextSecondary,
+            )
+            OmniPreferenceEntry(
+                title = "Replace safety backup",
+                description = latestSafetyBackup?.let {
+                    "Recover retained backup from ${formatBackupTime(it.createdAtEpochMillis)}."
+                } ?: "No automatic Replace safety backup has been created yet.",
+                iconRes = R.drawable.ic_info,
+                accent = if (latestSafetyBackup != null) OmniColors.Warning else OmniColors.TextSecondary,
+                onClick = {
+                    if (latestSafetyBackup != null) showSafetyRecoveryConfirmation = true
+                },
             )
         }
 
@@ -296,6 +385,71 @@ fun BackupRestoreScreen(
         }
 
         Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun BackupPreviewDetails(
+    preview: com.omnitune.app.backup.OmniBackupPreview,
+    replaceExisting: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = if (replaceExisting) {
+                "The current restorable library will be replaced only after OmniTune writes and verifies an automatic safety archive."
+            } else {
+                "Existing library records are retained. Conflicting playlists use deterministic restored names."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        if (!replaceExisting) {
+            val categories = buildList {
+                if (preview.selection.libraryAndLikes) add("library and likes")
+                if (preview.selection.playlists) add("playlists")
+                if (preview.selection.historyAndStats) add("history and statistics")
+            }
+            Text(
+                text = "Merge selection: ${categories.joinToString()}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+            )
+        }
+        if (replaceExisting) {
+            Text(
+                text = "Items replaced: saved library records, playlists and order, artists, albums, tags, history, statistics, and download index/files. The session queue is cleared because queue restore is not supported yet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextSecondary,
+            )
+        }
+        Text(
+            text = preview.counts.summaryText(),
+            style = MaterialTheme.typography.bodySmall,
+            color = OmniColors.TextSecondary,
+        )
+        Text(
+            text = if (preview.archiveIsFull && "Offline audio files and Media3 download index" !in preview.unavailableItems) {
+                "Full archive: ${preview.counts.downloadedAudioFiles} offline files (${formatFileSize(preview.counts.downloadedAudioBytes)}) are staged and verified before completion."
+            } else if (preview.archiveIsFull) {
+                "Full archive: offline media is present but not restored during Merge, so existing downloads remain untouched."
+            } else {
+                "JSON library backup: no offline audio files are included."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = OmniColors.TextSecondary,
+        )
+        if (preview.warnings.isNotEmpty()) {
+            Text("Warnings", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+            preview.warnings.forEach { warning ->
+                Text("• $warning", style = MaterialTheme.typography.bodySmall, color = OmniColors.Warning)
+            }
+        }
+        if (preview.unavailableItems.isNotEmpty()) {
+            Text(
+                "Not restored: ${preview.unavailableItems.joinToString()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = OmniColors.TextTertiary,
+            )
+        }
     }
 }
 
@@ -353,3 +507,10 @@ private fun OmniBackupCounts.summaryText(): String = buildList {
 private fun formatBackupTime(epochMillis: Long): String =
     DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
         .format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+
+private fun formatFileSize(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+    bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes.toDouble() / (1024 * 1024))} MB"
+    else -> "${"%.2f".format(bytes.toDouble() / (1024 * 1024 * 1024))} GB"
+}

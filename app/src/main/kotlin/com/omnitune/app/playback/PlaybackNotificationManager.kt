@@ -13,6 +13,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import androidx.media3.common.Player
@@ -25,6 +26,74 @@ import com.omnitune.app.R
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.widget.updateWidgetState
 import timber.log.Timber
+
+internal data class PlaybackNotificationPresentation(
+    val title: String,
+    val artist: String,
+)
+
+internal data class PlaybackNotificationActionSpec(
+    val iconRes: Int,
+    val title: String,
+    val action: String,
+    val requestCode: Int,
+)
+
+/** Pure notification contract shared by the platform builder and JVM regression tests. */
+internal object PlaybackNotificationContract {
+    fun presentation(
+        title: CharSequence?,
+        artist: CharSequence?,
+        albumArtist: CharSequence?,
+        albumTitle: CharSequence?,
+        fallbackTitle: String,
+    ): PlaybackNotificationPresentation = PlaybackNotificationPresentation(
+        title = title?.toString()?.takeIf(String::isNotBlank) ?: fallbackTitle,
+        artist = artist?.toString()?.takeIf(String::isNotBlank)
+            ?: albumArtist?.toString()?.takeIf(String::isNotBlank)
+            ?: albumTitle?.toString()?.takeIf(String::isNotBlank)
+            ?: "Playing",
+    )
+
+    fun actions(isPlaying: Boolean, isLiked: Boolean): List<PlaybackNotificationActionSpec> = listOf(
+        PlaybackNotificationActionSpec(
+            R.drawable.ic_notification_previous,
+            "Previous",
+            PlaybackNotificationManager.ACTION_PREVIOUS,
+            1,
+        ),
+        PlaybackNotificationActionSpec(
+            if (isPlaying) R.drawable.ic_notification_pause else R.drawable.ic_notification_play,
+            if (isPlaying) "Pause" else "Play",
+            if (isPlaying) PlaybackNotificationManager.ACTION_PAUSE else PlaybackNotificationManager.ACTION_PLAY,
+            2,
+        ),
+        PlaybackNotificationActionSpec(
+            R.drawable.ic_notification_next,
+            "Next",
+            PlaybackNotificationManager.ACTION_NEXT,
+            3,
+        ),
+        PlaybackNotificationActionSpec(
+            if (isLiked) R.drawable.ic_notification_favorite else R.drawable.ic_notification_favorite_border,
+            "Like",
+            PlaybackNotificationManager.ACTION_LIKE,
+            4,
+        ),
+        PlaybackNotificationActionSpec(
+            R.drawable.ic_notification_repeat,
+            "Repeat",
+            PlaybackNotificationManager.ACTION_REPEAT,
+            5,
+        ),
+        PlaybackNotificationActionSpec(
+            R.drawable.ic_close,
+            "Stop",
+            PlaybackNotificationManager.ACTION_STOP,
+            6,
+        ),
+    )
+}
 
 class PlaybackNotificationManager(
     private val service: MediaLibraryService,
@@ -149,17 +218,23 @@ class PlaybackNotificationManager(
 
     private fun buildPlatformMediaNotification(): Notification {
         val metadata = player.currentMediaItem?.mediaMetadata
-        val title = metadata?.title?.takeIf { it.isNotBlank() } ?: service.getString(R.string.app_name)
-        val artist = metadata?.artist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumArtist?.takeIf { it.isNotBlank() }
-            ?: metadata?.albumTitle?.takeIf { it.isNotBlank() }
-            ?: "Playing"
+        val presentation = PlaybackNotificationContract.presentation(
+            title = metadata?.title,
+            artist = metadata?.artist,
+            albumArtist = metadata?.albumArtist,
+            albumTitle = metadata?.albumTitle,
+            fallbackTitle = service.getString(R.string.app_name),
+        )
+        val actions = PlaybackNotificationContract.actions(
+            isPlaying = player.isPlaying,
+            isLiked = (service as? MusicService)?.currentMediaMetadata?.value?.liked == true,
+        )
 
         return Notification.Builder(service, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_omnitune)
-            .setContentTitle(title)
-            .setContentText(artist)
-            .setTicker(title)
+            .setContentTitle(presentation.title)
+            .setContentText(presentation.artist)
+            .setTicker(presentation.title)
             .setLargeIcon(
                 metadata?.artworkData?.let { data ->
                     try { android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size) } catch (_: Exception) { null }
@@ -174,37 +249,10 @@ class PlaybackNotificationManager(
                 )
             )
             .setCategory(Notification.CATEGORY_TRANSPORT)
-            .setPriority(Notification.PRIORITY_LOW)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .setOngoing(player.isPlaying)
-            .addAction(notificationAction(R.drawable.ic_notification_previous, "Previous", ACTION_PREVIOUS, 1))
-            .addAction(
-                notificationAction(
-                    if (player.isPlaying) R.drawable.ic_notification_pause else R.drawable.ic_notification_play,
-                    if (player.isPlaying) "Pause" else "Play",
-                    if (player.isPlaying) ACTION_PAUSE else ACTION_PLAY,
-                    2
-                )
-            )
-            .addAction(notificationAction(R.drawable.ic_notification_next, "Next", ACTION_NEXT, 3))
-            .addAction(
-                notificationAction(
-                    if ((service as? MusicService)?.currentMediaMetadata?.value?.liked == true)
-                        R.drawable.ic_notification_favorite else R.drawable.ic_notification_favorite_border,
-                    "Like",
-                    ACTION_LIKE,
-                    4
-                )
-            )
-            .addAction(
-                notificationAction(
-                    R.drawable.ic_notification_repeat,
-                    "Repeat",
-                    ACTION_REPEAT,
-                    5
-                )
-            )
+            .apply { actions.forEach { addAction(notificationAction(it)) } }
             .setStyle(
                 Notification.MediaStyle()
                     .setMediaSession(sessionProvider()?.platformToken)
@@ -225,20 +273,19 @@ class PlaybackNotificationManager(
         return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
     }
 
-    private fun notificationAction(
-        icon: Int,
-        title: String,
-        action: String,
-        requestCode: Int,
-    ): Notification.Action {
-        val intent = Intent(service, MusicService::class.java).setAction(action)
+    private fun notificationAction(spec: PlaybackNotificationActionSpec): Notification.Action {
+        val intent = Intent(service, MusicService::class.java).setAction(spec.action)
         val pendingIntent = PendingIntent.getService(
             service,
-            requestCode,
+            spec.requestCode,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return Notification.Action.Builder(icon, title, pendingIntent).build()
+        return Notification.Action.Builder(
+            Icon.createWithResource(service, spec.iconRes),
+            spec.title,
+            pendingIntent,
+        ).build()
     }
 
     companion object {
@@ -250,5 +297,6 @@ class PlaybackNotificationManager(
         const val ACTION_PREVIOUS = "com.omnitune.app.playback.action.PREVIOUS"
         const val ACTION_LIKE = "com.omnitune.app.playback.action.LIKE"
         const val ACTION_REPEAT = "com.omnitune.app.playback.action.REPEAT"
+        const val ACTION_STOP = "com.omnitune.app.playback.action.STOP"
     }
 }

@@ -290,7 +290,6 @@ fun Divider() {
 }
 
 
-@Suppress("UNCHECKED_CAST")
 @Composable
 fun IntPreferenceSliderRow(
     label: String,
@@ -301,7 +300,7 @@ fun IntPreferenceSliderRow(
     steps: Int = 0,
     valueFormat: (Int) -> String = { it.toString() },
 ) {
-    var value by rememberPreference(key as Preferences.Key<Int>, defaultValue)
+    var value by rememberPreference(key, defaultValue)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -724,7 +723,7 @@ private fun settingsReferenceHeading(title: String): Pair<String, String> = when
     "Library" -> "Library" to "Shortcuts, layout, and discovery"
     "Content" -> "Library" to "Manage tabs, hidden songs & filters"
     "Parental Controls" -> "Parental Controls" to "Limit explicit content and manage access"
-    "Notifications" -> "Notifications" to "Manage alerts and in-app messages"
+    "Playback notification" -> "Playback notification" to "System media controls and lock-screen playback"
     "Storage" -> "Storage" to "Cache, downloads, and device storage"
     "Scrobbling" -> "Scrobbling & Integrations" to "Last.fm and ListenBrainz services"
     "Updates" -> "Updates" to "Check for updates and release notes"

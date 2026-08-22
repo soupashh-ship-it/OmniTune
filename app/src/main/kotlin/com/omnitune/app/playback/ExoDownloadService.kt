@@ -56,10 +56,11 @@ class ExoDownloadService : DownloadService(
             if (download.state == Download.STATE_COMPLETED) {
                 resolveRetryCounts.remove(download.request.id)
             }
-            if (download.state == Download.STATE_FAILED &&
-                (PreferenceStore.get(RetryFailedDownloadsKey) ?: true)
-            ) {
-                retryWithResolvedStream(download)
+            if (download.state == Download.STATE_FAILED) {
+                retryWithResolvedStream(
+                    download = download,
+                    autoRetryEnabled = PreferenceStore.get(RetryFailedDownloadsKey) ?: true,
+                )
             }
         }
 
@@ -91,17 +92,21 @@ class ExoDownloadService : DownloadService(
         return downloadManager
     }
 
-    private fun retryWithResolvedStream(download: Download) {
-        val videoId = download.request.id.takeIf { YOUTUBE_ID_REGEX.matches(it) } ?: return
-        val attempts = resolveRetryCounts.merge(videoId, 1, Int::plus) ?: 1
-        if (attempts > 2) return
+    private fun retryWithResolvedStream(download: Download, autoRetryEnabled: Boolean) {
+        val videoId = download.request.id
+        if (!beginResolvedStreamRetry(videoId, autoRetryEnabled)) return
 
         serviceScope.launch {
             streamExtractor.invalidate(videoId)
             val result = streamExtractor.extractWithFallback(videoId, preferredDownloadStreamQuality())
             if (result != null) {
                 val newRequest = androidx.media3.exoplayer.offline.DownloadRequest.Builder(videoId, android.net.Uri.parse(result.url))
-                    .setCustomCacheKey(download.request.customCacheKey ?: videoId)
+                    .setCustomCacheKey(
+                        OfflineDownloadIdentity.cacheKey(
+                            download.request.id,
+                            download.request.customCacheKey,
+                        ),
+                    )
                     .setData(download.request.data)
                     .build()
                 DownloadService.sendAddDownload(
@@ -119,6 +124,18 @@ class ExoDownloadService : DownloadService(
         }
     }
 
+    private fun beginResolvedStreamRetry(videoId: String, autoRetryEnabled: Boolean): Boolean {
+        var accepted = false
+        resolveRetryCounts.compute(videoId) { _, completedAttempts ->
+            DownloadLifecyclePolicy.nextResolvedStreamRetry(
+                videoId = videoId,
+                autoRetryEnabled = autoRetryEnabled,
+                completedAttempts = completedAttempts ?: 0,
+            )?.also { accepted = true } ?: completedAttempts
+        }
+        return accepted
+    }
+
     override fun getScheduler(): Scheduler =
         androidx.media3.exoplayer.workmanager.WorkManagerScheduler(this, "OmniTuneDownloadWorker")
 
@@ -134,9 +151,5 @@ class ExoDownloadService : DownloadService(
             downloads,
             notMetRequirements
         )
-    }
-
-    companion object {
-        private val YOUTUBE_ID_REGEX = Regex("^[a-zA-Z0-9_-]{11}$")
     }
 }
