@@ -13,15 +13,6 @@ import androidx.media3.datasource.DataSource
 import okhttp3.OkHttpClient
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.flow.first
-import com.omnitune.app.utils.dataStore
-import com.omnitune.app.constants.SkipSilenceKey
-import com.omnitune.app.constants.AudioOffload
-import com.omnitune.app.constants.AudioCrossfadeDurationKey
-import com.omnitune.app.constants.SeekExtraSeconds
-import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.utils.StreamClientUtils
 import okhttp3.Interceptor
 
@@ -54,12 +45,9 @@ object PlayerFactory {
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
-        val prefs = runBlocking(Dispatchers.IO) { context.dataStore.data.first() }
-        val skipSilence = prefs[SkipSilenceKey] ?: false
-        val audioOffload = prefs[AudioOffload] ?: false
-        val crossfadeDuration = prefs[AudioCrossfadeDurationKey] ?: 0
-        val progressiveSeek = prefs[SeekExtraSeconds] ?: false
-
+        // Preference-derived settings (skip silence, offload, seek increments) are applied
+        // reactively by PlaybackPreferenceObserver; reading DataStore here would block the
+        // main thread during service start.
         return ExoPlayer.Builder(context)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setTrackSelector(trackSelector)
@@ -73,13 +61,9 @@ object PlayerFactory {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
-            .setSeekBackIncrementMs(if (progressiveSeek) 10_000L else 5_000L)
-            .setSeekForwardIncrementMs(if (progressiveSeek) 15_000L else 10_000L)
+            .setSeekBackIncrementMs(5_000L)
+            .setSeekForwardIncrementMs(10_000L)
             .build()
-            .apply {
-                skipSilenceEnabled = skipSilence
-                setOffloadEnabled(audioOffload && crossfadeDuration == 0 && !skipSilence)
-            }
     }
 
     fun createCacheDataSourceFactory(

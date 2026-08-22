@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +61,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun PlaylistAddSongsScreen(
@@ -70,8 +70,8 @@ fun PlaylistAddSongsScreen(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val playlist by viewModel.playlist.collectAsState()
-    val songs by viewModel.songs.collectAsState()
+    val playlist by viewModel.playlist.collectAsStateWithLifecycle()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<SongItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }

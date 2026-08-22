@@ -36,7 +36,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +60,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LibraryPlaylistsScreen(
@@ -68,8 +68,8 @@ fun LibraryPlaylistsScreen(
     onNavigateToPlaylist: (String) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val allPlaylists by viewModel.playlists.collectAsState()
-    val allTags by viewModel.allTags.collectAsState(initial = emptyList())
+    val allPlaylists by viewModel.playlists.collectAsStateWithLifecycle()
+    val allTags by viewModel.allTags.collectAsStateWithLifecycle(initialValue = emptyList())
 
     var selectedTagId by remember { mutableStateOf<String?>(null) }
     var downloadedOnly by remember { mutableStateOf(false) }

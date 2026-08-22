@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.omnitune.app.ui.theme.OmniColors
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,9 +20,9 @@ fun YearInMusicScreen(
     navController: NavController,
     viewModel: YearInMusicViewModel = hiltViewModel()
 ) {
-    val selectedYear by viewModel.selectedYear.collectAsState()
-    val totalListeningTime by viewModel.totalListeningTime.collectAsState()
-    val totalSongsPlayed by viewModel.totalSongsPlayed.collectAsState()
+    val selectedYear by viewModel.selectedYear.collectAsStateWithLifecycle()
+    val totalListeningTime by viewModel.totalListeningTime.collectAsStateWithLifecycle()
+    val totalSongsPlayed by viewModel.totalSongsPlayed.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

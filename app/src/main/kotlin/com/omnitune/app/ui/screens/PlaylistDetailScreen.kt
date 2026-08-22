@@ -44,7 +44,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -83,6 +82,7 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import kotlin.math.roundToInt
 import com.omnitune.app.ui.screens.LibraryViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -97,9 +97,9 @@ fun PlaylistDetailScreen(
     downloadsViewModel: DownloadsViewModel = androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val playlist by viewModel.playlist.collectAsState()
-    val songs by viewModel.songs.collectAsState()
-    val downloadsState by downloadsViewModel.uiState.collectAsState()
+    val playlist by viewModel.playlist.collectAsStateWithLifecycle()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val downloadsState by downloadsViewModel.uiState.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
     val lazyListState = rememberLazyListState()
 
@@ -269,7 +269,7 @@ fun PlaylistDetailScreen(
 
                     val pid = playlist?.playlist?.id
                     if (pid != null) {
-                        val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
+                        val tags by libraryViewModel.playlistTags(pid).collectAsStateWithLifecycle(initialValue = emptyList())
                         if (tags.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(10.dp))
                             PlaylistTagChips(

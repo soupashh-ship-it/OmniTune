@@ -11,7 +11,6 @@ import android.content.Context
 import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.datastore.core.DataStore
@@ -31,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.properties.ReadOnlyProperty
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 object PreferenceStore {
@@ -124,7 +124,7 @@ fun <T> rememberPreference(
             context.dataStore.data
                 .map { it[key] ?: defaultValue }
                 .distinctUntilChanged()
-        }.collectAsState(defaultValue)
+        }.collectAsStateWithLifecycle(defaultValue)
 
     return remember {
         // Capture key locally to avoid smart-cast issues across module boundaries
@@ -157,7 +157,7 @@ inline fun <reified T : Enum<T>> rememberEnumPreference(
             context.dataStore.data
                 .map { it[key].toEnum(defaultValue = defaultValue) }
                 .distinctUntilChanged()
-        }.collectAsState(defaultValue)
+        }.collectAsStateWithLifecycle(defaultValue)
 
     return remember {
         object : MutableState<T> {

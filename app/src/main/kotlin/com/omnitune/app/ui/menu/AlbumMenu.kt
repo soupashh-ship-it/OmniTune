@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,6 +97,7 @@ import com.omnitune.app.ui.component.SongListItem
 import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -112,7 +112,7 @@ fun AlbumMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val scope = rememberCoroutineScope()
-    val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
+    val libraryAlbum by database.album(originalAlbum.id).collectAsStateWithLifecycle(initialValue = originalAlbum)
     val album = libraryAlbum ?: originalAlbum
     var songs by remember {
         mutableStateOf(emptyList<Song>())

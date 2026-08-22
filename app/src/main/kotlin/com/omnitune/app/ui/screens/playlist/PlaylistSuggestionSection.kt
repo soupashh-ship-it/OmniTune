@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +43,7 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniMusicRow
 import com.omnitune.app.ui.screens.PlaylistDetailViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun PlaylistSuggestionsSection(
@@ -53,11 +53,11 @@ fun PlaylistSuggestionsSection(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState()
+    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<com.omnitune.app.models.MediaMetadata?>(null) }
 
-    val playlistSuggestions by viewModel.playlistSuggestions.collectAsState()
-    val isLoading by viewModel.isLoadingSuggestions.collectAsState()
+    val playlistSuggestions by viewModel.playlistSuggestions.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoadingSuggestions.collectAsStateWithLifecycle()
 
     val currentSuggestions = playlistSuggestions
     if (currentSuggestions == null && !isLoading) return

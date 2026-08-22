@@ -27,7 +27,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +58,7 @@ import com.omnitune.app.db.entities.Album
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.queues.ListQueue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,9 +71,9 @@ fun AlbumScreen(
     var songs by remember { mutableStateOf<List<SongItem>?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    val isBookmarked by viewModel.isBookmarked.collectAsState()
-    val localAlbum by viewModel.album.collectAsState()
-    val localSongs by viewModel.songs.collectAsState()
+    val isBookmarked by viewModel.isBookmarked.collectAsStateWithLifecycle()
+    val localAlbum by viewModel.album.collectAsStateWithLifecycle()
+    val localSongs by viewModel.songs.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
 
     LaunchedEffect(albumId) {

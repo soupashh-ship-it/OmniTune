@@ -5,7 +5,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +19,7 @@ import com.omnitune.app.ui.screens.SettingsViewModel
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.flow.map
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun ContentSettings(
@@ -36,7 +36,7 @@ fun ContentSettings(
             val value = prefs[QuickPicksKey] ?: QuickPicks.QUICK_PICKS.name
             try { QuickPicks.valueOf(value) } catch (_: Exception) { QuickPicks.QUICK_PICKS }
         }
-    }.collectAsState(QuickPicks.QUICK_PICKS)
+    }.collectAsStateWithLifecycle(QuickPicks.QUICK_PICKS)
 
     if (showClearSearchHistoryDialog) {
         AlertDialog(

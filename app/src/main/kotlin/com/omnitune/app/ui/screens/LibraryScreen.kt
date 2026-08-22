@@ -29,7 +29,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +55,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.utils.rememberEnumPreference
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LibraryScreen(
@@ -75,7 +75,7 @@ fun LibraryScreen(
     val showDownloaded by com.omnitune.app.utils.rememberPreference(com.omnitune.app.constants.ShowDownloadedPlaylistKey, true)
     val libraryDesign by rememberEnumPreference(OmniLibraryDesignKey, OmniLibraryDesign.DEFAULT)
     val compactLibrary = libraryDesign == OmniLibraryDesign.COMPACT_LIST
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val totalCount = uiState.librarySongCount + uiState.libraryAlbumCount + uiState.libraryArtistCount + uiState.playlistCount
     val quickSongs = buildList {
         uiState.likedSongs.firstOrNull()?.let(::add)

@@ -21,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +51,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import java.time.LocalDate
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun HistoryScreen(
@@ -59,7 +59,7 @@ fun HistoryScreen(
     onNavigateToSearch: () -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val groupedEvents = remember(uiState.events) { groupHistory(uiState.events) }
     var showClearConfirmation by remember { mutableStateOf(false) }
 

@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +108,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private fun homeCollectionRoute(collectionId: String, artworkUrl: String?): String {
     val base = "homeCollection/${Uri.encode(collectionId)}"
@@ -204,7 +204,7 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
     val coroutineScope = rememberCoroutineScope()
     val localPlayerConnection = LocalPlayerConnection.current
     val currentMediaMetadata by (localPlayerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null))
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
     var pendingSongQueue by remember { mutableStateOf<SongPlaybackRequest?>(null) }
     var showPlayerOverlay by remember { mutableStateOf(false) }
     val isTopLevelRoute = topLevelScreens.any { route -> currentRoute == route || currentRoute?.startsWith("$route?") == true }

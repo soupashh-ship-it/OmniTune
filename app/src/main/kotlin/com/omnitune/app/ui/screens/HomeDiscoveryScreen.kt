@@ -41,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +94,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val HERO_IMAGE_SIZE = 960
 private const val SHELF_IMAGE_SIZE = 160
@@ -119,9 +119,9 @@ fun HomeDiscoveryRoute(
     onPlaySongs: (List<Song>) -> Unit,
     viewModel: HomeDiscoveryViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val hasProviderFeed = uiState.providerSections.isNotEmpty() ||
         uiState.communitySections.isNotEmpty() ||
         uiState.exploreSections.isNotEmpty()

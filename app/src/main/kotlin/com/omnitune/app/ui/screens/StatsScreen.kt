@@ -24,7 +24,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,7 @@ import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun StatsScreen(
@@ -58,7 +58,7 @@ fun StatsScreen(
     onNavigateToYearInMusic: () -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier

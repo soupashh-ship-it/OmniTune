@@ -51,7 +51,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -124,6 +123,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val ARTWORK_REQUEST_SIZE = 800
 
@@ -136,11 +136,11 @@ fun PlayerScreen(
     onNavigateToAlbum: ((String) -> Unit)? = null,
     onNavigateToArtist: ((String) -> Unit)? = null,
 ) {
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
-    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
-    val shuffleEnabled by (playerConnection?.shuffleModeEnabled ?: flowOf(false)).collectAsState(initial = false)
-    val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsState(initial = REPEAT_MODE_OFF)
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
+    val shuffleEnabled by (playerConnection?.shuffleModeEnabled ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsStateWithLifecycle(initialValue = REPEAT_MODE_OFF)
     val isSeeking = remember { mutableFloatStateOf(-1f) }
     var showOptionsSheet by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
@@ -148,10 +148,10 @@ fun PlayerScreen(
     var showLyricsSheet by remember { mutableStateOf(false) }
     var showArtistSelectionDialog by remember { mutableStateOf(false) }
     val lyricsViewModel: LyricsViewModel = hiltViewModel()
-    val lyricsUiState by lyricsViewModel.uiState.collectAsState()
-    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
+    val lyricsUiState by lyricsViewModel.uiState.collectAsStateWithLifecycle()
+    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
     val libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = hiltViewModel()
-    val playlists by libraryViewModel.playlists.collectAsState(initial = emptyList())
+    val playlists by libraryViewModel.playlists.collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
@@ -745,8 +745,8 @@ private fun MetadataBlock(
     onOpenLyrics: () -> Unit,
     onShare: () -> Unit
 ) {
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
-    val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsState(initial = null)
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val liked = currentSong?.song?.liked == true || mediaMetadata?.liked == true
     val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
     val artist = mediaMetadata
@@ -998,8 +998,8 @@ private fun PlayerSeekBar(
     accentColor: Color = LocalOmniAccents.current.primary,
     sliderStyle: OmniSliderStyle = OmniSliderStyle.DEFAULT,
 ) {
-    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
+    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
 
@@ -1111,8 +1111,8 @@ private fun PlayerControlRow(
     playerConnection: PlayerConnection?,
     accentColor: Color = LocalOmniAccents.current.primary,
 ) {
-    val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
-    val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
+    val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
     val context = LocalContext.current
 
     Row(
@@ -1330,7 +1330,7 @@ private fun PlayerActionsRow(
     onOpenLyrics: () -> Unit = {},
     accentColor: Color = LocalOmniAccents.current.primary,
 ) {
-    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsState(initial = false)
+    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
 
     Row(
         modifier = Modifier
@@ -1619,8 +1619,8 @@ fun PlayerOptionsBottomSheet(
     onOpenQueue: () -> Unit = {},
 ) {
     var showMediaInfoDialog by remember { mutableStateOf(false) }
-    val currentFormat by (playerConnection?.currentFormat ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
-    val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsState(initial = null)
+    val currentFormat by (playerConnection?.currentFormat ?: kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     androidx.compose.material3.ModalBottomSheet(

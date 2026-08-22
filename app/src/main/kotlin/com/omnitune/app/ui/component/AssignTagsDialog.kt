@@ -31,7 +31,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +43,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.omnitune.app.R
 import com.omnitune.app.db.MusicDatabase
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -52,8 +52,8 @@ fun AssignTagsDialog(
     playlistId: String,
     onDismiss: () -> Unit
 ) {
-    val allTags by database.allTags().collectAsState(initial = emptyList())
-    val currentTags by database.playlistTags(playlistId).collectAsState(initial = emptyList())
+    val allTags by database.allTags().collectAsStateWithLifecycle(initialValue = emptyList())
+    val currentTags by database.playlistTags(playlistId).collectAsStateWithLifecycle(initialValue = emptyList())
 
     val currentTagIds = remember(currentTags) { currentTags.map { it.id }.toSet() }
     var selectedTagIds by remember(currentTagIds) { mutableStateOf(currentTagIds) }
@@ -191,8 +191,8 @@ private fun AssignTagsToPlaylistsDialog(
     initialSelectedPlaylistIds: Set<String>,
     onDismiss: () -> Unit,
 ) {
-    val allTags by database.allTags().collectAsState(initial = emptyList())
-    val playlists by database.editablePlaylistsByCreateDateAsc().collectAsState(initial = emptyList())
+    val allTags by database.allTags().collectAsStateWithLifecycle(initialValue = emptyList())
+    val playlists by database.editablePlaylistsByCreateDateAsc().collectAsStateWithLifecycle(initialValue = emptyList())
 
     var selectedTagIds by remember(initialSelectedTagIds) { mutableStateOf(initialSelectedTagIds) }
     var selectedPlaylistIds by remember(initialSelectedPlaylistIds) { mutableStateOf(initialSelectedPlaylistIds) }

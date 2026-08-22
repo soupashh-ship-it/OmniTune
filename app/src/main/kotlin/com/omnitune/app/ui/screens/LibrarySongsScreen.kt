@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +62,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LibrarySongsScreen(
@@ -70,7 +70,7 @@ fun LibrarySongsScreen(
     onPlaySong: (List<Song>, Int) -> Unit = { _, _ -> },
     viewModel: LibrarySongsViewModel = hiltViewModel(),
 ) {
-    val songs by viewModel.songs.collectAsState()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier

@@ -30,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +61,7 @@ import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
 import com.omnitune.innertube.models.SongItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val COLLECTION_ARTWORK_SIZE = 544
 private const val TRACK_ARTWORK_SIZE = 144
@@ -76,7 +76,7 @@ fun HomeCollectionRoute(
     onAddToQueue: (SongItem) -> Unit,
     viewModel: HomeCollectionViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     HomeCollectionScreen(
         uiState = uiState,
         onBack = onBack,

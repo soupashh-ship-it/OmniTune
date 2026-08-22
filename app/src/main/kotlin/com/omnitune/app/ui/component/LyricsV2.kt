@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -102,6 +101,7 @@ import com.omnitune.app.ui.utils.smoothFadingEdge
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
 import kotlin.math.abs
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 // ──────────────────────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ fun LyricsV2(
     val inactiveAlpha = 0.35f
 
     // ── Lyrics data ──
-    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
+    val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val lyrics = currentLyrics?.lyrics
 
     // ── Parse lyrics into entries ──
@@ -559,7 +559,7 @@ fun LyricsV2(
                     }
 
                     // ── Romanization ──
-                    val romanizedText by item.romanizedTextFlow.collectAsState()
+                    val romanizedText by item.romanizedTextFlow.collectAsStateWithLifecycle()
                     if (romanizedText != null) {
                         Text(
                             text = romanizedText ?: "",

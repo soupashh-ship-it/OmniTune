@@ -32,7 +32,7 @@ class ApkDownloadManager @Inject constructor(
         val apkFile = File(updateDir, updateInfo.apkAsset.name)
         downloadFile(updateInfo.apkAsset.browserDownloadUrl, apkFile, updateInfo.apkAsset.size, onProgress)
         verifyDownloadedFile(updateInfo.apkAsset, apkFile)
-        verifySha256IfAvailable(updateInfo, apkFile)
+        verifySha256(updateInfo, apkFile)
         verifyPackage(updateInfo, apkFile)
     }
 
@@ -81,7 +81,7 @@ class ApkDownloadManager @Inject constructor(
         }
     }
 
-    private fun verifySha256IfAvailable(updateInfo: AppUpdateInfo, apkFile: File) {
+    private fun verifySha256(updateInfo: AppUpdateInfo, apkFile: File) {
         val digest = updateInfo.apkAsset.digest.orEmpty()
         val expected = if (digest.startsWith("sha256:", ignoreCase = true)) {
             digest.substringAfter("sha256:").lowercase()
@@ -89,7 +89,19 @@ class ApkDownloadManager @Inject constructor(
             updateInfo.sha256Asset?.let { asset ->
                 downloadSha256(asset.browserDownloadUrl)
             }
-        } ?: return
+        }
+
+        // Fail closed: never hand an unverifiable APK to the package installer.
+        if (expected.isNullOrBlank()) {
+            apkFile.delete()
+            throw IllegalStateException(
+                "This update cannot be verified because no SHA-256 checksum was published with the release."
+            )
+        }
+        if (!expected.matches(Regex("^[a-f0-9]{64}$"))) {
+            apkFile.delete()
+            throw IllegalStateException("Update checksum format is invalid.")
+        }
 
         val actual = sha256(apkFile)
         if (actual != expected) {

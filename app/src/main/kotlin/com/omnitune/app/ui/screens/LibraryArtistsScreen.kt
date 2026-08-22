@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +52,7 @@ import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private enum class ArtistFilterMode { ALL, SAVED }
 
@@ -62,8 +62,8 @@ fun LibraryArtistsScreen(
     onNavigateToArtist: (String) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val allArtists by viewModel.libraryArtists.collectAsState()
-    val savedArtists by viewModel.savedArtists.collectAsState()
+    val allArtists by viewModel.libraryArtists.collectAsStateWithLifecycle()
+    val savedArtists by viewModel.savedArtists.collectAsStateWithLifecycle()
     var filterMode by remember { mutableStateOf(ArtistFilterMode.ALL) }
 
     val artists = when (filterMode) {

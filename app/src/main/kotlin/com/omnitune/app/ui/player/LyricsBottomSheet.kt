@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -66,6 +65,7 @@ import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,8 +75,8 @@ fun LyricsBottomSheet(
     viewModel: LyricsViewModel = hiltViewModel()
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val uiState by viewModel.uiState.collectAsState()
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val (autoScrollEnabled) = rememberPreference(LyricsScrollKey, defaultValue = true)
     
     LaunchedEffect(

@@ -28,7 +28,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +54,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.innertube.pages.MoodAndGenres
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Provider-backed discovery.  No editorial labels, listener counts, or stations are
@@ -66,7 +66,7 @@ fun ExploreScreen(
     onBrowse: (String, String?) -> Unit,
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
     val visibleGroups = remember(uiState.groups, selectedGroup) {
         selectedGroup?.let { selected ->

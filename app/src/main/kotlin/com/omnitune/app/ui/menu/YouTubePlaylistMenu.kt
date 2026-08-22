@@ -46,7 +46,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -97,6 +96,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -117,7 +117,7 @@ fun YouTubePlaylistMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val importFailedText = stringResource(R.string.import_failed)
     val playlistSyncedText = stringResource(R.string.playlist_synced)
-    val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
+    val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsStateWithLifecycle(initialValue = null)
 
     var showChoosePlaylistDialog by rememberSaveable { mutableStateOf(false) }
     // var showImportPlaylistDialog by rememberSaveable { mutableStateOf(false) }

@@ -34,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +57,7 @@ import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
 import com.omnitune.innertube.pages.MoodAndGenres
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun MoodAndGenresScreen(
@@ -65,7 +65,7 @@ fun MoodAndGenresScreen(
     onBrowse: (String, String?) -> Unit,
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val fallbackChips = GenreChipsHolder.chips.filter { chip ->
         val metadata = HomeDefaultCatalog.findCollection(chip.id)
         metadata?.source == HomeCatalogSource.ProviderBrowse &&

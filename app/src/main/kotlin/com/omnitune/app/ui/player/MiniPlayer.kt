@@ -42,7 +42,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -95,6 +94,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlin.math.exp
 import kotlin.math.roundToInt
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val ARTWORK_REQUEST_SIZE = 112
 
@@ -109,11 +109,11 @@ fun MiniPlayer(
     onShare: ((String, String?) -> Unit)? = null,
     onOpenQueue: (() -> Unit)? = null,
 ) {
-    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsState(initial = false)
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsState(initial = Player.STATE_IDLE)
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
-    val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsState(initial = false)
-    val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsState(initial = false)
+    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
     val isLoading = playbackState == STATE_BUFFERING
     val layoutDirection = LocalLayoutDirection.current
     val coroutineScope = rememberCoroutineScope()

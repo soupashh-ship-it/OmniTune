@@ -32,7 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -94,6 +93,7 @@ import java.text.Collator
 import java.time.LocalDateTime
 import java.util.Locale
 import java.util.UUID
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 val GridItemsSizeKey = stringPreferencesKey("GridItemsSizeKey")
 
@@ -107,8 +107,8 @@ fun LibraryMixScreen(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     var viewType by rememberEnumPreference(AlbumViewTypeKey, LibraryViewType.LIST)
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -128,7 +128,7 @@ fun LibraryMixScreen(
     val database = LocalDatabase.current
     val filteredPlaylistIds by database.playlistIdsByTags(
         if (selectedTagIds.isEmpty()) emptyList() else selectedTagIds.toList()
-    ).collectAsState(initial = emptyList())
+    ).collectAsStateWithLifecycle(initialValue = emptyList())
 
     val (topSizeStr) = rememberPreference(com.omnitune.app.constants.TopSize, "50")
     val topSize = topSizeStr.toIntOrNull() ?: 50
@@ -178,9 +178,9 @@ fun LibraryMixScreen(
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
     val (useNewLibraryDesign) = rememberPreference(UseNewLibraryDesignKey, false)
 
-    val albums = viewModel.libraryAlbums.collectAsState()
-    val artist = viewModel.libraryArtists.collectAsState()
-    val playlist = viewModel.playlists.collectAsState()
+    val albums = viewModel.libraryAlbums.collectAsStateWithLifecycle()
+    val artist = viewModel.libraryArtists.collectAsStateWithLifecycle()
+    val playlist = viewModel.playlists.collectAsStateWithLifecycle()
 
     val collator = Collator.getInstance(Locale.getDefault())
     collator.strength = Collator.PRIMARY
@@ -288,7 +288,7 @@ fun LibraryMixScreen(
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val scrollToTop =
-        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsState()
+        backStackEntry?.savedStateHandle?.getStateFlow("scrollToTop", false)?.collectAsStateWithLifecycle()
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {

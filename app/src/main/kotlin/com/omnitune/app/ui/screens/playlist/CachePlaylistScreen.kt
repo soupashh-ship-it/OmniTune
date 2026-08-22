@@ -45,7 +45,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -122,6 +121,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import com.omnitune.app.LocalDatabase
 import java.time.LocalDateTime
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -137,9 +137,9 @@ fun CachePlaylistScreen(
     val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
 
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val cachedSongs by viewModel.cachedSongs.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val cachedSongs by viewModel.cachedSongs.collectAsStateWithLifecycle()
 
     val (sortType, onSortTypeChange) = rememberEnumPreference(
         SongSortTypeKey,
@@ -196,7 +196,7 @@ fun CachePlaylistScreen(
 
     // Tags
     val pid = PlaylistEntity.DOWNLOADED_PLAYLIST_ID
-    val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
+    val tags by libraryViewModel.playlistTags(pid).collectAsStateWithLifecycle(initialValue = emptyList())
     var showAssignTagsDialog by remember { mutableStateOf(false) }
 
     if (showAssignTagsDialog) {

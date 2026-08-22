@@ -32,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,6 +58,7 @@ import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.utils.rememberPreference
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun LikedSongsScreen(
@@ -66,7 +66,7 @@ fun LikedSongsScreen(
     onPlaySongs: (List<Song>, Int, Boolean) -> Unit = { _, _, _ -> },
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
-    val likedSongs by viewModel.likedSongs.collectAsState()
+    val likedSongs by viewModel.likedSongs.collectAsStateWithLifecycle()
     var shuffleLikedSongs by rememberPreference(LikedSongsShuffleKey, false)
 
     Column(

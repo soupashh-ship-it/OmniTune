@@ -20,7 +20,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +47,7 @@ import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
 import java.text.DateFormat
 import java.util.Date
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun UpdatesSettings(
@@ -55,7 +55,7 @@ fun UpdatesSettings(
     onNavigateToChangelog: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var updateChannel by rememberEnumPreference(UpdateChannelKey, UpdateChannel.STABLE)
     val (lastCheckedAt) = rememberPreference(LastUpdateCheckKey, 0L)
     var installMessage by remember { mutableStateOf<String?>(null) }

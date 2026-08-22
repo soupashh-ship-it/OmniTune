@@ -43,6 +43,7 @@ import coil3.toBitmap
 import androidx.compose.ui.graphics.toArgb
 import timber.log.Timber
 import javax.inject.Inject
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -119,19 +120,19 @@ class MainActivity : ComponentActivity() {
 
             val dynamicSongColors by remember {
                 context.dataStore.data.map { it[DynamicSongColorsKey] ?: true }
-            }.collectAsState(initial = true)
+            }.collectAsStateWithLifecycle(initialValue = true)
 
             val pureBlack by remember {
                 context.dataStore.data.map { it[PureBlackKey] ?: false }
-            }.collectAsState(initial = false)
+            }.collectAsStateWithLifecycle(initialValue = false)
 
             val useSystemFont by remember {
                 context.dataStore.data.map { it[UseSystemFontKey] ?: false }
-            }.collectAsState(initial = false)
+            }.collectAsStateWithLifecycle(initialValue = false)
 
             val darkModePref by remember {
                 context.dataStore.data.map { it[DarkModeKey] ?: "ON" }
-            }.collectAsState(initial = "ON")
+            }.collectAsStateWithLifecycle(initialValue = "ON")
 
             val isDark = isSystemInDarkTheme()
             val darkTheme = remember(darkModePref, isDark) {

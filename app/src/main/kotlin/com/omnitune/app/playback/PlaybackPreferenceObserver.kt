@@ -17,6 +17,7 @@ import com.omnitune.app.constants.PlayerVolumeKey
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.ShuffleEnabledKey
 import com.omnitune.app.constants.SkipSilenceKey
+import com.omnitune.app.constants.SeekExtraSeconds as SeekExtraSecondsKey
 import com.omnitune.app.extensions.setOffloadEnabled
 import com.omnitune.app.utils.dataStore
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +74,15 @@ class PlaybackPreferenceObserver internal constructor(
             preferences.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged().collect { skipSilence ->
                 player.skipSilenceEnabled = skipSilence
                 Timber.tag("MusicService").d("Skip silence: $skipSilence")
+            }
+        }
+
+        // Progressive seek increments (replaces the former blocking read in PlayerFactory)
+        jobs += scope.launch {
+            preferences.map { it[SeekExtraSecondsKey] ?: false }.distinctUntilChanged().collect { progressiveSeek ->
+                player.setSeekBackIncrementMs(if (progressiveSeek) 10_000L else 5_000L)
+                player.setSeekForwardIncrementMs(if (progressiveSeek) 15_000L else 10_000L)
+                Timber.tag("MusicService").d("Progressive seek: $progressiveSeek")
             }
         }
 

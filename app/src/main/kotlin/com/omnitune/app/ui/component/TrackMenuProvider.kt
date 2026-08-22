@@ -14,6 +14,7 @@ import com.omnitune.app.playback.queues.YouTubeQueue
 import com.omnitune.app.ui.screens.DownloadsViewModel
 import com.omnitune.app.ui.screens.LibraryViewModel
 import com.omnitune.app.ui.theme.OmniColors
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun TrackMenuProvider(
@@ -33,10 +34,10 @@ fun TrackMenuProvider(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val playerConnection = LocalPlayerConnection.current
-    val dbSong by libraryViewModel.song(mediaMetadata.id).collectAsState(initial = null)
+    val dbSong by libraryViewModel.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val isLiked = dbSong?.song?.liked == true
     val isInLibrary = dbSong?.song?.inLibrary != null
-    val downloadsState by downloadsViewModel.uiState.collectAsState()
+    val downloadsState by downloadsViewModel.uiState.collectAsStateWithLifecycle()
     val download = downloadsState.downloads.firstOrNull { it.request.id == mediaMetadata.id }
     val downloadLabel = when (download?.state) {
         Download.STATE_COMPLETED -> "Remove download"
@@ -46,7 +47,7 @@ fun TrackMenuProvider(
     
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showDetails by remember { mutableStateOf(false) }
-    val playlists by libraryViewModel.editablePlaylists.collectAsState(initial = emptyList())
+    val playlists by libraryViewModel.editablePlaylists.collectAsStateWithLifecycle(initialValue = emptyList())
 
     if (showDetails) {
         AlertDialog(

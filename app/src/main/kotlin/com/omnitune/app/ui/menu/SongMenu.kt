@@ -44,7 +44,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +109,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun SongMenu(
@@ -126,10 +126,10 @@ fun SongMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val downloadUtil = LocalDownloadUtil.current
-    val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
+    val songState = database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
     val song = songState.value ?: originalSong
     val download by downloadUtil.getDownload(originalSong.id)
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
     // val cacheViewModel = hiltViewModel<CachePlaylistViewModel>() // Not used in OmniTune
@@ -245,7 +245,7 @@ fun SongMenu(
     }
 
     if (showChoosePlaylistDialog) {
-        val playlists by database.playlistsByCreateDateAsc().collectAsState(initial = emptyList())
+        val playlists by database.playlistsByCreateDateAsc().collectAsStateWithLifecycle(initialValue = emptyList())
         AddToPlaylistDialog(
             playlists = playlists,
             onDismissRequest = { showChoosePlaylistDialog = false },

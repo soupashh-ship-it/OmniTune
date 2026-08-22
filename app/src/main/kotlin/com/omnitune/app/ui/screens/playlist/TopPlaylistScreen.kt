@@ -48,7 +48,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -138,6 +137,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import com.omnitune.app.LocalDatabase
 import com.omnitune.app.viewmodels.TopPlaylistViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -152,11 +152,11 @@ fun TopPlaylistScreen(
     val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val maxSize = viewModel.top
 
-    val songs by viewModel.topSongs.collectAsState(null)
+    val songs by viewModel.topSongs.collectAsStateWithLifecycle(null)
     val mutableSongs = remember { mutableStateListOf<Song>() }
 
     val likeLength = remember(songs) {
@@ -191,7 +191,7 @@ fun TopPlaylistScreen(
         }
     }
 
-    val sortType by viewModel.topPeriod.collectAsState()
+    val sortType by viewModel.topPeriod.collectAsStateWithLifecycle()
     val (sortDescending, onSortDescendingChange) = rememberPreference(
         TopPlaylistSortDescendingKey,
         true,
@@ -204,7 +204,7 @@ fun TopPlaylistScreen(
     var downloadState by remember { mutableIntStateOf(Download.STATE_STOPPED) }
     // Tags
     val pid = "LP_TOP"
-    val tags by libraryViewModel.playlistTags(pid).collectAsState(initial = emptyList())
+    val tags by libraryViewModel.playlistTags(pid).collectAsStateWithLifecycle(initialValue = emptyList())
     var showAssignTagsDialog by remember { mutableStateOf(false) }
 
     if (showAssignTagsDialog) {

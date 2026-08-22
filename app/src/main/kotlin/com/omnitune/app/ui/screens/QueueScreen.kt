@@ -43,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -86,6 +85,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import timber.log.Timber
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val QUEUE_ARTWORK_SIZE = 160
 
@@ -104,13 +104,13 @@ fun QueueScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val queueTitle by playerConnection?.queueTitle?.collectAsState() ?: remember { mutableStateOf(null) }
-    val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsState() ?: remember { mutableIntStateOf(-1) }
-    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
-    val queueIndices by playerConnection?.queueIndices?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
-    val currentFormat by playerConnection?.currentFormat?.collectAsState(initial = null) ?: remember { mutableStateOf<FormatEntity?>(null) }
-    val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsState(initial = false) ?: remember { mutableStateOf(false) }
-    val sleepTimerRemaining by playerConnection?.sleepTimerRemaining?.collectAsState(initial = 0L) ?: remember { mutableLongStateOf(0L) }
+    val queueTitle by playerConnection?.queueTitle?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
+    val currentIndex by playerConnection?.currentMediaItemIndex?.collectAsStateWithLifecycle() ?: remember { mutableIntStateOf(-1) }
+    val mediaMetadata by playerConnection?.mediaMetadata?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(null) }
+    val queueIndices by playerConnection?.queueIndices?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(emptyList()) }
+    val currentFormat by playerConnection?.currentFormat?.collectAsStateWithLifecycle(initialValue = null) ?: remember { mutableStateOf<FormatEntity?>(null) }
+    val sleepTimerRunning by playerConnection?.sleepTimerRunning?.collectAsStateWithLifecycle(initialValue = false) ?: remember { mutableStateOf(false) }
+    val sleepTimerRemaining by playerConnection?.sleepTimerRemaining?.collectAsStateWithLifecycle(initialValue = 0L) ?: remember { mutableLongStateOf(0L) }
 
     val itemCount = queueIndices.size
     val currentIndexInQueue = queueIndices.indexOf(currentIndex).coerceAtLeast(0)
@@ -421,7 +421,7 @@ fun QueueScreen(
         }
 
         if (showAddToPlaylistDialog) {
-            val playlists by libraryViewModel.playlists.collectAsState()
+            val playlists by libraryViewModel.playlists.collectAsStateWithLifecycle()
             com.omnitune.app.ui.component.AddToPlaylistDialog(
                 playlists = playlists,
                 onDismissRequest = { showAddToPlaylistDialog = false },

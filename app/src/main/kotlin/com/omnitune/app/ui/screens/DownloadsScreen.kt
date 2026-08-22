@@ -30,7 +30,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.db.entities.Song
 import coil3.compose.AsyncImage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @androidx.media3.common.util.UnstableApi
 @Composable
@@ -68,7 +68,7 @@ fun DownloadsScreen(
     onPlayDownload: (Download) -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     

@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +30,7 @@ import java.time.LocalDateTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 fun LazyListScope.playlistSearchResults(
     playlists: List<PlaylistItem>,
@@ -49,7 +49,7 @@ fun LazyListScope.playlistSearchResults(
             val database = LocalDatabase.current
             val downloadUtil = LocalDownloadUtil.current
             val scope = rememberCoroutineScope()
-            val existingPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
+            val existingPlaylist by database.playlistByBrowseId(playlist.id).collectAsStateWithLifecycle(initialValue = null)
             val isSaving = remember(playlist.id) { mutableStateOf(false) }
             val isDownloading = remember(playlist.id) { mutableStateOf(false) }
             SearchResultRow(

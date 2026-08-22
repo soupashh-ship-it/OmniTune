@@ -39,7 +39,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +56,7 @@ import androidx.core.graphics.toColorInt
 import com.omnitune.app.R
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.TagEntity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -64,7 +64,7 @@ fun TagsManagementDialog(
     database: MusicDatabase,
     onDismiss: () -> Unit
 ) {
-    val allTags by database.allTags().collectAsState(initial = emptyList())
+    val allTags by database.allTags().collectAsStateWithLifecycle(initialValue = emptyList())
 
     var showAddTagDialog by remember { mutableStateOf(false) }
     var tagToEdit by remember { mutableStateOf<TagEntity?>(null) }

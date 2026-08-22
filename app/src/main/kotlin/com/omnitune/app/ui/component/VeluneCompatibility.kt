@@ -1,6 +1,5 @@
 package com.omnitune.app.ui.component
 
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.omnitune.app.LocalDatabase
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +20,7 @@ import com.omnitune.app.db.entities.Album
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.innertube.models.YTItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun AlbumListItem(
@@ -110,7 +110,7 @@ fun AddToPlaylistDialog(
 ) {
     if (!isVisible) return
     val database = LocalDatabase.current
-    val playlists by database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false).collectAsState(initial = emptyList())
+    val playlists by database.playlists(com.omnitune.app.constants.PlaylistSortType.CREATE_DATE, false).collectAsStateWithLifecycle(initialValue = emptyList())
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     com.omnitune.app.ui.component.AddToPlaylistDialog(
         playlists = playlists,

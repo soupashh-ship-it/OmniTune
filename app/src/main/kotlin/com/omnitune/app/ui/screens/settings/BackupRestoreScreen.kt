@@ -26,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,16 +46,17 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun BackupRestoreScreen(
     viewModel: BackupRestoreViewModel = hiltViewModel(),
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val progress by viewModel.progress.collectAsState()
-    val result by viewModel.result.collectAsState()
-    val lastBackupAt by viewModel.lastBackupAt.collectAsState()
-    val latestSafetyBackup by viewModel.latestSafetyBackup.collectAsState()
+    val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val result by viewModel.result.collectAsStateWithLifecycle()
+    val lastBackupAt by viewModel.lastBackupAt.collectAsStateWithLifecycle()
+    val latestSafetyBackup by viewModel.latestSafetyBackup.collectAsStateWithLifecycle()
     var includeDownloadedAudio by remember { mutableStateOf(false) }
     var replaceExistingOnImport by remember { mutableStateOf(false) }
     var mergeLibraryAndLikes by remember { mutableStateOf(true) }

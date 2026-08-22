@@ -43,7 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,6 +95,7 @@ import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -109,8 +109,8 @@ fun YouTubeSongMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val downloadUtil = LocalDownloadUtil.current
-    val librarySong by database.song(song.id).collectAsState(initial = null)
-    val download by downloadUtil.getDownload(song.id).collectAsState(initial = null)
+    val librarySong by database.song(song.id).collectAsStateWithLifecycle(initialValue = null)
+    val download by downloadUtil.getDownload(song.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     val artists = remember {
         song.artists.mapNotNull {

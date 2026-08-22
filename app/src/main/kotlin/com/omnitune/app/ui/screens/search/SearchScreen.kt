@@ -42,7 +42,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +83,7 @@ import com.omnitune.innertube.models.ArtistItem
 import com.omnitune.innertube.models.PlaylistItem
 import com.omnitune.innertube.models.SongItem
 import timber.log.Timber
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun SearchScreen(
@@ -97,7 +97,7 @@ fun SearchScreen(
     onAddToQueue: (SongItem) -> Unit = {},
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val textFieldValue = remember { mutableStateOf(searchTextFieldValue(uiState.query)) }
     val searchFocusRequester = remember { FocusRequester() }
 

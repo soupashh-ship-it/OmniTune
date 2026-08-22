@@ -193,6 +193,7 @@ dependencies {
 
     implementation(libs.viewmodel)
     implementation(libs.viewmodel.compose)
+    implementation(libs.runtime.compose)
 
     implementation(libs.material3)
 

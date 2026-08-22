@@ -19,3 +19,14 @@ dependencies {
     implementation(libs.rhino)
     testImplementation(libs.junit)
 }
+
+val includeLiveNetworkTests =
+    providers.gradleProperty("includeLiveNetworkTests").orElse("false").get().toBoolean()
+
+tasks.withType<Test>().configureEach {
+    useJUnit {
+        if (!includeLiveNetworkTests) {
+            excludeCategories("com.omnitune.innertube.LiveNetwork")
+        }
+    }
+}

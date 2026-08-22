@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -13,11 +12,12 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.ui.player.rememberPlayerGradient
 import com.omnitune.app.ui.theme.OmniColors
 import kotlinx.coroutines.flow.flowOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun OmniShellBackground(content: @Composable () -> Unit) {
     val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsState(initial = null)
+    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
 
     val gradientState = rememberPlayerGradient(
         thumbnailUrl = mediaMetadata?.thumbnailUrl,
