@@ -66,9 +66,13 @@ page@6c78803ef718b2d15f66e9efe9ef01be.webm
 
 # Internal agent/session material
 /.gemini/
+/.agents/
+/.codex/
 /AGENTS.md
 /GEMINI.md
 /SESSION_NOTES.md
+/ORIGINAL_REQUEST.md
+/PROJECT.md
 
 # Root-level internal reports
 /AUDIT_*_REPORT.md
