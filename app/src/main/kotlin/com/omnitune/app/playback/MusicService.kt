@@ -123,18 +123,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
         private const val ACTION_STOP = PlaybackNotificationManager.ACTION_STOP
         private const val MAX_RECENT_AUTOPLAY_IDS = 40
-        private const val MAX_PLAYBACK_HISTORY_ITEMS = 80
-        private const val MIN_LISTEN_HISTORY_MS = 10_000L
         private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
         // A process can be killed without an orderly service callback. Keep the persisted
         // queue position close enough to resume the listening session safely.
         private const val QUEUE_POSITION_CHECKPOINT_MS = 5_000L
     }
-
-    private data class PlaybackHistoryEntry(
-        val mediaId: String,
-        val index: Int,
-    )
 
     private var sessionManager: SessionManager? = null
     private val mediaSession: MediaLibrarySession?
@@ -173,9 +166,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     val waitingForNetworkConnection = _waitingForNetworkConnection.asStateFlow()
 
     // OMNITUNE: Playback tracking
-    private var lastRecordedMediaId: String? = null
-    private var playbackTrackerJob: Job? = null
-
+    private lateinit var playCountTracker: PlayCountTracker
     private val _currentMediaMetadata = MutableStateFlow<MediaMetadata?>(null)
     val currentMediaMetadata = _currentMediaMetadata.asStateFlow()
     var queueTitle: String? = null
@@ -196,15 +187,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var autoplayContinuationJob: Job? = null
     private val recentlyAutoplayedIds = ArrayDeque<String>()
     private val failedAutoplayCandidateIds = linkedSetOf<String>()
-    private var lastTransitionMediaId: String? = null
-    private var lastTransitionMetadata: MediaMetadata? = null
-    private var lastTransitionStartedAtMs: Long = 0L
-    private var lastTransitionDurationMs: Long? = null
-    private var lastTransitionSourceType: PlaybackSourceType = PlaybackSourceType.UNKNOWN
+    private lateinit var tasteSignalRecorder: TasteSignalRecorder
     private var lastPositiveAutoplaySeed: MediaMetadata? = null
-    private val playbackHistory = ArrayDeque<PlaybackHistoryEntry>()
-    private var currentHistoryEntry: PlaybackHistoryEntry? = null
-    private var suppressNextHistoryRecord = false
+    private lateinit var historyTracker: PlaybackHistoryTracker
     private var userNavigationJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -402,6 +387,21 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         scrobblingManager = ScrobblingManager(this, scope)
+
+        tasteSignalRecorder = TasteSignalRecorder(
+            preferences = dataStore.data,
+            database = database,
+            scope = scope,
+        )
+        historyTracker = PlaybackHistoryTracker()
+        playCountTracker = PlayCountTracker(
+            player = player,
+            database = database,
+            scrobblingManager = scrobblingManager,
+            currentMetadataProvider = { _currentMediaMetadata.value },
+            preferences = dataStore.data,
+            scope = scope,
+        )
 
         sessionCallback.onToggleLike = { toggleLike() }
         sessionCallback.onToggleLibrary = { toggleLibrary() }
@@ -797,29 +797,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 return@launch
             }
 
-            while (playbackHistory.isNotEmpty()) {
-                val previous = playbackHistory.removeLast()
+            while (historyTracker.hasPrevious()) {
+                val previous = historyTracker.popPrevious() ?: continue
                 val historyIndex = findHistoryIndex(previous)
                 if (historyIndex == C.INDEX_UNSET || historyIndex == player.currentMediaItemIndex) {
                     continue
                 }
 
-                suppressNextHistoryRecord = true
+                historyTracker.suppressNextRecord()
                 if (seekToResolvedMediaItem(historyIndex, 0L)) {
                     player.playWhenReady = true
                     return@launch
                 }
-                suppressNextHistoryRecord = false
+                historyTracker.clearSuppressNextRecord()
             }
 
             val previousIndex = player.previousMediaItemIndex
             if (previousIndex != C.INDEX_UNSET) {
-                suppressNextHistoryRecord = true
+                historyTracker.suppressNextRecord()
                 if (seekToResolvedMediaItem(previousIndex, 0L)) {
                     player.playWhenReady = true
                     return@launch
                 }
-                suppressNextHistoryRecord = false
+                historyTracker.clearSuppressNextRecord()
             }
 
             player.seekTo(0L)
@@ -1016,7 +1016,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         updateNotification()
         logMediaControlState("item-transition")
         postMediaNotificationFallback("item-transition")
-        startPlaybackTracker(mediaItem)
+        playCountTracker.startFor(mediaItem)
         beginTasteWindow(mediaItem)
         saveQueueState()
         updateVolumeNormalizationFactor(mediaItem?.mediaId)
@@ -1034,30 +1034,14 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun updatePlaybackHistory(mediaItem: MediaItem?) {
-        val nextEntry = mediaItem
-            ?.takeIf { it.mediaId.isNotBlank() }
-            ?.let { PlaybackHistoryEntry(it.mediaId, player.currentMediaItemIndex) }
-        val previousEntry = currentHistoryEntry
-
-        if (suppressNextHistoryRecord) {
-            suppressNextHistoryRecord = false
-        } else if (previousEntry != null && previousEntry != nextEntry) {
-            playbackHistory.addLast(previousEntry)
-            while (playbackHistory.size > MAX_PLAYBACK_HISTORY_ITEMS) {
-                playbackHistory.removeFirst()
-            }
-        }
-
-        currentHistoryEntry = nextEntry
+        historyTracker.onTransition(mediaItem, player.currentMediaItemIndex)
     }
 
     private fun resetPlaybackHistory() {
-        playbackHistory.clear()
-        currentHistoryEntry = null
-        suppressNextHistoryRecord = false
+        historyTracker.reset()
     }
 
-    private fun findHistoryIndex(entry: PlaybackHistoryEntry): Int {
+    private fun findHistoryIndex(entry: PlaybackHistoryTracker.Entry): Int {
         if (entry.index in 0 until player.mediaItemCount &&
             player.getMediaItemAt(entry.index).mediaId == entry.mediaId
         ) {
@@ -1100,12 +1084,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     timber.log.Timber.tag("OmniTuneRecent").w("Metadata is null for $mediaId, skipping recent play record")
                 }
             }
-            if (lastTransitionMediaId == null) {
+            if (!tasteSignalRecorder.hasOpenWindow()) {
                 beginTasteWindow(mediaItem)
             }
         } else if (
             player.playbackState == Player.STATE_READY &&
-            player.currentPosition >= MIN_LISTEN_HISTORY_MS
+            player.currentPosition >= TasteSignalRecorder.MIN_LISTEN_HISTORY_MS
         ) {
             stopQueuePositionCheckpoint(saveImmediately = true)
             recordTasteSignalForPreviousTransition(completed = false)
@@ -1350,154 +1334,45 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
     private fun beginTasteWindow(mediaItem: MediaItem?) {
         val meta = mediaItem?.metadata
-        lastTransitionMediaId = mediaItem?.mediaId
-        lastTransitionMetadata = meta
-        lastTransitionStartedAtMs = System.currentTimeMillis()
-        lastTransitionSourceType = currentPlaybackContext.sourceType
-        lastTransitionDurationMs = meta?.duration
+        val durationMs = meta?.duration
             ?.takeIf { it > 0 }
             ?.let { it * 1000L }
             ?: player.duration.takeIf { it != C.TIME_UNSET && it > 0L }
+        tasteSignalRecorder.beginWindow(
+            mediaItem = mediaItem,
+            sourceType = currentPlaybackContext.sourceType,
+            playerDurationMs = durationMs,
+        )
     }
 
     private fun recordTasteSignalForPreviousTransition(completed: Boolean) {
-        val mediaId = lastTransitionMediaId ?: return
-        val sourceType = lastTransitionSourceType
-        val wallClockListenedMs = System.currentTimeMillis() - lastTransitionStartedAtMs
-        val playerPositionMs = player.currentPosition
-            .takeIf { player.currentMediaItem?.mediaId == mediaId && it > 0L }
-        val listenedMs = playerPositionMs ?: wallClockListenedMs
-        val durationMs = lastTransitionDurationMs
-        val actualListenedMs = durationMs
-            ?.takeIf { it > 0L }
-            ?.let { listenedMs.coerceAtMost(it) }
-            ?: listenedMs
-        val positive = TasteSignalClassifier.isPositiveListen(listenedMs, durationMs)
-        val skippedQuickly = TasteSignalClassifier.isQuickSkip(listenedMs, completed)
-        val signal = TasteSignal(
-            songId = mediaId,
-            sourceType = sourceType,
-            listenedMillis = actualListenedMs,
-            durationMillis = durationMs,
+        val result = tasteSignalRecorder.endWindow(
             completed = completed,
-            skippedQuickly = skippedQuickly,
-            positive = positive,
-        )
+            currentPlayerMediaId = player.currentMediaItem?.mediaId,
+            playerPositionMs = player.currentPosition,
+        ) ?: return
+        val signal = result.signal
 
-        recordListeningEventIfNeeded(
-            mediaId = mediaId,
-            metadata = lastTransitionMetadata,
-            listenedMs = actualListenedMs,
-            positive = positive,
-            completed = completed,
-        )
-
-        if (sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
-            if (signal.positive) {
-                lastPositiveAutoplaySeed = lastTransitionMetadata
-                Timber.tag("OmniTuneContinuation").i("Positive autoplay signal for $mediaId after ${listenedMs}ms")
+        if (signal.sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
+            if (result.windowMetadata != null && signal.positive) {
+                lastPositiveAutoplaySeed = result.windowMetadata
+                Timber.tag("OmniTuneContinuation").i("Positive autoplay signal for ${signal.songId} after ${signal.listenedMillis}ms")
             }
             if (signal.skippedQuickly) {
-                failedAutoplayCandidateIds.add(mediaId)
+                failedAutoplayCandidateIds.add(signal.songId)
                 scope.launch(Dispatchers.IO) {
-                    val existing = database.getSkip(mediaId)
+                    val existing = database.getSkip(signal.songId)
                     database.upsertSkip(
                         existing?.copy(
                             skipCount = existing.skipCount + 1,
                             lastSkippedAt = System.currentTimeMillis(),
-                        ) ?: SongSkipEntity(songId = mediaId, skipCount = 1),
+                        ) ?: SongSkipEntity(songId = signal.songId, skipCount = 1),
                     )
                 }
-                Timber.tag("OmniTuneContinuation").i("Quick skip signal for autoplay candidate $mediaId")
-            }
-        }
-
-        lastTransitionMediaId = null
-        lastTransitionMetadata = null
-        lastTransitionStartedAtMs = 0L
-        lastTransitionDurationMs = null
-    }
-
-    private fun recordListeningEventIfNeeded(
-        mediaId: String,
-        metadata: MediaMetadata?,
-        listenedMs: Long,
-        positive: Boolean,
-        completed: Boolean,
-    ) {
-        if (listenedMs < MIN_LISTEN_HISTORY_MS) return
-        if (!positive && !completed) return
-
-        scope.launch(Dispatchers.IO) {
-            try {
-                metadata?.let { database.insert(it) }
-                database.insertRecentEvent(mediaId, listenedMs)
-                val historyDays = dataStore.data.first()[HistoryDuration] ?: 30f
-                if (historyDays > 0f) {
-                    val cutoff = System.currentTimeMillis() - historyDays.toLong().coerceAtLeast(1L) * 86_400_000L
-                    database.deleteEventsBefore(cutoff)
-                }
-                database.incrementTotalPlayTime(mediaId, listenedMs)
-                Timber.tag("OmniTuneRecent").d("Recorded listening event: mediaId=$mediaId listenedMs=$listenedMs")
-            } catch (e: Exception) {
-                Timber.tag("OmniTuneRecent").w(e, "Failed to record listening event for $mediaId")
+                Timber.tag("OmniTuneContinuation").i("Quick skip signal for autoplay candidate ${signal.songId}")
             }
         }
     }
-
-    private fun startPlaybackTracker(mediaItem: MediaItem?) {
-        playbackTrackerJob?.cancel()
-        val mediaId = mediaItem?.mediaId ?: return
-        if (mediaId == lastRecordedMediaId) return
-
-        playbackTrackerJob = scope.launch(Dispatchers.IO) {
-            var durationMs = withContext(Dispatchers.Main) { player.duration }
-            while (durationMs == C.TIME_UNSET || durationMs <= 0L) {
-                delay(1000)
-                if (!isActive) return@launch
-                // Safe way to get duration on main thread
-                durationMs = withContext(Dispatchers.Main) { player.duration }
-            }
-
-            val ds = applicationContext.dataStore
-            val minimumDurationMs = (ds.data.map { it[ScrobbleMinSongDurationKey] ?: 30 }.first() * 1000L)
-            if (durationMs < minimumDurationMs) return@launch // Skip very short tracks
-            val delayPercent = ds.data.map { it[ScrobbleDelayPercentKey] ?: 50f }.first()
-            val delaySeconds = ds.data.map { it[ScrobbleDelaySecondsKey] ?: 30 }.first()
-
-            // Threshold is the minimum of (delayPercent %) or (delaySeconds), clamped to 10s min
-            val thresholdMs = minOf((durationMs * delayPercent / 100f).toLong(), delaySeconds * 1000L).coerceAtLeast(10_000L)
-
-            while (isActive) {
-                val (currentPos, currentId) = withContext(Dispatchers.Main) {
-                    Pair(player.currentPosition, player.currentMediaItem?.mediaId)
-                }
-
-                if (currentId == mediaId) {
-                    if (currentPos >= thresholdMs) {
-                        Timber.tag("MusicService").d("Recording play count for $mediaId")
-                        database.incrementPlayCount(mediaId)
-                        // Submit scrobble
-                        val scrobbleMeta = _currentMediaMetadata.value
-                        if (scrobbleMeta != null) {
-                            scrobblingManager.onScrobbleThreshold(
-                                title = scrobbleMeta.title,
-                                artist = scrobbleMeta.artists.firstOrNull()?.name ?: "",
-                                album = scrobbleMeta.album?.title,
-                                durationMs = durationMs,
-                            )
-                        }
-                        lastRecordedMediaId = mediaId
-                        break
-                    }
-                } else {
-                    break
-                }
-                delay(1000)
-            }
-        }
-    }
-
     private fun updateVolumeNormalizationFactor(mediaId: String?) {
         if (mediaId.isNullOrBlank()) {
             _volumeNormalizationFactor.value = 1f
