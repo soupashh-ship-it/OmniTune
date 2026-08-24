@@ -18,7 +18,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.omnitune.app.constants.AutoDownloadOnLikeKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.metadata
@@ -158,7 +157,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val audioNormalizationEnabled = MutableStateFlow(true)
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
-    private var autoDownloadOnLikeJob: Job? = null
+    private var autoDownloadOnLikeCoordinator: AutoDownloadOnLikeCoordinator? = null
     private var equalizerPreferenceJob: Job? = null
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
@@ -508,45 +507,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun startAutoDownloadOnLikeObserver() {
-        autoDownloadOnLikeJob?.cancel()
-        autoDownloadOnLikeJob = scope.launch(Dispatchers.IO) {
-            var knownLikedIds = emptySet<String>()
-            var enabledLastEmission = false
-
-            combine(
-                dataStore.data.map { it[AutoDownloadOnLikeKey] ?: false }.distinctUntilChanged(),
-                database.likedSongsByRowIdAsc(),
-            ) { enabled, songs -> enabled to songs }
-                .collect { (enabled, songs) ->
-                    val likedIds = songs.map { it.song.id }.toSet()
-                    if (!enabled) {
-                        knownLikedIds = likedIds
-                        enabledLastEmission = false
-                        return@collect
-                    }
-                    if (!enabledLastEmission) {
-                        knownLikedIds = likedIds
-                        enabledLastEmission = true
-                        return@collect
-                    }
-
-                    songs
-                        .filter { it.song.id !in knownLikedIds }
-                        .forEach { song -> queueAutoDownload(song.song.id, song.song.title) }
-                    knownLikedIds = likedIds
-                }
-        }
-    }
-
-    private fun queueAutoDownload(mediaId: String, title: String) {
-        try {
-            val existing = downloadUtil.downloadManager.downloadIndex.getDownload(mediaId)
-            if (existing != null && existing.state != Download.STATE_FAILED) return
-
-            downloadUtil.enqueue(mediaId, title)
-        } catch (e: Exception) {
-            Timber.tag("MusicService").w(e, "Failed to auto-download liked song $mediaId")
-        }
+        autoDownloadOnLikeCoordinator?.stop()
+        autoDownloadOnLikeCoordinator = AutoDownloadOnLikeCoordinator(
+            preferences = dataStore.data,
+            database = database,
+            downloadUtil = downloadUtil,
+            scope = scope,
+        ).also { it.start() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
@@ -965,6 +932,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
         } catch (_: Exception) {}
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
+        autoDownloadOnLikeCoordinator?.stop()
+        autoDownloadOnLikeCoordinator = null
         equalizerPreferenceJob?.cancel()
         equalizerPreferenceJob = null
         radioQueueManager = null

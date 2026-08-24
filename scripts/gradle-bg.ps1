@@ -13,7 +13,7 @@ if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force -Path $logDi
 $log = Join-Path $logDir "$LogName.log"
 Remove-Item $log -Force -ErrorAction SilentlyContinue
 
-$argLine = ($ArgsList | ForEach-Object { '"' + $_ + '"' }) -join ' '
+$argLine = $ArgsList -join ' '
 $cmd = "cd /d `"$root`" && gradlew.bat $argLine >> `"$log`" 2>&1 & echo EXITCODE=%ERRORLEVEL% >> `"$log`""
 Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $cmd -WindowStyle Hidden
 Write-Output "LAUNCHED -> $log"

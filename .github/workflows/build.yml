@@ -26,7 +26,13 @@ jobs:
     - name: Run Unit Tests
       env:
         YOUTUBE_MUSIC_API_KEY: ${{ secrets.YOUTUBE_MUSIC_API_KEY }}
-      run: ./gradlew testDebugUnitTest --stacktrace
+      run: ./gradlew testDebugUnitTest :app:koverHtmlReport --stacktrace
+
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: app/build/reports/kover/
 
     - name: Run Lint
       env:
