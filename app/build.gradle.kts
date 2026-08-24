@@ -166,7 +166,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 
 dependencies {
     if (enableFirebase) {
-        implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
+        implementation(platform("com.google.firebase:firebase-bom:34.18.0"))
         implementation("com.google.firebase:firebase-crashlytics-ktx")
         implementation("com.google.firebase:firebase-analytics-ktx")
     }
@@ -183,6 +183,9 @@ dependencies {
     implementation(libs.core)
     implementation(libs.navigation)
 
+    // Aligns compose-* artifacts; material3 stays pinned (1.5.0-alpha09) until 1.5.0 stable.
+    implementation(platform(libs.compose.bom))
+    implementation(libs.okhttp)
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
