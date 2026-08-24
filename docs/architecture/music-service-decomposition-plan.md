@@ -19,18 +19,23 @@ playback concern. This document tracks the coordinator-extraction roadmap. Rules
 | `PlaybackPreferenceObserver` | Reactive player settings from DataStore |
 | `NetworkPlaybackMonitor` | Metered-network playback gating |
 | `AutoDownloadOnLikeCoordinator` | Auto-download newly liked songs (**extracted 2026-08**) |
+| `TasteSignalRecorder` | Listening-window state machine + listening-event persistence (**2026-08**) |
+| `PlayCountTracker` | Threshold play-count increment + scrobble hand-off (**2026-08**) |
+| `PlaybackHistoryTracker` | Previous-track history state holder (unit tested) (**2026-08**) |
+| `EqualizerEffectObserver` | Equalizer/bass-boost/virtualizer preference application (**2026-08**) |
+| `BluetoothAudioHandler` | BT receiver + audio-device callbacks, auto-start/pause policies (**2026-08**) |
+| `AutoplayContinuationManager` | Autoplay state (recent/failed/seed), candidate selection loop (**2026-08**) |
 
-## Remaining extraction queue (ranked)
+Note: notification fallback logic already lived in `PlaybackNotificationManager`; the service only keeps thin initialized-guards. Liked-songs looping stays inline in the service deliberately: it is pure player mutation (`setMediaItems`/`prepare`) tied to `withOriginalVideoIdUri`, ~24 lines.
 
-| # | Candidate | Service lines (approx) | Notes |
-| --- | --- | --- | --- |
-| 1 | `TasteSignalRecorder` | beginTasteWindow / recordTasteSignalForPreviousTransition / recordListeningEventIfNeeded / startPlaybackTracker | Self-contained state machine over play/pause/transition events; feeds stats + recommendations |
-| 2 | `PlaybackHistoryUpdater` | updatePlaybackHistory / resetPlaybackHistory / findHistoryIndex | Pure DB coordination; easy unit tests |
-| 3 | `VolumeNormalizationController` | updateVolumeNormalizationFactor + loudness cache | Needs loudness DB reads; keep behind existing StateFlow seam |
-| 4 | `EqualizerEffectObserver` | startEqualizerObserver + startBassBoostVirtualizerObserver + decodeEqualizerBands | Mirrors PlaybackPreferenceObserver style |
-| 5 | `BluetoothAudioHandler` | handleBluetoothConnected/Disconnected + receiver + AudioDeviceCallback registration | Includes BluetoothDisconnectPolicy already extracted |
-| 6 | `AutoplayContinuationManager` | rememberAutoplayCandidate + loopLikedSongsIfNeeded + radio hand-off into existing `RadioQueueManager` | Largest remaining block after #1 |
-| 7 | Notification fallback | postMediaNotificationFallback + logMediaControlState → move into `PlaybackNotificationManager` | Small but reduces service surface |
+## Remaining extraction queue
 
-After items 1–6 land, the service should be under the 1,000-line guideline with only lifecycle,
-queue command routing, and Player.Listener forwarding left inline.
+After the 2026-08 pass, remaining candidates are small:
+
+| # | Candidate | Notes |
+| --- | --- | --- |
+| 1 | `VolumeNormalizationController` | updateVolumeNormalizationFactor + loudness lookup (~20 lines) |
+| 2 | Queue persistence inline block → reuse existing `QueuePersistenceManager` | The manager exists with tests but is not wired into the service; service still saves queues inline |
+
+The service is now below the god-object threshold trajectory; verify against
+`scripts/check-large-files.ps1` after each future feature addition.

@@ -35,9 +35,7 @@ import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.constants.RepeatModeKey
 import com.omnitune.app.constants.RestrictExplicitContentKey
 import com.omnitune.app.constants.ShuffleEnabledKey
-import com.omnitune.app.constants.AutoplaySimilarSongsKey
 import com.omnitune.app.constants.HistoryDuration
-import com.omnitune.app.db.entities.SongSkipEntity
 import androidx.datastore.preferences.core.edit
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +64,7 @@ import javax.inject.Inject
 import com.omnitune.app.constants.EqualizerBandLevelsMbKey
 import com.omnitune.app.constants.EqualizerEnabledKey
 import com.omnitune.app.playback.continuation.AutoplayCandidate
+import com.omnitune.app.playback.continuation.AutoplayContinuationManager
 import com.omnitune.app.playback.continuation.AutoplayRecommendationResolver
 import com.omnitune.app.playback.continuation.AutoplayRetryPolicy
 import com.omnitune.app.playback.continuation.LikedSongsPlaybackPlanner
@@ -122,7 +121,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
         private const val ACTION_REPEAT = PlaybackNotificationManager.ACTION_REPEAT
         private const val ACTION_STOP = PlaybackNotificationManager.ACTION_STOP
-        private const val MAX_RECENT_AUTOPLAY_IDS = 40
         private const val PREVIOUS_RESTART_THRESHOLD_MS = 3_000L
         // A process can be killed without an orderly service callback. Keep the persisted
         // queue position close enough to resume the listening session safely.
@@ -151,7 +149,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
     private var autoDownloadOnLikeCoordinator: AutoDownloadOnLikeCoordinator? = null
-    private var equalizerPreferenceJob: Job? = null
+    private lateinit var equalizerEffectObserver: EqualizerEffectObserver
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
     private val audioEffectController by lazy { AudioEffectController(this) }
@@ -176,8 +174,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var saveQueueJob: Job? = null
     private var queuePositionCheckpointJob: Job? = null
     private var playQueueJob: Job? = null
-    private var bluetoothReceiver: android.content.BroadcastReceiver? = null
-    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
+    private lateinit var bluetoothAudioHandler: BluetoothAudioHandler
     private var pausedByDeviceMute = false
 
 
@@ -185,10 +182,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private lateinit var autoplayResolver: AutoplayRecommendationResolver
     private var currentPlaybackContext: PlaybackContext = PlaybackContext.Unknown
     private var autoplayContinuationJob: Job? = null
-    private val recentlyAutoplayedIds = ArrayDeque<String>()
-    private val failedAutoplayCandidateIds = linkedSetOf<String>()
+    private lateinit var autoplayContinuation: AutoplayContinuationManager
     private lateinit var tasteSignalRecorder: TasteSignalRecorder
-    private var lastPositiveAutoplaySeed: MediaMetadata? = null
     private lateinit var historyTracker: PlaybackHistoryTracker
     private var userNavigationJob: Job? = null
 
@@ -297,8 +292,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
         ).also { it.start() }
         startAutoDownloadOnLikeObserver()
-        startEqualizerObserver()
-        startBassBoostVirtualizerObserver()
+        equalizerEffectObserver = EqualizerEffectObserver(
+            preferences = dataStore.data,
+            equalizerController = equalizerController,
+            audioEffectController = audioEffectController,
+            scope = scope,
+        ).also { it.start() }
         radioQueueManager = RadioQueueManager(
             player = player,
             scope = scope,
@@ -345,46 +344,22 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
         }
 
-        val filter = android.content.IntentFilter().apply {
-            addAction(android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
-            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
-            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
-        }
-        bluetoothReceiver = object : android.content.BroadcastReceiver() {
-            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
-                when (intent.action) {
-                    android.bluetooth.BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
-                        val state = intent.getIntExtra(
-                            android.bluetooth.BluetoothProfile.EXTRA_STATE,
-                            android.bluetooth.BluetoothProfile.STATE_DISCONNECTED,
-                        )
-                        when (state) {
-                            android.bluetooth.BluetoothProfile.STATE_CONNECTED -> handleBluetoothConnected()
-                            android.bluetooth.BluetoothProfile.STATE_DISCONNECTED -> handleBluetoothDisconnected()
-                        }
-                    }
-                    android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED -> handleBluetoothConnected()
-                    android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED -> handleBluetoothDisconnected()
+        bluetoothAudioHandler = BluetoothAudioHandler(
+            context = this,
+            preferences = dataStore.data,
+            scope = scope,
+            isPlayingProvider = { ::player.isInitialized && player.isPlaying },
+            onAutoStartPlayback = {
+                if (!::player.isInitialized || player.mediaItemCount == 0 || player.playWhenReady) {
+                    false
+                } else {
+                    playOrResolveCurrent()
+                    true
                 }
-            }
-        }
-        androidx.core.content.ContextCompat.registerReceiver(this, bluetoothReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
-        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>) {
-                if (addedDevices.any { it.isBluetoothOutput() }) {
-                    handleBluetoothConnected()
-                }
-            }
-
-            override fun onAudioDevicesRemoved(removedDevices: Array<out android.media.AudioDeviceInfo>) {
-                if (removedDevices.any { it.isBluetoothOutput() }) {
-                    handleBluetoothDisconnected()
-                }
-            }
-        }.also { callback ->
-            val audioManager = getSystemService(android.media.AudioManager::class.java)
-            audioManager?.registerAudioDeviceCallback(callback, null)
-        }
+            },
+            onPauseForDisconnect = { pausePlayback() },
+            onNotificationFallback = { reason, force -> postMediaNotificationFallback(reason, force) },
+        ).also { it.start() }
 
         scrobblingManager = ScrobblingManager(this, scope)
 
@@ -394,6 +369,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
             scope = scope,
         )
         historyTracker = PlaybackHistoryTracker()
+        autoplayContinuation = AutoplayContinuationManager(
+            database = database,
+            preferences = dataStore.data,
+            autoplayResolver = autoplayResolver,
+            scope = scope,
+        )
         playCountTracker = PlayCountTracker(
             player = player,
             database = database,
@@ -492,20 +473,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         equalizerController.setEnabled(enabled)
     }
 
-    private fun startEqualizerObserver() {
-        equalizerPreferenceJob?.cancel()
-        equalizerPreferenceJob = scope.launch {
-            combine(
-                dataStore.data.map { it[EqualizerEnabledKey] ?: false }.distinctUntilChanged(),
-                dataStore.data.map { it[EqualizerBandLevelsMbKey].orEmpty() }.distinctUntilChanged(),
-            ) { enabled, levels -> enabled to levels }
-                .collect { (enabled, levels) ->
-                    equalizerController.setEnabled(enabled)
-                    decodeEqualizerBands(levels)?.let(equalizerController::applyBands)
-                }
-        }
-    }
-
     private fun startAutoDownloadOnLikeObserver() {
         autoDownloadOnLikeCoordinator?.stop()
         autoDownloadOnLikeCoordinator = AutoDownloadOnLikeCoordinator(
@@ -577,7 +544,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
             currentQueue = queue
             currentPlaybackContext = queue.playbackContext
-            failedAutoplayCandidateIds.clear()
+            autoplayContinuation.clearFailedCandidates()
             resetPlaybackHistory()
             queueTitle = null
             currentPlaybackContext = queue.playbackContext.withSeedItem(
@@ -906,8 +873,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     fun stopAndClearPlayback() {
         currentQueue = EmptyQueue
         currentPlaybackContext = PlaybackContext.Unknown
-        failedAutoplayCandidateIds.clear()
-        recentlyAutoplayedIds.clear()
+        autoplayContinuation.clearTransientState()
         queueTitle = null
         _waitingForNetworkConnection.value = false
         _currentMediaMetadata.value = null
@@ -934,8 +900,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         playbackPreferenceObserver = null
         autoDownloadOnLikeCoordinator?.stop()
         autoDownloadOnLikeCoordinator = null
-        equalizerPreferenceJob?.cancel()
-        equalizerPreferenceJob = null
+        if (::equalizerEffectObserver.isInitialized) {
+            equalizerEffectObserver.stop()
+        }
         radioQueueManager = null
         equalizerController.release()
         audioEffectController.release()
@@ -950,11 +917,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         if (::playbackNotificationManager.isInitialized) {
             playbackNotificationManager.release()
         }
-        bluetoothReceiver?.let { unregisterReceiver(it) }
-        audioDeviceCallback?.let { callback ->
-            getSystemService(android.media.AudioManager::class.java)?.unregisterAudioDeviceCallback(callback)
+        if (::bluetoothAudioHandler.isInitialized) {
+            bluetoothAudioHandler.stop()
         }
-        audioDeviceCallback = null
 
         scopeJob.cancel()
         player.release()
@@ -1164,48 +1129,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
-    private fun handleBluetoothConnected() {
-        scope.launch {
-            val autoStart = dataStore.data.first()[com.omnitune.app.constants.AutoStartOnBluetoothKey] ?: false
-            if (!autoStart || !::player.isInitialized || player.mediaItemCount == 0 || player.playWhenReady) {
-                return@launch
-            }
-
-            playOrResolveCurrent()
-            postMediaNotificationFallback("bluetooth-connect", force = true)
-        }
-    }
-
-    /** Pause active playback when its last Bluetooth output disappears. */
-    private fun handleBluetoothDisconnected() {
-        scope.launch {
-            if (!::player.isInitialized) return@launch
-            val audioManager = getSystemService(android.media.AudioManager::class.java)
-            val hasRemainingBluetoothOutput = audioManager
-                ?.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
-                ?.any { it.isBluetoothOutput() }
-                ?: false
-            if (
-                shouldPauseForBluetoothDisconnect(
-                    isPlaying = player.isPlaying,
-                    removedBluetoothOutput = true,
-                    hasRemainingBluetoothOutput = hasRemainingBluetoothOutput,
-                )
-            ) {
-                pausePlayback()
-                postMediaNotificationFallback("bluetooth-disconnect", force = true)
-            }
-        }
-    }
-
-    private fun android.media.AudioDeviceInfo.isBluetoothOutput(): Boolean {
-        return type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-            type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-            (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
-                (type == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                    type == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))
-    }
-
     private fun handlePlaybackEnded() {
         recordTasteSignalForPreviousTransition(completed = true)
         if (autoplayContinuationJob?.isActive == true) return
@@ -1241,97 +1164,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         return true
     }
 
-    private suspend fun continueWithAutoplayIfAllowed() {
-        val prefs = this@MusicService.dataStore.data.first()
-        val autoplayEnabled = prefs[AutoplaySimilarSongsKey] ?: true
-        if (!PlaybackContinuationPolicy.shouldRunAutoplay(
-                autoplayEnabled = autoplayEnabled,
-                playbackContext = currentPlaybackContext,
-                hasNextItem = player.hasNextMediaItem(),
-            )
-        ) {
-            Timber.tag("OmniTuneContinuation").i("Autoplay skipped: enabled=$autoplayEnabled context=${currentPlaybackContext.sourceType}")
-            return
-        }
-
-        val currentTrack = lastPositiveAutoplaySeed ?: _currentMediaMetadata.value ?: player.currentMediaItem?.metadata ?: return
-        val recentlyPlayedIds = recentlyAutoplayedIds.toSet()
-
-        repeat(AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS) {
-            val candidate = withContext(Dispatchers.IO) {
-                autoplayResolver.getNextAutoplayCandidate(
-                    currentTrack = currentTrack,
-                    playbackContext = currentPlaybackContext,
-                    recentlyPlayedIds = recentlyPlayedIds,
-                    failedCandidateIds = failedAutoplayCandidateIds,
-                )
-            } ?: run {
-                Timber.tag("OmniTuneContinuation").i("Autoplay stopped: no valid candidate")
-                return
-            }
-            if ((prefs[RestrictExplicitContentKey] ?: false) &&
-                candidate.mediaItem.metadata?.explicit == true
-            ) {
-                failedAutoplayCandidateIds.add(candidate.mediaItem.mediaId)
-                Timber.tag("OmniTuneContinuation").i(
-                    "Autoplay skipped explicit candidate ${candidate.mediaItem.mediaId}",
-                )
-                return@repeat
-            }
-
-            val resolved = resolveAutoplayCandidate(candidate)
-            if (resolved != null) {
-                rememberAutoplayCandidate(resolved.mediaId)
-                val meta = resolved.metadata
-                playQueue(
-                    ListQueue(
-                        title = "Autoplay Radio",
-                        items = listOf(resolved),
-                        playbackContext = PlaybackContext(
-                            sourceType = PlaybackSourceType.AUTOPLAY_RADIO,
-                            sourceTitle = "Autoplay Radio",
-                            seedSongId = currentTrack.id,
-                            artist = meta?.artists?.firstOrNull()?.name ?: currentTrack.artists.firstOrNull()?.name,
-                            allowAutoplay = true,
-                        ),
-                    ),
-                    playWhenReady = true,
-                )
-                Timber.tag("OmniTuneContinuation").i(
-                    "Autoplay selected ${resolved.mediaId} via ${candidate.source}: ${candidate.reason}",
-                )
-                return
-            }
-
-            failedAutoplayCandidateIds.add(candidate.mediaItem.mediaId)
-            Timber.tag("OmniTuneContinuation").w(
-                "Autoplay candidate failed stream resolution: ${candidate.mediaItem.mediaId} via ${candidate.source}",
-            )
-        }
-
-        Timber.tag("OmniTuneContinuation").w(
-            "Autoplay stopped after ${AutoplayRetryPolicy.MAX_STREAM_RESOLUTION_ATTEMPTS} failed candidates",
-        )
-    }
-
-    private suspend fun resolveAutoplayCandidate(candidate: AutoplayCandidate): MediaItem? =
-        withContext(Dispatchers.IO) {
-            val item = candidate.mediaItem.withOriginalVideoIdUri()
-            if (StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) {
-                StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
-            } else {
-                item
-            }
-        }
-
-    private fun rememberAutoplayCandidate(mediaId: String) {
-        if (mediaId.isBlank()) return
-        recentlyAutoplayedIds.addLast(mediaId)
-        while (recentlyAutoplayedIds.size > MAX_RECENT_AUTOPLAY_IDS) {
-            recentlyAutoplayedIds.removeFirst()
-        }
-    }
-
     private fun beginTasteWindow(mediaItem: MediaItem?) {
         val meta = mediaItem?.metadata
         val durationMs = meta?.duration
@@ -1351,28 +1183,45 @@ class MusicService : MediaLibraryService(), Player.Listener {
             currentPlayerMediaId = player.currentMediaItem?.mediaId,
             playerPositionMs = player.currentPosition,
         ) ?: return
-        val signal = result.signal
+        autoplayContinuation.onTasteWindowResult(result)
+    }
 
-        if (signal.sourceType == PlaybackSourceType.AUTOPLAY_RADIO) {
-            if (result.windowMetadata != null && signal.positive) {
-                lastPositiveAutoplaySeed = result.windowMetadata
-                Timber.tag("OmniTuneContinuation").i("Positive autoplay signal for ${signal.songId} after ${signal.listenedMillis}ms")
-            }
-            if (signal.skippedQuickly) {
-                failedAutoplayCandidateIds.add(signal.songId)
-                scope.launch(Dispatchers.IO) {
-                    val existing = database.getSkip(signal.songId)
-                    database.upsertSkip(
-                        existing?.copy(
-                            skipCount = existing.skipCount + 1,
-                            lastSkippedAt = System.currentTimeMillis(),
-                        ) ?: SongSkipEntity(songId = signal.songId, skipCount = 1),
-                    )
-                }
-                Timber.tag("OmniTuneContinuation").i("Quick skip signal for autoplay candidate ${signal.songId}")
+    private suspend fun resolveAutoplayCandidate(candidate: AutoplayCandidate): MediaItem? =
+        withContext(Dispatchers.IO) {
+            val item = candidate.mediaItem.withOriginalVideoIdUri()
+            if (StreamUrlResolver.isYouTubeVideoId(item.localConfiguration?.uri)) {
+                StreamUrlResolver.resolveMediaItem(item, streamExtractor, downloadUtil, getPlaybackQualityMode())
+            } else {
+                item
             }
         }
+
+    private suspend fun continueWithAutoplayIfAllowed() {
+        autoplayContinuation.continueWithAutoplay(
+            playbackContext = currentPlaybackContext,
+            hasNextItem = player.hasNextMediaItem(),
+            seedFallbacks = listOf(_currentMediaMetadata.value, player.currentMediaItem?.metadata),
+            resolve = ::resolveAutoplayCandidate,
+            startRadio = { seedTrack, resolved ->
+                val meta = resolved.metadata
+                playQueue(
+                    ListQueue(
+                        title = "Autoplay Radio",
+                        items = listOf(resolved),
+                        playbackContext = PlaybackContext(
+                            sourceType = PlaybackSourceType.AUTOPLAY_RADIO,
+                            sourceTitle = "Autoplay Radio",
+                            seedSongId = seedTrack.id,
+                            artist = meta?.artists?.firstOrNull()?.name ?: seedTrack.artists.firstOrNull()?.name,
+                            allowAutoplay = true,
+                        ),
+                    ),
+                    playWhenReady = true,
+                )
+            },
+        )
     }
+
     private fun updateVolumeNormalizationFactor(mediaId: String?) {
         if (mediaId.isNullOrBlank()) {
             _volumeNormalizationFactor.value = 1f
@@ -1391,21 +1240,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
     }
 
-    private fun startBassBoostVirtualizerObserver() {
-        scope.launch {
-            combine(
-                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostEnabledKey] ?: false }.distinctUntilChanged(),
-                dataStore.data.map { it[com.omnitune.app.constants.EqualizerBassBoostStrengthKey] ?: 500 }.distinctUntilChanged(),
-                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerEnabledKey] ?: false }.distinctUntilChanged(),
-                dataStore.data.map { it[com.omnitune.app.constants.EqualizerVirtualizerStrengthKey] ?: 500 }.distinctUntilChanged(),
-            ) { bbEnabled, bbStrength, virtEnabled, virtStrength ->
-                audioEffectController.setBassBoostEnabled(bbEnabled)
-                audioEffectController.setBassBoostStrength(bbStrength)
-                audioEffectController.setVirtualizerEnabled(virtEnabled)
-                audioEffectController.setVirtualizerStrength(virtStrength)
-            }.collect { }
-        }
-    }
 
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
         saveQueueState()
