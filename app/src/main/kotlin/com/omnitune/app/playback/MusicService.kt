@@ -153,7 +153,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var radioQueueManager: RadioQueueManager? = null
     private val equalizerController by lazy { EqualizerController(this) }
     private val audioEffectController by lazy { AudioEffectController(this) }
-    private val _volumeNormalizationFactor = MutableStateFlow(1f)
+    private lateinit var volumeNormalizationController: VolumeNormalizationController
 
     // OMNITUNE: Sleep timer
     lateinit var sleepTimer: SleepTimer
@@ -171,7 +171,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         private set
     private val _queueRestoreCompleted = MutableStateFlow(false)
     val queueRestoreCompleted = _queueRestoreCompleted.asStateFlow()
-    private var saveQueueJob: Job? = null
+    private lateinit var queuePersistenceManager: QueuePersistenceManager
     private var queuePositionCheckpointJob: Job? = null
     private var playQueueJob: Job? = null
     private lateinit var bluetoothAudioHandler: BluetoothAudioHandler
@@ -286,7 +286,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             scope = scope,
             playerVolume = _playerVolume,
             playbackFadeFactor = playbackFadeFactor,
-            normalizationFactor = _volumeNormalizationFactor,
+            normalizationFactor = volumeNormalizationController.factor,
             crossfadeDurationMs = crossfadeDurationMs,
             audioNormalizationEnabled = audioNormalizationEnabled,
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
@@ -369,6 +369,17 @@ class MusicService : MediaLibraryService(), Player.Listener {
             scope = scope,
         )
         historyTracker = PlaybackHistoryTracker()
+        queuePersistenceManager = QueuePersistenceManager(
+            player = player,
+            database = database,
+            scope = scope,
+            preferences = dataStore.data,
+        )
+        volumeNormalizationController = VolumeNormalizationController(
+            database = database,
+            scope = scope,
+            isEnabled = { audioNormalizationEnabled.value },
+        )
         autoplayContinuation = AutoplayContinuationManager(
             database = database,
             preferences = dataStore.data,
@@ -984,7 +995,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         playCountTracker.startFor(mediaItem)
         beginTasteWindow(mediaItem)
         saveQueueState()
-        updateVolumeNormalizationFactor(mediaItem?.mediaId)
+        volumeNormalizationController.updateFor(mediaItem?.mediaId)
 
         // Send a now-playing update when the user configured ListenBrainz.
         meta?.let { m ->
@@ -1222,23 +1233,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         )
     }
 
-    private fun updateVolumeNormalizationFactor(mediaId: String?) {
-        if (mediaId.isNullOrBlank()) {
-            _volumeNormalizationFactor.value = 1f
-            return
-        }
-        scope.launch {
-            val factor = withContext(Dispatchers.IO) {
-                if (!audioNormalizationEnabled.value) return@withContext 1f
-                val format = database.format(mediaId).first()
-                val loudness = format?.loudnessDb ?: format?.perceptualLoudnessDb ?: return@withContext 1f
-                var f = 10f.pow((-loudness.toFloat()) / 20f)
-                if (f > 1f) f = min(f, 3.16f)
-                f
-            }
-            _volumeNormalizationFactor.value = factor
-        }
-    }
+
 
 
     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -1262,55 +1257,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
     }
 
     private fun saveQueueState(debounceMillis: Long = 1_000L) {
-        saveQueueJob?.cancel()
-        saveQueueJob = scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val prefs = this@MusicService.dataStore.data.first()
-                val persistentQueue = prefs[com.omnitune.app.constants.PersistentQueueKey] ?: true
-                if (!persistentQueue) return@launch
-
-                kotlinx.coroutines.delay(debounceMillis)
-
-                val (count, currentIndex, currentPos) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    Triple(player.mediaItemCount, player.currentMediaItemIndex, player.currentPosition)
-                }
-
-                if (count == 0) {
-                    database.clearQueue()
-                    return@launch
-                }
-
-                val mediaIds = mutableListOf<String>()
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    for (i in 0 until count) {
-                        mediaIds.add(player.getMediaItemAt(i).mediaId)
-                    }
-                }
-
-                val entity = com.omnitune.app.db.entities.QueueEntity(
-                    id = 1,
-                    title = queueTitle,
-                    mediaIdList = mediaIds.joinToString(","),
-                    startIndex = currentIndex,
-                    position = currentPos.coerceAtLeast(0L),
-                    playbackSourceType = currentPlaybackContext.sourceType.name,
-                    playbackSourceId = currentPlaybackContext.sourceId,
-                    playbackSourceTitle = currentPlaybackContext.sourceTitle,
-                    playbackSeedSongId = currentPlaybackContext.seedSongId,
-                    playbackGenre = currentPlaybackContext.genre,
-                    playbackMood = currentPlaybackContext.mood,
-                    playbackArtist = currentPlaybackContext.artist,
-                    playbackAllowAutoplay = currentPlaybackContext.allowAutoplay,
-                    playbackShuffledCollection = currentPlaybackContext.shuffledCollection,
-                )
-                database.saveQueue(entity)
-                Timber.tag("OmniTuneQueue").i("Queue saved: count=$count, index=$currentIndex, pos=$currentPos")
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Timber.tag("MusicService").e(e, "Error saving queue state")
-            }
-        }
+        queuePersistenceManager.saveQueueState(
+            queueTitle = queueTitle,
+            playbackContext = currentPlaybackContext,
+            debounceMillis = debounceMillis,
+        )
     }
 
     private fun MediaItem.withOriginalVideoIdUri(): MediaItem {

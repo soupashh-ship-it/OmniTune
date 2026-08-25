@@ -56,6 +56,7 @@ class QueuePersistenceManagerTest {
             player = player,
             database = database,
             scope = CoroutineScope(testDispatcher),
+            preferences = kotlinx.coroutines.flow.MutableStateFlow(androidx.datastore.preferences.core.preferencesOf()),
             ioDispatcher = testDispatcher,
         )
     }
@@ -114,7 +115,14 @@ class QueuePersistenceManagerTest {
         `when`(player.getMediaItemAt(1)).thenReturn(second)
         `when`(player.getMediaItemAt(2)).thenReturn(third)
 
-        manager.saveQueueState("Runtime queue")
+        manager.saveQueueState(
+            "Runtime queue",
+            com.omnitune.app.playback.continuation.PlaybackContext(
+                sourceType = com.omnitune.app.playback.continuation.PlaybackSourceType.PLAYLIST,
+                sourceId = "pl-42",
+                sourceTitle = "Road trip",
+            ),
+        )
         advanceTimeBy(1_000L)
         advanceUntilIdle()
 
@@ -122,5 +130,38 @@ class QueuePersistenceManagerTest {
         assertEquals("first,second,third", entity.mediaIdList)
         assertEquals(1, entity.startIndex)
         assertEquals(12_345L, entity.position)
+        assertEquals("PLAYLIST", entity.playbackSourceType)
+        assertEquals("pl-42", entity.playbackSourceId)
+        assertEquals("Road trip", entity.playbackSourceTitle)
+        assertTrue(entity.playbackAllowAutoplay)
+    }
+
+    @Test
+    fun `saveQueueState with zero debounce flushes immediately`() = runTest(testDispatcher) {
+        val only = MediaItem.Builder().setMediaId("only").build()
+        `when`(player.mediaItemCount).thenReturn(1)
+        `when`(player.currentMediaItemIndex).thenReturn(0)
+        `when`(player.currentPosition).thenReturn(500L)
+        `when`(player.getMediaItemAt(0)).thenReturn(only)
+
+        manager.saveQueueState(null, com.omnitune.app.playback.continuation.PlaybackContext.Unknown, debounceMillis = 0L)
+        advanceUntilIdle()
+
+        val entity = requireNotNull(savedEntity)
+        assertEquals("only", entity.mediaIdList)
+        assertEquals(500L, entity.position)
+    }
+
+    @Test
+    fun `saveQueueState clears persisted queue when player is empty`() = runTest(testDispatcher) {
+        var cleared = false
+        doAnswer { cleared = true; null }.`when`(database).clearQueue()
+        `when`(player.mediaItemCount).thenReturn(0)
+
+        manager.saveQueueState("Empty", com.omnitune.app.playback.continuation.PlaybackContext.Unknown, debounceMillis = 0L)
+        advanceUntilIdle()
+
+        assertTrue(cleared)
+        assertEquals(null, savedEntity)
     }
 }

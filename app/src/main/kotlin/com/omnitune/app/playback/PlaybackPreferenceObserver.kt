@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -37,7 +38,7 @@ class PlaybackPreferenceObserver internal constructor(
     private val scope: CoroutineScope,
     private val playerVolume: MutableStateFlow<Float>,
     private val playbackFadeFactor: MutableStateFlow<Float>,
-    private val normalizationFactor: MutableStateFlow<Float>,
+    private val normalizationFactor: StateFlow<Float>,
     private val crossfadeDurationMs: MutableStateFlow<Int>,
     private val audioNormalizationEnabled: MutableStateFlow<Boolean>,
     private val onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
@@ -48,7 +49,7 @@ class PlaybackPreferenceObserver internal constructor(
         scope: CoroutineScope,
         playerVolume: MutableStateFlow<Float>,
         playbackFadeFactor: MutableStateFlow<Float>,
-        normalizationFactor: MutableStateFlow<Float>,
+        normalizationFactor: StateFlow<Float>,
         crossfadeDurationMs: MutableStateFlow<Int>,
         audioNormalizationEnabled: MutableStateFlow<Boolean>,
         onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,

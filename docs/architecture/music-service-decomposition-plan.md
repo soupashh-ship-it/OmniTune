@@ -30,12 +30,12 @@ Note: notification fallback logic already lived in `PlaybackNotificationManager`
 
 ## Remaining extraction queue
 
-After the 2026-08 pass, remaining candidates are small:
+After the 2026-08 pass, the remaining candidates are done or retired:
 
-| # | Candidate | Notes |
+| # | Candidate | Status |
 | --- | --- | --- |
-| 1 | `VolumeNormalizationController` | updateVolumeNormalizationFactor + loudness lookup (~20 lines) |
-| 2 | Queue persistence inline block → reuse existing `QueuePersistenceManager` | The manager exists with tests but is not wired into the service; service still saves queues inline |
+| 1 | `VolumeNormalizationController` | Done (2026-08): loudness lookup + factor StateFlow extracted; enable switch stays with preference plumbing. `PlaybackPreferenceObserver` now takes a read-only `StateFlow<Float>` for the factor. |
+| 2 | Queue persistence inline block → reuse existing `QueuePersistenceManager` | Done (2026-08): manager upgraded to persist full playback context behind the persistent-queue preference gate and debounced/immediate flush modes; service delegates all queue saves to it. Its inline restore path remains (richer: explicit-content filter + context mapper). |
 
 The service is now below the god-object threshold trajectory; verify against
 `scripts/check-large-files.ps1` after each future feature addition.
