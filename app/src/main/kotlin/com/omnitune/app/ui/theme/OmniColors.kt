@@ -95,16 +95,20 @@ object OmniColors {
     var HotGradientColors = listOf(Hot, OmniAccentSecondary)
     var OmniPulseGradientColors = listOf(OmniAccentSecondary, OmniAccentPrimary, OmniAccentTertiary)
     fun updateFromTheme(primary: Color, secondary: Color, tertiary: Color, pureBlack: Boolean = false) {
-        OmniAccentPrimary = Color(0xFFE65D4F)
-        OmniAccentSecondary = Color(0xFFF58A7E)
-        OmniAccentTertiary = Color(0xFFF5A623)
+        // Honor the resolved theme palette (theme color / artwork seed / dynamic color)
+        // instead of hardcoding the default coral — previously these parameters were
+        // ignored, which silently disabled dynamic palettes on legacy screens.
+        OmniAccentPrimary = primary
+        OmniAccentSecondary = secondary
+        OmniAccentTertiary = tertiary
+        OmniAccentMuted = primary.copy(alpha = 0.55f)
         OmniAccentGlow = OmniAccentPrimary.copy(alpha = 0.25f)
         OmniAccentSoft = OmniAccentPrimary.copy(alpha = 0.14f)
         Primary = OmniAccentPrimary
         ActivePlayback = OmniAccentPrimary
-        PrimaryLight = Color(0xFFF58A7E)
+        PrimaryLight = OmniAccentSecondary
         Secondary = OmniAccentSecondary
-        SecondaryLight = Color(0xFFFFAB91)
+        SecondaryLight = tertiary
         PrimaryGradient = Brush.horizontalGradient(
             colors = listOf(OmniAccentPrimary, OmniAccentSecondary)
         )
