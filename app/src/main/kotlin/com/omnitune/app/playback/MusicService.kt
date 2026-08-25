@@ -280,6 +280,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
             networkPlaybackMonitor = networkPlaybackMonitor,
             playbackQualityModeProvider = ::getPlaybackQualityMode,
         )
+        volumeNormalizationController = VolumeNormalizationController(
+            database = database,
+            scope = scope,
+            isEnabled = { audioNormalizationEnabled.value },
+        )
         playbackPreferenceObserver = PlaybackPreferenceObserver(
             context = this,
             player = player,
@@ -374,11 +379,6 @@ class MusicService : MediaLibraryService(), Player.Listener {
             database = database,
             scope = scope,
             preferences = dataStore.data,
-        )
-        volumeNormalizationController = VolumeNormalizationController(
-            database = database,
-            scope = scope,
-            isEnabled = { audioNormalizationEnabled.value },
         )
         autoplayContinuation = AutoplayContinuationManager(
             database = database,
