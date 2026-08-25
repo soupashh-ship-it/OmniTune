@@ -53,11 +53,17 @@ import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniWaveformLoader
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniMotion
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
 import com.omnitune.innertube.models.SongItem
@@ -180,7 +186,7 @@ private fun HomeCollectionScreen(
                 Text(
                     text = trackSectionTitle,
                     style = OmniTextStyles.sectionHeader,
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                 )
             }
             itemsIndexed(
@@ -253,7 +259,7 @@ private fun CollectionHeader(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                     fontWeight = FontWeight.Black,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -261,7 +267,7 @@ private fun CollectionHeader(
                 Text(
                     text = subtitle,
                     style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -275,14 +281,14 @@ private fun CollectionMetaPill(text: String) {
     Box(
         modifier = Modifier
             .clip(OmniShapes.Pill)
-            .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.12f))
+            .background(omniColors().accentSecondary.copy(alpha = 0.12f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -368,7 +374,7 @@ private fun ArtistFeaturedStrip(
         Text(
             text = "Featured",
             style = OmniTextStyles.sectionHeader,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
             itemsIndexed(
@@ -413,7 +419,7 @@ private fun ArtistFeaturedCard(
         Text(
             text = song.artists.joinToString(", ") { it.name }.ifBlank { "Song" },
             style = OmniTextStyles.caption,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -440,7 +446,7 @@ private fun CollectionTrackRow(
             .fillMaxWidth()
             .height(72.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
+            .background(omniColors().surface.copy(alpha = 0.42f))
             .omniPressScale(interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -468,7 +474,7 @@ private fun CollectionTrackRow(
             Text(
                 text = subtitle,
                 style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -481,7 +487,7 @@ private fun CollectionTrackRow(
                 Icon(
                     painter = painterResource(R.drawable.ic_more_vert),
                     contentDescription = "More options",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                 )
             }
             TrackMenuProvider(
@@ -519,7 +525,7 @@ private fun CollectionErrorCard(
             .padding(OmniSpacing.large),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
-        Text(text, style = OmniTextStyles.metadata, color = OmniColors.TextSecondary)
+        Text(text, style = OmniTextStyles.metadata, color = omniColors().textSecondary)
         Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
             Button(onClick = onRetry) { Text("Retry") }
             if (canSearch) {
@@ -547,12 +553,12 @@ private fun CollectionIconButton(
         modifier = Modifier
             .size(42.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = if (enabled) 0.78f else 0.38f)),
+            .background(omniColors().surface.copy(alpha = if (enabled) 0.78f else 0.38f)),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = if (enabled) OmniColors.TextPrimary else OmniColors.TextTertiary,
+            tint = if (enabled) omniColors().textPrimary else omniColors().textTertiary,
             modifier = Modifier.size(20.dp),
         )
     }
@@ -582,7 +588,7 @@ private fun CollectionArtwork(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(OmniColors.SurfaceQuiet),
+            .background(omniColors().surfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
         CollectionFallbackArtwork(Modifier.fillMaxSize())
@@ -605,9 +611,9 @@ private fun CollectionFallbackArtwork(
         modifier = modifier.background(
             Brush.linearGradient(
                 listOf(
-                    OmniColors.SurfaceQuiet,
-                    OmniColors.OmniBackgroundElevated,
-                    OmniColors.OmniAccentSecondary.copy(alpha = 0.06f),
+                    omniColors().surfaceQuiet,
+                    omniColors().backgroundElevated,
+                    omniColors().accentSecondary.copy(alpha = 0.06f),
                 ),
             ),
         ),
@@ -616,7 +622,7 @@ private fun CollectionFallbackArtwork(
         Icon(
             painter = painterResource(R.drawable.ic_album),
             contentDescription = null,
-            tint = OmniColors.TextSecondary.copy(alpha = 0.44f),
+            tint = omniColors().textSecondary.copy(alpha = 0.44f),
             modifier = Modifier.size(42.dp),
         )
     }

@@ -71,12 +71,17 @@ import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniFloatingSurface
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
@@ -117,7 +122,7 @@ fun SearchTopBar(
                     Text(
                         text = "Find your music, your way.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = OmniColors.TextSecondary,
+                        color = omniColors().textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -164,7 +169,7 @@ private fun SearchQueryField(
             .height(44.dp)
             .border(
                 width = 1.dp,
-                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.36f),
+                color = omniColors().accent.copy(alpha = 0.36f),
                 shape = OmniShapes.ExtraLarge,
             ),
         shape = OmniShapes.ExtraLarge,
@@ -179,14 +184,14 @@ private fun SearchQueryField(
                 Text(
                     text = "Search songs, albums, artists, playlists...",
                     style = MaterialTheme.typography.bodySmall,
-                    color = OmniColors.TextTertiary,
+                    color = omniColors().textTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             },
             trailingIcon = {
                 when {
-                    isSearching -> OmniTuneLoader(size = 22.dp, color = OmniColors.ActivePlayback)
+                    isSearching -> OmniTuneLoader(size = 22.dp, color = omniColors().accent)
                     query.text.isNotEmpty() -> IconButton(
                         onClick = {
                             focusManager.clearFocus(force = true)
@@ -197,14 +202,14 @@ private fun SearchQueryField(
                         Icon(
                             painter = painterResource(R.drawable.ic_close),
                             contentDescription = "Clear search",
-                            tint = OmniColors.TextSecondary,
+                            tint = omniColors().textSecondary,
                             modifier = Modifier.size(18.dp),
                         )
                     }
                     else -> Icon(
                         painter = painterResource(R.drawable.ic_search),
                         contentDescription = null,
-                        tint = OmniColors.TextPrimary,
+                        tint = omniColors().textPrimary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -214,12 +219,12 @@ private fun SearchQueryField(
                 unfocusedContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = OmniColors.OmniAccentPrimary,
-                focusedTextColor = OmniColors.TextPrimary,
-                unfocusedTextColor = OmniColors.TextPrimary,
+                cursorColor = omniColors().accent,
+                focusedTextColor = omniColors().textPrimary,
+                unfocusedTextColor = omniColors().textPrimary,
             ),
             textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 fontWeight = FontWeight.Medium,
             ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -245,15 +250,15 @@ fun SearchIconButton(
         modifier = Modifier
             .size(36.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.42f))
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.32f), OmniShapes.Pill)
+            .background(omniColors().surfaceQuiet.copy(alpha = 0.42f))
+            .border(1.dp, omniColors().accent.copy(alpha = 0.32f), OmniShapes.Pill)
             .omniPressScale(interactionSource),
         interactionSource = interactionSource,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = OmniColors.TextPrimary,
+            tint = omniColors().textPrimary,
             modifier = Modifier.size(18.dp),
         )
     }

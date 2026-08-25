@@ -71,12 +71,17 @@ import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
@@ -119,7 +124,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase)
+            .background(omniColors().background)
             .statusBarsPadding()
             .padding(horizontal = OmniSpacing.medium),
     ) {
@@ -277,10 +282,10 @@ private fun SearchFilterChips(
                 modifier = Modifier
                     .height(36.dp)
                     .clip(OmniShapes.Pill)
-                    .background(if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceRaised)
+                    .background(if (selected) omniColors().accent else omniColors().surfaceRaised)
                     .border(
                         1.dp,
-                        if (selected) OmniColors.OmniAccentPrimary else OmniColors.SurfaceHairline,
+                        if (selected) omniColors().accent else omniColors().hairline,
                         OmniShapes.Pill,
                     )
                     .clickable { onFilterSelected(filter) }
@@ -291,13 +296,13 @@ private fun SearchFilterChips(
                 Icon(
                     painter = painterResource(searchFilterIcon(filter)),
                     contentDescription = null,
-                    tint = if (selected) OmniColors.TextOnAccent else OmniColors.TextSecondary,
+                    tint = if (selected) omniColors().textOnAccent else omniColors().textSecondary,
                     modifier = Modifier.size(15.dp),
                 )
                 Text(
                     text = if (compactResults && filter == SearchFilterTab.All) "Top" else filter.label,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) OmniColors.TextOnAccent else OmniColors.TextPrimary,
+                    color = if (selected) omniColors().textOnAccent else omniColors().textPrimary,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                 )
             }

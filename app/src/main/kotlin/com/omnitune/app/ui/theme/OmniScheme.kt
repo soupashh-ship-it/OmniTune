@@ -7,6 +7,7 @@ package com.omnitune.app.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -64,8 +65,7 @@ data class OmniScheme(
     /** Vertical accent gradient used sparingly on primary controls. */
     val accentGradientVertical: Brush get() = Brush.verticalGradient(listOf(accent, accentTertiary))
 
-    companion object {
-        /**
+    companion object {        /**
          * Dark scheme factory. [pureBlack] collapses surfaces toward true black for OLED.
          * [accent] seeds the accent family; secondary/tertiary derive as tonal shifts so any
          * artwork-extracted seed produces a coherent ramp.
@@ -143,6 +143,10 @@ data class OmniScheme(
 
 /** CompositionLocal for the active semantic scheme. Provided once by OmniTuneTheme. */
 val LocalOmniColors = staticCompositionLocalOf<OmniScheme> { OmniScheme.dark() }
+
+/** Composable accessor for the active semantic scheme. */
+@Composable
+fun omniColors(): OmniScheme = LocalOmniColors.current
 
 /** Linear-lighten toward white by [fraction] (0..1). Predictable tonal ramp for accents. */
 private fun Color.lighten(fraction: Float): Color = Color(
