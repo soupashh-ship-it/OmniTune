@@ -288,3 +288,73 @@ fun omniTypeMetadata(): TextStyle = MaterialTheme.typography.bodySmall.copy(
 
 @Composable
 private fun omniTypeStatusTitle(): TextStyle = MaterialTheme.typography.titleMedium
+
+/** Brand wordmark in the Home header. */
+@Composable
+fun omniTypeBrand(): TextStyle = MaterialTheme.typography.titleLarge.copy(
+    fontSize = 20.sp,
+    lineHeight = 26.sp,
+    fontWeight = FontWeight.Bold,
+)
+
+/** Tiny all-caps eyebrow above section content. */
+@Composable
+fun omniTypeEyebrow(): TextStyle = MaterialTheme.typography.labelSmall.copy(
+    fontSize = 9.sp,
+    lineHeight = 12.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Section heading (e.g. "Quick Picks"). */
+@Composable
+fun omniTypeSectionTitle(): TextStyle = MaterialTheme.typography.titleMedium.copy(
+    fontSize = 16.sp,
+    lineHeight = 22.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Featured/carousel item title. */
+@Composable
+fun omniTypeItemTitle(): TextStyle = MaterialTheme.typography.titleMedium.copy(
+    fontSize = 17.sp,
+    lineHeight = 23.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Now-listening bar primary line. */
+@Composable
+fun omniTypeNowTitle(): TextStyle = MaterialTheme.typography.titleSmall.copy(
+    fontSize = 15.sp,
+    lineHeight = 20.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Compact card title on shelves. */
+@Composable
+fun omniTypeCardTitle(): TextStyle = MaterialTheme.typography.labelMedium.copy(
+    fontSize = 12.sp,
+    lineHeight = 16.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Compact card secondary line. */
+@Composable
+fun omniTypeCardCaption(): TextStyle = MaterialTheme.typography.labelSmall.copy(
+    fontSize = 11.sp,
+    lineHeight = 14.sp,
+)
+
+/** Shelf/rail title under larger artwork. */
+@Composable
+fun omniTypeRailTitle(): TextStyle = MaterialTheme.typography.labelMedium.copy(
+    fontSize = 13.sp,
+    lineHeight = 17.sp,
+    fontWeight = FontWeight.SemiBold,
+)
+
+/** Pill/chip label. */
+@Composable
+fun omniTypeChipLabel(): TextStyle = MaterialTheme.typography.labelMedium.copy(
+    fontSize = 12.sp,
+    lineHeight = 15.sp,
+)

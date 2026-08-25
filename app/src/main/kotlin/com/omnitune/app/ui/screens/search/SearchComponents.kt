@@ -208,7 +208,7 @@ fun SearchResultRow(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
         ) {
             Text(
                 text = title,

@@ -36,6 +36,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,6 +79,16 @@ import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
+import com.omnitune.app.ui.component.omniTypeBrand
+import com.omnitune.app.ui.component.omniTypeCardCaption
+import com.omnitune.app.ui.component.omniTypeCardTitle
+import com.omnitune.app.ui.component.omniTypeChipLabel
+import com.omnitune.app.ui.component.omniTypeEyebrow
+import com.omnitune.app.ui.component.omniTypeItemTitle
+import com.omnitune.app.ui.component.omniTypeMetadata
+import com.omnitune.app.ui.component.omniTypeNowTitle
+import com.omnitune.app.ui.component.omniTypeRailTitle
+import com.omnitune.app.ui.component.omniTypeSectionTitle
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerHeroBanner
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackRow
@@ -368,13 +379,13 @@ private fun HomeTopHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = OmniSpacing.compact),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.chip),
         ) {
             Box(
                 modifier = Modifier
@@ -387,29 +398,26 @@ private fun HomeTopHeader(
                     painter = painterResource(R.drawable.ic_omnitune_logo),
                     contentDescription = "OmniTune",
                     tint = omniColors().accent,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(OmniChrome.IconMedium),
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
                     text = "OmniTune",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = omniTypeBrand(),
                     color = omniColors().textPrimary,
                     maxLines = 1,
                 )
                 Text(
                     text = "DISCOVER & PLAY",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp,
+                    style = omniTypeEyebrow().copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
                     color = omniColors().textTertiary,
                     maxLines = 1,
                 )
             }
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
@@ -454,7 +462,7 @@ private fun ContinueListeningCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(OmniSpacing.small),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DiscoveryArtwork(
@@ -468,34 +476,30 @@ private fun ContinueListeningCard(
                     imageSize = HERO_IMAGE_SIZE,
                     shape = OmniShapes.ArtworkSmall,
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(Modifier.width(OmniSpacing.small))
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 8.dp),
+                        .padding(end = OmniSpacing.compact),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         text = "CONTINUE LISTENING",
-                        style = OmniTextStyles.eyebrow.copy(
-                            fontSize = 9.sp,
-                            letterSpacing = 1.2.sp,
-                            color = omniColors().accent,
-                        ),
+                        style = omniTypeEyebrow().copy(letterSpacing = 1.2.sp),
+                        color = omniColors().accent,
                         maxLines = 1,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = mediaMetadata.title,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = omniTypeNowTitle(),
                         color = omniColors().textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = mediaMetadata.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
-                        fontSize = 12.sp,
+                        style = omniTypeMetadata(),
                         color = omniColors().textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -512,7 +516,7 @@ private fun ContinueListeningCard(
                         painter = painterResource(R.drawable.ic_play_arrow),
                         contentDescription = "Resume playback",
                         tint = omniColors().textOnAccent,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(OmniChrome.IconMedium),
                     )
                 }
             }
@@ -547,7 +551,7 @@ private fun HeaderIconButton(
 ) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(OmniSpacing.touchTarget)
             .clip(OmniShapes.Pill)
             .background(omniColors().surface)
             .clickable(onClick = onClick),
@@ -557,7 +561,7 @@ private fun HeaderIconButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = omniColors().textSecondary,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(OmniChrome.IconMedium),
         )
     }
 }
@@ -568,7 +572,7 @@ private fun MoodChipRow(
     onChipClick: (MoodChip) -> Unit,
 ) {
     var selectedId by remember { mutableStateOf("all") }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.micro)) {
         item(key = "all") {
             FeedChip(
                 label = "All",
@@ -612,15 +616,20 @@ private fun FeedChip(
 
     Box(
         modifier = Modifier
-            .height(32.dp)
-            .clip(OmniShapes.Pill)
-            .background(bg)
-            .border(1.dp, omniColors().accent.copy(alpha = if (isSelected) 0.58f else 0.22f), OmniShapes.Pill)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp),
+            .minimumInteractiveComponentSize()
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+            modifier = Modifier
+                .height(32.dp)
+                .clip(OmniShapes.Pill)
+                .background(bg)
+                .border(1.dp, omniColors().accent.copy(alpha = if (isSelected) 0.58f else 0.22f), OmniShapes.Pill)
+                .padding(horizontal = OmniSpacing.compact),
+        ) {
             if (iconRes != null) {
                 Icon(
                     painter = painterResource(iconRes),
@@ -631,8 +640,7 @@ private fun FeedChip(
             }
             Text(
                 text = label,
-                fontSize = 12.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                style = omniTypeChipLabel().copy(fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal),
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -719,9 +727,8 @@ private fun HeroCard(
         ) {
             Text(
                 text = item.title,
-                fontSize = 17.sp,
+                style = omniTypeItemTitle().copy(fontWeight = FontWeight.Bold),
                 color = omniColors().textPrimary,
-                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -765,26 +772,31 @@ private fun QuickPicksSection(
         ) {
             Text(
                 text = "Quick Picks",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = omniTypeSectionTitle(),
                 color = omniColors().textPrimary,
                 modifier = Modifier.weight(1f),
             )
             if (items.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(LocalOmniAccents.current.secondary.copy(alpha = 0.12f))
+                        .minimumInteractiveComponentSize()
                         .clickable(onClick = onPlayAll),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_play_arrow),
-                        contentDescription = "Play all",
-                        tint = LocalOmniAccents.current.secondary,
-                        modifier = Modifier.size(20.dp),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(OmniShapes.Pill)
+                            .background(LocalOmniAccents.current.secondary.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_play_arrow),
+                            contentDescription = "Play all",
+                            tint = LocalOmniAccents.current.secondary,
+                            modifier = Modifier.size(OmniChrome.IconMedium),
+                        )
+                    }
                 }
             }
         }
@@ -828,7 +840,7 @@ private fun QuickPickRailCard(
             .width(118.dp)
             .clip(OmniShapes.Small)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
     ) {
         Box {
             DiscoveryArtwork(
@@ -845,7 +857,7 @@ private fun QuickPickRailCard(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(6.dp)
+                    .padding(OmniSpacing.compact)
                     .size(28.dp)
                     .clip(OmniShapes.Pill)
                     .background(omniColors().accent),
@@ -859,8 +871,8 @@ private fun QuickPickRailCard(
                 )
             }
         }
-        Text(item.title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = omniColors().textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(item.subtitle, fontSize = 11.sp, color = omniColors().textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.title, style = omniTypeCardTitle(), color = omniColors().textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.subtitle, style = omniTypeCardCaption(), color = omniColors().textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -913,7 +925,7 @@ private fun QuickPickRow(
             painter = painterResource(R.drawable.ic_more_vert),
             contentDescription = null,
             tint = omniColors().textSecondary,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(OmniChrome.IconMedium),
         )
     }
 }
@@ -1083,7 +1095,7 @@ private fun ShelfArtworkCard(
             .width(132.dp)
             .clip(OmniShapes.Small)
             .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
     ) {
         if (item.thumbnailUrls.size >= 2) {
             CollageArtwork(
@@ -1111,8 +1123,8 @@ private fun ShelfArtworkCard(
             )
         }
         Column(modifier = Modifier.padding(top = 2.dp)) {
-            Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = omniColors().textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(item.subtitle, fontSize = 11.sp, color = omniColors().textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.title, style = omniTypeRailTitle(), color = omniColors().textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.subtitle, style = omniTypeCardCaption(), color = omniColors().textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -1551,7 +1563,7 @@ private fun FeedSectionHeader(
                 painter = painterResource(R.drawable.ic_more_vert),
                 contentDescription = null,
                 tint = omniColors().textSecondary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(OmniChrome.IconMedium),
             )
         }
     }

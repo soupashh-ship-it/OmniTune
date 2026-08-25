@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -278,33 +279,39 @@ private fun SearchFilterChips(
             contentType = { "search-filter" },
         ) { filter ->
             val selected = filter == selectedFilter
-            Row(
+            Box(
                 modifier = Modifier
-                    .height(36.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(if (selected) omniColors().accent else omniColors().surfaceRaised)
-                    .border(
-                        1.dp,
-                        if (selected) omniColors().accent else omniColors().hairline,
-                        OmniShapes.Pill,
-                    )
-                    .clickable { onFilterSelected(filter) }
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .minimumInteractiveComponentSize()
+                    .clickable { onFilterSelected(filter) },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painter = painterResource(searchFilterIcon(filter)),
-                    contentDescription = null,
-                    tint = if (selected) omniColors().textOnAccent else omniColors().textSecondary,
-                    modifier = Modifier.size(15.dp),
-                )
-                Text(
-                    text = if (compactResults && filter == SearchFilterTab.All) "Top" else filter.label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) omniColors().textOnAccent else omniColors().textPrimary,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                )
+                Row(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clip(OmniShapes.Pill)
+                        .background(if (selected) omniColors().accent else omniColors().surfaceRaised)
+                        .border(
+                            1.dp,
+                            if (selected) omniColors().accent else omniColors().hairline,
+                            OmniShapes.Pill,
+                        )
+                        .padding(horizontal = OmniSpacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(searchFilterIcon(filter)),
+                        contentDescription = null,
+                        tint = if (selected) omniColors().textOnAccent else omniColors().textSecondary,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Text(
+                        text = if (compactResults && filter == SearchFilterTab.All) "Top" else filter.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (selected) omniColors().textOnAccent else omniColors().textPrimary,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    )
+                }
             }
         }
     }

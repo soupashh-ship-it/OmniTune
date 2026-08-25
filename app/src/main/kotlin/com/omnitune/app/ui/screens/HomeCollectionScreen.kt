@@ -282,7 +282,7 @@ private fun CollectionMetaPill(text: String) {
         modifier = Modifier
             .clip(OmniShapes.Pill)
             .background(omniColors().accentSecondary.copy(alpha = 0.12f))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
         contentAlignment = Alignment.Center,
     ) {
         Text(

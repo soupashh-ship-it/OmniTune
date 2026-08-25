@@ -166,7 +166,7 @@ private fun SearchQueryField(
     val focusManager = LocalFocusManager.current
     OmniFloatingSurface(
         modifier = modifier
-            .height(44.dp)
+            .height(OmniSpacing.touchTarget)
             .border(
                 width = 1.dp,
                 color = omniColors().accent.copy(alpha = 0.36f),
