@@ -94,6 +94,7 @@ import com.omnitune.app.lyrics.LyricsUtils.romanizeJapanese
 import com.omnitune.app.lyrics.LyricsUtils.romanizeKorean
 import com.omnitune.app.lyrics.WordTimestamp
 import com.omnitune.app.models.LyricsLine
+import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.TextPlaceholder
 import com.omnitune.app.constants.LyricsPosition
@@ -412,7 +413,7 @@ fun LyricsV2(
         contentAlignment = Alignment.TopCenter,
         modifier = modifier
             .fillMaxSize()
-            .padding(bottom = 12.dp)
+            .padding(bottom = OmniSpacing.small)
     ) lyricsContent@{
         if (lyrics == LYRICS_NOT_FOUND && fallbackEntries.isEmpty()) {
             Box(
@@ -601,7 +602,7 @@ fun LyricsV2(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp),
+                    .padding(bottom = OmniSpacing.medium),
                 shape = RoundedCornerShape(24.dp),
             ) {
                 Text(

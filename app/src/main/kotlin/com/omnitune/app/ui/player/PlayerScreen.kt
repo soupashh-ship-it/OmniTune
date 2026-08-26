@@ -106,8 +106,10 @@ import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.omniTypeNumericTime
 import com.omnitune.app.ui.screens.DownloadsViewModel
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
@@ -182,11 +184,11 @@ fun PlayerScreen(
     val controlAccent = when (buttonColorMode) {
         OmniPlayerButtonColorMode.DYNAMIC -> dynamicAccent
         OmniPlayerButtonColorMode.DEFAULT -> LocalOmniAccents.current.primary
-        OmniPlayerButtonColorMode.MONOCHROME -> OmniColors.TextPrimary
+        OmniPlayerButtonColorMode.MONOCHROME -> omniColors().textPrimary
     }
     val playerBackgroundModifier = when {
         playerBackgroundStyle == OmniPlayerBackgroundStyle.SOLID_DARK ->
-            Modifier.background(OmniColors.OmniBackgroundBase)
+            Modifier.background(omniColors().background)
         playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE ->
             Modifier
                 .background(gradientState.backgroundBrush)
@@ -478,8 +480,8 @@ fun PlayerScreen(
         val artists = mediaMetadata?.artists ?: emptyList()
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showArtistSelectionDialog = false },
-            containerColor = OmniColors.SurfaceRaised,
-            titleContentColor = OmniColors.TextPrimary,
+            containerColor = omniColors().surfaceRaised,
+            titleContentColor = omniColors().textPrimary,
             title = { Text("Select Artist", fontWeight = FontWeight.Bold) },
             text = {
                 androidx.compose.foundation.lazy.LazyColumn {
@@ -487,7 +489,7 @@ fun PlayerScreen(
                         val artist = artists[index]
                         Text(
                             text = artist.name,
-                            color = OmniColors.TextPrimary,
+                            color = omniColors().textPrimary,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(
@@ -504,7 +506,7 @@ fun PlayerScreen(
             },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = { showArtistSelectionDialog = false }) {
-                    Text("Cancel", color = OmniColors.TextSecondary)
+                    Text("Cancel", color = omniColors().textSecondary)
                 }
             }
         )
@@ -523,7 +525,7 @@ private fun PlayerTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = OmniSpacing.micro),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
@@ -531,13 +533,13 @@ private fun PlayerTopBar(
             modifier = Modifier
                 .size(38.dp)
                 .clip(OmniShapes.Pill)
-                .background(OmniColors.SurfacePanel)
-                .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+                .background(omniColors().surfaceRaised)
+                .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_back),
                 contentDescription = "Dismiss",
-                tint = OmniColors.TextPrimary,
+                tint = omniColors().textPrimary,
                 modifier = Modifier
                     .size(18.dp)
                     .graphicsLayer { rotationZ = -90f },
@@ -554,7 +556,7 @@ private fun PlayerTopBar(
                 style = OmniTextStyles.eyebrow.copy(
                     fontSize = 9.sp,
                     letterSpacing = 1.3.sp,
-                    color = OmniColors.OmniAccentPrimary,
+                    color = omniColors().accent,
                 ),
                 maxLines = 1,
             )
@@ -564,24 +566,24 @@ private fun PlayerTopBar(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                 ),
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
             IconButton(
                 onClick = onOpenQueue,
                 modifier = Modifier
                     .size(38.dp)
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.SurfacePanel)
-                    .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+                    .background(omniColors().surfaceRaised)
+                    .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_list),
                     contentDescription = "Queue",
-                    tint = OmniColors.TextPrimary,
+                    tint = omniColors().textPrimary,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -590,13 +592,13 @@ private fun PlayerTopBar(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.SurfacePanel)
-                    .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
+                    .background(omniColors().surfaceRaised)
+                    .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_more_vert),
                     contentDescription = "More options",
-                    tint = OmniColors.TextPrimary,
+                    tint = omniColors().textPrimary,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -662,7 +664,7 @@ private fun ArtworkHero(
             .clip(OmniShapes.ArtworkLarge)
             .omniSoftBorder(
                 shape = OmniShapes.ArtworkLarge,
-                color = OmniColors.OmniGlassBorderStrong.copy(alpha = 0.18f),
+                color = omniColors().borderStrong.copy(alpha = 0.18f),
             ),
         contentAlignment = Alignment.Center,
     ) {
@@ -675,7 +677,7 @@ private fun ArtworkHero(
                         listOf(
                             accentColor.copy(alpha = 0.10f),
                             OmniColors.OmniGlassStrong,
-                            OmniColors.OmniBackgroundElevated,
+                            omniColors().backgroundElevated,
                         )
                     )
                 )
@@ -725,13 +727,13 @@ private fun ArtworkHero(
                 Icon(
                     painter = painterResource(R.drawable.ic_album),
                     contentDescription = null,
-                    tint = OmniColors.TextTertiary,
+                    tint = omniColors().textTertiary,
                     modifier = Modifier.size(58.dp),
                 )
                 Text(
                     text = "No artwork",
                     style = OmniTextStyles.caption,
-                    color = OmniColors.TextTertiary,
+                    color = omniColors().textTertiary,
                 )
             }
         }
@@ -763,7 +765,7 @@ private fun MetadataBlock(
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
         ) {
             AnimatedContent(
                 targetState = title,
@@ -773,7 +775,7 @@ private fun MetadataBlock(
                 Text(
                     text = currentTitle,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -782,7 +784,7 @@ private fun MetadataBlock(
             Text(
                 text = fallbackSubtitle,
                 style = MaterialTheme.typography.bodyLarge,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -792,7 +794,7 @@ private fun MetadataBlock(
             Icon(
                 painter = painterResource(R.drawable.ic_share),
                 contentDescription = "Share",
-                tint = OmniColors.TextSecondary,
+                tint = omniColors().textSecondary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -800,7 +802,7 @@ private fun MetadataBlock(
             Icon(
                 painter = painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
                 contentDescription = if (liked) "Unlike" else "Like",
-                tint = if (liked) OmniColors.Hot else OmniColors.TextSecondary,
+                tint = if (liked) omniColors().accent else omniColors().textSecondary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -816,8 +818,9 @@ private fun InlineLyricSubtitle(
 ) {
     val showLyrics = state.hasLyrics && !state.currentLine.isNullOrBlank()
     val targetActiveColor = remember(accentColor) { accentColor.toInlineLyricActiveColor() }
-    val targetNextColor = remember(targetActiveColor) {
-        lerp(OmniColors.TextSecondary, targetActiveColor, 0.42f).copy(alpha = 0.82f)
+    val lyricSecondary = omniColors().textSecondary
+    val targetNextColor = remember(targetActiveColor, lyricSecondary) {
+        lerp(lyricSecondary, targetActiveColor, 0.42f).copy(alpha = 0.82f)
     }
     val targetContainerColor = remember(targetActiveColor) { targetActiveColor.copy(alpha = 0.12f) }
     val activeColor by animateColorAsState(
@@ -861,7 +864,7 @@ private fun InlineLyricSubtitle(
                             ),
                         )
                         .clickable(onClick = onOpenLyrics)
-                        .padding(horizontal = OmniSpacing.small, vertical = 6.dp)
+                        .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact)
                 } else {
                     Modifier
                 }
@@ -871,7 +874,7 @@ private fun InlineLyricSubtitle(
         Text(
             text = state.currentLine.takeIf { showLyrics } ?: fallbackText,
             style = MaterialTheme.typography.titleMedium,
-            color = if (showLyrics) activeColor else OmniColors.TextSecondary,
+            color = if (showLyrics) activeColor else omniColors().textSecondary,
             maxLines = if (showLyrics) 2 else 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -924,8 +927,8 @@ private fun PlayerLyricsPreview(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceRaised.copy(alpha = 0.92f))
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Large)
+            .background(omniColors().surfaceRaised.copy(alpha = 0.92f))
+            .border(1.dp, omniColors().accent.copy(alpha = 0.28f), OmniShapes.Large)
             .padding(OmniSpacing.medium),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -956,7 +959,7 @@ private fun PlayerLyricsPreview(
                     text = line.text,
                     style = if (active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    color = if (active) OmniColors.OmniAccentSecondary else OmniColors.TextSecondary,
+                    color = if (active) omniColors().accentSecondary else omniColors().textSecondary,
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -975,9 +978,9 @@ private fun PlayerPreviewTab(
 ) {
     Box(
         modifier = modifier
-            .height(44.dp)
+            .height(OmniSpacing.touchTarget)
             .clip(OmniShapes.Pill)
-            .background(if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.62f) else OmniColors.SurfaceQuiet)
+            .background(if (selected) omniColors().accent.copy(alpha = 0.62f) else omniColors().surfaceQuiet)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -985,7 +988,7 @@ private fun PlayerPreviewTab(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
-            color = if (selected) OmniColors.TextPrimary else OmniColors.TextSecondary,
+            color = if (selected) omniColors().textPrimary else omniColors().textSecondary,
         )
     }
 }
@@ -1088,14 +1091,14 @@ private fun PlayerSeekBar(
         ) {
             Text(
                 text = formatDurationMs(displayPosition),
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                style = omniTypeNumericTime(),
+                color = omniColors().textTertiary,
                 modifier = Modifier.clearAndSetSemantics {},
             )
             Text(
                 text = formatDurationMs(duration),
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                style = omniTypeNumericTime(),
+                color = omniColors().textTertiary,
                 modifier = Modifier.clearAndSetSemantics {},
             )
         }
@@ -1140,7 +1143,7 @@ private fun PlayerControlRow(
             Icon(
                 painter = painterResource(R.drawable.ic_shuffle),
                 contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-                tint = if (shuffleEnabled) accentColor else OmniColors.TextPrimary.copy(alpha = 0.4f),
+                tint = if (shuffleEnabled) accentColor else omniColors().textPrimary.copy(alpha = 0.4f),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -1154,7 +1157,7 @@ private fun PlayerControlRow(
             Icon(
                 painter = painterResource(R.drawable.ic_skip_previous),
                 contentDescription = "Previous",
-                tint = OmniColors.TextPrimary.copy(alpha = if (canSkipPrevious) 0.9f else 0.4f),
+                tint = omniColors().textPrimary.copy(alpha = if (canSkipPrevious) 0.9f else 0.4f),
                 modifier = Modifier.size(26.dp)
             )
         }
@@ -1181,7 +1184,7 @@ private fun PlayerControlRow(
             Icon(
                 painter = painterResource(R.drawable.ic_skip_next),
                 contentDescription = "Next",
-                tint = OmniColors.TextPrimary.copy(alpha = if (canSkipNext) 0.9f else 0.4f),
+                tint = omniColors().textPrimary.copy(alpha = if (canSkipNext) 0.9f else 0.4f),
                 modifier = Modifier.size(26.dp)
             )
         }
@@ -1203,7 +1206,7 @@ private fun PlayerControlRow(
                     }
                 ),
                 contentDescription = "Repeat",
-                tint = if (repeatMode == REPEAT_MODE_OFF) OmniColors.TextPrimary.copy(alpha = 0.4f) else accentColor,
+                tint = if (repeatMode == REPEAT_MODE_OFF) omniColors().textPrimary.copy(alpha = 0.4f) else accentColor,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -1284,9 +1287,9 @@ private fun PlayerIconButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = when {
-                !enabled -> OmniColors.TextDisabled
+                !enabled -> omniColors().textDisabled
                 active -> LocalOmniAccents.current.secondary
-                else -> OmniColors.TextSecondary
+                else -> omniColors().textSecondary
             },
             modifier = Modifier.size(iconSize),
         )
@@ -1309,13 +1312,13 @@ private fun GlassIconButton(
             .size(46.dp)
             .clip(OmniShapes.Medium)
             .background(OmniColors.OmniGlassMedium)
-            .omniSoftBorder(OmniShapes.Medium, OmniColors.OmniGlassBorderSubtle)
+            .omniSoftBorder(OmniShapes.Medium, omniColors().borderSubtle)
             .omniPressScale(interactionSource),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = if (enabled) OmniColors.TextPrimary else OmniColors.TextDisabled,
+            tint = if (enabled) omniColors().textPrimary else omniColors().textDisabled,
             modifier = Modifier.size(22.dp),
         )
     }
@@ -1343,32 +1346,32 @@ private fun PlayerActionsRow(
             modifier = Modifier
                 .clip(OmniShapes.Small)
                 .clickable(onClick = onOpenQueue)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = OmniColors.TextSecondary, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Queue", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelLarge)
+            Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = omniColors().textSecondary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(OmniSpacing.compact))
+            Text("Queue", color = omniColors().textSecondary, style = MaterialTheme.typography.labelLarge)
         }
 
         IconButton(onClick = onShowSleepTimer) {
-            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) accentColor else OmniColors.TextSecondary)
+            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) accentColor else omniColors().textSecondary)
         }
 
         Row(
             modifier = Modifier
                 .clip(OmniShapes.Small)
                 .clickable(onClick = onOpenLyrics)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(painterResource(R.drawable.ic_lyrics), contentDescription = "Lyrics", tint = OmniColors.TextSecondary, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Lyrics", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelLarge)
+            Icon(painterResource(R.drawable.ic_lyrics), contentDescription = "Lyrics", tint = omniColors().textSecondary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(OmniSpacing.compact))
+            Text("Lyrics", color = omniColors().textSecondary, style = MaterialTheme.typography.labelLarge)
         }
 
         IconButton(onClick = onShowOptions) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options", tint = OmniColors.TextSecondary)
+            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options", tint = omniColors().textSecondary)
         }
     }
 }
@@ -1390,14 +1393,14 @@ private fun ActionButton(
                 if (active) {
                     activeTint.copy(alpha = 0.18f)
                 } else {
-                    OmniColors.OmniBackgroundElevated.copy(alpha = 0.88f)
+                    omniColors().backgroundElevated.copy(alpha = 0.88f)
                 }
             ),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = if (active) activeTint else OmniColors.TextSecondary.copy(alpha = 0.92f),
+            tint = if (active) activeTint else omniColors().textSecondary.copy(alpha = 0.92f),
             modifier = Modifier.size(22.dp),
         )
     }
@@ -1417,15 +1420,15 @@ private fun AudioEffectsDialog(
         Column(
             modifier = Modifier
                 .clip(OmniShapes.ExtraLarge)
-                .background(OmniColors.OmniBackgroundElevated)
-                .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderStrong)
+                .background(omniColors().backgroundElevated)
+                .omniSoftBorder(OmniShapes.ExtraLarge, omniColors().borderStrong)
                 .padding(OmniSpacing.section),
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
         ) {
             Text(
                 text = "Audio Effects",
                 style = OmniTextStyles.sectionHeader,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
 
             EffectSlider(
@@ -1449,7 +1452,7 @@ private fun AudioEffectsDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Skip Silence",
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 Switch(
@@ -1481,7 +1484,7 @@ private fun AudioEffectsDialog(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = LocalOmniAccents.current.primary),
             ) {
-                Text("Open System Equalizer", color = OmniColors.TextOnAccent)
+                Text("Open System Equalizer", color = omniColors().textOnAccent)
             }
         }
     }
@@ -1501,8 +1504,8 @@ private fun EffectSlider(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(label, color = OmniColors.TextPrimary, style = MaterialTheme.typography.bodyMedium)
-            Text(valueText, color = OmniColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+            Text(label, color = omniColors().textPrimary, style = MaterialTheme.typography.bodyMedium)
+            Text(valueText, color = omniColors().textSecondary, style = MaterialTheme.typography.bodyMedium)
         }
         Slider(
             value = value,
@@ -1533,15 +1536,15 @@ private fun SleepTimerDialog(
         Column(
             modifier = Modifier
                 .clip(OmniShapes.ExtraLarge)
-                .background(OmniColors.OmniBackgroundElevated)
-                .omniSoftBorder(OmniShapes.ExtraLarge, OmniColors.OmniGlassBorderStrong)
+                .background(omniColors().backgroundElevated)
+                .omniSoftBorder(OmniShapes.ExtraLarge, omniColors().borderStrong)
                 .padding(OmniSpacing.section),
             verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
         ) {
             Text(
                 text = "Sleep Timer",
                 style = OmniTextStyles.sectionHeader,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
 
             options.forEach { minutes ->
@@ -1563,7 +1566,7 @@ private fun SleepTimerDialog(
                 ) {
                     Text(
                         text = "$minutes minutes",
-                        color = OmniColors.TextPrimary,
+                        color = omniColors().textPrimary,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -1572,7 +1575,7 @@ private fun SleepTimerDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Stop at end of song",
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 Switch(checked = endOfSong, onCheckedChange = { endOfSong = it })
@@ -1583,7 +1586,7 @@ private fun SleepTimerDialog(
                     Button(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = OmniColors.Hot),
+                        colors = ButtonDefaults.buttonColors(containerColor = omniColors().accent),
                     ) {
                         Text("Cancel Timer")
                     }
@@ -1595,7 +1598,7 @@ private fun SleepTimerDialog(
                 ) {
                     Text(
                         text = if (isRunning) "Restart" else "Set Timer",
-                        color = OmniColors.TextOnAccent,
+                        color = omniColors().textOnAccent,
                     )
                 }
             }
@@ -1626,7 +1629,7 @@ fun PlayerOptionsBottomSheet(
     androidx.compose.material3.ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
-        containerColor = OmniColors.OmniBackgroundElevated,
+        containerColor = omniColors().backgroundElevated,
         shape = OmniShapes.ExtraLarge,
     ) {
         Column(
@@ -1648,10 +1651,10 @@ fun PlayerOptionsBottomSheet(
                 }
                 Spacer(modifier = Modifier.width(OmniSpacing.medium))
                 Column {
-                    Text("Now Playing", color = OmniColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                    Text("Now Playing", color = omniColors().textSecondary, style = MaterialTheme.typography.labelMedium)
                     Text(
                         text = currentMetadata?.title ?: "No track",
-                        color = OmniColors.TextPrimary,
+                        color = omniColors().textPrimary,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -1659,7 +1662,7 @@ fun PlayerOptionsBottomSheet(
                     )
                     Text(
                         text = currentMetadata?.artists?.joinToString(", ") { it.name } ?: "Unknown artist",
-                        color = OmniColors.TextSecondary,
+                        color = omniColors().textSecondary,
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -1680,7 +1683,7 @@ fun PlayerOptionsBottomSheet(
                         if (volume == 0f) R.drawable.ic_volume_off else R.drawable.ic_volume_up
                     ),
                     contentDescription = "Volume",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                     modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
@@ -1694,7 +1697,7 @@ fun PlayerOptionsBottomSheet(
                     colors = SliderDefaults.colors(
                         thumbColor = LocalOmniAccents.current.primary,
                         activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                        inactiveTrackColor = omniColors().surfaceRaised,
                     ),
                     squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
                         amplitude = 2.dp,
@@ -1704,7 +1707,7 @@ fun PlayerOptionsBottomSheet(
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Text(
                     text = "${(volume * 100).toInt()}%",
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(32.dp),
                     textAlign = TextAlign.End,
@@ -1722,7 +1725,7 @@ fun PlayerOptionsBottomSheet(
                 Icon(
                     painter = painterResource(R.drawable.ic_play_arrow),
                     contentDescription = "Speed",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                     modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
@@ -1739,13 +1742,13 @@ fun PlayerOptionsBottomSheet(
                     colors = SliderDefaults.colors(
                         thumbColor = LocalOmniAccents.current.primary,
                         activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                        inactiveTrackColor = omniColors().surfaceRaised,
                     )
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Text(
                     text = String.format(Locale.US, "%.1fx", speed),
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(32.dp),
                     textAlign = TextAlign.End,
@@ -1761,7 +1764,7 @@ fun PlayerOptionsBottomSheet(
                 Icon(
                     painter = painterResource(R.drawable.ic_settings), // fallback icon for pitch
                     contentDescription = "Pitch",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                     modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
@@ -1779,13 +1782,13 @@ fun PlayerOptionsBottomSheet(
                     colors = SliderDefaults.colors(
                         thumbColor = LocalOmniAccents.current.primary,
                         activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = OmniColors.SurfaceRaised,
+                        inactiveTrackColor = omniColors().surfaceRaised,
                     )
                 )
                 Spacer(modifier = Modifier.width(OmniSpacing.small))
                 Text(
                     text = String.format(Locale.US, "%.1fx", pitch),
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(32.dp),
                     textAlign = TextAlign.End,
@@ -1823,9 +1826,9 @@ fun PlayerOptionsBottomSheet(
             if (showMediaInfoDialog) {
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = { showMediaInfoDialog = false },
-                    containerColor = OmniColors.SurfaceRaised,
-                    titleContentColor = OmniColors.TextPrimary,
-                    textContentColor = OmniColors.TextSecondary,
+                    containerColor = omniColors().surfaceRaised,
+                    titleContentColor = omniColors().textPrimary,
+                    textContentColor = omniColors().textSecondary,
                     title = { Text("Media Information", fontWeight = FontWeight.Bold) },
                     text = {
                         Column {
@@ -1841,7 +1844,7 @@ fun PlayerOptionsBottomSheet(
                     }
                 )
             }
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(OmniSpacing.hero))
         }
     }
 }
@@ -1894,15 +1897,15 @@ private fun OptionButton(
             modifier = Modifier
                 .size(52.dp)
                 .clip(OmniShapes.Large)
-                .background(OmniColors.SurfaceRaised),
+                .background(omniColors().surfaceRaised),
             contentAlignment = Alignment.Center
         ) {
-            Icon(painterResource(icon), contentDescription = null, tint = OmniColors.TextPrimary, modifier = Modifier.size(24.dp))
+            Icon(painterResource(icon), contentDescription = null, tint = omniColors().textPrimary, modifier = Modifier.size(24.dp))
         }
         Spacer(modifier = Modifier.height(OmniSpacing.compact))
         Text(
             text = label,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center,
             maxLines = 2,

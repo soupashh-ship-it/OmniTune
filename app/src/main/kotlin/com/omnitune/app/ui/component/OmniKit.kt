@@ -358,3 +358,11 @@ fun omniTypeChipLabel(): TextStyle = MaterialTheme.typography.labelMedium.copy(
     fontSize = 12.sp,
     lineHeight = 15.sp,
 )
+
+/** Player elapsed/remaining times. Tabular figures keep digits from jittering. */
+@Composable
+fun omniTypeNumericTime(): TextStyle = MaterialTheme.typography.labelMedium.copy(
+    fontSize = 12.sp,
+    lineHeight = 16.sp,
+    fontFeatureSettings = "tnum",
+)

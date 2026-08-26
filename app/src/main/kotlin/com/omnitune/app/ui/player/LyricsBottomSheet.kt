@@ -59,6 +59,7 @@ import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniLoadingPulse
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -99,7 +100,7 @@ fun LyricsBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         modifier = Modifier.fillMaxHeight(0.88f),
-        containerColor = OmniColors.OmniBackgroundElevated,
+        containerColor = omniColors().backgroundElevated,
         shape = OmniShapes.ExtraLarge,
     ) {
         val trackTitle = mediaMetadata?.title?.takeIf { it.isNotBlank() }
@@ -113,11 +114,11 @@ fun LyricsBottomSheet(
             // Drag handle indicator
             Box(
                 modifier = Modifier
-                    .padding(top = 8.dp, bottom = 12.dp)
+                    .padding(top = OmniSpacing.compact, bottom = OmniSpacing.small)
                     .width(36.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(OmniColors.TextDisabled.copy(alpha = 0.30f)),
+                    .background(omniColors().textDisabled.copy(alpha = 0.30f)),
             )
 
             // Header with track info
@@ -125,14 +126,14 @@ fun LyricsBottomSheet(
                 Text(
                     text = "Lyrics",
                     style = OmniTextStyles.sectionHeader,
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                 )
                 if (trackTitle != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = trackTitle,
                         style = OmniTextStyles.metadata,
-                        color = OmniColors.TextSecondary,
+                        color = omniColors().textSecondary,
                         maxLines = 1,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
@@ -189,19 +190,19 @@ private fun LyricsLoadingState(trackTitle: String?) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        OmniLoadingPulse(size = 44.dp, color = OmniColors.OmniAccentSecondary)
+        OmniLoadingPulse(size = 44.dp, color = omniColors().accentSecondary)
         Spacer(modifier = Modifier.height(OmniSpacing.large))
         Text(
             text = "Finding lyrics",
             style = OmniTextStyles.sectionHeader,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(OmniSpacing.compact))
         Text(
             text = trackTitle ?: "Checking available lyrics providers",
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextTertiary,
+            color = omniColors().textTertiary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = OmniSpacing.section),
         )
@@ -292,12 +293,12 @@ private fun LyricsContent(
             Button(
                 onClick = { forceReturn = true },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = OmniColors.OmniAccentSecondary,
-                    contentColor = OmniColors.TextOnAccent,
+                    containerColor = omniColors().accentSecondary,
+                    contentColor = omniColors().textOnAccent,
                 ),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = OmniSpacing.hero),
             ) {
                 Text("Return to current lyric", fontWeight = FontWeight.Bold)
             }
@@ -337,9 +338,9 @@ private fun LyricsLineItem(
     )
 
     val textColor = if (isActive && isSynced) {
-        OmniColors.TextPrimary
+        omniColors().textPrimary
     } else {
-        OmniColors.TextTertiary
+        omniColors().textTertiary
     }
     val textWeight = if (isActive && isSynced) FontWeight.Bold else FontWeight.Normal
     val textSize = if (isActive && isSynced) {
@@ -358,8 +359,8 @@ private fun LyricsLineItem(
                     Modifier.background(
                         Brush.linearGradient(
                             colors = listOf(
-                                OmniColors.OmniAccentPrimary.copy(alpha = glowAlpha * 0.10f),
-                                OmniColors.OmniAccentSecondary.copy(alpha = pulseAlpha),
+                                omniColors().accent.copy(alpha = glowAlpha * 0.10f),
+                                omniColors().accentSecondary.copy(alpha = pulseAlpha),
                             )
                         )
                     )
@@ -403,20 +404,20 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Icon(
             painter = painterResource(R.drawable.ic_info),
             contentDescription = null,
-            tint = OmniColors.TextTertiary,
+            tint = omniColors().textTertiary,
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
         Text(
             text = "Couldn't load lyrics",
             style = OmniTextStyles.displayTitle,
-            color = OmniColors.TextPrimary
+            color = omniColors().textPrimary
         )
         Spacer(modifier = Modifier.height(OmniSpacing.compact))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextTertiary,
+            color = omniColors().textTertiary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = OmniSpacing.section)
         )
@@ -424,8 +425,8 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(
-                containerColor = OmniColors.OmniAccentSecondary,
-                contentColor = OmniColors.TextOnAccent,
+                containerColor = omniColors().accentSecondary,
+                contentColor = omniColors().textOnAccent,
             )
         ) {
             Text("Retry", fontWeight = FontWeight.Bold)
@@ -443,14 +444,14 @@ private fun EmptyState(message: String) {
         Icon(
             painter = painterResource(R.drawable.ic_lyrics),
             contentDescription = null,
-            tint = OmniColors.TextTertiary,
+            tint = omniColors().textTertiary,
             modifier = Modifier.size(64.dp)
         )
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextTertiary,
+            color = omniColors().textTertiary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = OmniSpacing.section)
         )
