@@ -47,8 +47,11 @@ import com.omnitune.app.db.entities.ArtistEntity
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.shimmer.ShimmerTrackList
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -63,7 +66,7 @@ fun StatsScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase)
+            .background(omniColors().background)
             .padding(horizontal = OmniSpacing.screenHorizontalCompact),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -162,7 +165,7 @@ private fun StatsHeader(
             Image(
                 painter = painterResource(R.drawable.ic_omnitune_logo),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(OmniColors.OmniAccentSecondary),
+                colorFilter = ColorFilter.tint(omniColors().accentSecondary),
                 modifier = Modifier.size(24.dp),
             )
             Spacer(modifier = Modifier.width(OmniSpacing.compact))
@@ -170,7 +173,7 @@ private fun StatsHeader(
                 text = "OmniTune",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Spacer(modifier = Modifier.weight(1f))
             StatsHeaderIconButton(
@@ -204,12 +207,12 @@ private fun StatsHeader(
             text = "Stats",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.ExtraBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
         )
         Text(
             text = "Your listening insights and journey.",
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
         )
     }
 }
@@ -224,15 +227,15 @@ private fun StatsHeaderIconButton(
         modifier = Modifier
             .size(30.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.54f))
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Pill)
+            .background(omniColors().surface.copy(alpha = 0.54f))
+            .border(1.dp, omniColors().accent.copy(alpha = 0.28f), OmniShapes.Pill)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = OmniColors.TextPrimary,
+            tint = omniColors().textPrimary,
             modifier = Modifier.size(18.dp),
         )
     }
@@ -311,10 +314,10 @@ private fun StatsMetricCard(
             .clip(OmniShapes.Large)
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
-                    listOf(OmniColors.OmniAccentPrimary.copy(alpha = 0.16f), OmniColors.SurfaceRaised),
+                    listOf(omniColors().accent.copy(alpha = 0.16f), omniColors().surfaceRaised),
                 ),
             )
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Large)
+            .border(1.dp, omniColors().accent.copy(alpha = 0.28f), OmniShapes.Large)
             .padding(horizontal = OmniSpacing.small, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
@@ -323,14 +326,14 @@ private fun StatsMetricCard(
             modifier = Modifier
                 .size(36.dp)
                 .clip(OmniShapes.Medium)
-                .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.28f))
-                .border(1.dp, OmniColors.OmniAccentSecondary.copy(alpha = 0.42f), OmniShapes.Medium),
+                .background(omniColors().accent.copy(alpha = 0.28f))
+                .border(1.dp, omniColors().accentSecondary.copy(alpha = 0.42f), OmniShapes.Medium),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(icon),
                 contentDescription = null,
-                tint = OmniColors.OmniAccentSecondary,
+                tint = omniColors().accentSecondary,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -341,7 +344,7 @@ private fun StatsMetricCard(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -349,14 +352,14 @@ private fun StatsMetricCard(
                 text = value,
                 style = if (compactValue) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextTertiary,
+                color = omniColors().textTertiary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -375,10 +378,10 @@ private fun StatsYearInMusicCard(
             .clip(OmniShapes.Large)
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
-                    listOf(OmniColors.OmniAccentPrimary.copy(alpha = 0.34f), OmniColors.SurfaceRaised),
+                    listOf(omniColors().accent.copy(alpha = 0.34f), omniColors().surfaceRaised),
                 ),
             )
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.34f), OmniShapes.Large)
+            .border(1.dp, omniColors().accent.copy(alpha = 0.34f), OmniShapes.Large)
             .clickable(onClick = onClick)
             .padding(horizontal = OmniSpacing.small, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -388,18 +391,18 @@ private fun StatsYearInMusicCard(
                 text = "Year in Music ${java.time.LocalDate.now().year}",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = "Relive your year",
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
         }
         Icon(
             painter = painterResource(R.drawable.ic_arrow_back),
             contentDescription = "Open Year in Music",
-            tint = OmniColors.OmniAccentSecondary,
+            tint = omniColors().accentSecondary,
             modifier = Modifier
                 .size(20.dp)
                 .graphicsLayer(rotationZ = 180f),
@@ -418,13 +421,13 @@ private fun StatsOverview(uiState: StatsUiState) {
                 text = "Overview",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 modifier = Modifier.weight(1f),
             )
             Row(
                 modifier = Modifier
                     .clip(OmniShapes.Pill)
-                    .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Pill)
+                    .border(1.dp, omniColors().hairline, OmniShapes.Pill)
                     .padding(horizontal = OmniSpacing.small, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
@@ -432,12 +435,12 @@ private fun StatsOverview(uiState: StatsUiState) {
                 Text(
                     text = "Last 30 days",
                     style = MaterialTheme.typography.labelSmall,
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                 )
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Last 30 days",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                     modifier = Modifier
                         .size(12.dp)
                         .graphicsLayer(rotationZ = -90f),
@@ -448,8 +451,8 @@ private fun StatsOverview(uiState: StatsUiState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(OmniShapes.Large)
-                .background(OmniColors.SurfaceRaised)
-                .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Large)
+                .background(omniColors().surfaceRaised)
+                .border(1.dp, omniColors().hairline, OmniShapes.Large)
                 .padding(OmniSpacing.small),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.micro)) {
@@ -478,14 +481,14 @@ private fun StatsPanel(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
         )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(OmniShapes.Large)
-                .background(OmniColors.SurfaceRaised)
-                .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.22f), OmniShapes.Large)
+                .background(omniColors().surfaceRaised)
+                .border(1.dp, omniColors().accent.copy(alpha = 0.22f), OmniShapes.Large)
                 .padding(OmniSpacing.small),
         ) {
             content()
@@ -509,12 +512,12 @@ private fun StatsHeroPill(
             .background(
                 androidx.compose.ui.graphics.Brush.linearGradient(
                     listOf(
-                        OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
-                        OmniColors.OmniAccentPrimary.copy(alpha = 0.10f),
+                        omniColors().accentSecondary.copy(alpha = 0.14f),
+                        omniColors().accent.copy(alpha = 0.10f),
                     )
                 )
             )
-            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
+            .border(1.dp, omniColors().hairline, OmniShapes.Medium)
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
@@ -522,7 +525,7 @@ private fun StatsHeroPill(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = OmniColors.OmniAccentSecondary,
+            tint = omniColors().accentSecondary,
             modifier = Modifier.size(20.dp),
         )
         Column {
@@ -530,12 +533,12 @@ private fun StatsHeroPill(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.ExtraBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
         }
     }
@@ -552,8 +555,8 @@ private fun StatChip(
         modifier = modifier
             .height(62.dp)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceRaised)
-            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Medium)
+            .background(omniColors().surfaceRaised)
+            .border(1.dp, omniColors().hairline, OmniShapes.Medium)
             .padding(horizontal = 4.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
@@ -561,20 +564,20 @@ private fun StatChip(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = OmniColors.OmniAccentSecondary,
+            tint = omniColors().accentSecondary,
             modifier = Modifier.size(16.dp),
         )
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.ExtraBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             maxLines = 1,
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -597,7 +600,7 @@ private fun ListeningTimeChart(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.54f))
+            .background(omniColors().surface.copy(alpha = 0.54f))
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -605,21 +608,23 @@ private fun ListeningTimeChart(
             Text(
                 text = "Listening Time",
                 style = MaterialTheme.typography.labelMedium,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
             Text(
                 text = formatListeningMinutes(totalMinutes),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = "Last 30 days",
                 style = MaterialTheme.typography.labelSmall,
-                color = OmniColors.TextTertiary,
+                color = omniColors().textTertiary,
             )
         }
         Column(modifier = Modifier.weight(1f)) {
+            val chartHairline = omniColors().hairline
+            val chartAccent = omniColors().accentSecondary
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -630,7 +635,7 @@ private fun ListeningTimeChart(
                 repeat(3) { index ->
                     val y = size.height * (index + 1) / 4f
                     drawLine(
-                        color = OmniColors.SurfaceHairline.copy(alpha = 0.64f),
+                        color = chartHairline.copy(alpha = 0.64f),
                         start = androidx.compose.ui.geometry.Offset(horizontalInset, y),
                         end = androidx.compose.ui.geometry.Offset(size.width - horizontalInset, y),
                         strokeWidth = 1.dp.toPx(),
@@ -646,7 +651,7 @@ private fun ListeningTimeChart(
                 }
                 drawPath(
                     path = path,
-                    color = OmniColors.OmniAccentSecondary,
+                    color = chartAccent,
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
                 )
             }
@@ -655,7 +660,7 @@ private fun ListeningTimeChart(
                     Text(
                         text = "${point.date.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} ${point.date.dayOfMonth}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = OmniColors.TextTertiary,
+                        color = omniColors().textTertiary,
                     )
                 }
             }
@@ -674,14 +679,14 @@ private fun TopSongRow(
         modifier = Modifier
             .fillMaxWidth()
         .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceRaised)
+            .background(omniColors().surfaceRaised)
             .padding(OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = rank.toString(),
             style = MaterialTheme.typography.titleMedium,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             modifier = Modifier.width(28.dp),
             textAlign = TextAlign.Center,
         )
@@ -692,14 +697,14 @@ private fun TopSongRow(
                 text = song.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -710,15 +715,15 @@ private fun TopSongRow(
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(OmniShapes.Pill),
-                color = OmniColors.OmniAccentPrimary,
-                trackColor = OmniColors.OmniAccentPrimary.copy(alpha = 0.15f),
+                color = omniColors().accent,
+                trackColor = omniColors().accent.copy(alpha = 0.15f),
             )
         }
         Text(
             text = countLabel(plays, "play"),
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = OmniColors.OmniAccentSecondary,
+            color = omniColors().accentSecondary,
         )
     }
 }
@@ -733,7 +738,7 @@ private fun TopArtistRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.44f))
+            .background(omniColors().surface.copy(alpha = 0.44f))
             .clickable(onClick = onClick)
             .padding(OmniSpacing.medium),
         verticalAlignment = Alignment.CenterVertically,
@@ -742,14 +747,14 @@ private fun TopArtistRow(
             modifier = Modifier
                 .size(48.dp)
                 .clip(OmniShapes.Pill)
-                .background(OmniColors.OmniAccentSecondary.copy(alpha = 0.16f)),
+                .background(omniColors().accentSecondary.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
             if (artist.thumbnailUrl.isNullOrBlank()) {
                 Icon(
                     painter = painterResource(R.drawable.ic_artist),
                     contentDescription = null,
-                    tint = OmniColors.OmniAccentSecondary,
+                    tint = omniColors().accentSecondary,
                     modifier = Modifier.size(22.dp),
                 )
             } else {
@@ -767,14 +772,14 @@ private fun TopArtistRow(
                 text = artist.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = countLabel(plays, "play"),
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
         }
     }
@@ -786,14 +791,14 @@ private fun ArtworkBox(thumbnailUrl: String?) {
         modifier = Modifier
             .size(56.dp)
             .clip(OmniShapes.ArtworkSmall)
-            .background(OmniColors.SurfaceQuiet),
+            .background(omniColors().surfaceQuiet),
         contentAlignment = Alignment.Center,
     ) {
         if (thumbnailUrl.isNullOrBlank()) {
             Icon(
                 painter = painterResource(R.drawable.ic_album),
                 contentDescription = null,
-                tint = OmniColors.TextTertiary,
+                tint = omniColors().textTertiary,
                 modifier = Modifier.size(24.dp),
             )
         } else {
@@ -823,7 +828,7 @@ private fun StatsEmptyState(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            tint = OmniColors.TextTertiary,
+            tint = omniColors().textTertiary,
             modifier = Modifier.size(44.dp),
         )
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
@@ -831,14 +836,14 @@ private fun StatsEmptyState(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(OmniSpacing.micro))
         Text(
             text = body,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             textAlign = TextAlign.Center,
         )
     }

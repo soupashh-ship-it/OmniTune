@@ -55,6 +55,7 @@ import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.component.ArtistListItem
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
+import com.omnitune.app.ui.component.menuAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -102,94 +103,60 @@ fun ArtistMenu(
                 actions = buildList {
                     if (artist.songCount > 0) {
                         add(
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_play_arrow),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                text = stringResource(R.string.play),
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val songs = withContext(Dispatchers.IO) {
-                                            database
-                                                .artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
-                                                .first()
-                                                .map { it.toMediaItem() }
-                                        }
-                                        playerConnection.playQueue(
-                                            ListQueue(
-                                                title = artist.artist.name,
-                                                items = songs,
-                                            ),
-                                        )
+                            menuAction(R.drawable.ic_play_arrow, stringResource(R.string.play)) {
+                                coroutineScope.launch {
+                                    val songs = withContext(Dispatchers.IO) {
+                                        database
+                                            .artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
+                                            .first()
+                                            .map { it.toMediaItem() }
                                     }
-                                    onDismiss()
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = artist.artist.name,
+                                            items = songs,
+                                        ),
+                                    )
                                 }
-                            )
+                                onDismiss()
+                            }
                         )
 
                         add(
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_shuffle),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                },
-                                text = stringResource(R.string.shuffle),
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val songs = withContext(Dispatchers.IO) {
-                                            database
-                                                .artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
-                                                .first()
-                                                .map { it.toMediaItem() }
-                                                .shuffled()
-                                        }
-                                        playerConnection.playQueue(
-                                            ListQueue(
-                                                title = artist.artist.name,
-                                                items = songs,
-                                            ),
-                                        )
+                            menuAction(R.drawable.ic_shuffle, stringResource(R.string.shuffle)) {
+                                coroutineScope.launch {
+                                    val songs = withContext(Dispatchers.IO) {
+                                        database
+                                            .artistSongs(artist.id, ArtistSongSortType.CREATE_DATE, true)
+                                            .first()
+                                            .map { it.toMediaItem() }
+                                            .shuffled()
                                     }
-                                    onDismiss()
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = artist.artist.name,
+                                            items = songs,
+                                        ),
+                                    )
                                 }
-                            )
+                                onDismiss()
+                            }
                         )
                     }
 
                     if (artist.artist.isYouTubeArtist) {
                         add(
-                            NewAction(
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_share),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(28.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            menuAction(R.drawable.ic_share, stringResource(R.string.share), onDismiss = onDismiss) {
+                                val intent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    type = "text/plain"
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "https://music.youtube.com/channel/${artist.id}"
                                     )
-                                },
-                                text = stringResource(R.string.share),
-                                onClick = {
-                                    onDismiss()
-                                    val intent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            "https://music.youtube.com/channel/${artist.id}"
-                                        )
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, null))
                                 }
-                            )
+                                context.startActivity(Intent.createChooser(intent, null))
+                            }
                         )
                     }
                 },

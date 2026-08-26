@@ -104,6 +104,7 @@ import com.omnitune.app.ui.component.LocalMenuState
 import com.omnitune.app.ui.component.SongListItem
 import com.omnitune.app.ui.menu.SelectionSongMenu
 import com.omnitune.app.ui.menu.SongMenu
+import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.PlayerColorExtractor
 import com.omnitune.app.ui.utils.ItemWrapper
 import com.omnitune.app.ui.utils.backToMain
@@ -421,8 +422,8 @@ fun CachePlaylistScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = systemBarsTopPadding + 48.dp)
-                                .padding(horizontal = 24.dp)
-                                .padding(bottom = 16.dp)
+                                .padding(horizontal = OmniSpacing.section)
+                                .padding(bottom = OmniSpacing.medium)
                         ) {
                             // Large centered artwork with shadow
                             Box(
@@ -462,7 +463,7 @@ fun CachePlaylistScreen(
                             // Metadata chips row
                             @OptIn(ExperimentalLayoutApi::class)
                             FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact, Alignment.CenterHorizontally),
                             ) {
                                 // Song count chip
                                 Surface(
@@ -476,7 +477,7 @@ fun CachePlaylistScreen(
                                             filteredSongs.size
                                         ),
                                         style = MaterialTheme.typography.labelMedium,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                        modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = 6.dp)
                                     )
                                 }
 
@@ -496,7 +497,7 @@ fun CachePlaylistScreen(
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                        modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = 6.dp)
                                     ) {
                                         Icon(
                                             painter = androidx.compose.ui.res.painterResource(com.omnitune.app.R.drawable.ic_add),
@@ -517,7 +518,7 @@ fun CachePlaylistScreen(
                             // Action buttons row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small, Alignment.CenterHorizontally),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Play Button

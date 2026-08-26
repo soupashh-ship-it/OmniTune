@@ -79,6 +79,7 @@ import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import kotlinx.coroutines.launch
@@ -131,12 +132,12 @@ fun QueueScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase)
+            .background(omniColors().background)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
                         OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.82f),
-                        OmniColors.OmniBackgroundBase,
+                        omniColors().background,
                     )
                 )
             )
@@ -344,7 +345,7 @@ fun QueueScreen(
                                         val color by animateColorAsState(
                                             targetValue = when (dismissState.targetValue) {
                                                 SwipeToDismissBoxValue.Settled -> Color.Transparent
-                                                else -> OmniColors.Error.copy(alpha = 0.28f)
+                                                else -> omniColors().error.copy(alpha = 0.28f)
                                             },
                                             label = "queueDismissColor",
                                         )
@@ -359,7 +360,7 @@ fun QueueScreen(
                                             Icon(
                                                 painter = painterResource(R.drawable.ic_close),
                                                 contentDescription = "Remove from queue",
-                                                tint = OmniColors.Error,
+                                                tint = omniColors().error,
                                             )
                                         }
                                     },
@@ -413,9 +414,9 @@ fun QueueScreen(
         ) { data ->
             Snackbar(
                 snackbarData = data,
-                containerColor = OmniColors.OmniBackgroundElevated,
-                contentColor = OmniColors.TextPrimary,
-                actionColor = OmniColors.OmniAccentPrimary,
+                containerColor = omniColors().backgroundElevated,
+                contentColor = omniColors().textPrimary,
+                actionColor = omniColors().accent,
                 shape = OmniShapes.Large,
             )
         }
@@ -494,9 +495,9 @@ private fun SleepTimerBanner(remainingMs: Long) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.12f))
+            .background(omniColors().accent.copy(alpha = 0.12f))
             .border(
-                BorderStroke(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.3f)),
+                BorderStroke(1.dp, omniColors().accent.copy(alpha = 0.3f)),
                 OmniShapes.Large,
             )
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
@@ -505,14 +506,14 @@ private fun SleepTimerBanner(remainingMs: Long) {
         Icon(
             painter = painterResource(R.drawable.ic_bedtime),
             contentDescription = null,
-            tint = OmniColors.OmniAccentPrimary,
+            tint = omniColors().accent,
             modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Text(
             text = "Sleep timer: $display remaining",
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.OmniAccentPrimary,
+            color = omniColors().accent,
             modifier = Modifier.weight(1f),
         )
     }
@@ -533,31 +534,31 @@ private fun BulkActionBar(
             .clip(OmniShapes.Large)
             .background(OmniColors.OmniGlassMedium)
             .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderStrong),
+                BorderStroke(1.dp, omniColors().borderStrong),
                 OmniShapes.Large,
             )
             .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onClearSelection) {
-            Icon(painterResource(R.drawable.ic_close), "Clear selection", tint = OmniColors.TextSecondary)
+            Icon(painterResource(R.drawable.ic_close), "Clear selection", tint = omniColors().textSecondary)
         }
         Text(
             text = "$selectedCount",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            color = omniColors().textPrimary,
+            modifier = Modifier.padding(horizontal = OmniSpacing.compact)
         )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(onClick = onDownloadSelected) {
-            Icon(painterResource(R.drawable.ic_download), "Download", tint = OmniColors.TextPrimary)
+            Icon(painterResource(R.drawable.ic_download), "Download", tint = omniColors().textPrimary)
         }
         IconButton(onClick = onAddSelectedToPlaylist) {
-            Icon(painterResource(R.drawable.ic_list), "Add to playlist", tint = OmniColors.TextPrimary)
+            Icon(painterResource(R.drawable.ic_list), "Add to playlist", tint = omniColors().textPrimary)
         }
         TextButton(onClick = onRemoveSelected) {
-            Text("Remove", color = OmniColors.Error)
+            Text("Remove", color = omniColors().error)
         }
     }
     Spacer(modifier = Modifier.height(OmniSpacing.small))
@@ -583,14 +584,14 @@ private fun QueueHeader(
                 .clip(CircleShape)
                 .background(OmniColors.OmniGlassMedium)
                 .border(
-                    BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
+                    BorderStroke(1.dp, omniColors().borderSubtle),
                     CircleShape,
                 ),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_back),
                 contentDescription = "Back",
-                tint = OmniColors.TextPrimary,
+                tint = omniColors().textPrimary,
             )
         }
 
@@ -601,14 +602,14 @@ private fun QueueHeader(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = queueCountLabel(itemCount, upcomingCount),
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -631,13 +632,13 @@ private fun SectionLabel(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = subtitle,
             style = MaterialTheme.typography.labelMedium,
-            color = OmniColors.TextTertiary,
+            color = omniColors().textTertiary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -662,7 +663,7 @@ private fun NowPlayingCard(
                 )
             )
             .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderStrong),
+                BorderStroke(1.dp, omniColors().borderStrong),
                 OmniShapes.ExtraLarge,
             )
             .padding(OmniSpacing.medium),
@@ -681,14 +682,14 @@ private fun NowPlayingCard(
             Text(
                 text = "Playing now",
                 style = MaterialTheme.typography.labelMedium,
-                color = OmniColors.ActivePlayback,
+                color = omniColors().accent,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = mediaMetadata.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -697,7 +698,7 @@ private fun NowPlayingCard(
             Text(
                 text = artistText,
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -713,13 +714,13 @@ private fun NowPlayingCard(
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.16f)),
+                .background(omniColors().accent.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_play_arrow),
                 contentDescription = "Now playing",
-                tint = OmniColors.ActivePlayback,
+                tint = omniColors().accent,
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -736,7 +737,7 @@ private fun FormatInfoText(format: FormatEntity) {
         Text(
             text = parts.joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
-            color = OmniColors.TextTertiary,
+            color = omniColors().textTertiary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -761,8 +762,8 @@ private fun QueueItemRow(
             .clickable(onClick = onClick)
             .background(
                 when {
-                    isSelected -> OmniColors.OmniAccentPrimary.copy(alpha = 0.18f)
-                    isCurrent -> OmniColors.OmniAccentPrimary.copy(alpha = 0.12f)
+                    isSelected -> omniColors().accent.copy(alpha = 0.18f)
+                    isCurrent -> omniColors().accent.copy(alpha = 0.12f)
                     else -> OmniColors.OmniGlassSubtle
                 }
             )
@@ -770,9 +771,9 @@ private fun QueueItemRow(
                 BorderStroke(
                     1.dp,
                     when {
-                        isSelected -> OmniColors.OmniAccentPrimary
-                        isCurrent -> OmniColors.OmniGlassBorderStrong
-                        else -> OmniColors.OmniGlassBorderSubtle
+                        isSelected -> omniColors().accent
+                        isCurrent -> omniColors().borderStrong
+                        else -> omniColors().borderSubtle
                     },
                 ),
                 OmniShapes.Large,
@@ -786,7 +787,7 @@ private fun QueueItemRow(
                 modifier = Modifier
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(OmniColors.OmniAccentPrimary),
+                    .background(omniColors().accent),
             )
             Spacer(modifier = Modifier.width(OmniSpacing.small))
         }
@@ -804,14 +805,14 @@ private fun QueueItemRow(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = artists.ifBlank { "Unknown artist" },
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -823,7 +824,7 @@ private fun QueueItemRow(
             Icon(
                 painter = painterResource(R.drawable.ic_sort),
                 contentDescription = "Drag to reorder",
-                tint = OmniColors.TextTertiary,
+                tint = omniColors().textTertiary,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -851,7 +852,7 @@ private fun QueueArtwork(
             Icon(
                 painter = painterResource(R.drawable.ic_album),
                 contentDescription = contentDescription,
-                tint = OmniColors.TextTertiary,
+                tint = omniColors().textTertiary,
                 modifier = Modifier.size(size * 0.48f),
             )
         } else {
@@ -881,7 +882,7 @@ private fun QueueEmptyState(
             .clip(OmniShapes.ExtraLarge)
             .background(OmniColors.OmniGlassSubtle)
             .border(
-                BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle),
+                BorderStroke(1.dp, omniColors().borderSubtle),
                 OmniShapes.ExtraLarge,
             )
             .padding(

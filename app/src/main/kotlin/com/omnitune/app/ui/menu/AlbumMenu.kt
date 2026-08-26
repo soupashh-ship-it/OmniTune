@@ -94,6 +94,7 @@ import com.omnitune.app.ui.component.ListItem
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
 import com.omnitune.app.ui.component.SongListItem
+import com.omnitune.app.ui.component.menuAction
 import com.omnitune.app.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -348,70 +349,34 @@ fun AlbumMenu(
             // Enhanced Action Grid using NewMenuComponents
             NewActionGrid(
                 actions = listOf(
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_play_arrow),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.play),
-                        onClick = {
-                            onDismiss()
-                            if (songs.isNotEmpty()) {
-                                playerConnection.playQueue(
-                                    ListQueue(
-                                        title = album.album.title,
-                                        items = songs.map(Song::toMediaItem)
-                                    )
+                    menuAction(R.drawable.ic_play_arrow, stringResource(R.string.play), onDismiss = onDismiss) {
+                        if (songs.isNotEmpty()) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = album.album.title,
+                                    items = songs.map(Song::toMediaItem)
                                 )
-                            }
-                        }
-                    ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_shuffle),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        text = stringResource(R.string.shuffle),
-                        onClick = {
-                            onDismiss()
-                            if (songs.isNotEmpty()) {
-                                playerConnection.playQueue(
-                                    ListQueue(
-                                        title = album.album.title,
-                                        items = songs.shuffled().map(Song::toMediaItem)
-                                    )
+                        }
+                    },
+                    menuAction(R.drawable.ic_shuffle, stringResource(R.string.shuffle), onDismiss = onDismiss) {
+                        if (songs.isNotEmpty()) {
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = album.album.title,
+                                    items = songs.shuffled().map(Song::toMediaItem)
                                 )
-                            }
-                        }
-                    ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_share),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        text = stringResource(R.string.share),
-                        onClick = {
-                            onDismiss()
-                            val intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
-                            }
-                            context.startActivity(Intent.createChooser(intent, null))
                         }
-                    )
+                    },
+                    menuAction(R.drawable.ic_share, stringResource(R.string.share), onDismiss = onDismiss) {
+                        val intent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
+                        }
+                        context.startActivity(Intent.createChooser(intent, null))
+                    }
                 ),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
             )

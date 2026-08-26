@@ -26,6 +26,7 @@ import coil3.size.Scale
 import coil3.size.Size
 import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.LocalOmniAccents
 import com.omnitune.app.ui.theme.OmniDynamicSongPalette
 import com.omnitune.app.ui.theme.PlayerColorExtractor

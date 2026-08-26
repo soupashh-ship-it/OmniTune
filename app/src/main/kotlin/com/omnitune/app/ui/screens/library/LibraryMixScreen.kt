@@ -81,7 +81,6 @@ import com.omnitune.app.ui.component.LocalMenuState
 import com.omnitune.app.ui.component.PlaylistListItem
 import com.omnitune.app.ui.menu.AlbumMenu
 import com.omnitune.app.ui.menu.ArtistMenu
-import com.omnitune.app.ui.menu.PlaylistMenu
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.app.ui.screens.LibraryViewModel

@@ -76,6 +76,7 @@ import com.omnitune.app.ui.component.OmniTrackLoadingRow
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.OmniTextStyles
@@ -151,7 +152,7 @@ fun SearchStartState(
                     TextButton(onClick = onClearHistory) {
                         Text(
                             text = "Clear all",
-                            color = OmniColors.OmniAccentSecondary,
+                            color = omniColors().accentSecondary,
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
@@ -230,7 +231,7 @@ private fun SearchDiscoveryHero(
                         listOf(
                             Color(0xFF5C2034),
                             Color(0xFF2A1D27),
-                            OmniColors.SurfaceRaised,
+                            omniColors().surfaceRaised,
                         ),
                     ),
                 ),
@@ -243,7 +244,7 @@ private fun SearchDiscoveryHero(
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                OmniColors.OmniAccentPrimary.copy(alpha = 0.46f),
+                                omniColors().accent.copy(alpha = 0.46f),
                                 Color.Transparent,
                             ),
                         ),
@@ -254,14 +255,14 @@ private fun SearchDiscoveryHero(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(OmniShapes.Pill)
-                        .border(2.dp, OmniColors.OmniAccentSecondary.copy(alpha = 0.72f), OmniShapes.Pill)
+                        .border(2.dp, omniColors().accentSecondary.copy(alpha = 0.72f), OmniShapes.Pill)
                         .background(Color(0xFF201B25).copy(alpha = 0.72f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_search),
                         contentDescription = null,
-                        tint = OmniColors.OmniAccentSecondary,
+                        tint = omniColors().accentSecondary,
                         modifier = Modifier.size(32.dp),
                     )
                 }
@@ -277,12 +278,12 @@ private fun SearchDiscoveryHero(
                 Text(
                     text = "Search real music.",
                     style = MaterialTheme.typography.titleLarge,
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                 )
                 Text(
                     text = "Find songs, artists, albums and playlists from millions of tracks.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -290,8 +291,8 @@ private fun SearchDiscoveryHero(
                     onClick = onStartSearch,
                     modifier = Modifier
                         .clip(OmniShapes.Pill)
-                        .background(OmniColors.PrimaryGradient)
-                        .border(1.dp, OmniColors.OmniAccentSecondary.copy(alpha = 0.64f), OmniShapes.Pill),
+                        .background(omniColors().accentGradient)
+                        .border(1.dp, omniColors().accentSecondary.copy(alpha = 0.64f), OmniShapes.Pill),
                 ) {
                     Text(
                         text = "Start searching  ↗",
@@ -316,8 +317,8 @@ private fun SearchDiscoveryQueryChip(query: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceRaised)
-            .border(1.dp, OmniColors.SurfaceHairline, OmniShapes.Pill)
+            .background(omniColors().surfaceRaised)
+            .border(1.dp, omniColors().hairline, OmniShapes.Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
@@ -326,13 +327,13 @@ private fun SearchDiscoveryQueryChip(query: String, onClick: () -> Unit) {
         Icon(
             painter = painterResource(R.drawable.ic_bolt),
             contentDescription = null,
-            tint = OmniColors.OmniAccentSecondary,
+            tint = omniColors().accentSecondary,
             modifier = Modifier.size(14.dp),
         )
         Text(
             text = query,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             maxLines = 1,
         )
     }
@@ -343,8 +344,8 @@ private fun SearchHistoryChip(query: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceRaised)
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.28f), OmniShapes.Pill)
+            .background(omniColors().surfaceRaised)
+            .border(1.dp, omniColors().accent.copy(alpha = 0.28f), OmniShapes.Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
@@ -353,13 +354,13 @@ private fun SearchHistoryChip(query: String, onClick: () -> Unit) {
         Icon(
             painter = painterResource(R.drawable.ic_history),
             contentDescription = null,
-            tint = OmniColors.TextSecondary,
+            tint = omniColors().textSecondary,
             modifier = Modifier.size(14.dp),
         )
         Text(
             text = query,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -376,26 +377,26 @@ private fun SearchMoodCard(mood: SearchMood, onClick: () -> Unit) {
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        OmniColors.OmniAccentPrimary.copy(alpha = 0.38f),
-                        OmniColors.SurfaceRaised,
+                        omniColors().accent.copy(alpha = 0.38f),
+                        omniColors().surfaceRaised,
                     ),
                 ),
             )
-            .border(1.dp, OmniColors.OmniAccentPrimary.copy(alpha = 0.26f), OmniShapes.Large)
+            .border(1.dp, omniColors().accent.copy(alpha = 0.26f), OmniShapes.Large)
             .clickable(onClick = onClick)
             .padding(OmniSpacing.compact),
     ) {
         Icon(
             painter = painterResource(mood.icon),
             contentDescription = null,
-            tint = OmniColors.OmniAccentSecondary,
+            tint = omniColors().accentSecondary,
             modifier = Modifier.size(28.dp),
         )
         Column(modifier = Modifier.align(Alignment.BottomStart)) {
             Text(
                 text = mood.title,
                 style = MaterialTheme.typography.titleMedium,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -403,7 +404,7 @@ private fun SearchMoodCard(mood: SearchMood, onClick: () -> Unit) {
             Text(
                 text = mood.subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -411,13 +412,13 @@ private fun SearchMoodCard(mood: SearchMood, onClick: () -> Unit) {
         Icon(
             painter = painterResource(R.drawable.ic_play_arrow),
             contentDescription = "Search ${mood.title}",
-            tint = OmniColors.TextOnAccent,
+            tint = omniColors().textOnAccent,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .size(28.dp)
                 .clip(OmniShapes.Pill)
-                .background(OmniColors.OmniAccentPrimary)
-                .padding(8.dp),
+                .background(omniColors().accent)
+                .padding(OmniSpacing.compact),
         )
     }
 }
@@ -486,7 +487,7 @@ fun SearchHistoryRow(
                 interactionSource = interactionSource,
                 indication = androidx.compose.material3.ripple(
                     bounded = true,
-                    color = OmniColors.OmniAccentSecondary.copy(alpha = 0.14f),
+                    color = omniColors().accentSecondary.copy(alpha = 0.14f),
                 ),
                 onClick = onClick,
             )
@@ -496,14 +497,14 @@ fun SearchHistoryRow(
         Icon(
             painter = painterResource(R.drawable.ic_history),
             contentDescription = null,
-            tint = OmniColors.TextTertiary,
+            tint = omniColors().textTertiary,
             modifier = Modifier.size(20.dp),
         )
         Spacer(modifier = Modifier.width(OmniSpacing.small))
         Text(
             text = query,
             style = MaterialTheme.typography.bodyLarge,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -524,14 +525,14 @@ fun SearchStatusPill(message: String) {
             Icon(
                 painter = painterResource(R.drawable.ic_info),
                 contentDescription = null,
-                tint = OmniColors.Warning,
+                tint = omniColors().warning,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(modifier = Modifier.width(OmniSpacing.compact))
             Text(
                 text = message,
                 style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
         }
     }
@@ -561,32 +562,32 @@ fun SearchMessageCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(OmniShapes.Large)
-                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.14f)),
+                    .background(omniColors().accent.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(icon),
                     contentDescription = null,
-                    tint = OmniColors.OmniAccentSecondary,
+                    tint = omniColors().accentSecondary,
                     modifier = Modifier.size(26.dp),
                 )
             }
             Text(
                 text = title,
                 style = OmniTextStyles.sectionHeader,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             if (actionLabel != null && onAction != null) {
                 TextButton(onClick = onAction) {
                     Text(
                         text = actionLabel,
-                        color = OmniColors.OmniAccentSecondary,
+                        color = omniColors().accentSecondary,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }

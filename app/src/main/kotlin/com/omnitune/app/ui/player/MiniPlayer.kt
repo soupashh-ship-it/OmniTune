@@ -79,6 +79,7 @@ import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniTuneLoader
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -211,7 +212,7 @@ fun MiniPlayer(
                         .fillMaxSize()
                         .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                         .clip(OmniShapes.Dock)
-                        .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                        .padding(start = OmniSpacing.small, end = OmniSpacing.compact, top = OmniSpacing.compact, bottom = OmniSpacing.compact),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                 Row(
@@ -224,7 +225,7 @@ fun MiniPlayer(
                             interactionSource = bodyInteraction,
                             indication = androidx.compose.material3.ripple(
                                 bounded = true,
-                                color = OmniColors.OmniAccentPrimary.copy(alpha = 0.12f),
+                                color = omniColors().accent.copy(alpha = 0.12f),
                             ),
                             onClick = onClick,
                         )
@@ -234,7 +235,7 @@ fun MiniPlayer(
                     MiniArtwork(
                         mediaMetadata = mediaMetadata,
                         isPlaying = isPlaying,
-                        accentColor = OmniColors.OmniAccentPrimary,
+                        accentColor = omniColors().accent,
                         artworkSize = miniArtworkSize,
                     )
                     Spacer(modifier = Modifier.width(if (compactMiniPlayer) OmniSpacing.compact else OmniSpacing.small))
@@ -256,7 +257,7 @@ fun MiniPlayer(
                         isPlaying = isPlaying,
                         isLoading = isLoading,
                         playbackState = playbackState,
-                        accentColor = OmniColors.OmniAccentPrimary,
+                        accentColor = omniColors().accent,
                         onAccent = Color.White,
                         buttonSize = miniButtonSize,
                         iconSize = miniIconSize,
@@ -408,7 +409,7 @@ private fun MiniPlaybackBars(
     val bars = if (isPlaying) intArrayOf(11, 20, 15, 25, 17, 23, 12) else intArrayOf(7, 10, 8, 12, 8, 10, 7)
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         bars.forEach { height ->
@@ -417,7 +418,7 @@ private fun MiniPlaybackBars(
                     .width(3.dp)
                     .height(height.dp)
                     .clip(OmniShapes.Pill)
-                    .background(OmniColors.OmniAccentSecondary.copy(alpha = if (isPlaying) 0.95f else 0.48f)),
+                    .background(omniColors().accentSecondary.copy(alpha = if (isPlaying) 0.95f else 0.48f)),
             )
         }
     }
@@ -481,7 +482,7 @@ private fun MiniArtwork(
             Icon(
                 painter = painterResource(R.drawable.ic_play_arrow),
                 contentDescription = null,
-                tint = OmniColors.TextTertiary,
+                tint = omniColors().textTertiary,
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -514,7 +515,7 @@ private fun MiniMediaInfo(
                 text = currentTitle,
                 style = OmniTextStyles.songTitle,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -529,7 +530,7 @@ private fun MiniMediaInfo(
                 Text(
                     text = currentArtist,
                     style = OmniTextStyles.metadata,
-                    color = OmniColors.TextSecondary,
+                    color = omniColors().textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -597,7 +598,7 @@ private fun MiniControlButton(
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = OmniColors.TextSecondary,
+            tint = omniColors().textSecondary,
             modifier = Modifier.size(iconSize),
         )
     }

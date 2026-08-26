@@ -122,6 +122,20 @@ fun OmniTuneTheme(
 
     val animatedColorScheme = animateColorScheme(colorScheme)
 
+    // Semantic design-system scheme: derives from the same resolved/accented palette as
+    // MaterialTheme so dynamic artwork palettes flow through both systems identically.
+    val omniAccentAnimationSpec = spring<Color>(stiffness = Spring.StiffnessLow)
+    val omniAccent = animateColorAsState(
+        targetValue = colorScheme.primary,
+        animationSpec = omniAccentAnimationSpec,
+        label = "omni-scheme-accent",
+    ).value
+    val omniScheme = if (darkTheme) {
+        OmniScheme.dark(accent = omniAccent, pureBlack = pureBlack)
+    } else {
+        OmniScheme.light(accent = omniAccent)
+    }
+
     Timber.tag("OmniTuneTheme").d(
         "themeColor in theme: ${Integer.toHexString(themeColor.toArgb())}, scheme.primary: ${Integer.toHexString(colorScheme.primary.toArgb())}",
     )
@@ -143,7 +157,10 @@ fun OmniTuneTheme(
         )
     }
 
-    CompositionLocalProvider(LocalOmniAccents provides dynamicAccents) {
+    CompositionLocalProvider(
+        LocalOmniAccents provides dynamicAccents,
+        LocalOmniColors provides omniScheme,
+    ) {
         MaterialTheme(
             colorScheme = animatedColorScheme,
             typography = typography,

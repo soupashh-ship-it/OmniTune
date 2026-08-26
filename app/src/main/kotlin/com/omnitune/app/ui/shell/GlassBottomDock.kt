@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.OmniChrome
-import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.LocalOmniColors
 import com.omnitune.app.ui.theme.OmniGlassDefaults
 import com.omnitune.app.ui.theme.OmniGlassSurface
 import com.omnitune.app.ui.theme.OmniShapes
@@ -110,10 +110,7 @@ fun GlassBottomDock(
                     .width(pillWidth)
                     .height(pillHeight)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.20f))
-                    .let { mod ->
-                        if (selectedIndex >= 0) mod.let { it } else mod
-                    },
+                    .background(LocalOmniColors.current.accent.copy(alpha = 0.20f))
             )
 
             Row(
@@ -141,7 +138,7 @@ private fun RowScope.NavTabItem(
     val interactionSource = remember { MutableInteractionSource() }
 
     val tint by animateColorAsState(
-        targetValue = if (isSelected) OmniColors.OmniAccentPrimary else OmniColors.TextMuted,
+        targetValue = if (isSelected) LocalOmniColors.current.accent else LocalOmniColors.current.textTertiary,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,

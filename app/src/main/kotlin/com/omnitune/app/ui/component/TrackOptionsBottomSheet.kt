@@ -16,9 +16,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.omnitune.app.R
-import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.omniColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,9 +44,10 @@ fun TrackOptionsBottomSheet(
     onViewAlbum: (() -> Unit)? = null,
     onDetails: (() -> Unit)? = null,
 ) {
+    val colors = omniColors()
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        containerColor = OmniColors.OmniBackgroundElevated,
+        containerColor = colors.backgroundElevated,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
     ) {
         Column(
@@ -75,14 +76,14 @@ fun TrackOptionsBottomSheet(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = OmniColors.TextPrimary,
+                        color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = OmniColors.TextSecondary,
+                        color = colors.textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -92,20 +93,26 @@ fun TrackOptionsBottomSheet(
             NewActionGrid(
                 actions = buildList {
                     onStartRadio?.let { action ->
-                        add(trackAction(R.drawable.ic_insights, "Start radio", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_insights, "Start radio", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     onPlayNext?.let { action ->
-                        add(trackAction(R.drawable.ic_skip_next, "Play next", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_skip_next, "Play next", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     onAddToQueue?.let { action ->
-                        add(trackAction(R.drawable.ic_list, "Add to queue", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_list, "Add to queue", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     add(NewAction(
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_add),
                                 contentDescription = null,
-                                tint = OmniColors.TextSecondary,
+                                tint = omniColors().textSecondary,
                                 modifier = Modifier.size(28.dp),
                             )
                         },
@@ -116,13 +123,15 @@ fun TrackOptionsBottomSheet(
                         },
                     ))
                     onShare?.let { action ->
-                        add(trackAction(R.drawable.ic_share, "Share", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_share, "Share", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
-                    add(trackAction(
-                        icon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
-                        text = if (isLiked) "Unlike" else "Like",
-                        action = onToggleLike,
-                        onDismissRequest = onDismissRequest,
+                    add(menuAction(
+                        iconRes = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
+                        label = if (isLiked) "Unlike" else "Like",
+                        onClick = onToggleLike,
+                        onDismiss = onDismissRequest,
                     ))
                 },
                 modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
@@ -146,13 +155,13 @@ fun TrackOptionsBottomSheet(
                     TrackOptionRow(
                         icon = R.drawable.ic_close,
                         label = "Remove from playlist",
-                        tint = OmniColors.Error,
+                        tint = colors.error,
                         onClick = {
                             it()
                             onDismissRequest()
                         },
                     )
-                    HorizontalDivider(color = OmniColors.OmniGlassBorderSubtle, modifier = Modifier.padding(start = 56.dp))
+                    HorizontalDivider(color = colors.borderSubtle, modifier = Modifier.padding(start = 56.dp))
                 }
                 onDownload?.let {
                     TrackOptionRow(
@@ -179,7 +188,7 @@ fun TrackOptionsBottomSheet(
                         )
                     }
                     if (onViewArtist != null && onViewAlbum != null) {
-                        HorizontalDivider(color = OmniColors.OmniGlassBorderSubtle, modifier = Modifier.padding(start = 56.dp))
+                        HorizontalDivider(color = colors.borderSubtle, modifier = Modifier.padding(start = 56.dp))
                     }
                     onViewAlbum?.let {
                         TrackOptionRow(
@@ -212,27 +221,6 @@ fun TrackOptionsBottomSheet(
     }
 }
 
-private fun trackAction(
-    icon: Int,
-    text: String,
-    action: () -> Unit,
-    onDismissRequest: () -> Unit,
-) = NewAction(
-    icon = {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = OmniColors.TextSecondary,
-            modifier = Modifier.size(28.dp),
-        )
-    },
-    text = text,
-    onClick = {
-        action()
-        onDismissRequest()
-    },
-)
-
 @Composable
 private fun TrackOptionGroup(content: @Composable ColumnScope.() -> Unit) {
     Column(
@@ -240,7 +228,7 @@ private fun TrackOptionGroup(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = OmniSpacing.section, vertical = 6.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(OmniColors.OmniGlassMedium),
+            .background(omniColors().surface),
         content = content,
     )
 }
@@ -249,7 +237,7 @@ private fun TrackOptionGroup(content: @Composable ColumnScope.() -> Unit) {
 private fun TrackOptionRow(
     icon: Int,
     label: String,
-    tint: androidx.compose.ui.graphics.Color = OmniColors.TextPrimary,
+    tint: androidx.compose.ui.graphics.Color = omniColors().textPrimary,
     onClick: () -> Unit
 ) {
     Row(
@@ -269,7 +257,7 @@ private fun TrackOptionRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            color = OmniColors.TextPrimary
+            color = omniColors().textPrimary
         )
     }
 }

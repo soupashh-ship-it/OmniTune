@@ -69,12 +69,17 @@ import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.OmniThumbnailPlaceholder
 import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.ui.component.TrackMenuProvider
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.omniPressScale
 import com.omnitune.innertube.models.AlbumItem
 import com.omnitune.innertube.models.ArtistItem
@@ -97,20 +102,20 @@ fun SectionLabel(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             modifier = Modifier.weight(1f),
         )
         Box(
             modifier = Modifier
                 .clip(OmniShapes.Pill)
-                .background(OmniColors.OmniAccentPrimary.copy(alpha = 0.14f))
+                .background(omniColors().accent.copy(alpha = 0.14f))
                 .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.micro),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = count.toString(),
                 style = OmniTextStyles.caption,
-                color = OmniColors.OmniAccentPrimary,
+                color = omniColors().accent,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -152,7 +157,7 @@ fun SearchResultRow(
             .fillMaxWidth()
             .height(OmniChrome.ComfortableRowHeight)
             .clip(OmniShapes.Medium)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
+            .background(omniColors().surface.copy(alpha = 0.42f))
             .then(
                 if (onClick != null) {
                     Modifier
@@ -161,7 +166,7 @@ fun SearchResultRow(
                             interactionSource = interactionSource,
                             indication = androidx.compose.material3.ripple(
                                 bounded = true,
-                                color = OmniColors.OmniAccentSecondary.copy(alpha = 0.12f),
+                                color = omniColors().accentSecondary.copy(alpha = 0.12f),
                             ),
                         ) {
                             focusManager.clearFocus(force = true)
@@ -178,7 +183,7 @@ fun SearchResultRow(
             modifier = Modifier
                 .size(56.dp)
                 .clip(artworkShape)
-                .background(OmniColors.SurfaceQuiet),
+                .background(omniColors().surfaceQuiet),
             contentAlignment = Alignment.Center,
         ) {
             OmniThumbnailPlaceholder(modifier = Modifier.fillMaxSize())
@@ -193,7 +198,7 @@ fun SearchResultRow(
                 Icon(
                     painter = painterResource(fallbackRes),
                     contentDescription = null,
-                    tint = OmniColors.TextTertiary,
+                    tint = omniColors().textTertiary,
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -203,7 +208,7 @@ fun SearchResultRow(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+            verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
         ) {
             Text(
                 text = title,
@@ -214,7 +219,7 @@ fun SearchResultRow(
             Text(
                 text = subtitle,
                 style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -233,7 +238,7 @@ fun SearchResultRow(
                     Icon(
                         painter = painterResource(R.drawable.ic_more_vert),
                         contentDescription = "More options",
-                        tint = OmniColors.TextSecondary,
+                        tint = omniColors().textSecondary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -249,7 +254,7 @@ fun SearchResultRow(
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
-                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                        modifier = Modifier.background(omniColors().backgroundElevated),
                     ) {
                         if (onPlayNext != null) {
                             DropdownMenuItem(
@@ -288,7 +293,7 @@ fun SearchResultRow(
             Text(
                 text = statusText,
                 style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                color = omniColors().textTertiary,
             )
         }
     }

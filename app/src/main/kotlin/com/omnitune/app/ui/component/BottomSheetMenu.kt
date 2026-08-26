@@ -21,8 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -51,8 +51,9 @@ class MenuState(
 fun BottomSheetMenu(
     modifier: Modifier = Modifier,
     state: MenuState,
-    background: Color = OmniColors.SurfaceRaised,
+    background: Color = omniColors().surfaceRaised,
 ) {
+    val colors = omniColors()
     val focusManager = LocalFocusManager.current
 
     if (state.isVisible) {
@@ -62,14 +63,14 @@ fun BottomSheetMenu(
                 state.isVisible = false
             },
             containerColor = background,
-            contentColor = OmniColors.TextPrimary,
+            contentColor = colors.textPrimary,
             dragHandle = {
                 Box(
                     modifier = Modifier
                         .padding(vertical = 12.dp)
                         .size(width = 40.dp, height = 4.dp)
                         .clip(OmniShapes.Medium)
-                        .background(OmniColors.OmniGlassBorderStrong)
+                        .background(colors.borderStrong)
                 )
             },
             modifier = modifier.fillMaxHeight()

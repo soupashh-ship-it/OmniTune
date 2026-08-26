@@ -10,6 +10,7 @@ import com.omnitune.app.constants.EnableLrcLibKey
 import com.omnitune.app.constants.EnableSimpMusicLyricsKey
 import com.omnitune.app.constants.LyricsScrollKey
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.utils.rememberPreference
 
 @Composable
@@ -25,7 +26,7 @@ fun LyricsSettings() {
             title = "Auto-scroll synced lyrics",
             description = "Keep the current lyric line in view during playback",
             iconRes = R.drawable.ic_lyrics,
-            accent = OmniColors.OmniAccentSecondary,
+            accent = omniColors().accentSecondary,
             checked = autoScroll,
             onCheckedChange = { autoScroll = it },
         )
@@ -36,7 +37,7 @@ fun LyricsSettings() {
             title = "LrcLib",
             description = "Use the existing LrcLib provider",
             iconRes = R.drawable.ic_list,
-            accent = OmniColors.Hot,
+            accent = omniColors().accent,
             checked = lrcLib,
             onCheckedChange = { lrcLib = it },
         )
@@ -44,7 +45,7 @@ fun LyricsSettings() {
             title = "KuGou",
             description = "Use the existing KuGou provider",
             iconRes = R.drawable.ic_list,
-            accent = OmniColors.Hot,
+            accent = omniColors().accent,
             checked = kugou,
             onCheckedChange = { kugou = it },
         )
@@ -52,7 +53,7 @@ fun LyricsSettings() {
             title = "Better Lyrics",
             description = "Use the existing Better Lyrics provider",
             iconRes = R.drawable.ic_list,
-            accent = OmniColors.Hot,
+            accent = omniColors().accent,
             checked = betterLyrics,
             onCheckedChange = { betterLyrics = it },
         )
@@ -60,7 +61,7 @@ fun LyricsSettings() {
             title = "SimpMusic",
             description = "Use the existing SimpMusic provider",
             iconRes = R.drawable.ic_list,
-            accent = OmniColors.Hot,
+            accent = omniColors().accent,
             checked = simpMusic,
             onCheckedChange = { simpMusic = it },
         )
