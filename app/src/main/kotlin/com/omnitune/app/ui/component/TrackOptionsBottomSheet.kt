@@ -93,13 +93,19 @@ fun TrackOptionsBottomSheet(
             NewActionGrid(
                 actions = buildList {
                     onStartRadio?.let { action ->
-                        add(trackAction(R.drawable.ic_insights, "Start radio", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_insights, "Start radio", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     onPlayNext?.let { action ->
-                        add(trackAction(R.drawable.ic_skip_next, "Play next", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_skip_next, "Play next", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     onAddToQueue?.let { action ->
-                        add(trackAction(R.drawable.ic_list, "Add to queue", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_list, "Add to queue", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
                     add(NewAction(
                         icon = {
@@ -117,13 +123,15 @@ fun TrackOptionsBottomSheet(
                         },
                     ))
                     onShare?.let { action ->
-                        add(trackAction(R.drawable.ic_share, "Share", action, onDismissRequest))
+                        add(menuAction(R.drawable.ic_share, "Share", onDismiss = onDismissRequest) {
+                            action()
+                        })
                     }
-                    add(trackAction(
-                        icon = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
-                        text = if (isLiked) "Unlike" else "Like",
-                        action = onToggleLike,
-                        onDismissRequest = onDismissRequest,
+                    add(menuAction(
+                        iconRes = if (isLiked) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
+                        label = if (isLiked) "Unlike" else "Like",
+                        onClick = onToggleLike,
+                        onDismiss = onDismissRequest,
                     ))
                 },
                 modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
@@ -212,27 +220,6 @@ fun TrackOptionsBottomSheet(
         }
     }
 }
-
-private fun trackAction(
-    icon: Int,
-    text: String,
-    action: () -> Unit,
-    onDismissRequest: () -> Unit,
-) = NewAction(
-    icon = {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = omniColors().textSecondary,
-            modifier = Modifier.size(28.dp),
-        )
-    },
-    text = text,
-    onClick = {
-        action()
-        onDismissRequest()
-    },
-)
 
 @Composable
 private fun TrackOptionGroup(content: @Composable ColumnScope.() -> Unit) {

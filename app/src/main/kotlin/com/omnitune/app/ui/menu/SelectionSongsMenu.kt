@@ -64,6 +64,7 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.component.DefaultDialog
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
+import com.omnitune.app.ui.component.menuAction
 import com.omnitune.app.sync.YouTubeLibrarySync
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -207,62 +208,27 @@ fun SelectionSongMenu(
             // Enhanced Action Grid using NewMenuComponents
             NewActionGrid(
                 actions = listOf(
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_play_arrow),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.play),
-                        onClick = {
-                            onDismiss()
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = "Selection",
-                                    items = songSelection.map { it.toMediaItem() },
-                                ),
-                            )
-                            clearAction()
-                        }
-                    ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_shuffle),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.shuffle),
-                        onClick = {
-                            onDismiss()
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = "Selection",
-                                    items = songSelection.shuffled().map { it.toMediaItem() },
-                                ),
-                            )
-                            clearAction()
-                        }
-                    ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_list),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.add_to_playlist),
-                        onClick = {
-                            showChoosePlaylistDialog = true
-                        }
-                    )
+                    menuAction(R.drawable.ic_play_arrow, stringResource(R.string.play), onDismiss = onDismiss) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = "Selection",
+                                items = songSelection.map { it.toMediaItem() },
+                            ),
+                        )
+                        clearAction()
+                    },
+                    menuAction(R.drawable.ic_shuffle, stringResource(R.string.shuffle), onDismiss = onDismiss) {
+                        playerConnection.playQueue(
+                            ListQueue(
+                                title = "Selection",
+                                items = songSelection.shuffled().map { it.toMediaItem() },
+                            ),
+                        )
+                        clearAction()
+                    },
+                    menuAction(R.drawable.ic_list, stringResource(R.string.add_to_playlist)) {
+                        showChoosePlaylistDialog = true
+                    }
                 ),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
             )

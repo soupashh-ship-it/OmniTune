@@ -97,10 +97,11 @@ import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.LocalMenuState
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
-import com.omnitune.app.playback.getDownload
 import com.omnitune.app.ui.component.AddToPlaylistDialog
 import com.omnitune.app.ui.component.SongListItem
 import com.omnitune.app.ui.component.TextFieldDialog
+import com.omnitune.app.ui.component.menuAction
+import com.omnitune.app.playback.getDownload
 import com.omnitune.app.ui.utils.ShowMediaInfo
 import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.rememberPreference
@@ -411,96 +412,26 @@ fun SongMenu(
         playerConnection,
     ) {
         listOf(
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_insights),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = startRadioText,
-                onClick = {
-                    onDismiss()
-                    playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_play_arrow),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = playNextText,
-                onClick = {
-                    onDismiss()
-                    playerConnection.playNext(song.toMediaItem())
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_list),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = addToQueueText,
-                onClick = {
-                    onDismiss()
-                    playerConnection.addToQueue(song.toMediaItem())
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_add),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = addToPlaylistText,
-                onClick = { showChoosePlaylistDialog = true },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_share),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = shareText,
-                onClick = {
-                    onDismiss()
-                    val intent =
-                        Intent().apply {
-                            action = Intent.ACTION_SEND
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
-                        }
-                    context.startActivity(Intent.createChooser(intent, null))
-                },
-            ),
-            NewAction(
-                icon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_settings),
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                text = editText,
-                onClick = { showEditDialog = true },
-            ),
+            menuAction(R.drawable.ic_insights, startRadioText, onDismiss = onDismiss) {
+                playerConnection.playQueue(YouTubeQueue.radio(song.toMediaMetadata()))
+            },
+            menuAction(R.drawable.ic_play_arrow, playNextText, onDismiss = onDismiss) {
+                playerConnection.playNext(song.toMediaItem())
+            },
+            menuAction(R.drawable.ic_list, addToQueueText, onDismiss = onDismiss) {
+                playerConnection.addToQueue(song.toMediaItem())
+            },
+            menuAction(R.drawable.ic_add, addToPlaylistText) { showChoosePlaylistDialog = true },
+            menuAction(R.drawable.ic_share, shareText, onDismiss = onDismiss) {
+                val intent =
+                    Intent().apply {
+                        action = Intent.ACTION_SEND
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}")
+                    }
+                context.startActivity(Intent.createChooser(intent, null))
+            },
+            menuAction(R.drawable.ic_settings, editText) { showEditDialog = true },
         )
     }
 
