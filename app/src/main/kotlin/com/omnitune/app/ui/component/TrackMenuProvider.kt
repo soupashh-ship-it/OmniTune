@@ -13,7 +13,7 @@ import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.playback.queues.YouTubeQueue
 import com.omnitune.app.ui.screens.DownloadsViewModel
 import com.omnitune.app.ui.screens.LibraryViewModel
-import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -50,6 +50,7 @@ fun TrackMenuProvider(
     val playlists by libraryViewModel.editablePlaylists.collectAsStateWithLifecycle(initialValue = emptyList())
 
     if (showDetails) {
+        val colors = omniColors()
         AlertDialog(
             onDismissRequest = { showDetails = false },
             title = { Text("Song details") },
@@ -66,12 +67,12 @@ fun TrackMenuProvider(
             },
             confirmButton = {
                 TextButton(onClick = { showDetails = false }) {
-                    Text("Done", color = OmniColors.Hot)
+                    Text("Done", color = colors.accent)
                 }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
+            containerColor = colors.backgroundElevated,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary,
         )
     }
 

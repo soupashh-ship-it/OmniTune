@@ -51,8 +51,11 @@ import com.omnitune.app.constants.OmniLibraryDesignKey
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.component.OmniSectionHeader
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.utils.rememberEnumPreference
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,7 +88,7 @@ fun LibraryScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase)
+            .background(omniColors().background)
             .padding(horizontal = OmniSpacing.screenHorizontalCompact),
         verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
     ) {
@@ -172,12 +175,12 @@ private fun LibraryHeader(
                 text = "OmniTune",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = if (totalCount == 0) "Your music, your vibe." else "$totalCount saved items",
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
@@ -225,9 +228,9 @@ private fun LibraryTabChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val containerBg = if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.14f) else OmniColors.OmniGlassSubtle
-    val borderColor = if (selected) OmniColors.OmniAccentPrimary.copy(alpha = 0.40f) else OmniColors.SurfaceHairline
-    val textColor = if (selected) OmniColors.OmniAccentPrimary else OmniColors.TextSecondary
+    val containerBg = if (selected) omniColors().accent.copy(alpha = 0.14f) else OmniColors.OmniGlassSubtle
+    val borderColor = if (selected) omniColors().accent.copy(alpha = 0.40f) else omniColors().hairline
+    val textColor = if (selected) omniColors().accent else omniColors().textSecondary
 
     Box(
         modifier = modifier
@@ -265,7 +268,7 @@ private fun LibraryQuickAccessRail(
                     subtitle = countLabel(likedCount, "song"),
                     thumbnailUrl = null,
                     icon = R.drawable.ic_favorite,
-                    accent = OmniColors.Hot,
+                    accent = omniColors().accent,
                     onClick = onLiked,
                 )
             }
@@ -276,7 +279,7 @@ private fun LibraryQuickAccessRail(
                 subtitle = song.artists.joinToString(", ") { it.name }.ifBlank { "Unknown artist" },
                 thumbnailUrl = song.thumbnailUrl,
                 icon = R.drawable.ic_play_arrow,
-                accent = OmniColors.OmniAccentPrimary,
+                accent = omniColors().accent,
                 onClick = { onPlaySong(song) },
             )
         }
@@ -320,7 +323,7 @@ private fun LibraryQuickAccessItem(
                         )
                     }
                 )
-                .border(0.5.dp, OmniColors.SurfaceHairline, OmniShapes.ArtworkMedium),
+                .border(0.5.dp, omniColors().hairline, OmniShapes.ArtworkMedium),
             contentAlignment = Alignment.Center,
         ) {
             if (!thumbnailUrl.isNullOrBlank()) {
@@ -353,13 +356,13 @@ private fun LibraryQuickAccessItem(
                         .padding(6.dp)
                         .size(28.dp)
                         .clip(OmniShapes.Pill)
-                        .background(OmniColors.OmniAccentPrimary),
+                        .background(omniColors().accent),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_play_arrow),
                         contentDescription = "Play $title",
-                        tint = OmniColors.TextOnAccent,
+                        tint = omniColors().textOnAccent,
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -369,14 +372,14 @@ private fun LibraryQuickAccessItem(
             text = title,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Text(
             text = subtitle,
             fontSize = 11.sp,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -532,7 +535,7 @@ private fun LibraryHeroLikedCard(
             Text(
                 text = "Liked Songs",
                 style = MaterialTheme.typography.bodyLarge,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -540,7 +543,7 @@ private fun LibraryHeroLikedCard(
             Text(
                 text = "$likedCount favorite tracks",
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -606,7 +609,7 @@ private fun LibraryCollectionCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -614,7 +617,7 @@ private fun LibraryCollectionCard(
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -623,7 +626,7 @@ private fun LibraryCollectionCard(
         Icon(
             painter = painterResource(R.drawable.ic_arrow_back),
             contentDescription = null,
-            tint = OmniColors.TextTertiary.copy(alpha = 0.40f),
+            tint = omniColors().textTertiary.copy(alpha = 0.40f),
             modifier = Modifier
                 .size(14.dp)
                 .graphicsLayer(rotationZ = 180f),
@@ -667,12 +670,12 @@ private fun LibraryRouteRow(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -681,7 +684,7 @@ private fun LibraryRouteRow(
         Icon(
             painter = painterResource(R.drawable.ic_arrow_back),
             contentDescription = null,
-            tint = OmniColors.TextTertiary.copy(alpha = 0.45f),
+            tint = omniColors().textTertiary.copy(alpha = 0.45f),
             modifier = Modifier
                 .size(16.dp)
                 .graphicsLayer(rotationZ = 180f),
@@ -695,10 +698,10 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(OmniShapes.Large)
-            .background(OmniColors.SurfaceSubtle.copy(alpha = 0.42f))
+            .background(omniColors().surface.copy(alpha = 0.42f))
             .border(
                 width = 1.dp,
-                color = OmniColors.SurfaceHairline,
+                color = omniColors().hairline,
                 shape = OmniShapes.Large,
             )
             .animateContentSize()
@@ -708,20 +711,20 @@ private fun LibraryEmptyHub(onSearch: () -> Unit) {
             text = "Nothing saved yet",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = OmniColors.TextPrimary,
+            color = omniColors().textPrimary,
         )
         Spacer(modifier = Modifier.height(OmniSpacing.micro))
         Text(
             text = "Like songs, download tracks, or play music to build your library.",
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
         )
         Spacer(modifier = Modifier.height(OmniSpacing.medium))
         LibraryRouteRow(
             painter = painterResource(R.drawable.ic_search),
             title = "Start with Search",
             detail = "Find something to save",
-            accent = OmniColors.OmniAccentSecondary,
+            accent = omniColors().accentSecondary,
             onClick = onSearch,
         )
     }
@@ -759,14 +762,14 @@ private fun IconButtonSurface(
         modifier = Modifier
             .size(34.dp)
             .clip(OmniShapes.Pill)
-            .background(OmniColors.SurfaceQuiet.copy(alpha = 0.58f))
+            .background(omniColors().surfaceQuiet.copy(alpha = 0.58f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painter,
             contentDescription = contentDescription,
-            tint = OmniColors.TextPrimary,
+            tint = omniColors().textPrimary,
             modifier = Modifier.size(18.dp),
         )
     }

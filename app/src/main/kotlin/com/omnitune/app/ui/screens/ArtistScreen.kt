@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.screens
 
+import com.omnitune.app.ui.theme.OmniSpacing
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -152,7 +153,7 @@ fun ArtistScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = OmniSpacing.medium),
                 ) {
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
@@ -189,14 +190,14 @@ fun ArtistScreen(
                                     textAlign = TextAlign.Center,
                                     maxLines = if (descriptionExpanded) Int.MAX_VALUE else 3,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    modifier = Modifier.padding(horizontal = OmniSpacing.medium)
                                 )
                                 Text(
                                     text = if (descriptionExpanded) "less" else "more",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier
-                                        .padding(top = 4.dp)
+                                        .padding(top = OmniSpacing.micro)
                                         .clickable { descriptionExpanded = !descriptionExpanded }
                                 )
                             }
@@ -231,7 +232,7 @@ fun ArtistScreen(
                             // Action Buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium)
                             ) {
                                 Button(
                                     onClick = { viewModel.toggleBookmark(artistId) },
@@ -333,8 +334,8 @@ fun ArtistScreen(
                             } else {
                                 item {
                                     androidx.compose.foundation.lazy.LazyRow(
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = OmniSpacing.medium),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         items(section.items) { item ->
@@ -389,12 +390,12 @@ private fun LocalArtistContent(
     playerConnection: PlayerConnection?,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = OmniSpacing.medium),
+        verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
     ) {
         item {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = OmniSpacing.section),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 AsyncImage(
@@ -407,7 +408,7 @@ private fun LocalArtistContent(
                 Text(artist.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text("${songs.size} songs", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
                     Button(
                         onClick = {
                             if (songs.isNotEmpty()) playerConnection?.playQueue(
@@ -445,7 +446,7 @@ private fun ArtistSongRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = OmniSpacing.compact),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
@@ -522,7 +523,7 @@ private fun ArtistAlbumRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = OmniSpacing.compact),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(

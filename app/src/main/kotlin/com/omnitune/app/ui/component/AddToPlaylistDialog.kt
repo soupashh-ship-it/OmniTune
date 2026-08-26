@@ -13,7 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.R
 import com.omnitune.app.db.entities.Playlist
-import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
 
 @Composable
@@ -24,6 +24,7 @@ fun AddToPlaylistDialog(
     onCreatePlaylist: (String) -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    val colors = omniColors()
 
     if (showCreateDialog) {
         var playlistName by remember { mutableStateOf("") }
@@ -37,10 +38,10 @@ fun AddToPlaylistDialog(
                     singleLine = true,
                     placeholder = { Text("Playlist name") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = OmniColors.OmniAccentPrimary,
-                        unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                        focusedTextColor = OmniColors.TextPrimary,
-                        unfocusedTextColor = OmniColors.TextPrimary
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.borderSubtle,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
                     )
                 )
             },
@@ -55,16 +56,16 @@ fun AddToPlaylistDialog(
                     },
                     enabled = playlistName.isNotBlank()
                 ) {
-                    Text("Create", color = if (playlistName.isNotBlank()) OmniColors.Hot else OmniColors.TextSecondary)
+                    Text("Create", color = if (playlistName.isNotBlank()) colors.accent else colors.textSecondary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreateDialog = false }) {
-                    Text("Cancel", color = OmniColors.TextPrimary)
+                    Text("Cancel", color = colors.textPrimary)
                 }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
+            containerColor = colors.backgroundElevated,
+            titleContentColor = colors.textPrimary,
         )
     } else {
         AlertDialog(
@@ -85,15 +86,15 @@ fun AddToPlaylistDialog(
                             Icon(
                                 painter = painterResource(R.drawable.ic_add),
                                 contentDescription = null,
-                                tint = OmniColors.OmniAccentPrimary,
+                                tint = colors.accent,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(OmniSpacing.medium))
-                            Text("New Playlist", color = OmniColors.OmniAccentPrimary, style = MaterialTheme.typography.bodyLarge)
+                            Text("New Playlist", color = colors.accent, style = MaterialTheme.typography.bodyLarge)
                         }
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = OmniSpacing.small),
-                            color = OmniColors.OmniGlassBorderSubtle
+                            color = colors.borderSubtle
                         )
                     }
                     items(playlists) { playlist ->
@@ -110,19 +111,19 @@ fun AddToPlaylistDialog(
                             Icon(
                                 painter = painterResource(R.drawable.ic_list),
                                 contentDescription = null,
-                                tint = OmniColors.TextSecondary,
+                                tint = colors.textSecondary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(OmniSpacing.medium))
                             Column {
                                 Text(
                                     text = playlist.playlist.name,
-                                    color = OmniColors.TextPrimary,
+                                    color = colors.textPrimary,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
                                     text = "${playlist.songCount} songs",
-                                    color = OmniColors.TextSecondary,
+                                    color = colors.textSecondary,
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -132,11 +133,11 @@ fun AddToPlaylistDialog(
             },
             confirmButton = {
                 TextButton(onClick = onDismissRequest) {
-                    Text("Cancel", color = OmniColors.TextPrimary)
+                    Text("Cancel", color = colors.textPrimary)
                 }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
+            containerColor = colors.backgroundElevated,
+            titleContentColor = colors.textPrimary,
         )
     }
 }

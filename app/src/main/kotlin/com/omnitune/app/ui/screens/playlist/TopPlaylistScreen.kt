@@ -121,6 +121,7 @@ import com.omnitune.app.ui.component.SongListItem
 import com.omnitune.app.ui.component.SortHeader
 import com.omnitune.app.ui.menu.SelectionSongMenu
 import com.omnitune.app.ui.menu.SongMenu
+import com.omnitune.app.ui.theme.OmniSpacing
 import com.omnitune.app.ui.theme.PlayerColorExtractor
 import com.omnitune.app.ui.utils.ItemWrapper
 import com.omnitune.app.ui.utils.backToMain
@@ -499,8 +500,8 @@ fun TopPlaylistScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = systemBarsTopPadding + 48.dp)
-                                    .padding(horizontal = 24.dp)
-                                    .padding(bottom = 16.dp)
+                                    .padding(horizontal = OmniSpacing.section)
+                                    .padding(bottom = OmniSpacing.medium)
                             ) {
                                 // Large centered artwork with shadow
                                 Box(
@@ -540,7 +541,7 @@ fun TopPlaylistScreen(
                                 // Metadata chips row
                                 @OptIn(ExperimentalLayoutApi::class)
                                 FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                    horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact, Alignment.CenterHorizontally),
                                 ) {
                                     // Song count chip
                                     Surface(
@@ -554,7 +555,7 @@ fun TopPlaylistScreen(
                                                 songs.orEmpty().size
                                             ),
                                             style = MaterialTheme.typography.labelMedium,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                            modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = 6.dp)
                                         )
                                     }
 
@@ -566,7 +567,7 @@ fun TopPlaylistScreen(
                                         Text(
                                             text = makeTimeString(likeLength * 1000L),
                                             style = MaterialTheme.typography.labelMedium,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                            modifier = Modifier.padding(horizontal = OmniSpacing.small, vertical = 6.dp)
                                         )
                                     }
 
@@ -585,7 +586,7 @@ fun TopPlaylistScreen(
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                            modifier = Modifier.padding(horizontal = OmniSpacing.compact, vertical = 6.dp)
                                         ) {
                                             Icon(
                                                 painter = androidx.compose.ui.res.painterResource(com.omnitune.app.R.drawable.ic_add),
@@ -606,7 +607,7 @@ fun TopPlaylistScreen(
                                 // Action buttons row
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                    horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small, Alignment.CenterHorizontally),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     // Download Button
@@ -749,7 +750,7 @@ fun TopPlaylistScreen(
                     item(key = "sortHeader") {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(start = 16.dp),
+                            modifier = Modifier.padding(start = OmniSpacing.medium),
                         ) {
                             SortHeader(
                                 sortType = sortType,

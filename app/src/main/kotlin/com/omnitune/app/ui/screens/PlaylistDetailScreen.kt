@@ -77,8 +77,11 @@ import com.omnitune.app.ui.component.EmptyPlaceholder
 import com.omnitune.app.ui.component.PlaylistTagChips
 import com.omnitune.app.ui.component.TrackMenuProvider
 import com.omnitune.app.ui.screens.playlist.PlaylistSuggestionsSection
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniColors
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniShapes
+import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
 import kotlin.math.roundToInt
 import com.omnitune.app.ui.screens.LibraryViewModel
@@ -159,7 +162,7 @@ fun PlaylistDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase)
+            .background(omniColors().background)
             .background(OmniColors.BackgroundGradient),
     ) {
         LazyColumn(
@@ -193,7 +196,7 @@ fun PlaylistDetailScreen(
                                 .aspectRatio(2.15f)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(OmniColors.GlassSurface)
-                                .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), RoundedCornerShape(18.dp)),
+                                .border(BorderStroke(1.dp, omniColors().borderSubtle), RoundedCornerShape(18.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
                             when {
@@ -209,7 +212,7 @@ fun PlaylistDetailScreen(
                                     Icon(
                                         painterResource(R.drawable.ic_list),
                                         contentDescription = null,
-                                        tint = OmniColors.TextMuted,
+                                        tint = omniColors().textTertiary,
                                         modifier = Modifier.size(72.dp),
                                     )
                                 }
@@ -221,7 +224,7 @@ fun PlaylistDetailScreen(
                         text = playlist?.playlist?.name ?: "Playlist",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
-                        color = OmniColors.TextPrimary,
+                        color = omniColors().textPrimary,
                         textAlign = TextAlign.Start,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -235,35 +238,35 @@ fun PlaylistDetailScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_list),
                             contentDescription = null,
-                            tint = OmniColors.OmniAccentPrimary,
+                            tint = omniColors().accent,
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(OmniSpacing.compact))
                         Text(
                             text = ownerLabel,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextSecondary,
+                            color = omniColors().textSecondary,
                             maxLines = 1,
                         )
                         Text(
                             text = " • ",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextMuted,
+                            color = omniColors().textTertiary,
                         )
                         Text(
                             text = "${songs.size} ${if (songs.size == 1) "song" else "songs"}",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextSecondary,
+                            color = omniColors().textSecondary,
                         )
                         Text(
                             text = " • ",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextMuted,
+                            color = omniColors().textTertiary,
                         )
                         Text(
                             text = durationLabel,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = OmniColors.TextSecondary,
+                            color = omniColors().textSecondary,
                         )
                     }
 
@@ -302,8 +305,8 @@ fun PlaylistDetailScreen(
                                 shape = OmniShapes.Pill,
                                 contentPadding = PaddingValues(horizontal = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = OmniColors.OmniAccentPrimary,
-                                    contentColor = OmniColors.TextOnAccent,
+                                    containerColor = omniColors().accent,
+                                    contentColor = omniColors().textOnAccent,
                                 ),
                             ) {
                                 Icon(painterResource(R.drawable.ic_play_arrow), contentDescription = null, modifier = Modifier.size(20.dp))
@@ -325,8 +328,8 @@ fun PlaylistDetailScreen(
                                 shape = OmniShapes.Pill,
                                 contentPadding = PaddingValues(horizontal = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = OmniColors.SurfaceRaised,
-                                    contentColor = OmniColors.TextPrimary,
+                                    containerColor = omniColors().surfaceRaised,
+                                    contentColor = omniColors().textPrimary,
                                 ),
                             ) {
                                 Icon(painterResource(R.drawable.ic_shuffle), contentDescription = null, modifier = Modifier.size(20.dp))
@@ -337,7 +340,7 @@ fun PlaylistDetailScreen(
                                 icon = if (playlist?.playlist?.bookmarkedAt != null) R.drawable.ic_favorite else R.drawable.ic_favorite_border,
                                 contentDescription = if (playlist?.playlist?.bookmarkedAt != null) "Unsave playlist" else "Save playlist",
                                 onClick = { viewModel.toggleBookmark() },
-                                tint = if (playlist?.playlist?.bookmarkedAt != null) OmniColors.Hot else OmniColors.TextPrimary,
+                                tint = if (playlist?.playlist?.bookmarkedAt != null) omniColors().accent else omniColors().textPrimary,
                             )
                             PlaylistRoundAction(
                                 icon = R.drawable.ic_download,
@@ -367,7 +370,7 @@ fun PlaylistDetailScreen(
                             Button(
                                 onClick = onAddSongs,
                                 shape = OmniShapes.Medium,
-                                colors = ButtonDefaults.buttonColors(containerColor = OmniColors.OmniAccentPrimary),
+                                colors = ButtonDefaults.buttonColors(containerColor = omniColors().accent),
                             ) {
                                 Icon(
                                     painterResource(R.drawable.ic_add),
@@ -392,14 +395,14 @@ fun PlaylistDetailScreen(
                         Text(
                             text = "Custom order",
                             style = MaterialTheme.typography.titleMedium,
-                            color = OmniColors.TextPrimary,
+                            color = omniColors().textPrimary,
                             modifier = Modifier.weight(1f),
                         )
                         if (isEditable) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_drag_handle),
                                 contentDescription = "Drag songs to reorder",
-                                tint = OmniColors.TextSecondary,
+                                tint = omniColors().textSecondary,
                                 modifier = Modifier.size(22.dp),
                             )
                         }
@@ -542,19 +545,19 @@ fun PlaylistDetailScreen(
                     .size(46.dp)
                     .clip(CircleShape)
                     .background(OmniColors.OmniGlassMedium)
-                    .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+                    .border(BorderStroke(1.dp, omniColors().borderSubtle), CircleShape),
             ) {
                 Icon(
                     painterResource(R.drawable.ic_arrow_back),
                     contentDescription = "Back",
-                    tint = OmniColors.TextPrimary,
+                    tint = omniColors().textPrimary,
                 )
             }
             Text(
                 text = playlist?.playlist?.name ?: "Playlist",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -574,14 +577,14 @@ fun PlaylistDetailScreen(
                         Icon(
                             painterResource(R.drawable.ic_more_vert),
                             contentDescription = "More options",
-                            tint = OmniColors.TextSecondary,
+                            tint = omniColors().textSecondary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
                     androidx.compose.material3.DropdownMenu(
                         expanded = showPlaylistMenu,
                         onDismissRequest = { showPlaylistMenu = false },
-                        modifier = Modifier.background(OmniColors.OmniBackgroundElevated),
+                        modifier = Modifier.background(omniColors().backgroundElevated),
                     ) {
                         androidx.compose.material3.DropdownMenuItem(
                             text = { Text("Add songs") },
@@ -605,7 +608,7 @@ fun PlaylistDetailScreen(
                             },
                         )
                         androidx.compose.material3.DropdownMenuItem(
-                            text = { Text("Delete playlist", color = OmniColors.Error) },
+                            text = { Text("Delete playlist", color = omniColors().error) },
                             onClick = {
                                 showPlaylistMenu = false
                                 showDeleteDialog = true
@@ -617,11 +620,11 @@ fun PlaylistDetailScreen(
                 Icon(
                     painterResource(R.drawable.ic_list),
                     contentDescription = null,
-                    tint = OmniColors.Hot,
+                    tint = omniColors().accent,
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
-                        .background(OmniColors.Hot.copy(alpha = 0.16f))
+                        .background(omniColors().accent.copy(alpha = 0.16f))
                         .padding(12.dp),
                 )
             }
@@ -638,13 +641,13 @@ fun PlaylistDetailScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(OmniColors.OmniBackgroundElevated)
+                    .background(omniColors().backgroundElevated)
                     .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.compact),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = "${selectedSongs.size} selected",
-                    color = OmniColors.TextPrimary,
+                    color = omniColors().textPrimary,
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
@@ -653,7 +656,7 @@ fun PlaylistDetailScreen(
                 }) {
                     Text(
                         if (selectedSongs.size == songs.size) "Deselect All" else "Select All",
-                        color = OmniColors.OmniAccentPrimary,
+                        color = omniColors().accent,
                     )
                 }
                 if (selectedSongs.isNotEmpty()) {
@@ -663,14 +666,14 @@ fun PlaylistDetailScreen(
                         selectedSongs = emptySet()
                         selectionMode = false
                     }) {
-                        Text("Remove", color = OmniColors.Error)
+                        Text("Remove", color = omniColors().error)
                     }
                     Spacer(modifier = Modifier.width(OmniSpacing.small))
                     TextButton(onClick = {
                         selectionMode = false
                         selectedSongs = emptySet()
                     }) {
-                        Text("Cancel", color = OmniColors.TextSecondary)
+                        Text("Cancel", color = omniColors().textSecondary)
                     }
                 }
             }
@@ -708,17 +711,17 @@ fun PlaylistDetailScreen(
                         isError = nameError != null,
                         placeholder = { Text("Playlist name") },
                         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OmniColors.OmniAccentPrimary,
-                            unfocusedBorderColor = OmniColors.OmniGlassBorderSubtle,
-                            focusedTextColor = OmniColors.TextPrimary,
-                            unfocusedTextColor = OmniColors.TextPrimary,
+                            focusedBorderColor = omniColors().accent,
+                            unfocusedBorderColor = omniColors().borderSubtle,
+                            focusedTextColor = omniColors().textPrimary,
+                            unfocusedTextColor = omniColors().textPrimary,
                         ),
                     )
                     if (nameError != null) {
                         Text(
                             text = nameError,
                             style = MaterialTheme.typography.bodySmall,
-                            color = OmniColors.Error,
+                            color = omniColors().error,
                             modifier = Modifier.padding(top = OmniSpacing.compact),
                         )
                     }
@@ -737,20 +740,20 @@ fun PlaylistDetailScreen(
                     Text(
                         "Rename",
                         color = if (trimmedName.isNotBlank() && trimmedName.length <= 80) {
-                            OmniColors.Hot
+                            omniColors().accent
                         } else {
-                            OmniColors.TextSecondary
+                            omniColors().textSecondary
                         },
                     )
                 }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Cancel", color = OmniColors.TextPrimary)
+                    Text("Cancel", color = omniColors().textPrimary)
                 }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
+            containerColor = omniColors().backgroundElevated,
+            titleContentColor = omniColors().textPrimary,
         )
     }
 
@@ -767,17 +770,17 @@ fun PlaylistDetailScreen(
                         onBack()
                     },
                 ) {
-                    Text("Delete", color = OmniColors.Error)
+                    Text("Delete", color = omniColors().error)
                 }
             },
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = OmniColors.TextPrimary)
+                    Text("Cancel", color = omniColors().textPrimary)
                 }
             },
-            containerColor = OmniColors.OmniBackgroundElevated,
-            titleContentColor = OmniColors.TextPrimary,
-            textContentColor = OmniColors.TextSecondary,
+            containerColor = omniColors().backgroundElevated,
+            titleContentColor = omniColors().textPrimary,
+            textContentColor = omniColors().textSecondary,
         )
     }
 }
@@ -790,7 +793,7 @@ private fun PlaylistRoundAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     prominent: Boolean = false,
-    tint: androidx.compose.ui.graphics.Color = if (prominent) OmniColors.OmniBackgroundBase else OmniColors.TextPrimary,
+    tint: androidx.compose.ui.graphics.Color = if (prominent) omniColors().background else omniColors().textPrimary,
 ) {
     IconButton(
         onClick = onClick,
@@ -801,16 +804,16 @@ private fun PlaylistRoundAction(
             .background(
                 when {
                     !enabled -> OmniColors.OmniGlassMedium.copy(alpha = 0.45f)
-                    prominent -> OmniColors.OmniAccentPrimary
+                    prominent -> omniColors().accent
                     else -> OmniColors.OmniGlassMedium
                 },
             )
-            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape),
+            .border(BorderStroke(1.dp, omniColors().borderSubtle), CircleShape),
     ) {
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            tint = if (enabled) tint else OmniColors.TextMuted,
+            tint = if (enabled) tint else omniColors().textTertiary,
             modifier = Modifier.size(if (prominent) 28.dp else 24.dp),
         )
     }
@@ -825,21 +828,21 @@ private fun PlaylistInfoPill(
         modifier = Modifier
             .clip(CircleShape)
             .background(OmniColors.OmniGlassMedium)
-            .border(BorderStroke(1.dp, OmniColors.OmniGlassBorderSubtle), CircleShape)
+            .border(BorderStroke(1.dp, omniColors().borderSubtle), CircleShape)
             .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             painterResource(icon),
             contentDescription = null,
-            tint = OmniColors.TextSecondary,
+            tint = omniColors().textSecondary,
             modifier = Modifier.size(16.dp),
         )
         Spacer(modifier = Modifier.width(OmniSpacing.compact))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = OmniColors.TextSecondary,
+            color = omniColors().textSecondary,
         )
     }
 }
@@ -879,7 +882,7 @@ private fun PlaylistSongRow(
                 onClick = onClick,
             )
             .background(
-                if (isSelected) OmniColors.OmniAccentPrimary.copy(alpha = 0.12f)
+                if (isSelected) omniColors().accent.copy(alpha = 0.12f)
                 else androidx.compose.ui.graphics.Color.Transparent
             )
             .padding(8.dp),
@@ -890,8 +893,8 @@ private fun PlaylistSongRow(
                 checked = isSelected,
                 onCheckedChange = { onClick() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = OmniColors.OmniAccentPrimary,
-                    uncheckedColor = OmniColors.TextSecondary,
+                    checkedColor = omniColors().accent,
+                    uncheckedColor = omniColors().textSecondary,
                 ),
                 modifier = Modifier.size(24.dp),
             )
@@ -900,7 +903,7 @@ private fun PlaylistSongRow(
         Text(
             text = "${index + 1}",
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextMuted,
+            color = omniColors().textTertiary,
             modifier = Modifier.width(28.dp),
         )
         Box(
@@ -925,14 +928,14 @@ private fun PlaylistSongRow(
                 text = playlistSong.song.song.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = OmniColors.TextPrimary,
+                color = omniColors().textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = playlistSong.song.artists.joinToString(", ") { it.name },
                 style = MaterialTheme.typography.bodySmall,
-                color = OmniColors.TextSecondary,
+                color = omniColors().textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -942,7 +945,7 @@ private fun PlaylistSongRow(
             Icon(
                 painter = painterResource(R.drawable.ic_drag_handle),
                 contentDescription = "Drag to reorder",
-                tint = OmniColors.TextMuted,
+                tint = omniColors().textTertiary,
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -958,7 +961,7 @@ private fun PlaylistSongRow(
                 Icon(
                     painter = painterResource(R.drawable.ic_more_vert),
                     contentDescription = "More options",
-                    tint = OmniColors.TextSecondary,
+                    tint = omniColors().textSecondary,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -976,7 +979,7 @@ private fun PlaylistSongRow(
         }
     }
     HorizontalDivider(
-        color = OmniColors.OmniGlassBorderSubtle,
+        color = omniColors().borderSubtle,
         thickness = 0.5.dp,
         modifier = Modifier.padding(start = 48.dp),
     )
