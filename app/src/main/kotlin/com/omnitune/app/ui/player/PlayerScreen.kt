@@ -350,6 +350,13 @@ fun PlayerScreen(
                         playerConnection = playerConnection,
                         accentColor = controlAccent,
                     )
+                    PlayerActionsRow(
+                        playerConnection = playerConnection,
+                        onOpenQueue = onOpenQueue,
+                        onShowSleepTimer = { showSleepTimerDialog = true },
+                        onShowOptions = { showOptionsSheet = true },
+                        onOpenLyrics = { showLyricsSheet = true },
+                    )
                     if (lyricsUiState is LyricsUiState.Success) {
                         Spacer(modifier = Modifier.height(OmniSpacing.micro))
                         PlayerLyricsPreview(
