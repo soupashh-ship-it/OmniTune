@@ -1,0 +1,224 @@
+package com.omnitune.app.ui.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.omnitune.app.models.PlaylistDisplayItem
+import com.omnitune.app.ui.theme.GradientEnd
+import com.omnitune.app.ui.theme.GradientStart
+import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.ui.utils.ImageUtils
+import com.omnitune.app.ui.utils.dpadFocusable
+
+/**
+ * Playlist card with image overlay and gradient - M3E.
+ */
+@Composable
+fun PlaylistCard(
+    playlist: PlaylistDisplayItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .width(160.dp)
+            .dpadFocusable(onClick = onClick, shape = SquircleShape),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = SquircleShape,
+        tonalElevation = 1.dp
+    ) {
+        Column {
+            // Playlist Image
+            Box(
+                modifier = Modifier
+                    .size(160.dp)
+                    .clip(SquircleShape)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(GradientStart, GradientEnd)
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (playlist.thumbnailUrl != null) {
+                    val context = LocalContext.current
+                    val highResUrl = remember(playlist.thumbnailUrl) {
+                        ImageUtils.getHighResThumbnailUrl(playlist.thumbnailUrl, size = 544)
+                            ?: playlist.thumbnailUrl
+                    }
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(highResUrl)
+                            .crossfade(true)
+                            .size(360)
+                            .build(),
+                        contentDescription = playlist.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    // Gradient overlay
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.5f)
+                                    )
+                                )
+                            )
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.PlaylistPlay,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+            
+            // Info
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = playlist.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = playlist.uploaderName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Large feature playlist card for home screen - M3E.
+ */
+@Composable
+fun FeaturedPlaylistCard(
+    playlist: PlaylistDisplayItem,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .dpadFocusable(onClick = onClick, shape = SquircleShape),
+        shape = SquircleShape,
+        tonalElevation = 2.dp
+    ) {
+        Box {
+            // Background Image
+            if (playlist.thumbnailUrl != null) {
+                val context = LocalContext.current
+                val highResUrl = remember(playlist.thumbnailUrl) {
+                    ImageUtils.getHighResThumbnailUrl(playlist.thumbnailUrl, size = 720)
+                        ?: playlist.thumbnailUrl
+                }
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(highResUrl)
+                        .crossfade(true)
+                        .size(720)
+                        .build(),
+                    contentDescription = playlist.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(GradientStart, GradientEnd)
+                            )
+                        )
+                )
+            }
+            
+            // Gradient overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            ),
+                            startY = 50f
+                        )
+                    )
+            )
+            
+            // Content
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = playlist.name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    letterSpacing = (-0.5).sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = playlist.uploaderName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+

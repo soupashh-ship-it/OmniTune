@@ -228,28 +228,25 @@ private fun LibraryTabChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val containerBg = if (selected) omniColors().accent.copy(alpha = 0.14f) else OmniColors.OmniGlassSubtle
-    val borderColor = if (selected) omniColors().accent.copy(alpha = 0.40f) else omniColors().hairline
-    val textColor = if (selected) omniColors().accent else omniColors().textSecondary
-
-    Box(
-        modifier = modifier
-            .height(34.dp)
-            .clip(OmniShapes.Pill)
-            .background(containerBg)
-            .border(0.5.dp, borderColor, OmniShapes.Pill)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp),
-        contentAlignment = Alignment.Center,
+    androidx.compose.material3.Surface(
+        onClick = onClick,
+        shape = com.omnitune.app.ui.theme.PillShape,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.height(36.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            color = textColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Box(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 @Composable
@@ -304,7 +301,7 @@ private fun LibraryQuickAccessItem(
         Box(
             modifier = Modifier
                 .size(112.dp)
-                .clip(OmniShapes.ArtworkMedium)
+                .clip(com.omnitune.app.ui.theme.SquircleShape)
                 .background(
                     if (thumbnailUrl.isNullOrBlank()) {
                         Brush.linearGradient(
@@ -323,7 +320,7 @@ private fun LibraryQuickAccessItem(
                         )
                     }
                 )
-                .border(0.5.dp, omniColors().hairline, OmniShapes.ArtworkMedium),
+                .border(0.5.dp, omniColors().hairline, com.omnitune.app.ui.theme.SquircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (!thumbnailUrl.isNullOrBlank()) {

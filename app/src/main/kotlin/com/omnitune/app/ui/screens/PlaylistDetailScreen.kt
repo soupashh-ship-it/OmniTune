@@ -194,9 +194,9 @@ fun PlaylistDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(2.15f)
-                                .clip(RoundedCornerShape(18.dp))
+                                .clip(com.omnitune.app.ui.theme.SquircleShape)
                                 .background(OmniColors.GlassSurface)
-                                .border(BorderStroke(1.dp, omniColors().borderSubtle), RoundedCornerShape(18.dp)),
+                                .border(BorderStroke(1.dp, omniColors().borderSubtle), com.omnitune.app.ui.theme.SquircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             when {

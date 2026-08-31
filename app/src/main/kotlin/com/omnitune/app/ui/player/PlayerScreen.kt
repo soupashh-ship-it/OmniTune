@@ -126,6 +126,21 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.ui.component.rememberDominantColors
+import com.omnitune.app.ui.component.WaveformSeeker
+import com.omnitune.app.ui.player.components.AlbumArtwork
+import com.omnitune.app.ui.player.components.PlaybackControls
+import com.omnitune.app.ui.player.components.PlayerActionChips
+import com.omnitune.app.ui.player.components.PlayerTopBar
+import com.omnitune.app.ui.player.components.QueueHandle
+import com.omnitune.app.ui.player.components.ModernQueueView
+import com.omnitune.app.ui.player.components.SongInfoSection
+import com.omnitune.app.ui.player.components.TimeLabelsWithQuality
+import androidx.compose.foundation.layout.aspectRatio
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.extensions.metadata
 
 private const val ARTWORK_REQUEST_SIZE = 800
 
@@ -227,149 +242,202 @@ fun PlayerScreen(
 
 
 
+    val suvSong = remember(mediaMetadata) { mediaMetadata?.toSuvSong() }
+    val dominantColors = rememberDominantColors(suvSong?.thumbnailUrl)
+    var currentPosition by remember { mutableLongStateOf(0L) }
+    var duration by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playerConnection, isPlaying) {
+        while (true) {
+            val pc = playerConnection
+            if (pc != null) {
+                currentPosition = pc.player.currentPosition
+                val d = pc.player.duration
+                duration = if (d > 0) d else (mediaMetadata?.duration ?: 0) * 1000L
+            }
+            delay(250)
+        }
+    }
+    val progressProvider: () -> Float = {
+        if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+    }
+    var showQueueScreen by remember { mutableStateOf(false) }
+
+    if (showQueueScreen) {
+        val player = playerConnection?.player
+        val queueSongs = remember(player, player?.mediaItemCount) {
+            if (player != null) {
+                (0 until player.mediaItemCount).mapNotNull { idx ->
+                    player.getMediaItemAt(idx).metadata?.toSuvSong()
+                }
+            } else emptyList()
+        }
+        val currentIndex = player?.currentMediaItemIndex ?: 0
+        ModernQueueView(
+            currentSong = suvSong,
+            queue = queueSongs,
+            upNextSongs = if (queueSongs.isNotEmpty()) queueSongs.drop((currentIndex + 1).coerceAtLeast(0)) else emptyList(),
+            selectedQueueIndices = emptySet(),
+            onToggleSelection = {},
+            onSelectAll = {},
+            onClearSelection = {},
+            currentIndex = currentIndex,
+            isPlaying = isPlaying,
+            shuffleEnabled = shuffleEnabled,
+            repeatMode = repeatMode,
+            isAutoplayEnabled = false,
+            isFavorite = mediaMetadata?.liked == true,
+            onBack = { showQueueScreen = false },
+            onSongClick = { idx -> player?.seekToDefaultPosition(idx) },
+            onPlayPause = { player?.let { if (it.isPlaying) it.pause() else it.play() } },
+            onToggleShuffle = { player?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } },
+            onToggleRepeat = { playerConnection?.toggleRepeatMode() },
+            onToggleAutoplay = {},
+            onToggleLike = { playerConnection?.toggleLike() },
+            onMoreClick = { showOptionsSheet = true },
+            onMoveItem = { from, to -> player?.moveMediaItem(from, to) },
+            onRemoveItems = { list -> list.sortedDescending().forEach { player?.removeMediaItem(it) } },
+            onSaveAsPlaylist = { _, _, _, _ -> },
+            onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+            onPlayNext = { songs -> songs.forEach { s -> playerConnection?.playNext(s.toMediaMetadata().toMediaItem()) } },
+            onAddToQueue = { songs -> songs.forEach { s -> playerConnection?.addToQueue(s.toMediaMetadata().toMediaItem()) } },
+            onClearQueue = { player?.clearMediaItems() },
+            dominantColors = dominantColors,
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .then(playerBackgroundModifier)
+            .background(dominantColors.primary)
     ) {
-
-        BoxWithConstraints(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            val ultraCompactPlayer = maxHeight < 720.dp
-            val compactPlayer = maxHeight < 860.dp
-            val horizontalPadding = if (maxWidth < 380.dp) OmniSpacing.medium else OmniSpacing.section
-            val compactDesign = playerDesignStyle == OmniPlayerDesignStyle.COMPACT
-            val immersiveDesign = playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE
-            val verticalPadding = when {
-                ultraCompactPlayer || compactDesign -> OmniSpacing.micro
-                compactPlayer -> OmniSpacing.compact
-                else -> OmniSpacing.medium
-            }
-            val mediumGap = when {
-                ultraCompactPlayer || compactDesign -> OmniSpacing.micro
-                compactPlayer -> OmniSpacing.compact
-                else -> OmniSpacing.medium
-            }
-            val largeGap = when {
-                hidePlayerThumbnail -> OmniSpacing.medium
-                ultraCompactPlayer || compactDesign -> OmniSpacing.compact
-                compactPlayer -> OmniSpacing.small
-                immersiveDesign -> OmniSpacing.hero
-                else -> OmniSpacing.large
-            }
-            val bottomPadding = if (ultraCompactPlayer || compactDesign) OmniSpacing.large else OmniSpacing.hero
-            val baseArtworkHeight = when {
-                maxHeight < 680.dp -> 220.dp
-                maxHeight < 760.dp -> 248.dp
-                compactPlayer -> 220.dp
-                // The reference keeps the artwork compact enough to show the
-                // transport controls and the integrated lyrics panel together.
-                else -> 248.dp
-            }
-            val artworkHeight = when {
-                compactDesign -> (baseArtworkHeight - 44.dp).coerceAtLeast(188.dp)
-                immersiveDesign -> (baseArtworkHeight + 28.dp).coerceAtMost(370.dp)
-                else -> baseArtworkHeight
-            }
-            val artworkWidthFraction = when {
-                maxWidth < 380.dp -> 0.90f
-                compactDesign -> 0.78f
-                immersiveDesign -> 0.92f
-                compactPlayer -> 0.60f
-                else -> 0.62f
-            }
+            PlayerTopBar(
+                onBack = onDismiss,
+                dominantColors = dominantColors,
+                onMoreClick = { showOptionsSheet = true },
+            )
+
+            Spacer(modifier = Modifier.weight(0.18f))
 
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                // Start at the top so the integrated lyrics card remains visible
-                // in the initial fullscreen viewport opened from the mini player.
-                contentAlignment = Alignment.TopCenter,
+                    .fillMaxWidth()
+                    .weight(8f, fill = false)
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = horizontalPadding)
-                        .padding(top = verticalPadding, bottom = bottomPadding),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    PlayerTopBar(
-                        title = headerTitle,
-                        onDismiss = onDismiss,
-                        onOpenQueue = onOpenQueue,
-                        onShowOptions = { showOptionsSheet = true },
-                        hasQueue = playerConnection != null,
+                AlbumArtwork(
+                    imageUrl = suvSong?.thumbnailUrl,
+                    title = suvSong?.title,
+                    dominantColors = dominantColors,
+                    isLoading = playbackState == Player.STATE_BUFFERING,
+                    isPlaying = isPlaying,
+                    isRotatingEnabled = false,
+                    onSwipeLeft = { playerConnection?.seekToNext() },
+                    onSwipeRight = { playerConnection?.seekToPrevious() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(0.4f))
+
+            SongInfoSection(
+                song = suvSong,
+                isFavorite = mediaMetadata?.liked == true,
+                onFavoriteClick = { playerConnection?.toggleLike() },
+                onMoreClick = { showOptionsSheet = true },
+                onArtistClick = { artistId -> onNavigateToArtist?.invoke(artistId) },
+                onAlbumClick = { albumId -> onNavigateToAlbum?.invoke(albumId) },
+                dominantColors = dominantColors,
+                isLoading = playbackState == Player.STATE_BUFFERING,
+                compact = false,
+                sleepTimerOption = if (sleepTimerRunning) com.omnitune.app.models.SleepTimerOption.FIFTEEN_MIN else com.omnitune.app.models.SleepTimerOption.OFF,
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            PlayerActionChips(
+                isFavorite = mediaMetadata?.liked == true,
+                isDisliked = false,
+                onToggleLike = { playerConnection?.toggleLike() },
+                onToggleDislike = {},
+                onLyricsClick = { showLyricsSheet = true },
+                onRelatedClick = {},
+                onDownloadClick = {},
+                downloadState = com.omnitune.app.models.DownloadState.NOT_DOWNLOADED,
+                dominantColors = dominantColors,
+                onSleepTimerClick = { showSleepTimerDialog = true },
+                onSpeedClick = {},
+                playbackSpeed = playerConnection?.playbackParameters?.value?.speed ?: 1.0f,
+            )
+
+            Spacer(modifier = Modifier.weight(0.15f))
+
+            Box(
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (playbackState == Player.STATE_BUFFERING) {
+                    com.omnitune.app.ui.player.components.M3ESeekbarShimmer(
+                        isVisible = true,
+                        dominantColors = dominantColors,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(mediumGap))
-                    if (!hidePlayerThumbnail) {
-                        ArtworkHero(
-                            mediaMetadata = mediaMetadata,
-                            isPlaying = isPlaying,
-                            height = artworkHeight,
-                            widthFraction = artworkWidthFraction,
-                            accentColor = dynamicAccent,
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(OmniSpacing.medium))
-                    MetadataBlock(
-                        playerConnection = playerConnection,
-                        lyricsUiState = lyricsUiState,
-                        lyricAccentColor = dynamicPalette.accent,
-                        onOpenLyrics = { showLyricsSheet = true },
-                        onShare = {
-                            val videoId = mediaMetadata?.id
-                            val titleText = mediaMetadata?.title
-                            if (!videoId.isNullOrBlank()) {
-                                val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(android.content.Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=$videoId")
-                                    if (titleText != null) putExtra(android.content.Intent.EXTRA_SUBJECT, titleText)
-                                }
-                                context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
+                } else {
+                    WaveformSeeker(
+                        progressProvider = progressProvider,
+                        isPlaying = isPlaying,
+                        onSeek = { fraction ->
+                            if (duration > 0) {
+                                playerConnection?.player?.seekTo((fraction * duration).toLong())
                             }
                         },
+                        modifier = Modifier.fillMaxWidth(),
+                        activeColor = dominantColors.accent,
+                        inactiveColor = dominantColors.onBackground.copy(alpha = 0.3f),
+                        duration = duration,
+                        contentPadding = 0.dp
                     )
-                    Spacer(modifier = Modifier.height(OmniSpacing.micro))
-                    PlayerSeekBar(
-                        playerConnection = playerConnection,
-                        isSeeking = isSeeking,
-                        accentColor = controlAccent,
-                        sliderStyle = sliderStyle,
-                    )
-                    Spacer(modifier = Modifier.height(largeGap))
-                    PlayerControlRow(
-                        isPlaying = isPlaying,
-                        playbackState = playbackState,
-                        shuffleEnabled = shuffleEnabled,
-                        repeatMode = repeatMode,
-                        playerConnection = playerConnection,
-                        accentColor = controlAccent,
-                    )
-                    PlayerActionsRow(
-                        playerConnection = playerConnection,
-                        onOpenQueue = onOpenQueue,
-                        onShowSleepTimer = { showSleepTimerDialog = true },
-                        onShowOptions = { showOptionsSheet = true },
-                        onOpenLyrics = { showLyricsSheet = true },
-                    )
-                    if (lyricsUiState is LyricsUiState.Success) {
-                        Spacer(modifier = Modifier.height(OmniSpacing.micro))
-                        PlayerLyricsPreview(
-                            lines = (lyricsUiState as LyricsUiState.Success).lines,
-                            playerConnection = playerConnection,
-                            onOpenLyrics = { showLyricsSheet = true },
-                            onOpenQueue = onOpenQueue,
-                        )
-                    }
                 }
             }
+
+            TimeLabelsWithQuality(
+                currentPositionProvider = { currentPosition },
+                durationProvider = { duration },
+                dominantColors = dominantColors,
+                horizontalPadding = 0.dp
+            )
+
+            Spacer(modifier = Modifier.weight(0.08f))
+
+            PlaybackControls(
+                isPlaying = isPlaying,
+                shuffleEnabled = shuffleEnabled,
+                repeatMode = repeatMode,
+                onPlayPause = { playerConnection?.player?.let { if (it.isPlaying) it.pause() else it.play() } },
+                onNext = { playerConnection?.seekToNext() },
+                onPrevious = { playerConnection?.seekToPrevious() },
+                onShuffleToggle = { playerConnection?.player?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } },
+                onRepeatToggle = { playerConnection?.toggleRepeatMode() },
+                dominantColors = dominantColors,
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            QueueHandle(
+                onClick = { showQueueScreen = true },
+                dominantColors = dominantColors
+            )
         }
-    val context = androidx.compose.ui.platform.LocalContext.current
+    }
     if (showOptionsSheet) {
         PlayerOptionsBottomSheet(
             playerConnection = playerConnection,
@@ -517,7 +585,6 @@ fun PlayerScreen(
                 }
             }
         )
-    }
     }
 }
 

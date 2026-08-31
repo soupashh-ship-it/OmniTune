@@ -141,7 +141,7 @@ fun SearchResultRow(
     val context = LocalContext.current
     val interactionSource = remember { MutableInteractionSource() }
     var menuExpanded by remember { mutableStateOf(false) }
-    val artworkShape = if (circular) RoundedCornerShape(999.dp) else OmniShapes.ArtworkSmall
+    val artworkShape = if (circular) androidx.compose.foundation.shape.CircleShape else com.omnitune.app.ui.theme.SquircleShape
     val thumbnailModel = remember(thumbnailUrl) {
         thumbnailUrl?.let {
             ImageRequest.Builder(context)
@@ -156,8 +156,8 @@ fun SearchResultRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(OmniChrome.ComfortableRowHeight)
-            .clip(OmniShapes.Medium)
-            .background(omniColors().surface.copy(alpha = 0.42f))
+            .clip(com.omnitune.app.ui.theme.SquircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.6f))
             .then(
                 if (onClick != null) {
                     Modifier

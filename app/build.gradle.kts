@@ -50,8 +50,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 110
-        versionName = "1.1.0"
+        versionCode = 120
+        versionName = "1.2.0-pre2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -193,6 +193,7 @@ dependencies {
     implementation(libs.compose.ui.util)
     implementation(libs.compose.ui.text.googlefonts)
     implementation(libs.compose.animation)
+    implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(libs.viewmodel)

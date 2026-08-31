@@ -177,10 +177,10 @@ fun HomeDiscoveryRoute(
             item(contentType = "header") {
                 Column {
                     Spacer(modifier = Modifier.statusBarsPadding())
-                    HomeTopHeader(
+                    ProfileHeader(
                         onSearch = onNavigateToSearch,
                         onSettings = onNavigateToSettings,
-                        modifier = Modifier.padding(horizontal = OmniSpacing.compact),
+                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
             }
@@ -371,57 +371,74 @@ private fun HomeAmbientBackground(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun HomeTopHeader(
+private fun ProfileHeader(
     onSearch: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val greeting = remember {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 5..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            in 17..21 -> "Good evening"
+            else -> "Good night"
+        }
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = OmniSpacing.compact),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.chip),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .clip(OmniShapes.Small)
-                    .background(omniColors().accent.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center,
+                    .size(36.dp)
+                    .clip(com.omnitune.app.ui.theme.SquircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_omnitune_logo),
                     contentDescription = "OmniTune",
-                    tint = omniColors().accent,
-                    modifier = Modifier.size(OmniChrome.IconMedium),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = "OmniTune",
-                    style = omniTypeBrand(),
-                    color = omniColors().textPrimary,
-                    maxLines = 1,
-                )
-                Text(
-                    text = "DISCOVER & PLAY",
-                    style = omniTypeEyebrow().copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
-                    color = omniColors().textTertiary,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
+
         Row(
-            horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            HeaderIconButton(icon = R.drawable.ic_search, contentDescription = "Search", onClick = onSearch)
-            HeaderIconButton(icon = R.drawable.ic_settings, contentDescription = "Settings", onClick = onSettings)
+            androidx.compose.material3.IconButton(onClick = onSearch) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_search),
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            androidx.compose.material3.IconButton(onClick = onSettings) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_settings),
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }

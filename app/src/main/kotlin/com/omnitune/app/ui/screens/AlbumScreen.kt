@@ -164,7 +164,7 @@ fun AlbumScreen(
                                 contentDescription = album.title,
                                 modifier = Modifier
                                     .size(160.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(com.omnitune.app.ui.theme.SquircleShape)
                                     .aspectRatio(1f),
                                 contentScale = ContentScale.Crop,
                             )
@@ -279,7 +279,7 @@ private fun LocalAlbumContent(
                 AsyncImage(
                     model = album.thumbnailUrl,
                     contentDescription = album.title,
-                    modifier = Modifier.size(144.dp).clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier.size(144.dp).clip(com.omnitune.app.ui.theme.SquircleShape),
                     contentScale = ContentScale.Crop,
                 )
                 Column(modifier = Modifier.weight(1f)) {

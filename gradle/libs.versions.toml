@@ -61,6 +61,7 @@ compose-ui-util = { module = "androidx.compose.ui:ui-util" }
 compose-ui-text-googlefonts = { module = "androidx.compose.ui:ui-text-google-fonts" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-animation = { module = "androidx.compose.animation:animation-graphics" }
+compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 

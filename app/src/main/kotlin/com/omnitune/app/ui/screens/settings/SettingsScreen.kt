@@ -357,17 +357,13 @@ fun SettingsScreen(
             }
 
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(OmniShapes.Medium)
-                        .background(OmniColors.SurfacePanel)
-                        .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Medium),
-                ) {
-                    section.items.forEachIndexed { index, item ->
-                        SettingsRowItem(
-                            item = item,
-                            showDivider = index < section.items.size - 1,
+                com.omnitune.app.ui.component.SettingsCard {
+                    section.items.forEach { item ->
+                        com.omnitune.app.ui.component.SettingsRow(
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            onClick = item.onClick,
+                            showChevron = true,
                         )
                     }
                 }

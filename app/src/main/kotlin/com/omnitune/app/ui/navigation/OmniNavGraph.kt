@@ -94,7 +94,7 @@ import com.omnitune.app.ui.screens.settings.SettingsSubScreenScaffold
 import com.omnitune.app.ui.screens.settings.StorageSettings
 import com.omnitune.app.ui.screens.settings.UpdatesSettings
 import com.omnitune.app.ui.screens.StatsScreen
-import com.omnitune.app.ui.shell.GlassBottomDock
+import com.omnitune.app.ui.component.ExpressiveBottomNav
 import com.omnitune.app.ui.component.OmniChrome
 import com.omnitune.app.ui.theme.OmniMotion
 import com.omnitune.app.ui.theme.OmniSpacing
@@ -781,20 +781,31 @@ fun OmniTuneMainScreen(database: MusicDatabase) {
                 }
             }
             if (showBottomBar) {
-                GlassBottomDock(
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
+                val currentDestination = when {
+                    currentRoute?.startsWith("home") == true -> Destination.Home
+                    currentRoute?.startsWith("search") == true -> Destination.Search
+                    currentRoute?.startsWith("library") == true -> Destination.Library
+                    currentRoute?.startsWith("settings") == true -> Destination.Settings
+                    else -> Destination.Home
+                }
+                ExpressiveBottomNav(
+                    currentDestination = currentDestination,
+                    onDestinationChange = { dest ->
+                        val route = when (dest) {
+                            Destination.Home -> "home"
+                            Destination.Search -> "search"
+                            Destination.Library -> "library"
+                            Destination.Settings -> "settings"
+                            else -> "home"
+                        }
                         navController.navigate(route) {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 saveState = true
                             }
                             launchSingleTop = true
-                            // Restoring the saved Home state could reopen a nested Settings
-                            // destination when the user explicitly tapped the Home dock item.
                             restoreState = false
                         }
                     },
-                    pureBlack = pureBlack,
                 )
             }
         }
