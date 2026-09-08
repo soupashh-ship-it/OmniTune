@@ -49,7 +49,7 @@ data class LibraryUiState(
 
 enum class PlaylistExportFormat {
     M3U,
-    SUV
+    OMNI
 }
 
 @HiltViewModel
@@ -116,8 +116,8 @@ class LibraryViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 withContext(Dispatchers.IO) {
-                    val allSongs: List<Song> = database.songsByRowIdAsc().first().map { it.toSuvSong() }
-                    val liked: List<Song> = database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toSuvSong() }
+                    val allSongs: List<Song> = database.songsByRowIdAsc().first().map { it.toPresentationSong() }
+                    val liked: List<Song> = database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toPresentationSong() }
                     val dbAlbums = database.albums(com.omnitune.app.constants.AlbumSortType.CREATE_DATE, descending = true).first().map {
                         Album(
                             id = it.id,
@@ -209,7 +209,7 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val liked = withContext(Dispatchers.IO) {
-                    database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toSuvSong() }
+                    database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toPresentationSong() }
                 }
                 _uiState.update { it.copy(likedSongs = liked, likedSongsCount = liked.size) }
             } catch (e: Exception) {
@@ -298,7 +298,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 val body = when (format) {
                     PlaylistExportFormat.M3U -> buildM3UPlaylist(playlistName, songs)
-                    PlaylistExportFormat.SUV -> buildSuvPlaylist(playlistId, playlistName, songs)
+                    PlaylistExportFormat.OMNI -> buildOmniPlaylist(playlistId, playlistName, songs)
                 }
                 withContext(Dispatchers.IO) {
                     context.applicationContext.contentResolver.openOutputStream(uri)
@@ -314,7 +314,7 @@ class LibraryViewModel @Inject constructor(
     }
 
     private suspend fun playlistSongs(playlistId: String): List<Song> {
-        return database.playlistSongs(playlistId).first().map { it.song.toSuvSong() }
+        return database.playlistSongs(playlistId).first().map { it.song.toPresentationSong() }
     }
 
     val allTags: kotlinx.coroutines.flow.Flow<List<com.omnitune.app.db.entities.TagEntity>> =
@@ -432,7 +432,7 @@ private fun buildM3UPlaylist(playlistName: String, songs: List<Song>): String = 
     }
 }
 
-private fun buildSuvPlaylist(
+private fun buildOmniPlaylist(
     playlistId: String,
     playlistName: String,
     songs: List<Song>

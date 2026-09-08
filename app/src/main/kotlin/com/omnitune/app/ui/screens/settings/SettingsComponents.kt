@@ -5,16 +5,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.omnitune.app.ui.component.SettingsCard as SuvSettingsCard
-import com.omnitune.app.ui.component.SettingsRow as SuvSettingsRow
-import com.omnitune.app.ui.component.SettingsSwitchRow as SuvSettingsSwitchRow
+import com.omnitune.app.ui.component.SettingsCard as PortedSettingsCard
+import com.omnitune.app.ui.component.SettingsRow as PortedSettingsRow
+import com.omnitune.app.ui.component.SettingsSwitchRow as PortedSettingsSwitchRow
 
 @Composable
 fun SettingsCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    SuvSettingsCard(
+    PortedSettingsCard(
         modifier = modifier,
         content = content,
     )
@@ -28,7 +28,7 @@ fun SettingsNavRow(
     trailingText: String? = null,
     onClick: () -> Unit,
 ) {
-    SuvSettingsRow(
+    PortedSettingsRow(
         title = title,
         subtitle = subtitle,
         subtitleMaxLines = 2,
@@ -56,7 +56,7 @@ fun SettingsSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
 ) {
-    SuvSettingsSwitchRow(
+    PortedSettingsSwitchRow(
         title = title,
         checked = checked,
         onCheckedChange = onCheckedChange,

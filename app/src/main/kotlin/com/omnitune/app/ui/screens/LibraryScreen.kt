@@ -88,7 +88,7 @@ fun LibraryScreen(
             }
         }
     }
-    val exportSuvLauncher = rememberLauncherForActivityResult(
+    val exportOmniLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         val playlist = selectedPlaylist
@@ -98,7 +98,7 @@ fun LibraryScreen(
                 playlistId = playlist.getPlaylistId(),
                 playlistName = playlist.name,
                 uri = uri,
-                format = PlaylistExportFormat.SUV
+                format = PlaylistExportFormat.OMNI
             ) { _, message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
@@ -424,7 +424,7 @@ fun LibraryScreen(
                 isVisible = showExportDialog,
                 onDismiss = { showExportDialog = false },
                 onExportM3U = { exportM3ULauncher.launch(exportFileName(playlist.name, "m3u")) },
-                onExportSUV = { exportSuvLauncher.launch(exportFileName(playlist.name, "omni")) }
+                onExportOmni = { exportOmniLauncher.launch(exportFileName(playlist.name, "omni")) }
             )
         }
 

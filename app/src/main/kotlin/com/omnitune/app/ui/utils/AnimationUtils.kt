@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 
 /**
- * Staggered slide-up and fade-in entrance used by SuvMusic list sections.
+ * Staggered slide-up and fade-in entrance used by ported list sections.
  */
 fun Modifier.animateEnter(
     index: Int,

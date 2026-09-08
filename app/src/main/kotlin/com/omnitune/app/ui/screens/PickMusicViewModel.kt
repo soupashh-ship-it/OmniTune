@@ -12,7 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.models.Artist
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.ArtistItem
 import com.omnitune.innertube.models.SongItem
@@ -151,7 +151,7 @@ class PickMusicViewModel @Inject constructor() : ViewModel() {
                     }
                     ?.items
                     ?.filterIsInstance<SongItem>()
-                    ?.map { it.toSuvSong() }
+                    ?.map { it.toPresentationSong() }
                     ?.let(collectedForArtist::addAll)
             }
 
@@ -161,7 +161,7 @@ class PickMusicViewModel @Inject constructor() : ViewModel() {
                         .getOrThrow()
                         .items
                         .filterIsInstance<SongItem>()
-                        .map { it.toSuvSong() }
+                        .map { it.toPresentationSong() }
                 }.onSuccess { searchSongs ->
                     collectedForArtist.addAll(searchSongs)
                 }

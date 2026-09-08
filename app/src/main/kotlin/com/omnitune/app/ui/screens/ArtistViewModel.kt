@@ -16,8 +16,8 @@ import com.omnitune.app.models.ArtistCreditInfo
 import com.omnitune.app.models.ArtistPreview
 import com.omnitune.app.models.Playlist
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvAlbum
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationAlbum
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.ui.navigation.Destination
 import com.omnitune.innertube.YouTube
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -114,22 +114,22 @@ class ArtistViewModel @Inject constructor(
                     val topSongs = artistPage.sections.find {
                         it.title.contains("Top", ignoreCase = true) || it.title.contains("Song", ignoreCase = true)
                     }?.items?.filterIsInstance<com.omnitune.innertube.models.SongItem>()
-                        ?.map { it.toSuvSong() } ?: emptyList()
+                        ?.map { it.toPresentationSong() } ?: emptyList()
 
                     val albums = artistPage.sections.find {
                         it.title.equals("Albums", ignoreCase = true) || it.title.contains("Album", ignoreCase = true)
                     }?.items?.filterIsInstance<com.omnitune.innertube.models.AlbumItem>()
-                        ?.map { it.toSuvAlbum() } ?: emptyList()
+                        ?.map { it.toPresentationAlbum() } ?: emptyList()
 
                     val singles = artistPage.sections.find {
                         it.title.contains("Single", ignoreCase = true) || it.title.contains("EP", ignoreCase = true)
                     }?.items?.filterIsInstance<com.omnitune.innertube.models.AlbumItem>()
-                        ?.map { it.toSuvAlbum() } ?: emptyList()
+                        ?.map { it.toPresentationAlbum() } ?: emptyList()
 
                     val videos = artistPage.sections.find {
                         it.title.contains("Video", ignoreCase = true)
                     }?.items?.filterIsInstance<com.omnitune.innertube.models.SongItem>()
-                        ?.map { it.toSuvSong().copy(isVideo = true) } ?: emptyList()
+                        ?.map { it.toPresentationSong().copy(isVideo = true) } ?: emptyList()
 
                     val featuredPlaylists = artistPage.sections.find {
                         it.title.contains("Featured", ignoreCase = true)
@@ -154,7 +154,7 @@ class ArtistViewModel @Inject constructor(
                             )
                         } ?: emptyList()
 
-                    val suvArtist = Artist(
+                    val presentationArtist = Artist(
                         id = artistId,
                         name = artistPage.artist.title,
                         thumbnailUrl = artistPage.artist.thumbnail,
@@ -171,7 +171,7 @@ class ArtistViewModel @Inject constructor(
                     )
 
                     _uiState.update {
-                        it.copy(artist = suvArtist, isLoading = false, error = null)
+                        it.copy(artist = presentationArtist, isLoading = false, error = null)
                     }
                 }.onFailure {
                     // Fallback to local DB
@@ -179,12 +179,12 @@ class ArtistViewModel @Inject constructor(
                         database.artist(artistId).first()
                     }
                     if (local != null) {
-                        val suvArtist = Artist(
+                        val presentationArtist = Artist(
                             id = local.id,
                             name = local.artist.name,
                             thumbnailUrl = local.artist.thumbnailUrl
                         )
-                        _uiState.update { it.copy(artist = suvArtist, isLoading = false, error = null) }
+                        _uiState.update { it.copy(artist = presentationArtist, isLoading = false, error = null) }
                     } else {
                         _uiState.update { it.copy(isLoading = false, error = ArtistError.NETWORK) }
                     }
@@ -220,7 +220,7 @@ class ArtistViewModel @Inject constructor(
                     YouTube.search("${currentArtist.name} radio", YouTube.SearchFilter.FILTER_SONG)
                 }
                 searchResult.onSuccess { result ->
-                    val songs = result.items.filterIsInstance<com.omnitune.innertube.models.SongItem>().map { it.toSuvSong() }
+                    val songs = result.items.filterIsInstance<com.omnitune.innertube.models.SongItem>().map { it.toPresentationSong() }
                     radioSongs.addAll(songs.filter { s -> radioSongs.none { it.id == s.id } })
                 }
 

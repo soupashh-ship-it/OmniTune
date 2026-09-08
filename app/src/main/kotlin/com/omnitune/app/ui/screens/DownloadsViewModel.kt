@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.playback.DownloadUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 
@@ -52,7 +52,7 @@ class DownloadsViewModel @Inject constructor(
     }
 
     val downloadedSongs: StateFlow<List<Song>> = flow {
-        val songs = database.songsByRowIdAsc().first().map { it.toSuvSong() }
+        val songs = database.songsByRowIdAsc().first().map { it.toPresentationSong() }
         emit(songs)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

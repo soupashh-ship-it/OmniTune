@@ -22,7 +22,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import com.omnitune.app.models.MiniPlayerStyle
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.rememberDominantColors
 import com.omnitune.app.ui.player.miniplayer.LiquidGlassMiniPlayer
@@ -58,7 +58,7 @@ fun MiniPlayer(
     }
     val duration = (mediaMetadata?.duration ?: 0) * 1000L
 
-    val song = remember(mediaMetadata) { mediaMetadata?.toSuvSong() } ?: return
+    val song = remember(mediaMetadata) { mediaMetadata?.toPresentationSong() } ?: return
     val dominantColors = rememberDominantColors(song.thumbnailUrl)
 
     val progressProvider: () -> Float = {

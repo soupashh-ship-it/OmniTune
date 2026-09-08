@@ -82,8 +82,8 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song as DbSong
 import com.omnitune.app.extensions.toMediaItem
-import com.omnitune.app.models.Song as SuvSong
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.Song as PresentationSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.ui.component.AddToPlaylistSheet
 import com.omnitune.app.ui.component.CreatePlaylistDialog
 import com.omnitune.app.ui.component.SongMenuBottomSheet
@@ -96,7 +96,7 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     onPlaySong: (DbSong) -> Unit = {},
-    onSongClick: ((List<SuvSong>, Int) -> Unit)? = null,
+    onSongClick: ((List<PresentationSong>, Int) -> Unit)? = null,
     onBack: () -> Unit = {},
     onNavigateToSearch: () -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
@@ -569,7 +569,7 @@ private fun EmptyHistoryState(
 
 private data class RecentHistoryItem(
     val key: String,
-    val song: SuvSong,
+    val song: PresentationSong,
     val dbSong: DbSong,
     val playedAt: Long,
 )
@@ -581,7 +581,7 @@ private fun EventWithSong.toRecentHistoryItem(): RecentHistoryItem {
         .toEpochMilli()
     return RecentHistoryItem(
         key = "${event.id}_${song.song.id}_$timestampMs",
-        song = song.toSuvSong(),
+        song = song.toPresentationSong(),
         dbSong = song,
         playedAt = timestampMs,
     )
@@ -603,7 +603,7 @@ private fun getDateLabel(timestamp: Long): String {
 private fun getTimeLabel(timestamp: Long): String =
     SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(timestamp))
 
-private fun shareSong(context: Context, song: SuvSong) {
+private fun shareSong(context: Context, song: PresentationSong) {
     val artist = song.artist.ifBlank { "Unknown artist" }
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

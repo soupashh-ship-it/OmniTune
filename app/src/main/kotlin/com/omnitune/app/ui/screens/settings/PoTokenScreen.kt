@@ -50,9 +50,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.omnitune.app.ui.component.LeadingIconBox
-import com.omnitune.app.ui.component.SettingsCard as SuvSettingsCard
-import com.omnitune.app.ui.component.SettingsSectionTitle as SuvSettingsSectionTitle
-import com.omnitune.app.ui.component.SettingsSwitchRow as SuvSettingsSwitchRow
+import com.omnitune.app.ui.component.SettingsCard as PortedSettingsCard
+import com.omnitune.app.ui.component.SettingsSectionTitle as PortedSettingsSectionTitle
+import com.omnitune.app.ui.component.SettingsSwitchRow as PortedSettingsSwitchRow
 import com.omnitune.app.ui.theme.SquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,12 +108,12 @@ fun PoTokenScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                SuvSettingsSectionTitle(
+                PortedSettingsSectionTitle(
                     title = "Status",
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 )
-                SuvSettingsCard {
-                    SuvSettingsSwitchRow(
+                PortedSettingsCard {
+                    PortedSettingsSwitchRow(
                         title = "Web PO tokens",
                         subtitle = if (state.webClientPoTokensEnabled) {
                             "Stored tokens are used for Web playback requests"
@@ -136,11 +136,11 @@ fun PoTokenScreen(
             }
 
             item {
-                SuvSettingsSectionTitle(
+                PortedSettingsSectionTitle(
                     title = "Manual Tokens",
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 )
-                SuvSettingsCard {
+                PortedSettingsCard {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -183,11 +183,11 @@ fun PoTokenScreen(
             }
 
             item {
-                SuvSettingsSectionTitle(
+                PortedSettingsSectionTitle(
                     title = "Session",
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 )
-                SuvSettingsCard {
+                PortedSettingsCard {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),

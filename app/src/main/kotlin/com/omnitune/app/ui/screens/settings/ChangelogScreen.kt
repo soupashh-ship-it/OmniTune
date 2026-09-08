@@ -40,7 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.omnitune.app.update.ChangelogSource
 import com.omnitune.app.update.ChangelogViewModel
-import com.omnitune.app.ui.component.SettingsCard as SuvSettingsCard
+import com.omnitune.app.ui.component.SettingsCard as PortedSettingsCard
 import com.omnitune.app.ui.theme.SquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,7 +81,7 @@ fun ChangelogScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                SuvSettingsCard {
+                PortedSettingsCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = release.releaseName,
@@ -166,7 +166,7 @@ fun ChangelogScreen(
 
 @Composable
 private fun ChangelogMarkdown(body: String) {
-    SuvSettingsCard {
+    PortedSettingsCard {
         Column(modifier = Modifier.padding(16.dp)) {
             body.lines()
                 .map { it.trimEnd() }

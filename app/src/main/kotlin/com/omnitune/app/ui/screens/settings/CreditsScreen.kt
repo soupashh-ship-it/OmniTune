@@ -67,7 +67,7 @@ fun CreditsScreen(
                         SettingsNavRow(
                             title = project.title,
                             subtitle = project.subtitle,
-                            icon = if (project.title == "SuvMusic") Icons.Default.Favorite else Icons.Default.Code,
+                            icon = if (project.url == PortedUiRepositoryUrl) Icons.Default.Favorite else Icons.Default.Code,
                             onClick = { context.openExternalUrl(project.url) }
                         )
                     }

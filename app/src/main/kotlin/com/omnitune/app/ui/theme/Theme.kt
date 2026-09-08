@@ -27,7 +27,7 @@ import com.omnitune.app.models.AppTheme
 import com.omnitune.app.ui.component.DominantColors
 
 /**
- * Dark color scheme - Primary for SuvMusic (Default/Purple)
+ * Dark color scheme - primary app palette (Default/Purple)
  */
 private val DarkColorScheme = darkColorScheme(
     primary = Purple70,

@@ -37,7 +37,7 @@ class AboutMetadataTest {
     fun inspirationContainsOnlyVerifiedProjectUrls() {
         val urls = AboutDestinations.inspiration.map { it.url }
 
-        assertTrue(urls.contains(SuvMusicRepositoryUrl))
+        assertTrue(urls.contains(PortedUiRepositoryUrl))
         assertTrue(urls.contains(VeluneRepositoryUrl))
         assertTrue(urls.contains(ArchiveTuneRepositoryUrl))
         assertFalse(urls.any { it.isBlank() || it == "#" })

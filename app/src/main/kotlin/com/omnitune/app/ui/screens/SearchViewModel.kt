@@ -213,10 +213,10 @@ class SearchViewModel @Inject constructor(
                     summaryPage.summaries.forEach { summary ->
                         summary.items.forEach { item ->
                             when (item) {
-                                is InnerSongItem -> songs.add(item.toSuvSong())
-                                is InnerAlbumItem -> albums.add(item.toSuvAlbum())
-                                is InnerArtistItem -> artists.add(item.toSuvArtist())
-                                is InnerPlaylistItem -> playlists.add(item.toSuvPlaylist())
+                                is InnerSongItem -> songs.add(item.toPresentationSong())
+                                is InnerAlbumItem -> albums.add(item.toPresentationAlbum())
+                                is InnerArtistItem -> artists.add(item.toPresentationArtist())
+                                is InnerPlaylistItem -> playlists.add(item.toPresentationPlaylist())
                             }
                         }
                     }

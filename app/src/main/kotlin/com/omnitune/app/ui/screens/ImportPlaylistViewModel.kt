@@ -28,6 +28,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.time.LocalDateTime
@@ -67,6 +70,29 @@ private data class ImportTrack(
     val setVideoId: String? = null,
 )
 
+@Serializable
+private data class ImportedPlaylistBackup(
+    val format: String? = null,
+    val title: String? = null,
+    val tracks: List<ImportedTrackBackup> = emptyList(),
+)
+
+@Serializable
+private data class ImportedTrackBackup(
+    val position: Int = 0,
+    val id: String = "",
+    val title: String = "",
+    val artist: String = "",
+    val album: String = "",
+    val durationMs: Long = 0L,
+    val thumbnailUrl: String? = null,
+    val url: String = "",
+)
+
+private val importJson = Json {
+    ignoreUnknownKeys = true
+}
+
 @HiltViewModel
 class ImportPlaylistViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -95,9 +121,9 @@ class ImportPlaylistViewModel @Inject constructor(
         }
     }
 
-    fun importSUV(uri: Uri) {
+    fun importOmniBackup(uri: Uri) {
         startImport {
-            parseSUV(uri)
+            parseOmniBackup(uri)
         }
     }
 
@@ -280,11 +306,13 @@ class ImportPlaylistViewModel @Inject constructor(
         playlistName to tracks
     }
 
-    private suspend fun parseSUV(uri: Uri): Pair<String, List<ImportTrack>> = withContext(Dispatchers.IO) {
-        val tracksMap = linkedMapOf<String, ImportTrack>()
-        var playlistName = uri.importDisplayName("SUV Import")
-        var sequence = emptyList<String>()
+    private suspend fun parseOmniBackup(uri: Uri): Pair<String, List<ImportTrack>> = withContext(Dispatchers.IO) {
         val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }.orEmpty()
+        parseOmniBackupJson(uri, content)?.let { return@withContext it }
+
+        val tracksMap = linkedMapOf<String, ImportTrack>()
+        var playlistName = uri.importDisplayName("OmniTune Import")
+        var sequence = emptyList<String>()
 
         val metaStart = content.indexOf("[METADATA]")
         val metaEnd = content.indexOf("[/METADATA]")
@@ -335,6 +363,35 @@ class ImportPlaylistViewModel @Inject constructor(
         }
 
         playlistName to orderedTracks
+    }
+
+    private fun parseOmniBackupJson(uri: Uri, content: String): Pair<String, List<ImportTrack>>? {
+        if (!content.trimStart().startsWith("{")) return null
+
+        val backup = runCatching {
+            importJson.decodeFromString<ImportedPlaylistBackup>(content)
+        }.getOrNull() ?: return null
+
+        if (backup.format != "omnitune-playlist") return null
+
+        val tracks = backup.tracks
+            .sortedBy { it.position }
+            .mapNotNull { track ->
+                val sourceId = track.id.takeIf { it.isNotBlank() }
+                    ?: extractPlayableSource(track.url)
+                    ?: return@mapNotNull null
+                ImportTrack(
+                    title = track.title.ifBlank { sourceId },
+                    artist = track.artist.ifBlank { "Unknown Artist" },
+                    album = track.album,
+                    durationMs = track.durationMs,
+                    sourceId = sourceId,
+                    thumbnailUrl = track.thumbnailUrl ?: sourceId.youtubeThumbnailUrl(),
+                    setVideoId = sourceId,
+                )
+            }
+
+        return (backup.title?.takeIf { it.isNotBlank() } ?: uri.importDisplayName("OmniTune Import")) to tracks
     }
 
     private suspend fun createImportedPlaylist(

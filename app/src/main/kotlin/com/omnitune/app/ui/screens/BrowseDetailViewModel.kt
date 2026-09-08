@@ -7,10 +7,10 @@ import com.omnitune.app.models.Album
 import com.omnitune.app.models.Artist
 import com.omnitune.app.models.Playlist
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvAlbum
-import com.omnitune.app.models.toSuvArtist
-import com.omnitune.app.models.toSuvPlaylist
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationAlbum
+import com.omnitune.app.models.toPresentationArtist
+import com.omnitune.app.models.toPresentationPlaylist
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.ui.navigation.Destination
 import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.reportException
@@ -145,8 +145,8 @@ class BrowseDetailViewModel @Inject constructor(
 
 private fun YTItem.toBrowseDetailItem(): BrowseDetailItem? =
     when (this) {
-        is SongItem -> BrowseDetailItem.SongEntry(toSuvSong())
-        is AlbumItem -> BrowseDetailItem.AlbumEntry(toSuvAlbum())
-        is ArtistItem -> BrowseDetailItem.ArtistEntry(toSuvArtist())
-        is PlaylistItem -> BrowseDetailItem.PlaylistEntry(toSuvPlaylist())
+        is SongItem -> BrowseDetailItem.SongEntry(toPresentationSong())
+        is AlbumItem -> BrowseDetailItem.AlbumEntry(toPresentationAlbum())
+        is ArtistItem -> BrowseDetailItem.ArtistEntry(toPresentationArtist())
+        is PlaylistItem -> BrowseDetailItem.PlaylistEntry(toPresentationPlaylist())
     }

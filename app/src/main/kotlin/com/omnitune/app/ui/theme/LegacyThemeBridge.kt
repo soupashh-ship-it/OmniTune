@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 
 /**
  * Temporary bridge providing backward compatibility for unmigrated screens
- * while routing all presentation to SuvMusic 2.6.6.0 design tokens.
+ * while routing all presentation to ported Material 3 Expressive design tokens.
  */
 object OmniColors {
     var OmniBackgroundBase: Color = Color.Black

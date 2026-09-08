@@ -43,7 +43,7 @@ enum class AudioQuality(val label: String, val bitrateRange: IntRange) {
 }
 
 /**
- * Full player state for UI updates matching SuvMusic.
+ * Full player state for UI updates matching the ported UI.
  */
 data class PlayerState(
     val currentSong: Song? = null,

@@ -163,7 +163,7 @@ fun ImportPlaylistScreen(
                         onImport = viewModel::importUrl,
                         onImportM3U = viewModel::importM3U,
                         onImportCSV = viewModel::importCSV,
-                        onImportSUV = viewModel::importSUV,
+                        onImportOmniBackup = viewModel::importOmniBackup,
                     )
                     is ImportState.Loading -> LoadingView(onCancel = viewModel::cancelImport)
                     is ImportState.Processing -> ProcessingView(state = state, onCancel = viewModel::cancelImport)
@@ -187,7 +187,7 @@ private fun InputView(
     onImport: (String) -> Unit,
     onImportM3U: (android.net.Uri) -> Unit,
     onImportCSV: (android.net.Uri) -> Unit,
-    onImportSUV: (android.net.Uri) -> Unit,
+    onImportOmniBackup: (android.net.Uri) -> Unit,
 ) {
     val context = LocalContext.current
     val clipboard = remember(context) {
@@ -212,10 +212,10 @@ private fun InputView(
     ) { uri ->
         if (uri != null) onImportCSV(uri)
     }
-    val suvPicker = rememberLauncherForActivityResult(
+    val omniBackupPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
-        if (uri != null) onImportSUV(uri)
+        if (uri != null) onImportOmniBackup(uri)
     }
 
     LaunchedEffect(Unit) {
@@ -374,9 +374,9 @@ private fun InputView(
         )
         ImportFileButton(
             icon = Icons.Default.FolderOpen,
-            title = "Import SUV playlist",
-            subtitle = "Restore a .suv playlist backup file",
-            onClick = { suvPicker.launch("*/*") },
+            title = "Import OmniTune playlist",
+            subtitle = "Restore an .omni playlist backup file",
+            onClick = { omniBackupPicker.launch("*/*") },
         )
     }
 }

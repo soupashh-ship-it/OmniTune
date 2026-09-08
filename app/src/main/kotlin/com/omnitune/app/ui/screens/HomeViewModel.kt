@@ -104,7 +104,7 @@ class HomeViewModel @Inject constructor(
             }
 
             if (localSongs.isNotEmpty()) {
-                val recs = localSongs.take(12).map { it.toSuvSong() }
+                val recs = localSongs.take(12).map { it.toPresentationSong() }
                 _uiState.update { it.copy(recommendations = recs) }
             }
         } catch (e: Exception) {
@@ -258,10 +258,10 @@ class HomeViewModel @Inject constructor(
 
     private fun InnerYTItem.toHomeItem(): HomeItem? =
         when (this) {
-            is InnerSongItem -> HomeItem.SongItem(toSuvSong())
-            is InnerAlbumItem -> HomeItem.AlbumItem(toSuvAlbum())
-            is InnerArtistItem -> HomeItem.ArtistItem(toSuvArtist())
-            is InnerPlaylistItem -> HomeItem.PlaylistItem(toSuvPlaylistDisplayItem())
+            is InnerSongItem -> HomeItem.SongItem(toPresentationSong())
+            is InnerAlbumItem -> HomeItem.AlbumItem(toPresentationAlbum())
+            is InnerArtistItem -> HomeItem.ArtistItem(toPresentationArtist())
+            is InnerPlaylistItem -> HomeItem.PlaylistItem(toPresentationPlaylistDisplayItem())
         }
 
     private fun HomePage.Section.toHomeSectionType(index: Int, sectionItems: List<HomeItem>): HomeSectionType =

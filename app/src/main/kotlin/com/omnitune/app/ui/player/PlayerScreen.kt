@@ -351,7 +351,7 @@ fun PlayerScreen(
 }
 
 /**
- * Core PlayerScreen implementation matching SuvMusic layout and overlays.
+ * Core PlayerScreen implementation matching the ported layout and overlays.
  */
 @Composable
 fun PlayerScreen(
@@ -1061,7 +1061,7 @@ fun BoxScope.OverlaysContent(
 private fun MediaItem.toQueueSong(): Song {
     val omniMetadata = metadata
     if (omniMetadata != null) {
-        return omniMetadata.toSuvSong()
+        return omniMetadata.toPresentationSong()
     }
 
     val fallbackTitle = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() } ?: mediaId
@@ -1077,7 +1077,7 @@ private fun MediaItem.toQueueSong(): Song {
     )
 }
 
-private fun MediaMetadata.toSuvSong(): Song =
+private fun MediaMetadata.toPresentationSong(): Song =
     Song(
         id = id,
         title = title,

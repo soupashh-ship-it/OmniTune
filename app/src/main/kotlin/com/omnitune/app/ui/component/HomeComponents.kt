@@ -128,7 +128,7 @@ fun PlaylistDisplayCard(
 
     // YouTube-Music-style card: square artwork with the title/subtitle stacked
     // *below* the image rather than overlaid on it. The Expressive squircle clip
-    // is the SuvMusic signature kept on top of the YTM layout.
+    // is the ported signature kept on top of the YTM layout.
     Column(
         modifier = Modifier
             .width(170.dp)

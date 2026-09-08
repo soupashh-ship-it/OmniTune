@@ -229,8 +229,8 @@ enum class SleepTimerOption(val minutes: Int, val label: String) {
     END_OF_SONG(-1, "End of song")
 }
 
-// Mapper extensions from OmniTune backend models to SuvMusic presentation models:
-fun MediaMetadata.toSuvSong(): Song = Song(
+// Mapper extensions from OmniTune backend models to presentation models.
+fun MediaMetadata.toPresentationSong(): Song = Song(
     id = id,
     title = title,
     artist = artists.firstOrNull()?.name ?: "",
@@ -240,7 +240,7 @@ fun MediaMetadata.toSuvSong(): Song = Song(
     source = SongSource.YOUTUBE
 )
 
-fun DbSong.toSuvSong(): Song = Song(
+fun DbSong.toPresentationSong(): Song = Song(
     id = song.id,
     title = song.title,
     artist = artists.joinToString(", ") { it.name },
@@ -250,7 +250,7 @@ fun DbSong.toSuvSong(): Song = Song(
     source = if (song.isLocal) SongSource.LOCAL else SongSource.YOUTUBE
 )
 
-fun InnerSongItem.toSuvSong(): Song = Song(
+fun InnerSongItem.toPresentationSong(): Song = Song(
     id = id,
     title = title,
     artist = artists.joinToString(", ") { it.name },
@@ -261,7 +261,7 @@ fun InnerSongItem.toSuvSong(): Song = Song(
     isMembersOnly = false
 )
 
-fun InnerAlbumItem.toSuvAlbum(): Album = Album(
+fun InnerAlbumItem.toPresentationAlbum(): Album = Album(
     id = id,
     title = title,
     artist = artists?.joinToString(", ") { it.name } ?: "",
@@ -269,7 +269,7 @@ fun InnerAlbumItem.toSuvAlbum(): Album = Album(
     thumbnailUrl = thumbnail
 )
 
-fun InnerPlaylistItem.toSuvPlaylistDisplayItem(): PlaylistDisplayItem = PlaylistDisplayItem(
+fun InnerPlaylistItem.toPresentationPlaylistDisplayItem(): PlaylistDisplayItem = PlaylistDisplayItem(
     id = id,
     name = title,
     url = "https://music.youtube.com/playlist?list=$id",
@@ -278,7 +278,7 @@ fun InnerPlaylistItem.toSuvPlaylistDisplayItem(): PlaylistDisplayItem = Playlist
     songCount = songCountText?.filter { it.isDigit() }?.toIntOrNull() ?: 0
 )
 
-fun InnerPlaylistItem.toSuvPlaylist(): Playlist = Playlist(
+fun InnerPlaylistItem.toPresentationPlaylist(): Playlist = Playlist(
     id = id,
     title = title,
     author = author?.name.orEmpty(),
@@ -286,7 +286,7 @@ fun InnerPlaylistItem.toSuvPlaylist(): Playlist = Playlist(
     totalSongCount = songCountText?.filter { it.isDigit() }?.toIntOrNull() ?: 0,
 )
 
-fun InnerArtistItem.toSuvArtist(): Artist = Artist(
+fun InnerArtistItem.toPresentationArtist(): Artist = Artist(
     id = id,
     name = title,
     thumbnailUrl = thumbnail,

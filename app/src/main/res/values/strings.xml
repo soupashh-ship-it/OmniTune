@@ -188,7 +188,7 @@
     <string name="palette_custom">Palette Custom</string>
     <string name="selected_theme_color">Selected Theme Color</string>
 
-    <!-- SuvMusic 2.6.6.0 Presentation Layer Strings -->
+    <!-- Material 3 Expressive presentation-layer strings -->
     <string name="action_play">Play</string>
     <string name="action_shuffle">Shuffle</string>
     <string name="action_retry">Retry</string>

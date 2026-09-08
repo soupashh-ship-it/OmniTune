@@ -42,7 +42,7 @@ import com.omnitune.app.ui.utils.animateEnter
 import com.omnitune.app.ui.utils.dpadFocusable
 
 /**
- * About screen using SuvMusic's Material 3 Expressive section layout.
+ * About screen using the Material 3 Expressive section layout.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

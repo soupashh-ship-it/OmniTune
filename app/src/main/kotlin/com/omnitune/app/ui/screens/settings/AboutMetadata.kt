@@ -25,8 +25,8 @@ internal const val OmniTuneRepositoryUrl = "https://github.com/soupashh-ship-it/
 internal const val OmniTuneDeveloperUrl = "https://github.com/soupashh-ship-it"
 internal const val OmniTuneDeveloperAvatarUrl = "https://github.com/soupashh-ship-it.png"
 internal const val OmniTuneLicenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html"
-internal const val SuvMusicRepositoryUrl = "https://github.com/suvojeet-sengupta/SuvMusic"
-internal const val SuvMusicAvatarUrl = "https://github.com/suvojeet-sengupta.png"
+internal const val PortedUiRepositoryUrl = "https://github.com/suvojeet-sengupta/SuvMusic"
+internal const val PortedUiAvatarUrl = "https://github.com/suvojeet-sengupta.png"
 internal const val VeluneRepositoryUrl = "https://github.com/nikhilvishwakarma00/Velune"
 internal const val VeluneAvatarUrl = "https://github.com/nikhilvishwakarma00.png"
 internal const val ArchiveTuneRepositoryUrl = "https://github.com/koiverse/ArchiveTune"
@@ -60,10 +60,10 @@ internal object AboutDestinations {
     val inspiration = listOf(
         AboutLinkEntry(
             title = "SuvMusic",
-            subtitle = "SuvMusic 2.6.6.0 UI source of truth",
-            url = SuvMusicRepositoryUrl,
+            subtitle = "GPL-3.0 presentation source attribution",
+            url = PortedUiRepositoryUrl,
             initials = "S",
-            imageUrl = SuvMusicAvatarUrl,
+            imageUrl = PortedUiAvatarUrl,
         ),
         AboutLinkEntry(
             title = "Velune",

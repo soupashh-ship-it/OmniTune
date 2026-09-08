@@ -23,7 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.omnitune.app.models.Album
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.playback.EqualizerBand
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.screens.AlbumScreen

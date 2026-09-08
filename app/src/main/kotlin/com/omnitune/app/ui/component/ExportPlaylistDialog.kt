@@ -26,7 +26,7 @@ fun ExportPlaylistDialog(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onExportM3U: () -> Unit,
-    onExportSUV: () -> Unit
+    onExportOmni: () -> Unit
 ) {
     if (isVisible) {
         Dialog(onDismissRequest = onDismiss) {
@@ -65,12 +65,12 @@ fun ExportPlaylistDialog(
                     )
 
                     ExportOptionItem(
-                        title = ".omni / .suv (Backup Format)",
+                        title = ".omni (Backup Format)",
                         description = "Optimized format with full metadata and track sequence preserved.",
                         icon = Icons.Default.CheckCircle,
                         iconTint = Color(0xFF4CAF50),
                         onClick = {
-                            onExportSUV()
+                            onExportOmni()
                             onDismiss()
                         }
                     )

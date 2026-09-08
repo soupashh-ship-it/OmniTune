@@ -6,7 +6,7 @@
  * Licensed under the GNU General Public License v3.0 (GPLv3)
  */
 
-// File: app/src/main/java/com/suvojeet/suvmusic/ui/screens/player/components/M3ESeekbarShimmer.kt
+// Ported seekbar shimmer component.
 package com.omnitune.app.ui.player.components
 
 import androidx.compose.animation.AnimatedVisibility

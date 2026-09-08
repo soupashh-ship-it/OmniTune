@@ -106,7 +106,7 @@ class PlaylistViewModel @Inject constructor(
                 when (playlistId) {
                     "LM" -> {
                         val liked = withContext(Dispatchers.IO) {
-                            database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toSuvSong() }
+                            database.likedSongs(com.omnitune.app.constants.SongSortType.CREATE_DATE, descending = true).first().map { it.toPresentationSong() }
                         }
                         val playlist = Playlist(
                             id = "LM",
@@ -120,7 +120,7 @@ class PlaylistViewModel @Inject constructor(
                     }
                     "DEVICE_SONGS" -> {
                         val localSongs = withContext(Dispatchers.IO) {
-                            database.songsByRowIdAsc().first().map { it.toSuvSong() }.filter { it.source == SongSource.LOCAL }
+                            database.songsByRowIdAsc().first().map { it.toPresentationSong() }.filter { it.source == SongSource.LOCAL }
                         }
                         val playlist = Playlist(
                             id = "DEVICE_SONGS",
@@ -134,7 +134,7 @@ class PlaylistViewModel @Inject constructor(
                     }
                     "TOP_50" -> {
                         val allSongs = withContext(Dispatchers.IO) {
-                            database.songsByRowIdAsc().first().map { it.toSuvSong() }.take(50)
+                            database.songsByRowIdAsc().first().map { it.toPresentationSong() }.take(50)
                         }
                         val playlist = Playlist(
                             id = "TOP_50",
@@ -148,7 +148,7 @@ class PlaylistViewModel @Inject constructor(
                     }
                     "CACHED_ALL" -> {
                         val allSongs = withContext(Dispatchers.IO) {
-                            database.songsByRowIdAsc().first().map { it.toSuvSong() }
+                            database.songsByRowIdAsc().first().map { it.toPresentationSong() }
                         }
                         val playlist = Playlist(
                             id = "CACHED_ALL",
@@ -170,19 +170,19 @@ class PlaylistViewModel @Inject constructor(
                         }
 
                         if (localDbPlaylist != null) {
-                            val suvSongs = localSongs.map { it.song.toSuvSong() }
+                            val presentationSongs = localSongs.map { it.song.toPresentationSong() }
                             val playlist = Playlist(
                                 id = localDbPlaylist.id,
                                 title = localDbPlaylist.playlist.name,
                                 author = "You",
-                                thumbnailUrl = localDbPlaylist.thumbnails.firstOrNull() ?: suvSongs.firstOrNull()?.thumbnailUrl,
-                                totalSongCount = suvSongs.size,
-                                songs = suvSongs
+                                thumbnailUrl = localDbPlaylist.thumbnails.firstOrNull() ?: presentationSongs.firstOrNull()?.thumbnailUrl,
+                                totalSongCount = presentationSongs.size,
+                                songs = presentationSongs
                             )
                             _uiState.update {
                                 it.copy(
                                     playlist = playlist,
-                                    originalSongs = suvSongs,
+                                    originalSongs = presentationSongs,
                                     isLoading = false,
                                     isEditable = true
                                 )
@@ -193,19 +193,19 @@ class PlaylistViewModel @Inject constructor(
                                 YouTube.playlist(playlistId)
                             }
                             ytResult.onSuccess { playlistPage ->
-                                val suvSongs = playlistPage.songs.map { it.toSuvSong() }
+                                val presentationSongs = playlistPage.songs.map { it.toPresentationSong() }
                                 val playlist = Playlist(
                                     id = playlistId,
                                     title = playlistPage.playlist.title,
                                     author = playlistPage.playlist.author?.name ?: "",
                                     thumbnailUrl = playlistPage.playlist.thumbnail,
-                                    totalSongCount = suvSongs.size,
-                                    songs = suvSongs
+                                    totalSongCount = presentationSongs.size,
+                                    songs = presentationSongs
                                 )
                                 _uiState.update {
                                     it.copy(
                                         playlist = playlist,
-                                        originalSongs = suvSongs,
+                                        originalSongs = presentationSongs,
                                         isLoading = false,
                                         isEditable = false
                                     )

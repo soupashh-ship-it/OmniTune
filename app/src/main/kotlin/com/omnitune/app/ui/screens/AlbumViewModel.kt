@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.Album
 import com.omnitune.app.models.Song
-import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.ui.navigation.Destination
@@ -104,17 +104,17 @@ class AlbumViewModel @Inject constructor(
                 }
 
                 ytResult.onSuccess { albumPage ->
-                    val suvSongs = albumPage.songs.map { it.toSuvSong() }
-                    val suvAlbum = Album(
+                    val presentationSongs = albumPage.songs.map { it.toPresentationSong() }
+                    val presentationAlbum = Album(
                         id = albumId,
                         title = albumPage.album.title,
                         artist = albumPage.album.artists?.joinToString(", ") { it.name } ?: "",
                         year = albumPage.album.year?.toString(),
                         thumbnailUrl = albumPage.album.thumbnail,
-                        songs = suvSongs
+                        songs = presentationSongs
                     )
                     _uiState.update {
-                        it.copy(album = suvAlbum, isLoading = false, error = null)
+                        it.copy(album = presentationAlbum, isLoading = false, error = null)
                     }
                 }.onFailure {
                     // Fallback to local DB
@@ -122,16 +122,16 @@ class AlbumViewModel @Inject constructor(
                         database.albumWithSongs(albumId).first()
                     }
                     if (local != null) {
-                        val suvSongs = local.songs.map { it.toSuvSong() }
-                        val suvAlbum = Album(
+                        val presentationSongs = local.songs.map { it.toPresentationSong() }
+                        val presentationAlbum = Album(
                             id = local.album.id,
                             title = local.album.title,
                             artist = local.artists.joinToString(", ") { a -> a.name },
                             year = local.album.year?.toString(),
                             thumbnailUrl = local.album.thumbnailUrl,
-                            songs = suvSongs
+                            songs = presentationSongs
                         )
-                        _uiState.update { it.copy(album = suvAlbum, isLoading = false, error = null) }
+                        _uiState.update { it.copy(album = presentationAlbum, isLoading = false, error = null) }
                     } else {
                         _uiState.update { it.copy(isLoading = false, error = it.error ?: "Failed to load album") }
                     }
