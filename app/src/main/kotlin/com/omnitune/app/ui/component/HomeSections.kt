@@ -66,6 +66,7 @@ fun HorizontalCarouselSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -78,6 +79,7 @@ fun HorizontalCarouselSection(
             onSongClick = onSongClick,
             onPlaylistClick = onPlaylistClick,
             onAlbumClick = onAlbumClick,
+            onArtistClick = onArtistClick,
             onSongMoreClick = onSongMoreClick,
             modifier = modifier
         )
@@ -113,7 +115,8 @@ fun HorizontalCarouselSection(
                 when (item) {
                     is HomeItem.SongItem,
                     is HomeItem.PlaylistItem,
-                    is HomeItem.AlbumItem -> {
+                    is HomeItem.AlbumItem,
+                    is HomeItem.ArtistItem -> {
                         SectionCardWithBadge(
                             showRecent = showRecentBadge,
                             showTrending = showTrendingBadge
@@ -123,6 +126,7 @@ fun HorizontalCarouselSection(
                                 onSongClick = onSongClick,
                                 onPlaylistClick = onPlaylistClick,
                                 onAlbumClick = onAlbumClick,
+                                onArtistClick = onArtistClick,
                                 sectionItems = items,
                                 onSongMoreClick = onSongMoreClick
                             )
@@ -204,6 +208,7 @@ fun VerticalListSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -301,6 +306,22 @@ fun VerticalListSection(
                                     backgroundColor = Color.Transparent
                                 )
                             }
+                            is HomeItem.ArtistItem -> {
+                                val tempSong = Song(
+                                    id = item.artist.id,
+                                    title = item.artist.name,
+                                    artist = item.artist.subscribers ?: "Artist",
+                                    thumbnailUrl = item.artist.thumbnailUrl,
+                                    album = "Artist",
+                                    duration = 0L,
+                                    source = com.omnitune.app.models.SongSource.YOUTUBE
+                                )
+                                MusicCard(
+                                    song = tempSong,
+                                    onClick = { onArtistClick(item.artist.id) },
+                                    backgroundColor = Color.Transparent
+                                )
+                            }
                             else -> {}
                         }
                     }
@@ -349,6 +370,7 @@ fun LargeCardWithListSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -378,12 +400,13 @@ fun LargeCardWithListSection(
             ) {
                  HomeItemCardLarge(
                     item = firstItem,
-                    onSongClick = onSongClick,
-                    onPlaylistClick = onPlaylistClick,
-                    onAlbumClick = onAlbumClick,
-                    sectionItems = section.items,
-                    onSongMoreClick = onSongMoreClick
-                 )
+                     onSongClick = onSongClick,
+                     onPlaylistClick = onPlaylistClick,
+                     onAlbumClick = onAlbumClick,
+                     onArtistClick = onArtistClick,
+                     sectionItems = section.items,
+                     onSongMoreClick = onSongMoreClick
+                  )
             }
             
             // List (Right)
@@ -425,13 +448,25 @@ fun LargeCardWithListSection(
                             )
                         }
                          is HomeItem.AlbumItem -> {
-                             val tempSong = remember(item.album) {
-                                 Song(item.album.id, item.album.title, item.album.artist, "Album", 0L, item.album.thumbnailUrl, com.omnitune.app.models.SongSource.YOUTUBE)
+                              val tempSong = remember(item.album) {
+                                  Song(item.album.id, item.album.title, item.album.artist, "Album", 0L, item.album.thumbnailUrl, com.omnitune.app.models.SongSource.YOUTUBE)
                              }
                              val onAlbumCardClick = remember(item.album) { { onAlbumClick(item.album) } }
                              MusicCard(
                                 song = tempSong,
                                 onClick = onAlbumCardClick,
+                                backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
+                                 modifier = Modifier.height(60.dp)
+                             )
+                        }
+                        is HomeItem.ArtistItem -> {
+                             val tempSong = remember(item.artist) {
+                                 Song(item.artist.id, item.artist.name, item.artist.subscribers ?: "Artist", "Artist", 0L, item.artist.thumbnailUrl, com.omnitune.app.models.SongSource.YOUTUBE)
+                             }
+                             val onArtistCardClick = remember(item.artist) { { onArtistClick(item.artist.id) } }
+                             MusicCard(
+                                song = tempSong,
+                                onClick = onArtistCardClick,
                                 backgroundColor = MaterialTheme.colorScheme.surfaceContainer,
                                 modifier = Modifier.height(60.dp)
                             )
@@ -450,6 +485,7 @@ fun GridSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -493,6 +529,7 @@ fun GridSection(
                             onSongClick = onSongClick,
                             onPlaylistClick = onPlaylistClick,
                             onAlbumClick = onAlbumClick,
+                            onArtistClick = onArtistClick,
                             sectionItems = section.items,
                             onSongMoreClick = onSongMoreClick
                         )
@@ -604,6 +641,7 @@ fun QuickPicksSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -709,6 +747,15 @@ fun QuickPicksSection(
                                         onClick = { onAlbumClick(item.album) }
                                     )
                                 }
+                                is HomeItem.ArtistItem -> {
+                                    val tempSong = remember(item.artist.id) {
+                                        Song(item.artist.id, item.artist.name, item.artist.subscribers ?: "Artist", "Artist", 0L, item.artist.thumbnailUrl, com.omnitune.app.models.SongSource.YOUTUBE)
+                                    }
+                                    QuickPickItem(
+                                        song = tempSong,
+                                        onClick = { onArtistClick(item.artist.id) }
+                                    )
+                                }
                                 else -> {}
                             }
                         }
@@ -725,6 +772,7 @@ fun HomeItemCardLarge(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     sectionItems: List<HomeItem>,
     onSongMoreClick: (Song) -> Unit = {}
 ) {
@@ -733,6 +781,7 @@ fun HomeItemCardLarge(
         is HomeItem.SongItem -> Triple(item.song.title, item.song.artist, item.song.thumbnailUrl)
         is HomeItem.PlaylistItem -> Triple(item.playlist.name, item.playlist.uploaderName, item.playlist.thumbnailUrl)
         is HomeItem.AlbumItem -> Triple(item.album.title, item.album.artist, item.album.thumbnailUrl)
+        is HomeItem.ArtistItem -> Triple(item.artist.name, item.artist.subscribers ?: "Artist", item.artist.thumbnailUrl)
         else -> Triple("", "", null)
     }
 
@@ -749,6 +798,7 @@ fun HomeItemCardLarge(
                 }
                 is HomeItem.PlaylistItem -> onPlaylistClick(item.playlist)
                 is HomeItem.AlbumItem -> onAlbumClick(item.album)
+                is HomeItem.ArtistItem -> onArtistClick(item.artist.id)
                 else -> {}
             }
         },
@@ -1293,6 +1343,7 @@ fun GenreCarousel(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (section.items.isEmpty()) return
@@ -1338,6 +1389,7 @@ fun GenreCarousel(
                     is HomeItem.SongItem -> Triple(item.song.title, item.song.artist, item.song.thumbnailUrl)
                     is HomeItem.PlaylistItem -> Triple(item.playlist.name, item.playlist.uploaderName, item.playlist.thumbnailUrl)
                     is HomeItem.AlbumItem -> Triple(item.album.title, item.album.artist, item.album.thumbnailUrl)
+                    is HomeItem.ArtistItem -> Triple(item.artist.name, item.artist.subscribers ?: "Artist", item.artist.thumbnailUrl)
                     else -> Triple("", "", null)
                 }
                 GenreRingCard(
@@ -1353,6 +1405,7 @@ fun GenreCarousel(
                             }
                             is HomeItem.PlaylistItem -> onPlaylistClick(item.playlist)
                             is HomeItem.AlbumItem -> onAlbumClick(item.album)
+                            is HomeItem.ArtistItem -> onArtistClick(item.artist.id)
                             else -> {}
                         }
                     }
@@ -1436,6 +1489,7 @@ fun PersonalizedMixCarousel(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (section.items.isEmpty()) return
@@ -1462,6 +1516,7 @@ fun PersonalizedMixCarousel(
                     is HomeItem.SongItem -> Triple(item.song.title, item.song.artist, item.song.thumbnailUrl)
                     is HomeItem.PlaylistItem -> Triple(item.playlist.name, item.playlist.uploaderName, item.playlist.thumbnailUrl)
                     is HomeItem.AlbumItem -> Triple(item.album.title, item.album.artist, item.album.thumbnailUrl)
+                    is HomeItem.ArtistItem -> Triple(item.artist.name, item.artist.subscribers ?: "Artist", item.artist.thumbnailUrl)
                     else -> Triple("", "", null)
                 }
                 PersonalizedMixCard(
@@ -1476,6 +1531,7 @@ fun PersonalizedMixCarousel(
                             }
                             is HomeItem.PlaylistItem -> onPlaylistClick(item.playlist)
                             is HomeItem.AlbumItem -> onAlbumClick(item.album)
+                            is HomeItem.ArtistItem -> onArtistClick(item.artist.id)
                             else -> {}
                         }
                     }
@@ -1642,6 +1698,7 @@ fun ChartPodiumSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -1662,7 +1719,7 @@ fun ChartPodiumSection(
                     ChartListRow(
                         item = item,
                         rank = idx + 1,
-                        onClick = { dispatchItemClick(item, songs, onSongClick, onPlaylistClick, onAlbumClick) }
+                        onClick = { dispatchItemClick(item, songs, onSongClick, onPlaylistClick, onAlbumClick, onArtistClick) }
                     )
                 }
             }
@@ -1731,7 +1788,7 @@ fun ChartPodiumSection(
                     rank = 2,
                     accent = ChartSilver,
                     isCenter = false,
-                    onClick = { dispatchItemClick(items[1], songs, onSongClick, onPlaylistClick, onAlbumClick) },
+                    onClick = { dispatchItemClick(items[1], songs, onSongClick, onPlaylistClick, onAlbumClick, onArtistClick) },
                     modifier = Modifier.weight(1f)
                 )
                 PodiumCard(
@@ -1739,7 +1796,7 @@ fun ChartPodiumSection(
                     rank = 1,
                     accent = ChartGold,
                     isCenter = true,
-                    onClick = { dispatchItemClick(items[0], songs, onSongClick, onPlaylistClick, onAlbumClick) },
+                    onClick = { dispatchItemClick(items[0], songs, onSongClick, onPlaylistClick, onAlbumClick, onArtistClick) },
                     modifier = Modifier.weight(1.18f)
                 )
                 PodiumCard(
@@ -1747,7 +1804,7 @@ fun ChartPodiumSection(
                     rank = 3,
                     accent = ChartBronze,
                     isCenter = false,
-                    onClick = { dispatchItemClick(items[2], songs, onSongClick, onPlaylistClick, onAlbumClick) },
+                    onClick = { dispatchItemClick(items[2], songs, onSongClick, onPlaylistClick, onAlbumClick, onArtistClick) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -1764,7 +1821,7 @@ fun ChartPodiumSection(
                     ChartListRow(
                         item = item,
                         rank = idx + 4,
-                        onClick = { dispatchItemClick(item, songs, onSongClick, onPlaylistClick, onAlbumClick) }
+                        onClick = { dispatchItemClick(item, songs, onSongClick, onPlaylistClick, onAlbumClick, onArtistClick) }
                     )
                 }
             }
@@ -1777,7 +1834,8 @@ private fun dispatchItemClick(
     songs: List<Song>,
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
-    onAlbumClick: (Album) -> Unit
+    onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit
 ) {
     when (item) {
         is HomeItem.SongItem -> {
@@ -1786,6 +1844,7 @@ private fun dispatchItemClick(
         }
         is HomeItem.PlaylistItem -> onPlaylistClick(item.playlist)
         is HomeItem.AlbumItem -> onAlbumClick(item.album)
+        is HomeItem.ArtistItem -> onArtistClick(item.artist.id)
         else -> {}
     }
 }
@@ -1804,6 +1863,7 @@ private fun PodiumCard(
         is HomeItem.SongItem -> Triple(item.song.title, item.song.artist, item.song.thumbnailUrl)
         is HomeItem.PlaylistItem -> Triple(item.playlist.name, item.playlist.uploaderName, item.playlist.thumbnailUrl)
         is HomeItem.AlbumItem -> Triple(item.album.title, item.album.artist, item.album.thumbnailUrl)
+        is HomeItem.ArtistItem -> Triple(item.artist.name, item.artist.subscribers ?: "Artist", item.artist.thumbnailUrl)
         else -> Triple("", "", null)
     }
     val coverHeight = if (isCenter) 156.dp else 124.dp

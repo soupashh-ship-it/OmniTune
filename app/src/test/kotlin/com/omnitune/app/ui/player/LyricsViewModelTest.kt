@@ -78,6 +78,9 @@ class LyricsViewModelTest {
         ): AppResult<List<LyricsLine>> =
             requests.getOrPut(songId) { CompletableDeferred() }.await()
 
+        override suspend fun saveLyrics(songId: String, lrcText: String): AppResult<List<LyricsLine>> =
+            AppResult.Success(parseLrc(lrcText))
+
         override fun parseLrc(lrcText: String): List<LyricsLine> = emptyList()
 
         fun complete(songId: String, lines: List<LyricsLine>) {
@@ -101,6 +104,9 @@ class LyricsViewModelTest {
             requestCount++
             return results.removeFirst()
         }
+
+        override suspend fun saveLyrics(songId: String, lrcText: String): AppResult<List<LyricsLine>> =
+            AppResult.Success(parseLrc(lrcText))
 
         override fun parseLrc(lrcText: String): List<LyricsLine> = emptyList()
     }

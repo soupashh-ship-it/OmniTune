@@ -8,7 +8,7 @@
 
 package com.omnitune.app.ui.menu
 
-import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.LoadingIndicator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalConfiguration
@@ -88,7 +90,6 @@ import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.LocalAlbumRadio
 import com.omnitune.app.sync.YouTubeLibrarySync
-import com.omnitune.app.ui.component.AlbumListItem
 import com.omnitune.app.ui.component.ListDialog
 import com.omnitune.app.ui.component.ListItem
 import com.omnitune.app.ui.component.NewAction
@@ -301,10 +302,19 @@ fun AlbumMenu(
         }
     }
 
-    AlbumListItem(
-        album = album,
-        showLikedIcon = false,
-        badges = {},
+    androidx.compose.material3.ListItem(
+        headlineContent = { Text(album.album.title) },
+        supportingContent = { Text(album.artists.joinToString { it.name }) },
+        leadingContent = {
+            AsyncImage(
+                model = album.album.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(ListThumbnailSize)
+                    .clip(RoundedCornerShape(6.dp)),
+            )
+        },
         trailingContent = {
             IconButton(
                 onClick = {
@@ -457,7 +467,7 @@ fun AlbumMenu(
                     ListItem(
                         headlineContent = { Text(text = stringResource(R.string.downloading)) },
                         leadingContent = {
-                            OmniTuneLoader(size = 24.dp)
+                            LoadingIndicator(modifier = Modifier.size(24.dp))
                         },
                         modifier = Modifier.clickable {
                             songs.forEach { song ->

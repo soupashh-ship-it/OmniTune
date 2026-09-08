@@ -25,10 +25,13 @@ internal const val OmniTuneRepositoryUrl = "https://github.com/soupashh-ship-it/
 internal const val OmniTuneDeveloperUrl = "https://github.com/soupashh-ship-it"
 internal const val OmniTuneDeveloperAvatarUrl = "https://github.com/soupashh-ship-it.png"
 internal const val OmniTuneLicenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html"
+internal const val SuvMusicRepositoryUrl = "https://github.com/suvojeet-sengupta/SuvMusic"
+internal const val SuvMusicAvatarUrl = "https://github.com/suvojeet-sengupta.png"
 internal const val VeluneRepositoryUrl = "https://github.com/nikhilvishwakarma00/Velune"
 internal const val VeluneAvatarUrl = "https://github.com/nikhilvishwakarma00.png"
 internal const val ArchiveTuneRepositoryUrl = "https://github.com/koiverse/ArchiveTune"
 internal const val ArchiveTuneAvatarUrl = "https://github.com/koiverse.png"
+internal const val NewPipeExtractorUrl = "https://github.com/TeamNewPipe/NewPipeExtractor"
 
 internal data class AboutLinkEntry(
     val title: String,
@@ -56,8 +59,15 @@ internal object AboutDestinations {
 
     val inspiration = listOf(
         AboutLinkEntry(
+            title = "SuvMusic",
+            subtitle = "SuvMusic 2.6.6.0 UI source of truth",
+            url = SuvMusicRepositoryUrl,
+            initials = "S",
+            imageUrl = SuvMusicAvatarUrl,
+        ),
+        AboutLinkEntry(
             title = "Velune",
-            subtitle = "Open-source UI, playback, and queue inspiration",
+            subtitle = "Open-source GPL code lineage retained where still used",
             url = VeluneRepositoryUrl,
             initials = "V",
             imageUrl = VeluneAvatarUrl,

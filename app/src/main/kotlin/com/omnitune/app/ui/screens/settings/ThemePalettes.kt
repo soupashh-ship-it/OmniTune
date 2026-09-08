@@ -7,7 +7,7 @@ data class ThemePalette(
     val primary: Color,
     val secondary: Color,
     val tertiary: Color,
-    val neutral: Color
+    val neutral: Color,
 )
 
 object ThemePalettes {
@@ -17,7 +17,7 @@ object ThemePalettes {
             primary = randomColor(),
             secondary = randomColor(),
             tertiary = randomColor(),
-            neutral = randomColor()
+            neutral = randomColor(),
         )
     }
 }

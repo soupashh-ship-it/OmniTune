@@ -71,7 +71,7 @@ fun ShimmerTextLine(
 
 /**
  * A shimmer placeholder for a single track/song list row.
- * Matches the layout of [com.omnitune.app.ui.component.OmniMusicRow].
+ * Matches the layout of the standard song rows used across music lists.
  *
  * Layout:
  * ```

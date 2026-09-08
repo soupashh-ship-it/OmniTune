@@ -1,0 +1,331 @@
+package com.omnitune.app.ui.component
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddToQueue
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.omnitune.app.models.Song
+import com.omnitune.app.ui.theme.SquircleShape
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SongMenuBottomSheet(
+    isVisible: Boolean,
+    onDismiss: () -> Unit,
+    song: Song,
+    onPlayNext: (() -> Unit)? = null,
+    onAddToQueue: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onDownload: (() -> Unit)? = null,
+    onShare: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
+    onMoveUp: (() -> Unit)? = null,
+    onMoveDown: (() -> Unit)? = null,
+    onViewArtist: (() -> Unit)? = null,
+    onViewAlbum: (() -> Unit)? = null,
+    showShare: Boolean = true,
+    isCurrentlyPlaying: Boolean = false
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+
+    if (isVisible) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            contentWindowInsets = { androidx.compose.foundation.layout.WindowInsets(0) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(SquircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(song.thumbnailUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = song.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = song.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Top Horizontal Actions
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val cardBackground = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    val cardContentColor = MaterialTheme.colorScheme.onSurface
+                    
+                    if (onPlayNext != null) {
+                        TopActionCard(
+                            icon = Icons.AutoMirrored.Filled.PlaylistPlay,
+                            label = "Play next",
+                            onClick = { onPlayNext(); onDismiss() },
+                            modifier = Modifier.weight(1f),
+                            backgroundColor = cardBackground,
+                            contentColor = cardContentColor
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    
+                    if (onAddToPlaylist != null) {
+                        TopActionCard(
+                            icon = Icons.AutoMirrored.Filled.PlaylistAdd,
+                            label = "Save",
+                            onClick = { onAddToPlaylist(); onDismiss() },
+                            modifier = Modifier.weight(1f),
+                            backgroundColor = cardBackground,
+                            contentColor = cardContentColor
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    
+                    if (showShare && onShare != null) {
+                        TopActionCard(
+                            icon = Icons.Default.Share,
+                            label = "Share",
+                            onClick = { onShare(); onDismiss() },
+                            modifier = Modifier.weight(1f),
+                            backgroundColor = cardBackground,
+                            contentColor = cardContentColor
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // List Actions
+                if (!isCurrentlyPlaying && onAddToQueue != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.AddToQueue,
+                        title = "Add to queue",
+                        subtitle = "Add to the bottom of your queue",
+                        onClick = {
+                            onAddToQueue()
+                            onDismiss()
+                        }
+                    )
+                }
+
+                if (onDownload != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.Download,
+                        title = "Download",
+                        subtitle = "Make available for offline playback",
+                        onClick = { onDownload(); onDismiss() }
+                    )
+                }
+
+                if (onRemoveFromPlaylist != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.Delete,
+                        title = "Remove from playlist",
+                        onClick = { onRemoveFromPlaylist(); onDismiss() }
+                    )
+                }
+
+                if (onMoveUp != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.ArrowUpward,
+                        title = "Move Up",
+                        onClick = { onMoveUp(); onDismiss() }
+                    )
+                }
+
+                if (onMoveDown != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.ArrowDownward,
+                        title = "Move Down",
+                        onClick = { onMoveDown(); onDismiss() }
+                    )
+                }
+                
+                if (onViewArtist != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.Person,
+                        title = "Go to artist",
+                        onClick = { onViewArtist(); onDismiss() }
+                    )
+                }
+                
+                if (onViewAlbum != null) {
+                    MenuActionItem(
+                        icon = Icons.Default.Album,
+                        title = "Go to album",
+                        onClick = { onViewAlbum(); onDismiss() }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopActionCard(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backgroundColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = contentColor,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun MenuActionItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}

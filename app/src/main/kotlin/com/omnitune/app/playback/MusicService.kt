@@ -302,6 +302,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
             equalizerController = equalizerController,
             audioEffectController = audioEffectController,
             scope = scope,
+            currentMediaMetadata = currentMediaMetadata,
         ).also { it.start() }
         radioQueueManager = RadioQueueManager(
             player = player,

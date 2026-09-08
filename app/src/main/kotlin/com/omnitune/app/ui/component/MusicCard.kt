@@ -150,7 +150,7 @@ fun MusicCard(
                             minBarHeight = 8.dp
                         )
                     }
-                } else if (false /* song.isMembersOnly */) {
+                } else if (song.isMembersOnly) {
                      Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -269,7 +269,7 @@ fun SquareSongCard(
                 }
                 
                 // Members Only Badge
-                if (false /* song.isMembersOnly */) {
+                if (song.isMembersOnly) {
                     Surface(
                         color = MaterialTheme.colorScheme.primaryContainer,
                         shape = RoundedCornerShape(bottomStart = 12.dp, topEnd = 24.dp),

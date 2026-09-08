@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pulse launcher foreground. Wrapped in a 16.6% inset so the brand mark sits
+  inside the 66dp safe zone of the 108dp adaptive-icon canvas — without it,
+  Pixel's circular mask clips the S top-and-bottom (the source PNG has its
+  S near the canvas edges, not centered with breathing room).
+
+  `gravity="fill"` is required: with `gravity="center"` the 512px bitmap
+  renders at intrinsic size inside the inset bounds and only the central
+  strip is visible.
+-->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="16.6%">
+    <bitmap
+        android:src="@drawable/logo_pulse"
+        android:gravity="fill" />
+</inset>

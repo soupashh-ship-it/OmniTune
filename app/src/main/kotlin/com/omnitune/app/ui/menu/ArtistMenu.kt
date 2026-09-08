@@ -37,6 +37,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -44,15 +45,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.omnitune.app.LocalDatabase
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.R
 import com.omnitune.app.constants.ArtistSongSortType
+import com.omnitune.app.constants.ListThumbnailSize
 import com.omnitune.app.db.entities.Artist
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.sync.YouTubeLibrarySync
-import com.omnitune.app.ui.component.ArtistListItem
 import com.omnitune.app.ui.component.NewAction
 import com.omnitune.app.ui.component.NewActionGrid
 import com.omnitune.app.ui.component.menuAction
@@ -75,10 +77,18 @@ fun ArtistMenu(
     val artistState = database.artist(originalArtist.id).collectAsStateWithLifecycle(initialValue = originalArtist)
     val artist = artistState.value ?: originalArtist
 
-    ArtistListItem(
-        artist = artist,
-        badges = {},
-        trailingContent = {},
+    ListItem(
+        headlineContent = { Text(artist.artist.name) },
+        leadingContent = {
+            AsyncImage(
+                model = artist.artist.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(ListThumbnailSize)
+                    .clip(RoundedCornerShape(50)),
+            )
+        },
     )
 
     HorizontalDivider()

@@ -111,14 +111,20 @@ enum class HomeSectionType {
     VerticalList,
     CommunityCarousel,
     ExploreGrid,
-    QuickPicks
+    QuickPicks,
+    ChartPodium,
+    GenreCarousel,
+    PersonalizedMix
 }
 
 data class HomeSection(
     val title: String,
     val items: List<HomeItem>,
-    val type: HomeSectionType = HomeSectionType.HorizontalCarousel
+    val type: HomeSectionType = HomeSectionType.HorizontalCarousel,
+    val actionLabel: String? = null,
+    val id: String = title
 )
+
 
 sealed class HomeItem {
     abstract val id: String
@@ -239,7 +245,7 @@ fun DbSong.toSuvSong(): Song = Song(
     title = song.title,
     artist = artists.joinToString(", ") { it.name },
     album = album?.title ?: "",
-    duration = (song.duration ?: 0) * 1000L,
+    duration = song.duration * 1000L,
     thumbnailUrl = song.thumbnailUrl,
     source = if (song.isLocal) SongSource.LOCAL else SongSource.YOUTUBE
 )
@@ -272,6 +278,21 @@ fun InnerPlaylistItem.toSuvPlaylistDisplayItem(): PlaylistDisplayItem = Playlist
     songCount = songCountText?.filter { it.isDigit() }?.toIntOrNull() ?: 0
 )
 
+fun InnerPlaylistItem.toSuvPlaylist(): Playlist = Playlist(
+    id = id,
+    title = title,
+    author = author?.name.orEmpty(),
+    thumbnailUrl = thumbnail,
+    totalSongCount = songCountText?.filter { it.isDigit() }?.toIntOrNull() ?: 0,
+)
+
+fun InnerArtistItem.toSuvArtist(): Artist = Artist(
+    id = id,
+    name = title,
+    thumbnailUrl = thumbnail,
+    channelId = channelId,
+)
+
 data class SponsorSegment(
     val start: Long = 0L,
     val end: Long = 0L,
@@ -286,4 +307,140 @@ fun Song.toMediaMetadata(): MediaMetadata = MediaMetadata(
     thumbnailUrl = thumbnailUrl
 )
 
+data class ArtistCreditInfo(
+    val name: String,
+    val role: String = "Artist",
+    val artistId: String? = null,
+    val thumbnailUrl: String? = null
+)
 
+data class BrowseCategory(
+    val id: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val color: Long? = null,
+    val params: String? = null
+)
+
+sealed class RecentSearchItem {
+    abstract val id: String
+    data class QueryItem(val query: String, override val id: String = query) : RecentSearchItem()
+    data class SongItem(val song: Song, override val id: String = song.id) : RecentSearchItem()
+    data class AlbumItem(val album: Album, override val id: String = album.id) : RecentSearchItem()
+    data class PlaylistItem(val playlist: Playlist, override val id: String = playlist.id) : RecentSearchItem()
+}
+
+enum class ResultFilter {
+    ALL,
+    SONGS,
+    VIDEOS,
+    ALBUMS,
+    ARTISTS,
+    COMMUNITY_PLAYLISTS,
+    FEATURED_PLAYLISTS
+}
+
+enum class SearchTab {
+    YOUTUBE_MUSIC,
+    REMOTE
+}
+
+enum class LibraryFilter(val title: String) {
+    PLAYLISTS("Playlists"),
+    SONGS("Songs"),
+    ALBUMS("Albums"),
+    ARTISTS("Artists"),
+    FOLDERS("Folders")
+}
+
+
+enum class LibrarySortOption {
+    DATE_ADDED,
+    NAME
+}
+
+enum class LibraryViewMode {
+    GRID,
+    LIST
+}
+
+enum class SmartPlaylistType {
+    LIKED,
+    DOWNLOADED,
+    DEVICE_SONGS,
+    TOP_50,
+    CACHED
+}
+
+enum class SortType {
+    CUSTOM,
+    TITLE,
+    ARTIST,
+    ALBUM,
+    DATE_ADDED
+}
+
+enum class SortOrder {
+    ASCENDING,
+    DESCENDING
+}
+
+data class RecommendedArtist(
+    val name: String,
+    val image: List<LastFmImage> = emptyList()
+)
+
+data class RecommendedTrack(
+    val name: String,
+    val artist: RecommendedArtistName,
+    val image: List<LastFmImage> = emptyList()
+)
+
+data class RecommendedArtistName(val name: String)
+
+data class LastFmImage(val url: String, val size: String = "")
+
+enum class DownloadQuality(val label: String) {
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High"),
+    VERY_HIGH("Very High")
+}
+
+enum class VideoQuality(val label: String, val maxResolution: Int) {
+    AUTO("Auto (Adaptive)", 720),
+    LOW("Low (360p)", 360),
+    MEDIUM("Medium (720p)", 720),
+    HIGH("High (1080p)", 1080);
+
+    companion object {
+        fun fromResolution(resolution: Int): VideoQuality {
+            return entries.find { resolution <= it.maxResolution } ?: HIGH
+        }
+    }
+}
+
+enum class LyricsTextPosition {
+    LEFT,
+    CENTER,
+    RIGHT
+}
+
+enum class LyricsAnimationType {
+    NONE,
+    LINE,
+    WORD,
+    KARAOKE
+}
+
+enum class HapticsMode {
+    OFF,
+    BASIC,
+    ADVANCED
+}
+
+enum class HapticsIntensity {
+    LIGHT,
+    MEDIUM,
+    STRONG
+}

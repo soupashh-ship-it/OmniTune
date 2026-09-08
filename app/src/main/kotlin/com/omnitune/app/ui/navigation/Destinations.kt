@@ -28,6 +28,8 @@ sealed class Destination {
     @Serializable
     data object PlaybackSettings : Destination()
     @Serializable
+    data object Equalizer : Destination()
+    @Serializable
     data object AppearanceSettings : Destination()
     @Serializable
     data object CustomizationSettings : Destination()
@@ -52,6 +54,8 @@ sealed class Destination {
     @Serializable
     data object ListeningStats : Destination()
     @Serializable
+    data object Wrapped : Destination()
+    @Serializable
     data object PlayerCache : Destination()
     @Serializable
     data object HowItWorks : Destination()
@@ -59,6 +63,8 @@ sealed class Destination {
     data object Support : Destination()
     @Serializable
     data object Misc : Destination()
+    @Serializable
+    data object PoToken : Destination()
     @Serializable
     data object LyricsProviders : Destination()
     @Serializable
@@ -74,16 +80,7 @@ sealed class Destination {
     @Serializable
     data object Updater : Destination()
     @Serializable
-    data object ListenTogether : Destination()
-    @Serializable
     data object Changelog : Destination()
-
-    @Serializable
-    data class SongInfo(val songId: String) : Destination() {
-        companion object {
-            const val ARG_SONG_ID = "songId"
-        }
-    }
 
     @Serializable
     data class Playlist(
@@ -134,10 +131,15 @@ sealed class Destination {
     }
 
     @Serializable
-    data class Explore(val browseId: String, val title: String) : Destination() {
+    data class Explore(
+        val browseId: String,
+        val title: String,
+        val params: String? = null
+    ) : Destination() {
         companion object {
             const val ARG_BROWSE_ID = "browseId"
             const val ARG_TITLE = "title"
+            const val ARG_PARAMS = "params"
         }
     }
 
@@ -145,21 +147,5 @@ sealed class Destination {
     data object MoodAndGenres : Destination()
 
     @Serializable
-    data class MoodAndGenresDetail(
-        val browseId: String,
-        val params: String? = null,
-        val title: String
-    ) : Destination() {
-        companion object {
-            const val ARG_BROWSE_ID = "browseId"
-            const val ARG_PARAMS = "params"
-            const val ARG_TITLE = "title"
-        }
-    }
-
-    @Serializable
     data object PickMusic : Destination()
-
-    @Serializable
-    data object Wrapped : Destination()
 }

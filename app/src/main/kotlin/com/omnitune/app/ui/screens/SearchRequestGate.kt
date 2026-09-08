@@ -1,5 +1,8 @@
 package com.omnitune.app.ui.screens
 
+import com.omnitune.app.models.SearchFilterTab
+
+
 /**
  * Rejects late asynchronous search work after a query, tab, or preference change.
  *

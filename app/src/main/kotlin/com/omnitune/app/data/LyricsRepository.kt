@@ -11,5 +11,7 @@ interface LyricsRepository {
         duration: Long
     ): AppResult<List<LyricsLine>>
 
+    suspend fun saveLyrics(songId: String, lrcText: String): AppResult<List<LyricsLine>>
+
     fun parseLrc(lrcText: String): List<LyricsLine>
 }

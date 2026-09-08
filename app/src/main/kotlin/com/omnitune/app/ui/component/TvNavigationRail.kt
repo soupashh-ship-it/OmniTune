@@ -1,0 +1,130 @@
+/*
+ * This file was adapted from SuvMusic.
+ * Original copyright follows:
+ * 
+ * Copyright (C) Suvojeet
+ * Licensed under the GNU General Public License v3.0 (GPLv3)
+ */
+
+package com.omnitune.app.ui.component
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ViewWeek
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.omnitune.app.ui.navigation.Destination
+import com.omnitune.app.ui.utils.dpadFocusable
+
+/**
+ * Vertical Navigation Rail optimized for TV.
+ */
+@Composable
+fun TvNavigationRail(
+    currentDestination: Destination,
+    onDestinationChange: (Destination) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val navItems = listOf(
+        TvNavItem(Destination.Home, "Home", Icons.Outlined.Home, Icons.Filled.Home),
+        TvNavItem(Destination.Search, "Search", Icons.Outlined.Search, Icons.Filled.Search),
+        TvNavItem(Destination.Library, "Library", Icons.Outlined.ViewWeek, Icons.Filled.ViewWeek),
+        TvNavItem(Destination.Settings, "Settings", Icons.Outlined.Settings, Icons.Filled.Settings)
+    )
+
+    NavigationRail(
+        modifier = modifier.fillMaxHeight(),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        header = {
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            navItems.forEach { item ->
+                val isSelected = currentDestination == item.destination
+                
+                TvNavRailItem(
+                    item = item,
+                    isSelected = isSelected,
+                    onClick = { onDestinationChange(item.destination) }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvNavRailItem(
+    item: TvNavItem,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val selectedColor = MaterialTheme.colorScheme.primary
+    val unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val contentColor = if (isSelected) selectedColor else unselectedColor
+
+    Column(
+        modifier = Modifier
+            .dpadFocusable(
+                onClick = onClick,
+                shape = CircleShape,
+                focusedScale = 1.15f,
+                borderColor = MaterialTheme.colorScheme.primary,
+                borderWidth = 2.dp
+            )
+            .clip(CircleShape)
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+            contentDescription = item.label,
+            modifier = Modifier.size(28.dp),
+            tint = contentColor
+        )
+        Text(
+            text = item.label,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            color = contentColor,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+private data class TvNavItem(
+    val destination: Destination,
+    val label: String,
+    val unselectedIcon: ImageVector,
+    val selectedIcon: ImageVector
+)

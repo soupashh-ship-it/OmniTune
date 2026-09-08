@@ -13,6 +13,7 @@ internal fun preferredDownloadStreamQuality(): StreamQuality {
     return when (quality) {
         AudioQuality.LOW -> StreamQuality.LOW
         AudioQuality.AUTO -> StreamQuality.HIGH
+        AudioQuality.MEDIUM -> StreamQuality.MEDIUM
         AudioQuality.HIGH -> StreamQuality.HIGH
         AudioQuality.HIGHEST -> StreamQuality.BEST
     }

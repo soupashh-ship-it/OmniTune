@@ -8,7 +8,7 @@
 
 package com.omnitune.app.ui.menu
 
-import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.LoadingIndicator
 import android.content.Intent
 import android.content.res.Configuration
 import android.widget.Toast
@@ -105,7 +105,6 @@ import com.omnitune.app.playback.getDownload
 import com.omnitune.app.ui.utils.ShowMediaInfo
 import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.rememberPreference
-import com.omnitune.app.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -133,7 +132,6 @@ fun SongMenu(
         .collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }
-    // val cacheViewModel = hiltViewModel<CachePlaylistViewModel>() // Not used in OmniTune
 
     val rotationAnimation by animateFloatAsState(
         targetValue = refetchIconDegree,
@@ -612,7 +610,7 @@ fun SongMenu(
                         ListItem(
                             headlineContent = { Text(text = stringResource(R.string.downloading)) },
                             leadingContent = {
-                                OmniTuneLoader(size = 24.dp)
+                                LoadingIndicator(modifier = Modifier.size(24.dp))
                             },
                             modifier =
                                 Modifier.clickable {

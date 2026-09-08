@@ -1,126 +1,123 @@
 package com.omnitune.app.ui.screens
 
-import android.content.Context
+import android.app.PendingIntent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.exoplayer.offline.Download
-import androidx.media3.exoplayer.offline.DownloadManager
-import androidx.media3.exoplayer.offline.DownloadService
-import com.omnitune.app.playback.DownloadUtil
-import com.omnitune.app.playback.ExoDownloadService
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import javax.inject.Inject
 import com.omnitune.app.db.MusicDatabase
-import com.omnitune.app.db.entities.Song
-import com.omnitune.app.extensions.toMediaItem
-import com.omnitune.app.playback.PlayerConnection
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
+import com.omnitune.app.models.Song
+import com.omnitune.app.models.toSuvSong
+import com.omnitune.app.playback.DownloadUtil
+import dagger.hilt.android.lifecycle.HiltViewModel
 
-data class DownloadsUiState(
-    val downloads: List<Download> = emptyList(),
-    val songs: Map<String, Song> = emptyMap(),
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+
+data class SongStatus(
+    val song: Song,
+    val isDownloading: Boolean = false,
+    val progress: Float = 1.0f,
+    val failureReason: String? = null
 )
 
+sealed class DownloadItem {
+    data class SongItem(
+        val song: Song,
+        val isDownloading: Boolean = false,
+        val progress: Float = 1.0f,
+        val failureReason: String? = null
+    ) : DownloadItem()
+
+    data class CollectionItem(
+        val id: String,
+        val title: String,
+        val thumbnailUrl: String?,
+        val songs: List<SongStatus>
+    ) : DownloadItem()
+}
+
 @HiltViewModel
-@androidx.media3.common.util.UnstableApi
 class DownloadsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val downloadUtil: DownloadUtil,
-    private val database: MusicDatabase
+    private val database: MusicDatabase,
+    private val downloadUtil: DownloadUtil
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(DownloadsUiState())
-    val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
+    private val _pendingIntent = MutableStateFlow<PendingIntent?>(null)
+    val pendingIntent = _pendingIntent.asStateFlow()
 
-    private val listener = object : DownloadManager.Listener {
-        override fun onDownloadChanged(
-            downloadManager: DownloadManager,
-            download: Download,
-            finalException: Exception?
-        ) {
-            refreshDownloads()
-        }
-
-        override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
-            refreshDownloads()
-        }
+    fun consumePendingIntent() {
+        _pendingIntent.value = null
     }
 
-    init {
-        downloadUtil.downloadManager.addListener(listener)
-        refreshDownloads()
-    }
+    val downloadedSongs: StateFlow<List<Song>> = flow {
+        val songs = database.songsByRowIdAsc().first().map { it.toSuvSong() }
+        emit(songs)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    override fun onCleared() {
-        super.onCleared()
-        downloadUtil.downloadManager.removeListener(listener)
-    }
 
-    private fun refreshDownloads() {
-        viewModelScope.launch {
-            val (downloads, songs) = withContext(Dispatchers.IO) {
-                val cursor = downloadUtil.downloadManager.downloadIndex.getDownloads()
-                val result = mutableListOf<Download>()
-                try {
-                    while (cursor.moveToNext()) {
-                        result.add(cursor.download)
-                    }
-                } finally {
-                    cursor.close()
-                }
-                result to result.mapNotNull { download ->
-                    database.getSongById(download.request.id)?.let { download.request.id to it }
-                }.toMap()
+    val downloadedVideos: StateFlow<List<Song>> = downloadedSongs
+        .map { list -> list.filter { it.isVideo } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val downloadItems: StateFlow<List<DownloadItem>> = downloadedSongs.map { list ->
+        list.map { DownloadItem.SongItem(it) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _selectedSongIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedSongIds: StateFlow<Set<String>> = _selectedSongIds
+
+    val isSelectionMode = _selectedSongIds.map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun deleteDownload(songId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                downloadUtil.removeDownload(songId)
+                _selectedSongIds.update { it - songId }
+            } catch (e: Exception) {
+                // Ignore
             }
-            _uiState.value = DownloadsUiState(downloads = downloads, songs = songs)
         }
     }
 
-    fun isPlayable(download: Download): Boolean {
-        return downloadUtil.isPlayable(download)
+    fun retryDownload(songId: String) {
+        // Retry
     }
 
-    fun playDownload(download: Download, playerConnection: PlayerConnection?, context: Context) {
-        if (!downloadUtil.isPlayable(download)) {
-            android.widget.Toast.makeText(context, "Playback rejected: Download is not ready or missing.", android.widget.Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        viewModelScope.launch {
-            val playableDownloads = _uiState.value.downloads.filter { downloadUtil.isPlayable(it) }
-            val mediaItems = withContext(Dispatchers.IO) {
-                playableDownloads.map { dl ->
-                    val dbSong = database.getSongById(dl.request.id)
-                    if (dbSong != null) {
-                        dbSong.toMediaItem()
-                    } else {
-                        Timber.i("Diagnostics: Metadata fallback for non-DB-backed download: ${dl.request.id}")
-                        val title = String(dl.request.data, Charsets.UTF_8).ifBlank { dl.request.id }
-                        val thumbnailUrl = dl.request.id
-                            .takeIf { it.matches(Regex("^[a-zA-Z0-9_-]{11}$")) }
-                            ?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
-                        val downloadMeta = com.omnitune.app.models.MediaMetadata(
-                            id = dl.request.id,
-                            title = title,
-                            artists = emptyList(),
-                            duration = 0,
-                            thumbnailUrl = thumbnailUrl,
-                        )
-                        downloadMeta.toMediaItem()
-                    }
-                }
-            }
-            val startIndex = playableDownloads.indexOfFirst { it.request.id == download.request.id }.coerceAtLeast(0)
-            playerConnection?.playQueue(com.omnitune.app.playback.queues.ListQueue(items = mediaItems, startIndex = startIndex))
+    fun toggleSelection(songId: String) {
+        _selectedSongIds.update { current ->
+            if (current.contains(songId)) current - songId else current + songId
         }
     }
+
+    fun selectAll() {
+        val allIds = downloadedSongs.value.map { it.id }.toSet()
+        _selectedSongIds.value = allIds
+    }
+
+    fun clearSelection() {
+        _selectedSongIds.value = emptySet()
+    }
+
+    fun deleteSelected() {
+        val toDelete = _selectedSongIds.value.toList()
+        viewModelScope.launch(Dispatchers.IO) {
+            toDelete.forEach { downloadUtil.removeDownload(it) }
+            clearSelection()
+        }
+    }
+
+    fun deleteAll() {
+        val all = downloadedSongs.value.map { it.id }
+        viewModelScope.launch(Dispatchers.IO) {
+            all.forEach { downloadUtil.removeDownload(it) }
+            clearSelection()
+        }
+    }
+
+    fun refreshDownloads() {}
 
     fun startDownload(
         videoId: String,
@@ -128,40 +125,6 @@ class DownloadsViewModel @Inject constructor(
         resolvedStreamUrl: String? = null,
         onResult: (success: Boolean, message: String) -> Unit = { _, _ -> }
     ) {
-        downloadUtil.enqueue(videoId, title, resolvedStreamUrl) { success, message ->
-            if (success) {
-                refreshDownloads()
-            }
-            onResult(success, message)
-        }
-    }
-
-    fun retryDownload(videoId: String) {
-        val download = _uiState.value.downloads.find { it.request.id == videoId }
-        if (download != null) {
-            val title = String(download.request.data, Charsets.UTF_8)
-            startDownload(videoId, title)
-        }
-    }
-
-    fun removeDownload(videoId: String) {
-        DownloadService.sendRemoveDownload(
-            context,
-            ExoDownloadService::class.java,
-            videoId,
-            false
-        )
-    }
-
-    fun clearFailedDownloads() {
-        _uiState.value.downloads
-            .filter { it.state == Download.STATE_FAILED }
-            .forEach { removeDownload(it.request.id) }
-    }
-
-    fun clearQueuedDownloads() {
-        _uiState.value.downloads
-            .filter { it.state == Download.STATE_QUEUED }
-            .forEach { removeDownload(it.request.id) }
+        downloadUtil.enqueue(videoId, title, resolvedStreamUrl, onResult)
     }
 }

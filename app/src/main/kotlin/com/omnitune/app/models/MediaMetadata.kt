@@ -9,7 +9,7 @@ package com.omnitune.app.models
 
 import androidx.compose.runtime.Immutable
 import com.omnitune.innertube.models.SongItem
-import com.omnitune.app.db.entities.Song
+import com.omnitune.app.db.entities.Song as DbSong
 import com.omnitune.app.db.entities.SongEntity
 import com.omnitune.app.ui.utils.resize
 import java.io.Serializable
@@ -69,7 +69,7 @@ data class MediaMetadata(
         )
 }
 
-fun Song.toMediaMetadata() =
+fun DbSong.toMediaMetadata() =
     MediaMetadata(
         id = song.id,
         title = song.title,
@@ -121,3 +121,29 @@ fun SongItem.toMediaMetadata() =
         explicit = explicit,
         setVideoId = setVideoId
     )
+
+fun MediaMetadata.toDomainSong(): Song =
+    Song(
+        id = id,
+        title = title,
+        artist = artists.joinToString(", ") { it.name },
+        album = album?.title.orEmpty(),
+        duration = duration.toLong() * 1000L,
+        thumbnailUrl = thumbnailUrl,
+        artistId = artists.firstOrNull()?.id
+    )
+
+fun Song.toMediaItem(): androidx.media3.common.MediaItem {
+    return androidx.media3.common.MediaItem.Builder()
+        .setMediaId(id)
+        .setUri(localUri?.let { android.net.Uri.parse(it) } ?: android.net.Uri.parse("https://youtube.com/watch?v=$id"))
+        .setMediaMetadata(
+            androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(thumbnailUrl?.let { android.net.Uri.parse(it) })
+                .build()
+        )
+        .build()
+}

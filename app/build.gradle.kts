@@ -50,8 +50,8 @@ android {
         applicationId = "com.omnitune.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 120
-        versionName = "1.2.0-pre2"
+        versionCode = 121
+        versionName = "1.2.0-pre3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -174,6 +174,8 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     coreLibraryDesugaring(libs.desugaring)
 
     implementation(libs.hilt)
@@ -208,9 +210,12 @@ dependencies {
     implementation(libs.shimmer)
 
     implementation(libs.media3)
+    implementation(libs.media3.ui)
     implementation(libs.media3.okhttp)
     implementation(libs.media3.session)
     implementation(libs.media3.exoplayer.workmanager)
+    implementation(libs.window)
+    implementation(libs.window.core)
     implementation(libs.work.runtime)
 
     implementation(libs.ktor.client.core)
@@ -233,8 +238,6 @@ dependencies {
     implementation(libs.squigglyslider)
     implementation(libs.palette.ktx)
 
-    // M3 color science for dynamic theme generation
-    implementation("com.github.Kyant0:m3color:2025.4")
     implementation(project(":innertube"))
     implementation(project(":simpmusic"))
     implementation(project(":betterlyrics"))

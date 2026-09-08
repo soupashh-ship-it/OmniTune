@@ -62,7 +62,7 @@ fun EqualizerScreen(
             IconButton(
                 onClick = onBack,
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))
-                    .background(OmniColors.GlassSurface)
+                    .background(OmniColors.OmniGlassSubtle)
             ) {
                 Icon(painterResource(R.drawable.ic_arrow_back), "Back", tint = OmniColors.TextPrimary, modifier = Modifier.size(20.dp))
             }
@@ -93,7 +93,7 @@ fun EqualizerScreen(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSelected) OmniColors.Primary else OmniColors.GlassSurface)
+                        .background(if (isSelected) OmniColors.OmniAccentPrimary else OmniColors.OmniGlassSubtle)
                         .clickable {
                             selectedPreset = preset.name
                             bands = preset.bands
@@ -132,9 +132,9 @@ fun EqualizerScreen(
                     valueRange = -15f..15f,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
-                        thumbColor = OmniColors.Primary,
-                        activeTrackColor = OmniColors.Primary,
-                        inactiveTrackColor = OmniColors.GlassSurface
+                        thumbColor = OmniColors.OmniAccentPrimary,
+                        activeTrackColor = OmniColors.OmniAccentPrimary,
+                        inactiveTrackColor = OmniColors.OmniGlassSubtle
                     )
                 )
                 Text(
@@ -143,6 +143,7 @@ fun EqualizerScreen(
                     color = OmniColors.TextPrimary.copy(alpha = 0.7f),
                     modifier = Modifier.width(48.dp)
                 )
+
             }
         }
     }

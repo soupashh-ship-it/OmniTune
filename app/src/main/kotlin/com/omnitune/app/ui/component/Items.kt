@@ -40,10 +40,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.models.MediaMetadata
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.OmniShapes
-import com.omnitune.app.ui.theme.OmniSpacing
-import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.SquircleShape
 
 private const val LIST_ITEM_HEIGHT = 64
 private val LIST_THUMBNAIL_SIZE = 48.dp
@@ -65,8 +62,8 @@ fun ListItem(
             .padding(horizontal = 8.dp)
             .then(
                 if (isActive) Modifier
-                    .clip(OmniShapes.Small)
-                    .background(OmniColors.OmniGlassMedium)
+                    .clip(SquircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
                 else Modifier
             ),
     ) {
@@ -74,10 +71,10 @@ fun ListItem(
         Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
             Text(
                 text = title,
-                style = OmniTextStyles.songTitle,
+                style = MaterialTheme.typography.bodyLarge,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -103,7 +100,7 @@ fun ListItem(
         if (!subtitle.isNullOrEmpty()) {
             Text(
                 text = subtitle,
-                color = OmniColors.TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -126,11 +123,11 @@ fun GridItem(
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(OmniSpacing.small)
+                .padding(8.dp)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(OmniSpacing.small)
+                .padding(8.dp)
                 .width(180.dp)
         },
     ) {
@@ -165,7 +162,7 @@ fun GridItem(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
-            color = OmniColors.TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Start,
@@ -176,7 +173,7 @@ fun GridItem(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = OmniColors.TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -206,7 +203,7 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
-                shape = OmniShapes.ArtworkSmall,
+                shape = SquircleShape,
                 modifier = Modifier.size(LIST_THUMBNAIL_SIZE),
             )
         },
@@ -249,12 +246,12 @@ fun ItemThumbnail(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(OmniColors.Background.copy(alpha = 0.58f), shape),
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.58f), shape),
             ) {
                 Icon(
                     painter = painterResource(com.omnitune.app.R.drawable.ic_add),
                     contentDescription = null,
-                    tint = OmniColors.TextPrimary,
+                    tint = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
@@ -262,7 +259,7 @@ fun ItemThumbnail(
         PlayingIndicatorBox(
             isActive = isActive,
             playWhenReady = isPlaying,
-            color = OmniColors.TextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -291,7 +288,7 @@ fun SongListItem(
                 isSelected = isSelected,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = OmniShapes.ArtworkSmall,
+                shape = SquircleShape,
                 modifier = Modifier.size(LIST_THUMBNAIL_SIZE),
             )
         },

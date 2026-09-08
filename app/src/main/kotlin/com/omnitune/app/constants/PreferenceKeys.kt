@@ -3,8 +3,6 @@
  * Licensed under GPL-3.0
  */
 
-
-
 package com.omnitune.app.constants
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -38,6 +36,7 @@ val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
 val GlassNavigationBarKey = booleanPreferencesKey("glassNavigationBar")
 val GlassMiniPlayerKey = booleanPreferencesKey("glassMiniPlayer")
+val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 
 enum class SliderStyle {
     Standard,
@@ -68,23 +67,120 @@ val YtmLastSyncErrorKey = stringPreferencesKey("ytm_last_sync_error")
 // ListenBrainz scrobbling
 val ListenBrainzEnabledKey = booleanPreferencesKey("listenbrainz_enabled")
 val ListenBrainzTokenKey = stringPreferencesKey("listenbrainz_token")
-
-// ListenBrainz scrobbling
 val ListenBrainzNowPlayingKey = booleanPreferencesKey("listenbrainz_now_playing")
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
 val ScrobbleMinSongDurationKey = intPreferencesKey("scrobbleMinSongDuration")
 val ScrobbleDelaySecondsKey = intPreferencesKey("scrobbleDelaySeconds")
+val IncognitoModeKey = booleanPreferencesKey("incognito_mode_enabled")
 
 val AudioQualityKey = stringPreferencesKey("audioQuality")
-
 val NetworkMeteredKey = booleanPreferencesKey("networkMetered")
+val PlayerCacheLimitKey = longPreferencesKey("player_cache_limit")
 
-enum class AudioQuality {
-    AUTO,
-    HIGH,
-    HIGHEST,
-    LOW,
+enum class AudioQuality(val label: String = "") {
+    AUTO("Auto"),
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High"),
+    HIGHEST("Highest");
 }
+
+enum class UpdateChannel {
+    STABLE,
+    BETA,
+    NIGHTLY,
+}
+
+enum class MyTopFilter {
+    ALL_TIME,
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR,
+}
+
+val LastLibraryBackupAtKey = longPreferencesKey("lastLibraryBackupAt")
+val RestrictExplicitContentKey = booleanPreferencesKey("restrictExplicitContent")
+val SafeSearchKey = booleanPreferencesKey("safeSearch")
+val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
+
+enum class SongSortType {
+    CREATE_DATE,
+    NAME,
+    ARTIST,
+    PLAY_TIME,
+}
+
+enum class ArtistSongSortType {
+    CREATE_DATE,
+    NAME,
+    PLAY_TIME,
+}
+
+enum class ArtistSortType {
+    CREATE_DATE,
+    NAME,
+    SONG_COUNT,
+    PLAY_TIME,
+}
+
+enum class AlbumSortType {
+    CREATE_DATE,
+    NAME,
+    ARTIST,
+    YEAR,
+    SONG_COUNT,
+    LENGTH,
+    PLAY_TIME,
+}
+
+enum class PlaylistSortType {
+    CUSTOM,
+    CREATE_DATE,
+    NAME,
+    SONG_COUNT,
+    LAST_UPDATED,
+}
+
+val SongSortTypeKey = stringPreferencesKey("songSortType")
+
+val SongSortDescendingKey = booleanPreferencesKey("songSortDescending")
+val TopPlaylistSortDescendingKey = booleanPreferencesKey("topPlaylistSortDescending")
+
+enum class LibraryViewType {
+    LIST,
+    GRID;
+
+    fun toggle() = when (this) {
+        LIST -> GRID
+        GRID -> LIST
+    }
+}
+
+enum class MixSortType {
+    CREATE_DATE,
+    NAME,
+    LAST_UPDATED,
+    ARTIST,
+}
+
+val MixSortTypeKey = stringPreferencesKey("mixSortType")
+val MixSortDescendingKey = booleanPreferencesKey("mixSortDescending")
+val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
+val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
+val PlaylistViewTypeKey = stringPreferencesKey("playlistViewType")
+val GridItemsSizeKey = stringPreferencesKey("gridItemsSize")
+val GridItemSizeKey = stringPreferencesKey("gridItemSize")
+
+val ArtistSortTypeKey = stringPreferencesKey("artistSortType")
+val ArtistSortDescendingKey = booleanPreferencesKey("artistSortDescending")
+val PlaylistSortTypeKey = stringPreferencesKey("playlistSortType")
+val PlaylistSortDescendingKey = booleanPreferencesKey("playlistSortDescending")
+val AlbumSortTypeKey = stringPreferencesKey("albumSortType")
+val AlbumSortDescendingKey = booleanPreferencesKey("albumSortDescending")
+
+
+
 
 val PlayerStreamClientKey = stringPreferencesKey("playerStreamClient")
 
@@ -109,6 +205,7 @@ val AutoSkipNextOnErrorKey = booleanPreferencesKey("autoSkipNextOnError")
 val AutoplaySimilarSongsKey = booleanPreferencesKey("autoplaySimilarSongs")
 val LikedSongsShuffleKey = booleanPreferencesKey("likedSongsShuffle")
 val PauseOnDeviceMuteKey = booleanPreferencesKey("pauseOnDeviceMute")
+val KeepScreenOnKey = booleanPreferencesKey("keepScreenOn")
 val AutoStartOnBluetoothKey = booleanPreferencesKey("autoStartOnBluetooth")
 val StopMusicOnTaskClearKey = booleanPreferencesKey("stopMusicOnTaskClear")
 val ArtistSeparatorsKey = stringPreferencesKey("artistSeparators")
@@ -116,222 +213,99 @@ val PlaylistTagsFilterKey = stringPreferencesKey("playlistTagsFilter")
 val ShowHomeCategoryChipsKey = booleanPreferencesKey("showHomeCategoryChips")
 val ShowTagsInLibraryKey = booleanPreferencesKey("showTagsInLibrary")
 
-val EqualizerEnabledKey = booleanPreferencesKey("equalizerEnabled")
-val EqualizerBandLevelsMbKey = stringPreferencesKey("equalizerBandLevelsMb")
-val EqualizerOutputGainEnabledKey = booleanPreferencesKey("equalizerOutputGainEnabled")
-val EqualizerOutputGainMbKey = intPreferencesKey("equalizerOutputGainMb")
-val EqualizerBassBoostEnabledKey = booleanPreferencesKey("equalizerBassBoostEnabled")
-val EqualizerBassBoostStrengthKey = intPreferencesKey("equalizerBassBoostStrength")
-val EqualizerVirtualizerEnabledKey = booleanPreferencesKey("equalizerVirtualizerEnabled")
-val EqualizerVirtualizerStrengthKey = intPreferencesKey("equalizerVirtualizerStrength")
-val EqualizerSelectedProfileIdKey = stringPreferencesKey("equalizerSelectedProfileId")
-val EqualizerCustomProfilesJsonKey = stringPreferencesKey("equalizerCustomProfilesJson")
+// Downloads settings
+val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")
+val DownloadQualityKey = stringPreferencesKey("downloadQuality")
+val DownloadWifiOnlyKey = booleanPreferencesKey("downloadWifiOnly")
+val RetryFailedDownloadsKey = booleanPreferencesKey("retryFailedDownloads")
 
-val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
-val SmartTrimmerKey = booleanPreferencesKey("smartTrimmer")
-val RestrictExplicitContentKey = booleanPreferencesKey("restrictExplicitContent")
-val SafeSearchKey = booleanPreferencesKey("safeSearch")
-val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")
-val MaxCanvasCacheSizeKey = intPreferencesKey("maxCanvasCacheSize")
-
-val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
-
-val TranslatorContextsKey = stringPreferencesKey("translatorContexts")
-val TranslatorTargetLangKey = stringPreferencesKey("translatorTargetLang")
-val EnableTranslatorKey = booleanPreferencesKey("enableTranslator")
-
-val ChipSortTypeKey = stringPreferencesKey("chipSortType")
-val SongSortTypeKey = stringPreferencesKey("songSortType")
-val SongSortDescendingKey = booleanPreferencesKey("songSortDescending")
-val PlaylistSongSortTypeKey = stringPreferencesKey("playlistSongSortType")
-val PlaylistSongSortDescendingKey = booleanPreferencesKey("playlistSongSortDescending")
-val AutoPlaylistSongSortTypeKey = stringPreferencesKey("autoPlaylistSongSortType")
-val AutoPlaylistSongSortDescendingKey = booleanPreferencesKey("autoPlaylistSongSortDescending")
-val ArtistSortTypeKey = stringPreferencesKey("artistSortType")
-val ArtistSortDescendingKey = booleanPreferencesKey("artistSortDescending")
-val AlbumSortTypeKey = stringPreferencesKey("albumSortType")
-val AlbumSortDescendingKey = booleanPreferencesKey("albumSortDescending")
-val PlaylistSortTypeKey = stringPreferencesKey("playlistSortType")
-val PlaylistSortDescendingKey = booleanPreferencesKey("playlistSortDescending")
-val ArtistSongSortTypeKey = stringPreferencesKey("artistSongSortType")
-val ArtistSongSortDescendingKey = booleanPreferencesKey("artistSongSortDescending")
-val MixSortTypeKey = stringPreferencesKey("mixSortType")
-val MixSortDescendingKey = booleanPreferencesKey("mixSortDescending")
-val TopPlaylistSortDescendingKey = booleanPreferencesKey("topPlaylistSortDescending")
-
-val SongFilterKey = stringPreferencesKey("songFilter")
-val ArtistFilterKey = stringPreferencesKey("artistFilter")
-val AlbumFilterKey = stringPreferencesKey("albumFilter")
-
-val LastLikeSongSyncKey = longPreferencesKey("last_like_song_sync")
-val LastLibSongSyncKey = longPreferencesKey("last_library_song_sync")
-val LastAlbumSyncKey = longPreferencesKey("last_album_sync")
-val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
-val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
-val LastLibraryBackupAtKey = longPreferencesKey("last_library_backup_at")
-
-val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
-val AlbumViewTypeKey = stringPreferencesKey("albumViewType")
-val PlaylistViewTypeKey = stringPreferencesKey("playlistViewType")
-
-val PlaylistEditLockKey = booleanPreferencesKey("playlistEditLock")
-val QuickPicksKey = stringPreferencesKey("discover")
-val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
-val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
-
-val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
-val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist")
-val ShowTopPlaylistKey = booleanPreferencesKey("show_top_playlist")
-val ShowCachedPlaylistKey = booleanPreferencesKey("show_cached_playlist")
-
-enum class LibraryViewType {
-    LIST,
-    GRID,
-    ;
-
-    fun toggle() =
-        when (this) {
-            LIST -> GRID
-            GRID -> LIST
-        }
-}
-
-enum class SongFilter {
-    LIBRARY,
-    LIKED,
-    DOWNLOADED
-}
-
-enum class ArtistFilter {
-    LIBRARY,
-    LIKED
-}
-
-enum class AlbumFilter {
-    LIBRARY,
-    LIKED,
-    DOWNLOADED,
-    DOWNLOADED_FULL
-}
-
-enum class SongSortType {
-    CREATE_DATE,
-    NAME,
-    ARTIST,
-    PLAY_TIME,
-}
-
-enum class PlaylistSongSortType {
-    CUSTOM,
-    CREATE_DATE,
-    NAME,
-    ARTIST,
-    PLAY_TIME,
-}
-
-enum class AutoPlaylistSongSortType {
-    CREATE_DATE,
-    NAME,
-    ARTIST,
-    PLAY_TIME,
-}
-
-enum class ArtistSortType {
-    CREATE_DATE,
-    NAME,
-    SONG_COUNT,
-    PLAY_TIME,
-}
-
-enum class ArtistSongSortType {
-    CREATE_DATE,
-    NAME,
-    PLAY_TIME,
-}
-
-enum class AlbumSortType {
-    CREATE_DATE,
-    NAME,
-    ARTIST,
-    YEAR,
-    SONG_COUNT,
-    LENGTH,
-    PLAY_TIME,
-}
-
-enum class PlaylistSortType {
-    CREATE_DATE,
-    NAME,
-    SONG_COUNT,
-    LAST_UPDATED,
-    CUSTOM,
-}
-
-enum class MixSortType {
-    CREATE_DATE,
-    NAME,
-    LAST_UPDATED,
-}
-
-enum class GridItemSize {
-    BIG,
-    SMALL,
-}
-
-enum class MyTopFilter {
-    ALL_TIME,
-    DAY,
-    WEEK,
-    MONTH,
-    YEAR,
-    ;
-
-    fun toTimeMillis(): Long =
-        when (this) {
-            DAY ->
-                LocalDateTime
-                    .now()
-                    .minusDays(1)
-                    .toInstant(ZoneOffset.UTC)
-                    .toEpochMilli()
-
-            WEEK ->
-                LocalDateTime
-                    .now()
-                    .minusWeeks(1)
-                    .toInstant(ZoneOffset.UTC)
-                    .toEpochMilli()
-
-            MONTH ->
-                LocalDateTime
-                    .now()
-                    .minusMonths(1)
-                    .toInstant(ZoneOffset.UTC)
-                    .toEpochMilli()
-
-            YEAR ->
-                LocalDateTime
-                    .now()
-                    .minusMonths(12)
-                    .toInstant(ZoneOffset.UTC)
-                    .toEpochMilli()
-
-            ALL_TIME -> 0
-        }
-}
-
+// Content & Quick Picks settings
+val QuickPicksKey = stringPreferencesKey("quickPicks")
 enum class QuickPicks {
     QUICK_PICKS,
     LAST_LISTEN,
+    TRENDING,
+    LAST_LISTENED,
 }
 
-enum class PreferredLyricsProvider {
-    LRCLIB,
-    KUGOU,
-    BETTER_LYRICS,
-    SIMPMUSIC,
+// Omni appearance enums
+enum class OmniPlayerBackgroundStyle {
+    DYNAMIC_GRADIENT,
+    SOLID_DARK,
 }
 
+enum class OmniPlayerDesignStyle {
+    DEFAULT,
+    COMPACT,
+    IMMERSIVE,
+}
+
+enum class OmniMiniPlayerDesign {
+    DEFAULT,
+    COMPACT,
+}
+
+enum class OmniPlayerButtonColorMode {
+    DYNAMIC,
+    DEFAULT,
+    MONOCHROME,
+}
+
+enum class OmniSliderStyle {
+    DEFAULT,
+    THIN,
+    ROUNDED,
+}
+
+enum class OmniLyricsPresentation {
+    DEFAULT,
+    COMPACT,
+    LARGE,
+}
+
+// Library settings
+enum class OmniLibraryDesign {
+    DEFAULT,
+    COMPACT_LIST,
+    CLASSIC,
+    MODERN,
+}
+
+
+val ShowCachedPlaylistKey = booleanPreferencesKey("showCachedPlaylist")
+val ShowDownloadedPlaylistKey = booleanPreferencesKey("showDownloadedPlaylist")
+val ShowLikedPlaylistKey = booleanPreferencesKey("showLikedPlaylist")
+val ShowTopPlaylistKey = booleanPreferencesKey("showTopPlaylist")
+
+
+val ShowFloatingLyricsKey = booleanPreferencesKey("showFloatingLyrics")
+val FloatingLyricsPositionKey = stringPreferencesKey("floatingLyricsPosition")
+val FloatingLyricsOpacityKey = floatPreferencesKey("floatingLyricsOpacity")
+val FloatingLyricsTextSizeKey = floatPreferencesKey("floatingLyricsTextSize")
+val FloatingLyricsTextColorKey = stringPreferencesKey("floatingLyricsTextColor")
+val FloatingLyricsBackgroundColorKey = stringPreferencesKey("floatingLyricsBackgroundColor")
+
+// Queue layout customisation
+val QueueHeaderStyleKey = stringPreferencesKey("queueHeaderStyle")
+val QueueArtworkShapeKey = stringPreferencesKey("queueArtworkShape")
+val QueueArtworkCornerRadiusKey = floatPreferencesKey("queueArtworkCornerRadius")
+val QueueItemStyleKey = stringPreferencesKey("queueItemStyle")
+val QueueItemVerticalPaddingKey = floatPreferencesKey("queueItemVerticalPadding")
+val QueueBackgroundStyleKey = stringPreferencesKey("queueBackgroundStyle")
+val QueueCustomBackgroundColorKey = stringPreferencesKey("queueCustomBackgroundColor")
+val QueueGlassBlurAmountKey = floatPreferencesKey("queueGlassBlurAmount")
+val QueueGlassAlphaKey = floatPreferencesKey("queueGlassAlpha")
+val QueueShowSongDurationKey = booleanPreferencesKey("queueShowSongDuration")
+val QueueShowDragHandleKey = booleanPreferencesKey("queueShowDragHandle")
+
+// App rating / star prompt preferences
+val LaunchCountKey = intPreferencesKey("launch_count")
+val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
+val RemindAfterKey = intPreferencesKey("remind_after")
+val SupportDialogDismissedKey = booleanPreferencesKey("support_dialog_dismissed")
+val SupportDialogSnoozedUntilKey = longPreferencesKey("support_dialog_snoozed_until")
+
+// Player & Theme Design
 enum class PlayerButtonsStyle {
     DEFAULT,
     SECONDARY,
@@ -361,7 +335,6 @@ val PlayerCustomImageUriKey = stringPreferencesKey("playerCustomImageUri")
 val PlayerCustomBlurKey = floatPreferencesKey("playerCustomBlur")
 val PlayerCustomContrastKey = floatPreferencesKey("playerCustomContrast")
 val PlayerCustomBrightnessKey = floatPreferencesKey("playerCustomBrightness")
-
 
 val LyricsAnimationStyleKey = stringPreferencesKey("lyricsAnimationStyle")
 enum class LyricsAnimationStyle {
@@ -435,6 +408,83 @@ val PoTokenGvsKey = stringPreferencesKey("poTokenGvs")
 val PoTokenPlayerKey = stringPreferencesKey("poTokenPlayer")
 val UseVisitorDataKey = booleanPreferencesKey("useVisitorData")
 val PoTokenSourceUrlKey = stringPreferencesKey("poTokenSourceUrl")
+
+// Update settings
+val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
+val UpdateChannelKey = stringPreferencesKey("updateChannel")
+val LastUpdateCheckKey = longPreferencesKey("lastUpdateCheck")
+val LastNotifiedVersionKey = stringPreferencesKey("lastNotifiedVersion")
+
+val GitHubContributorsEtagKey = stringPreferencesKey("github_contributors_etag")
+val GitHubContributorsJsonKey = stringPreferencesKey("github_contributors_json")
+val GitHubContributorsLastCheckedAtKey = longPreferencesKey("github_contributors_last_checked_at")
+val GitHubReleasesEtagKey = stringPreferencesKey("github_releases_etag")
+
+// Liquid Glass and Player customisation keys
+val LiquidGlassEnabledKey = booleanPreferencesKey("liquidGlassEnabled")
+val SeekbarStyleKey = stringPreferencesKey("seekbarStyle")
+val ArtworkShapeKey = stringPreferencesKey("artworkShape")
+val ArtworkSizeKey = stringPreferencesKey("artworkSize")
+val MiniPlayerStyleKey = stringPreferencesKey("miniPlayerStyle")
+val PlayerStyleKey = stringPreferencesKey("playerStyle")
+val AppThemeKey = stringPreferencesKey("appTheme")
+val ThemeModeKey = stringPreferencesKey("themeMode")
+val LogoVariantKey = stringPreferencesKey("logoVariant")
+val ForceMaxRefreshRateKey = booleanPreferencesKey("forceMaxRefreshRate")
+val WifiAudioQualityKey = stringPreferencesKey("wifiAudioQuality")
+val MobileAudioQualityKey = stringPreferencesKey("mobileAudioQuality")
+val DoubleTapSeekSecondsKey = intPreferencesKey("doubleTapSeekSeconds")
+val SwipeDownToDismissPlayerKey = booleanPreferencesKey("swipeDownToDismissPlayer")
+val PlayerAnimatedBackgroundEnabledKey = booleanPreferencesKey("playerAnimatedBackgroundEnabled")
+val AlbumArtDynamicColorsEnabledKey = booleanPreferencesKey("albumArtDynamicColorsEnabled")
+val RotatingVinylAnimationEnabledKey = booleanPreferencesKey("rotatingVinylAnimationEnabled")
+val NavBarAlphaKey = floatPreferencesKey("navBarAlpha")
+val NavBarBlurKey = floatPreferencesKey("navBarBlur")
+val LyricsAnimationTypeKey = stringPreferencesKey("lyricsAnimationType")
+val PreferredLyricsProviderKey = stringPreferencesKey("preferredLyricsProvider")
+
+enum class PreferredLyricsProvider {
+    LRCLIB,
+    KUGOU,
+    BETTER_LYRICS,
+    SIMPMUSIC,
+}
+
+enum class LyricsPosition {
+    LEFT,
+    CENTER,
+    RIGHT,
+}
+val LyricsPositionKey = stringPreferencesKey("lyricsPosition")
+
+val LyricsBlurKey = floatPreferencesKey("lyricsBlur")
+val SponsorBlockEnabledKey = booleanPreferencesKey("sponsorBlockEnabled")
+val LastFmUsernameKey = stringPreferencesKey("lastFmUsername")
+val LastFmScrobblingEnabledKey = booleanPreferencesKey("lastFmScrobblingEnabled")
+val DiscordRpcEnabledKey = booleanPreferencesKey("discordRpcEnabled")
+val DiscordTokenKey = stringPreferencesKey("discordToken")
+val OpenaiApiKey = stringPreferencesKey("openaiApiKey")
+val OpenaiModelKey = stringPreferencesKey("openaiModel")
+val AnthropicApiKey = stringPreferencesKey("anthropicApiKey")
+val AnthropicModelKey = stringPreferencesKey("anthropicModel")
+val GeminiApiKey = stringPreferencesKey("geminiApiKey")
+val GeminiModelKey = stringPreferencesKey("geminiModel")
+val SelectedAiProviderKey = stringPreferencesKey("selectedAiProvider")
+val VolumeBoostEnabledKey = booleanPreferencesKey("volumeBoostEnabled")
+val VolumeBoostAmountKey = intPreferencesKey("volumeBoostAmount")
+val AudioOffloadEnabledKey = booleanPreferencesKey("audioOffloadEnabled")
+val GaplessPlaybackKey = booleanPreferencesKey("gaplessPlayback")
+val AutomixKey = booleanPreferencesKey("automix")
+val VolumeNormalizationKey = booleanPreferencesKey("volumeNormalization")
+val CrossfadeMsKey = intPreferencesKey("crossfadeMs")
+val CrossfeedEnabledKey = booleanPreferencesKey("crossfeedEnabled")
+val NextSongPreloadingKey = booleanPreferencesKey("nextSongPreloading")
+
+val EqualizerBassBoostEnabledKey = booleanPreferencesKey("equalizer_bass_boost_enabled")
+val EqualizerBassBoostStrengthKey = intPreferencesKey("equalizer_bass_boost_strength")
+val EqualizerVirtualizerEnabledKey = booleanPreferencesKey("equalizer_virtualizer_enabled")
+val EqualizerVirtualizerStrengthKey = intPreferencesKey("equalizer_virtualizer_strength")
+val EqualizerPreampLevelMbKey = intPreferencesKey("equalizer_preamp_level_mb")
 
 val LanguageCodeToName =
     mapOf(
@@ -518,88 +568,8 @@ val CountryCodeToName =
         "AE" to "United Arab Emirates",
     )
 
-// App rating / star prompt preferences
-val LaunchCountKey = intPreferencesKey("launch_count")
-val HasPressedStarKey = booleanPreferencesKey("has_pressed_star")
-val RemindAfterKey = intPreferencesKey("remind_after")
-val SupportDialogDismissedKey = booleanPreferencesKey("support_dialog_dismissed")
-val SupportDialogSnoozedUntilKey = longPreferencesKey("support_dialog_snoozed_until")
-
-// Update settings
-val EnableUpdateNotificationKey = booleanPreferencesKey("enableUpdateNotification")
-val UpdateChannelKey = stringPreferencesKey("updateChannel")
-val LastUpdateCheckKey = longPreferencesKey("lastUpdateCheck")
-val LastNotifiedVersionKey = stringPreferencesKey("lastNotifiedVersion")
-
-val GitHubContributorsEtagKey = stringPreferencesKey("github_contributors_etag")
-val GitHubContributorsJsonKey = stringPreferencesKey("github_contributors_json")
-val GitHubContributorsLastCheckedAtKey = longPreferencesKey("github_contributors_last_checked_at")
-
-val GitHubReleasesEtagKey = stringPreferencesKey("github_releases_etag")
-val GitHubReleasesJsonKey = stringPreferencesKey("github_releases_json")
-val GitHubReleasesLastCheckedAtKey = longPreferencesKey("github_releases_last_checked_at")
-val GitHubReleasesFingerprintKey = stringPreferencesKey("github_releases_fingerprint")
-
-val HomeProviderFeedCacheKey = stringPreferencesKey("home_provider_feed_cache")
-val HomeProviderFeedCacheAtKey = longPreferencesKey("home_provider_feed_cache_at")
-
-enum class UpdateChannel {
-    STABLE,
-    NIGHTLY,
-}
-
-// Sleep Timer
-val SleepTimerEnabledKey = booleanPreferencesKey("sleepTimerEnabled")
-val SleepTimerMinutesKey = intPreferencesKey("sleepTimerMinutes")  // duration in minutes
-val SleepTimerEndOfSongKey = booleanPreferencesKey("sleepTimerEndOfSong") // finish current song before stopping
-
-// Equalizer
-val EqualizerBandsKey = stringPreferencesKey("equalizerBands") // JSON string of band gains
-val EqualizerPresetKey = stringPreferencesKey("equalizerPreset") // preset name
-
-// Downloads
-val DownloadMaxParallelKey = intPreferencesKey("downloadMaxParallel")  // default 3
-val DownloadQualityKey = stringPreferencesKey("downloadQuality")        // mirrors AudioQuality
-val DownloadWifiOnlyKey = booleanPreferencesKey("downloadWifiOnly")
-val RetryFailedDownloadsKey = booleanPreferencesKey("retryFailedDownloads")
-
-enum class LyricsPosition { LEFT, CENTER, RIGHT }
-
-enum class OmniPlayerBackgroundStyle {
-    DYNAMIC_GRADIENT,
-    SOLID_DARK,
-}
-
-enum class OmniPlayerDesignStyle {
-    DEFAULT,
-    COMPACT,
-    IMMERSIVE,
-}
-
-enum class OmniMiniPlayerDesign {
-    DEFAULT,
-    COMPACT,
-}
-
-enum class OmniLibraryDesign {
-    DEFAULT,
-    COMPACT_LIST,
-}
-
-enum class OmniPlayerButtonColorMode {
-    DYNAMIC,
-    DEFAULT,
-    MONOCHROME,
-}
-
-enum class OmniSliderStyle {
-    DEFAULT,
-    THIN,
-    ROUNDED,
-}
-
-enum class OmniLyricsPresentation {
-    DEFAULT,
-    COMPACT,
-    LARGE,
-}
+val EqualizerBandLevelsMbKey = stringPreferencesKey("equalizer_band_levels_mb")
+val EqualizerEnabledKey = booleanPreferencesKey("equalizer_enabled")
+val EqualizerSelectedProfileIdKey = stringPreferencesKey("equalizer_selected_profile_id")
+val AIEqualizerAutoModeKey = booleanPreferencesKey("ai_equalizer_auto_mode")
+val AIEqualizerPromptKey = stringPreferencesKey("ai_equalizer_prompt")

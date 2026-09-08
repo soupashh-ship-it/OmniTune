@@ -51,12 +51,13 @@ enum class HomeHydrationState {
     Failed,
 }
 
-enum class HomeSectionType {
+enum class HomeDiscoverySectionType {
     Hero,
     QuickPicks,
     Shelf,
     MoodGrid,
 }
+
 
 @Immutable
 data class HomeThumbnailRequest(
@@ -136,13 +137,18 @@ data class PlaylistShelfItem(
 )
 
 @Immutable
-data class HomeSection(
+data class HomeDiscoverySection(
     val id: String,
     val title: String,
     val actionLabel: String? = null,
     val items: List<PlaylistShelfItem> = emptyList(),
-    val sectionType: HomeSectionType = HomeSectionType.Shelf,
+    val sectionType: HomeDiscoverySectionType = HomeDiscoverySectionType.Shelf,
 )
+
+typealias HomeSection = HomeDiscoverySection
+typealias HomeSectionType = HomeDiscoverySectionType
+
+
 
 @Immutable
 data class HomeCollectionMetadata(

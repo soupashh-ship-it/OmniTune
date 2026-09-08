@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.constants.DownloadWifiOnlyKey
+import com.omnitune.app.constants.PlayerCacheLimitKey
 import com.omnitune.app.data.StreamExtractor
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.utils.PreferenceStore
@@ -36,6 +37,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,6 +60,13 @@ class DownloadUtil @Inject constructor(
     private val resolvingIds = ConcurrentHashMap.newKeySet<String>()
     private val staleRepairIds = ConcurrentHashMap.newKeySet<String>()
 
+    data class StorageInfo(
+        val progressiveCacheBytes: Long,
+        val downloadCacheBytes: Long,
+        val appCacheBytes: Long,
+        val availableBytes: Long,
+    )
+
     val databaseProvider by lazy {
         StandaloneDatabaseProvider(context)
     }
@@ -71,7 +80,7 @@ class DownloadUtil @Inject constructor(
     val playbackCache: SimpleCache by lazy {
         val cacheDir = context.cacheDir.resolve("stream-cache")
         if (!cacheDir.exists()) cacheDir.mkdirs()
-        SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(512L * 1024L * 1024L), databaseProvider)
+        SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(playbackCacheLimitBytes()), databaseProvider)
     }
 
     val downloadManager: androidx.media3.exoplayer.offline.DownloadManager by lazy {
@@ -157,6 +166,20 @@ class DownloadUtil @Inject constructor(
         }
     }
 
+    fun clearProgressiveCache() = clearPlaybackCache()
+
+    fun getStorageInfo(): StorageInfo {
+        val playbackCacheDir = context.cacheDir.resolve("stream-cache")
+        return StorageInfo(
+            progressiveCacheBytes = runCatching { playbackCache.cacheSpace }
+                .getOrElse { directorySize(playbackCacheDir) },
+            downloadCacheBytes = runCatching { downloadCache.cacheSpace }
+                .getOrElse { directorySize(OfflineDownloadArchive.downloadDirectory(context)) },
+            appCacheBytes = directorySize(context.cacheDir),
+            availableBytes = availableDownloadStorageBytes(),
+        )
+    }
+
     fun enqueue(
         videoId: String,
         title: String,
@@ -216,6 +239,11 @@ class DownloadUtil @Inject constructor(
         }
     }
 
+    fun removeDownload(videoId: String) {
+        DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, videoId, false)
+    }
+
+
     private fun isConnectedToWifi(): Boolean {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
         val network = manager.activeNetwork ?: return false
@@ -225,6 +253,27 @@ class DownloadUtil @Inject constructor(
 
     private fun availableDownloadStorageBytes(): Long = runCatching {
         StatFs(context.filesDir.absolutePath).availableBytes.coerceAtLeast(0L)
+    }.getOrDefault(0L)
+
+    private fun playbackCacheLimitBytes(): Long {
+        val limitPreference = PreferenceStore.get(PlayerCacheLimitKey) ?: -1L
+        val hardCap = 4L * 1024L * 1024L * 1024L
+        return when {
+            limitPreference == -1L -> hardCap
+            limitPreference > hardCap -> hardCap
+            limitPreference > 0L -> limitPreference
+            else -> hardCap
+        }
+    }
+
+    private fun directorySize(directory: File): Long = runCatching {
+        if (!directory.exists()) {
+            0L
+        } else {
+            directory.walkTopDown()
+                .filter { file -> file.isFile }
+                .sumOf { file -> file.length() }
+        }
     }.getOrDefault(0L)
 
     /** Returns a completed download only when its persistent cache is byte-complete. */

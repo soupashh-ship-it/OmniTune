@@ -1,11 +1,3 @@
-/*
- * This file was adapted from SuvMusic.
- * Original copyright follows:
- * 
- * Copyright (C) Suvojeet
- * Licensed under the GNU General Public License v3.0 (GPLv3)
- */
-
 package com.omnitune.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
@@ -102,6 +94,8 @@ val GradientStart = Purple50
 val GradientMiddle = Magenta50
 val GradientEnd = Cyan50
 
+// --- NEW THEMES ---
+
 // Ocean Blue Theme
 val Blue10 = Color(0xFF001D32)
 val Blue20 = Color(0xFF003355)
@@ -161,14 +155,3 @@ val Rose30 = Color(0xFF8E002C)
 val Rose40 = Color(0xFFB8003C)
 val Rose80 = Color(0xFFFFB2B9)
 val Rose90 = Color(0xFFFFDAD9)
-
-// Backward-compatibility aliases
-val PlayerThemeColor = Color(0xFF29B6F6)
-val MiniPlayerColor = Color(0xFF0277BD)
-
-object PlayerBackgroundColors {
-    val BackgroundDark = Color(0xFF0D0D0D)
-    val BackgroundLight = Color(0xFFF5F5F5)
-    val GradientStart = Color(0xFF1A1A2E)
-    val GradientEnd = Color(0xFF16213E)
-}

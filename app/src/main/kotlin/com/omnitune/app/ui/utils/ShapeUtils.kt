@@ -13,3 +13,5 @@ import androidx.compose.ui.unit.dp
 
 fun CornerBasedShape.top(): CornerBasedShape =
     copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
+
+typealias DownloadUtil = com.omnitune.app.playback.DownloadUtil

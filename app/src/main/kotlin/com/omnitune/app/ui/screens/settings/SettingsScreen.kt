@@ -1,465 +1,355 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+/*
+ * This file was adapted from SuvMusic.
+ * Original copyright follows:
+ *
+ * Copyright (C) Suvojeet
+ * Licensed under the GNU General Public License v3.0 (GPLv3)
+ */
 
 package com.omnitune.app.ui.screens.settings
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.omnitune.app.BuildConfig
-import com.omnitune.app.R
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.OmniShapes
-import com.omnitune.app.ui.theme.OmniSpacing
-import com.omnitune.app.ui.theme.OmniTextStyles
-import kotlinx.coroutines.delay
-private data class SettingsSection(
-    val sectionTitle: String,
-    val items: List<SettingsItem>,
-)
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.omnitune.app.ui.component.BetaBadge
+import com.omnitune.app.ui.component.LeadingIconBox
+import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.viewmodels.SettingsViewModel
 
-private data class SettingsItem(
-    val id: String,
-    val icon: Int,
+
+private data class SettingsSearchEntry(
     val title: String,
     val subtitle: String,
-    val keywords: String = "",
-    val onClick: () -> Unit,
+    val keywords: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit
 )
 
-private fun buildSettingsSections(
-    onNavigateToCategory: (String) -> Unit,
-): List<SettingsSection> = listOf(
-    SettingsSection(
-        sectionTitle = "AUDIO & PLAYBACK",
-        items = listOf(
-            SettingsItem(
-                id = "playback",
-                icon = R.drawable.ic_play_arrow,
-                title = "Playback Engine",
-                subtitle = "Audio quality, crossfade, replay gain, equalizer",
-                keywords = "quality sound bit depth volume normalizer gapless equalizer eq",
-                onClick = { onNavigateToCategory("playback") },
-            ),
-            SettingsItem(
-                id = "appearance",
-                icon = R.drawable.ic_settings,
-                title = "Player & Appearance",
-                subtitle = "Now playing theme, font styles, dynamic palette",
-                keywords = "theme dark mode oled pure black colors styling artwork",
-                onClick = { onNavigateToCategory("appearance") },
-            ),
-            SettingsItem(
-                id = "behavior",
-                icon = R.drawable.ic_moon,
-                title = "Listening Behavior",
-                subtitle = "Autoplay continuation, headset auto-resume, sleep timer defaults",
-                keywords = "autoplay resume pause disconnect bluetooth car audio",
-                onClick = { onNavigateToCategory("behavior") },
-            ),
-        ),
-    ),
-    SettingsSection(
-        sectionTitle = "LIBRARY & STORAGE",
-        items = listOf(
-            SettingsItem(
-                id = "downloads",
-                icon = R.drawable.ic_download,
-                title = "Downloads & Offline",
-                subtitle = "Offline library management and automatic downloads",
-                keywords = "offline download cache storage songs save tracks",
-                onClick = { onNavigateToCategory("downloads") },
-            ),
-            SettingsItem(
-                id = "storage",
-                icon = R.drawable.ic_storage,
-                title = "Storage & Cache",
-                subtitle = "Cached streams, disk footprint, database cleanup",
-                keywords = "clear cache storage memory space disk",
-                onClick = { onNavigateToCategory("storage") },
-            ),
-            SettingsItem(
-                id = "library",
-                icon = R.drawable.ic_list,
-                title = "Library Navigation",
-                subtitle = "Custom tabs, display density, and default sorting",
-                keywords = "tabs playlists favorites artists albums sorting",
-                onClick = { onNavigateToCategory("library") },
-            ),
-            SettingsItem(
-                id = "parental_controls",
-                icon = R.drawable.ic_verified,
-                title = "Content & Restrictions",
-                subtitle = "Explicit content filters and restriction rules",
-                keywords = "explicit filter parental clean mature restriction",
-                onClick = { onNavigateToCategory("parental_controls") },
-            ),
-        ),
-    ),
-    SettingsSection(
-        sectionTitle = "SERVICES & NOTIFICATIONS",
-        items = listOf(
-            SettingsItem(
-                id = "scrobbling",
-                icon = R.drawable.ic_sync,
-                title = "Scrobbling & Sync",
-                subtitle = "ListenBrainz and Last.fm scrobble integration",
-                keywords = "listenbrainz lastfm scrobble track history sync token",
-                onClick = { onNavigateToCategory("scrobbling") },
-            ),
-            SettingsItem(
-                id = "notifications",
-                icon = R.drawable.ic_notification_play,
-                title = "Media Notifications",
-                subtitle = "System status bar controls and lock-screen display",
-                keywords = "notification lockscreen controls status bar media playback",
-                onClick = { onNavigateToCategory("notifications") },
-            ),
-            SettingsItem(
-                id = "backup_restore",
-                icon = R.drawable.ic_storage,
-                title = "Backup & Restore",
-                subtitle = "Export or restore library data and playlists archive",
-                keywords = "export import backup restore json archive migrate",
-                onClick = { onNavigateToCategory("backup_restore") },
-            ),
-        ),
-    ),
-    SettingsSection(
-        sectionTitle = "APPLICATION & SYSTEM",
-        items = listOf(
-            SettingsItem(
-                id = "updates",
-                icon = R.drawable.ic_download,
-                title = "Software Updates",
-                subtitle = "Check for new releases, changelogs, and features",
-                keywords = "update release changelog version check upgrade",
-                onClick = { onNavigateToCategory("updates") },
-            ),
-            SettingsItem(
-                id = "diagnostics",
-                icon = R.drawable.ic_insights,
-                title = "Diagnostics & Logs",
-                subtitle = "Crash logs, network traces, and engine status",
-                keywords = "debug logs crash report diagnostics engine errors",
-                onClick = { onNavigateToCategory("diagnostics") },
-            ),
-            SettingsItem(
-                id = "about",
-                icon = R.drawable.ic_info,
-                title = "About OmniTune",
-                subtitle = "Version, contributors, open-source licenses",
-                keywords = "about version licenses credits github source terms",
-                onClick = { onNavigateToCategory("about") },
-            ),
-        ),
-    ),
-)
-
+/**
+ * Settings screen with Material 3 Expressive design and organized categories.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit = {},
-    onNavigateToSearch: () -> Unit = {},
-    onNavigateToEqualizer: () -> Unit = {},
-    onNavigateToCategory: (String) -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onLoginClick: () -> Unit = {},
+    onPlaybackClick: () -> Unit = {},
+    onAppearanceClick: () -> Unit = {},
+    onCustomizationClick: () -> Unit = {},
+    onStorageClick: () -> Unit = {},
+    onStatsClick: () -> Unit = {},
+    onSupportClick: () -> Unit = {},
+    onAboutClick: () -> Unit = {},
+    onMiscClick: () -> Unit = {},
+    onSponsorBlockClick: () -> Unit = {},
+    onCreditsClick: () -> Unit = {},
+    onLastFmClick: () -> Unit = {},
+    onDiscordClick: () -> Unit = {},
+    onAISettingsClick: () -> Unit = {},
+    onUpdaterClick: () -> Unit = {}
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val allSections = remember(onNavigateToCategory) { buildSettingsSections(onNavigateToCategory) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var settingsQuery by remember { mutableStateOf("") }
 
-    val filteredSections = remember(searchQuery, allSections) {
-        if (searchQuery.isBlank()) {
-            allSections
-        } else {
-            val q = searchQuery.trim().lowercase()
-            allSections.mapNotNull { section ->
-                val matchingItems = section.items.filter { item ->
-                    item.title.lowercase().contains(q) ||
-                        item.subtitle.lowercase().contains(q) ||
-                        item.keywords.lowercase().contains(q)
-                }
-                if (matchingItems.isNotEmpty()) {
-                    section.copy(items = matchingItems)
-                } else null
-            }
+    val searchIndex = remember {
+        listOf(
+            SettingsSearchEntry("Appearance", "Theme, dark mode, colors, liquid glass", "theme dark mode light colors dynamic material amoled gradient glass", Icons.Default.DarkMode, onAppearanceClick),
+            SettingsSearchEntry("Playback", "Audio quality, gapless, equalizer, crossfade", "audio quality bitrate gapless equalizer eq crossfade normalization loudness", Icons.Default.GraphicEq, onPlaybackClick),
+            SettingsSearchEntry("Customization", "Player UI, artwork shape/size, seekbar style", "player ui artwork shape size seekbar style mini player vinyl glass", Icons.Default.Tune, onCustomizationClick),
+            SettingsSearchEntry("AI Assistant", "Google Gemini, OpenAI, Anthropic", "ai assistant openai anthropic gemini equalizer smart", Icons.Default.Psychology, onAISettingsClick),
+            SettingsSearchEntry("SponsorBlock", "Skip non-music segments", "sponsorblock skip segments intro outro sponsor", Icons.Default.FastForward, onSponsorBlockClick),
+            SettingsSearchEntry("Scrobbling", "ListenBrainz & track history", "listenbrainz scrobble scrobbling history", Icons.Default.MusicNote, onLastFmClick),
+            SettingsSearchEntry("Discord RPC", "Rich presence activity status", "discord rpc activity status presence", Icons.Default.MusicNote, onDiscordClick),
+            SettingsSearchEntry("Advanced", "Diagnostics, experimental & lyrics order", "advanced misc diagnostics experimental logs lyrics", Icons.Default.Settings, onMiscClick),
+            SettingsSearchEntry("Storage Manager", "Manage downloads & cache", "storage downloads cache clear space data", Icons.Default.Storage, onStorageClick),
+            SettingsSearchEntry("Listening Insights", "Your listening stats & habits", "stats statistics listening history wrapped activity", Icons.Default.Info, onStatsClick),
+            SettingsSearchEntry("Support the project", "Donate & sponsor development", "support donate sponsor project", Icons.Default.Favorite, onSupportClick),
+            SettingsSearchEntry("Credits", "Developers & open-source libraries", "credits developers libraries licenses", Icons.Default.Person, onCreditsClick),
+            SettingsSearchEntry("About OmniTune", "Version & application details", "about version app info changelog", Icons.Default.Album, onAboutClick),
+            SettingsSearchEntry("Check for Updates", "App updates and release notes", "update updates ota check changelog", Icons.Default.SystemUpdate, onUpdaterClick)
+        )
+    }
+
+    val filteredEntries = remember(settingsQuery) {
+        if (settingsQuery.isBlank()) emptyList()
+        else {
+            val q = settingsQuery.lowercase().trim()
+            searchIndex.filter { it.title.lowercase().contains(q) || it.subtitle.lowercase().contains(q) || it.keywords.contains(q) }
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(OmniColors.OmniBackgroundBase),
-        contentPadding = PaddingValues(
-            start = OmniSpacing.screenHorizontalCompact,
-            end = OmniSpacing.screenHorizontalCompact,
-            bottom = 120.dp,
-        ),
-    ) {
-        item { Spacer(Modifier.statusBarsPadding()) }
-
-        // Header
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = OmniSpacing.small, bottom = OmniSpacing.compact),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = OmniColors.TextPrimary,
-                    )
-                    Text(
-                        text = "Audio engine & application preferences",
-                        style = OmniTextStyles.metadata,
-                        color = OmniColors.TextSecondary,
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(OmniShapes.Pill)
-                        .background(OmniColors.SurfacePanel)
-                        .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Pill),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_settings),
-                        contentDescription = null,
-                        tint = OmniColors.OmniAccentPrimary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings", fontWeight = FontWeight.ExtraBold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Search Bar
+            item {
+                OutlinedTextField(
+                    value = settingsQuery,
+                    onValueChange = { settingsQuery = it },
+                    placeholder = { Text("Search settings, features...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                    trailingIcon = {
+                        if (settingsQuery.isNotEmpty()) {
+                            IconButton(onClick = { settingsQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    shape = SquircleShape,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
-        }
 
-        // Search settings field
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = OmniSpacing.small)
-                    .height(44.dp)
-                    .clip(OmniShapes.Medium)
-                    .background(OmniColors.SurfacePanel)
-                    .border(1.dp, OmniColors.BorderSubtle, OmniShapes.Medium),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_search),
-                        contentDescription = null,
-                        tint = OmniColors.TextTertiary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = OmniTextStyles.songTitle.copy(
-                            fontSize = 14.sp,
-                            color = OmniColors.TextPrimary,
-                        ),
-                        cursorBrush = SolidColor(OmniColors.OmniAccentPrimary),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
+            if (settingsQuery.isNotBlank()) {
+                if (filteredEntries.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No settings found matching \"$settingsQuery\"", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                } else {
+                    items(filteredEntries) { entry ->
+                        SettingsCard {
+                            SettingsNavRow(
+                                title = entry.title,
+                                subtitle = entry.subtitle,
+                                icon = entry.icon,
+                                onClick = entry.onClick
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Account / Auth Card
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onLoginClick),
+                        shape = SquircleShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (uiState.isLoggedIn && uiState.userAvatarUrl != null) {
+                                    AsyncImage(
+                                        model = uiState.userAvatarUrl,
+                                        contentDescription = "User Avatar",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = if (uiState.isLoggedIn) Icons.Default.Person else Icons.AutoMirrored.Filled.Login,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Search settings (quality, crossfade, cache...)",
-                                    style = OmniTextStyles.metadata.copy(fontSize = 13.sp),
-                                    color = OmniColors.TextTertiary,
+                                    text = if (uiState.isLoggedIn) (uiState.userName ?: "Logged In") else "Sign in to YouTube",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (uiState.isLoggedIn) "Sync playlists & library" else "Access your saved playlists & recommendations",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            innerTextField()
-                        },
-                    )
-                    if (searchQuery.isNotEmpty()) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_close),
-                            contentDescription = "Clear",
-                            tint = OmniColors.TextTertiary,
-                            modifier = Modifier
-                                .size(18.dp)
-                                .clip(OmniShapes.Pill)
-                                .clickable { searchQuery = "" },
-                        )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            }
-        }
 
-        // Sections
-        filteredSections.forEach { section ->
-            item {
-                Text(
-                    text = section.sectionTitle,
-                    style = OmniTextStyles.eyebrow.copy(
-                        fontSize = 11.sp,
-                        letterSpacing = 1.3.sp,
-                        color = OmniColors.OmniAccentPrimary,
-                    ),
-                    modifier = Modifier.padding(top = 18.dp, bottom = 8.dp, start = 4.dp),
-                )
-            }
-
-            item {
-                com.omnitune.app.ui.component.SettingsCard {
-                    section.items.forEach { item ->
-                        com.omnitune.app.ui.component.SettingsRow(
-                            title = item.title,
-                            subtitle = item.subtitle,
-                            onClick = item.onClick,
-                            showChevron = true,
-                        )
-                    }
-                }
-            }
-        }
-
-        if (filteredSections.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
+                // Audio & Playback Group
+                item {
                     Text(
-                        text = "No matching settings found",
-                        style = OmniTextStyles.metadata,
-                        color = OmniColors.TextTertiary,
+                        text = "AUDIO & PLAYBACK",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
+                    SettingsCard {
+                        SettingsNavRow(
+                            title = "Playback Engine",
+                            subtitle = "Bitrate quality, gapless, automix, volume boost",
+                            icon = Icons.Default.GraphicEq,
+                            onClick = onPlaybackClick
+                        )
+                        SettingsNavRow(
+                            title = "Player Customization",
+                            subtitle = "Artwork shape, size, miniplayer & seekbar style",
+                            icon = Icons.Default.Tune,
+                            onClick = onCustomizationClick
+                        )
+                        SettingsNavRow(
+                            title = "AI Neural Engine",
+                            subtitle = "Gemini, OpenAI, Claude & automated equalizer",
+                            icon = Icons.Default.Psychology,
+                            onClick = onAISettingsClick
+                        )
+                        SettingsNavRow(
+                            title = "SponsorBlock",
+                            subtitle = "Skip non-music segments & sponsored intros",
+                            icon = Icons.Default.FastForward,
+                            onClick = onSponsorBlockClick
+                        )
+                        SettingsNavRow(
+                            title = "Scrobbling",
+                            subtitle = "Sync listens with ListenBrainz",
+                            icon = Icons.Default.MusicNote,
+                            onClick = onLastFmClick
+                        )
+                        SettingsNavRow(
+                            title = "Discord RPC",
+                            subtitle = "Show current song on Discord profile",
+                            icon = Icons.Default.Tag,
+                            onClick = onDiscordClick
+                        )
+                    }
+                }
+
+                // Personalization & Appearance Group
+                item {
+                    Text(
+                        text = "APPEARANCE & THEME",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    SettingsCard {
+                        SettingsNavRow(
+                            title = "Appearance",
+                            subtitle = "Dark mode, palettes, liquid glass & app logos",
+                            icon = Icons.Default.DarkMode,
+                            onClick = onAppearanceClick
+                        )
+                        SettingsNavRow(
+                            title = "Advanced & Miscellaneous",
+                            subtitle = "Lyrics providers, background playback & power",
+                            icon = Icons.Default.Settings,
+                            onClick = onMiscClick
+                        )
+                    }
+                }
+
+                // Storage & Activity Group
+                item {
+                    Text(
+                        text = "DATA & STORAGE",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    SettingsCard {
+                        SettingsNavRow(
+                            title = "Storage Manager",
+                            subtitle = "Manage audio cache and offline downloads",
+                            icon = Icons.Default.Storage,
+                            onClick = onStorageClick
+                        )
+                        SettingsNavRow(
+                            title = "Listening Insights",
+                            subtitle = "View listening stats, trends & personality",
+                            icon = Icons.Default.Timeline,
+                            onClick = onStatsClick
+                        )
+                    }
+                }
+
+                // About & Support Group
+                item {
+                    Text(
+                        text = "ABOUT & PROJECT",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    SettingsCard {
+                        SettingsNavRow(
+                            title = "Support the Project",
+                            subtitle = "Sponsor OmniTune and help ongoing development",
+                            icon = Icons.Default.Favorite,
+                            onClick = onSupportClick
+                        )
+                        SettingsNavRow(
+                            title = "Credits & Open Source",
+                            subtitle = "Developers, contributors and libraries",
+                            icon = Icons.Default.Person,
+                            onClick = onCreditsClick
+                        )
+                        SettingsNavRow(
+                            title = "About OmniTune",
+                            subtitle = "Version details and license information",
+                            icon = Icons.Default.Album,
+                            onClick = onAboutClick
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SettingsRowItem(
-    item: SettingsItem,
-    showDivider: Boolean,
-) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = item.onClick)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(OmniShapes.Small)
-                    .background(OmniColors.SurfaceRaised),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(item.icon),
-                    contentDescription = null,
-                    tint = OmniColors.OmniAccentPrimary,
-                    modifier = Modifier.size(17.dp),
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = OmniTextStyles.songTitle.copy(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = OmniColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(1.dp))
-                Text(
-                    text = item.subtitle,
-                    style = OmniTextStyles.metadata.copy(
-                        fontSize = 11.sp,
-                        color = OmniColors.TextSecondary,
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = null,
-                tint = OmniColors.TextTertiary.copy(alpha = 0.5f),
-                modifier = Modifier
-                    .size(15.dp)
-                    .graphicsLayer { rotationZ = 180f },
-            )
-        }
-
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = 58.dp, end = 14.dp),
-                thickness = 0.5.dp,
-                color = OmniColors.BorderSubtle.copy(alpha = 0.5f),
-            )
         }
     }
 }

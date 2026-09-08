@@ -83,6 +83,19 @@ class LyricsViewModel @Inject constructor(
         }
     }
 
+    fun importLocalLyrics(songId: String, lrcText: String) {
+        loadJob?.cancel()
+        currentQueryId = null
+        _uiState.value = LyricsUiState.Loading
+
+        loadJob = viewModelScope.launch {
+            when (val result = lyricsRepository.saveLyrics(songId, lrcText)) {
+                is AppResult.Success -> _uiState.value = LyricsUiState.Success(result.data)
+                is AppResult.Error -> _uiState.value = LyricsUiState.Error(result.message)
+            }
+        }
+    }
+
     private companion object {
         const val MAX_LOAD_ATTEMPTS = 3
         val RETRY_DELAYS_MS = longArrayOf(500L, 1_500L)

@@ -6,6 +6,17 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
+
 
 /**
  * M3 Expressive motion tokens — single source of truth for durations, easing and spring specs.
@@ -58,4 +69,21 @@ object MotionTokens {
 
     fun <T> tweenStandard(durationMs: Int = DurationMedium2): FiniteAnimationSpec<T> =
         tween(durationMillis = durationMs, easing = Standard)
+}
+
+@Composable
+fun Modifier.omniPressScale(
+    interactionSource: InteractionSource,
+    targetScale: Float = 0.96f
+): Modifier {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) targetScale else 1f,
+        animationSpec = MotionTokens.springSnappy(),
+        label = "omniPressScale"
+    )
+    return this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
 }

@@ -9,6 +9,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.media3.common.MediaItem
 import com.omnitune.app.constants.HistoryDuration
+import com.omnitune.app.constants.IncognitoModeKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SongSkipEntity
 import com.omnitune.app.extensions.metadata
@@ -159,6 +160,10 @@ class TasteSignalRecorder(
         val eventMetadata = metadata
         scope.launch(Dispatchers.IO) {
             try {
+                if (preferences.first()[IncognitoModeKey] ?: false) {
+                    Timber.tag("OmniTuneRecent").d("Skipped listening event while incognito mode is enabled")
+                    return@launch
+                }
                 eventMetadata?.let { database.insert(it) }
                 database.insertRecentEvent(mediaId, listenedMs)
                 val historyDays = preferences.first()[HistoryDuration] ?: 30f

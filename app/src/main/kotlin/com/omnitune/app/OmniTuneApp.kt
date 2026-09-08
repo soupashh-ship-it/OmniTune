@@ -39,6 +39,7 @@ import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.constants.StreamBypassProxyKey
 import com.omnitune.app.constants.UseLoginForBrowse
 import com.omnitune.app.constants.VisitorDataKey
+import com.omnitune.app.constants.WebClientPoTokenEnabledKey
 import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
@@ -271,6 +272,15 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
         }
 
         // Observe PoToken changes
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[WebClientPoTokenEnabledKey] ?: false }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    YouTube.authState = YouTube.authState.copy(webClientPoTokenEnabled = enabled)
+                }
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
                 .map { it[PoTokenKey] }

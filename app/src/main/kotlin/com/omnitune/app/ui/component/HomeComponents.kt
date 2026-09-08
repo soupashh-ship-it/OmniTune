@@ -41,6 +41,7 @@ fun HomeItemCard(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    onArtistClick: (String) -> Unit,
     sectionItems: List<HomeItem>,
     onSongMoreClick: (Song) -> Unit = {}
 ) {
@@ -99,7 +100,15 @@ fun HomeItemCard(
             }
         }
         is HomeItem.ArtistItem -> {
-            // Placeholder for Artist
+            PlaylistDisplayCard(
+                playlist = PlaylistDisplayItem(
+                    id = item.artist.id,
+                    name = item.artist.name,
+                    uploaderName = item.artist.subscribers ?: "Artist",
+                    thumbnailUrl = item.artist.thumbnailUrl,
+                ),
+                onClick = { onArtistClick(item.artist.id) },
+            )
         }
         is HomeItem.ExploreItem -> {
             // Explore items are handled by ExploreGridSection specifically

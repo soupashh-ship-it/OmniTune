@@ -1,8 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.OmniTune" parent="android:Theme.Material.NoActionBar">
+    <!-- Base application theme -->
+    <style name="Theme.OmniTune.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- Navigation bar color. -->
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">#05060A</item>
+    </style>
+
+    <style name="Theme.OmniTune" parent="Theme.OmniTune.Base" />
+
+    <!-- Splash Screen theme -->
+    <style name="Theme.OmniTune.SplashScreen" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniTune</item>
+    </style>
+
+    <style name="Theme.OmniTune.SplashScreen.Pulse" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_pulse</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniTune</item>
+    </style>
+
+    <style name="Theme.OmniTune.SplashScreen.Resonance" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_resonance</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniTune</item>
+    </style>
+
+    <style name="Theme.OmniTune.SplashScreen.Aether" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_aether</item>
+        <item name="postSplashScreenTheme">@style/Theme.OmniTune</item>
     </style>
 </resources>

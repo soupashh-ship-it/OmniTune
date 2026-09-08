@@ -50,6 +50,28 @@ class LyricsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun saveLyrics(songId: String, lrcText: String): AppResult<List<LyricsLine>> =
+        withContext(Dispatchers.IO) {
+            if (songId.isBlank()) {
+                return@withContext AppResult.Error("Cannot save lyrics for an unknown song.")
+            }
+            if (lrcText.isBlank()) {
+                return@withContext AppResult.Error("Selected lyrics file is empty.")
+            }
+
+            try {
+                databaseDao.upsert(LyricsEntity(id = songId, lyrics = lrcText))
+                val parsed = parseLrc(lrcText)
+                if (parsed.isEmpty()) {
+                    AppResult.Error("Selected lyrics file did not contain readable lyrics.")
+                } else {
+                    AppResult.Success(parsed)
+                }
+            } catch (e: Exception) {
+                AppResult.Error(e.message ?: "Failed to save lyrics", e)
+            }
+        }
+
     override fun parseLrc(lrcText: String): List<LyricsLine> {
         val entries = InlineLyrics.parseSyncedEntries(lrcText)
         if (entries.isNotEmpty()) {

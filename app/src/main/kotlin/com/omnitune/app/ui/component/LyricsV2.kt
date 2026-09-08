@@ -154,7 +154,7 @@ fun LyricsV2(
     val (lyricsScroll) = rememberPreference(LyricsScrollKey, defaultValue = true)
     val (storedLyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
     val (storedLyricsLineSpacing) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.3f)
-    val lyricsPresentation by rememberEnumPreference(
+    val lyricsPresentation by rememberEnumPreference<OmniLyricsPresentation>(
         OmniLyricsPresentationKey,
         OmniLyricsPresentation.DEFAULT,
     )

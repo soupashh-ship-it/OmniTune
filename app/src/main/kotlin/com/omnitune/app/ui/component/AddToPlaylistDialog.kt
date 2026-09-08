@@ -11,10 +11,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.omnitune.app.LocalDatabase
 import com.omnitune.app.R
+import com.omnitune.app.constants.PlaylistSortType
+import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.app.ui.theme.omniColors
 import com.omnitune.app.ui.theme.OmniSpacing
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AddToPlaylistDialog(
@@ -140,4 +147,55 @@ fun AddToPlaylistDialog(
             titleContentColor = colors.textPrimary,
         )
     }
+}
+
+@Composable
+fun AddToPlaylistDialog(
+    isVisible: Boolean,
+    onGetSong: suspend (Playlist) -> List<String>,
+    onDismiss: () -> Unit,
+    onAddComplete: (Int, List<String>) -> Unit
+) {
+    if (!isVisible) return
+
+    val database = LocalDatabase.current
+    val playlists by database.playlists(PlaylistSortType.CREATE_DATE, false)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val coroutineScope = rememberCoroutineScope()
+
+    AddToPlaylistDialog(
+        playlists = playlists,
+        onDismissRequest = onDismiss,
+        onPlaylistSelected = { playlist ->
+            coroutineScope.launch {
+                val songIds = onGetSong(playlist)
+                if (songIds.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        database.addSongToPlaylist(playlist, songIds)
+                    }
+                    onAddComplete(songIds.size, listOf(playlist.playlist.name))
+                }
+            }
+        },
+        onCreatePlaylist = { name ->
+            coroutineScope.launch {
+                val newPlaylist = PlaylistEntity(name = name)
+                val playlist = Playlist(
+                    playlist = newPlaylist,
+                    songCount = 0,
+                    songThumbnails = emptyList(),
+                )
+                withContext(Dispatchers.IO) {
+                    database.insert(newPlaylist)
+                }
+                val songIds = onGetSong(playlist)
+                if (songIds.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        database.addSongToPlaylist(playlist, songIds)
+                    }
+                }
+                onAddComplete(songIds.size, listOf(name))
+            }
+        }
+    )
 }

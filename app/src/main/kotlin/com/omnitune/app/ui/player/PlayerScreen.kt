@@ -1,1678 +1,678 @@
 /*
- * OmniTune - An open-source music player for Android
+ * Adapted from SuvMusic (https://github.com/SuvojeetDev/SuvMusic)
+ * Copyright (c) SuvMusic contributors
  * Licensed under GPL-3.0
  */
 
 package com.omnitune.app.ui.player
 
-import android.media.audiofx.AudioEffect
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.toArgb
-import coil3.imageLoader
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
+
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.media3.common.Player
-import androidx.media3.common.Player.REPEAT_MODE_ALL
-import androidx.media3.common.Player.REPEAT_MODE_OFF
-import androidx.media3.common.Player.REPEAT_MODE_ONE
-import coil3.compose.AsyncImage
-import coil3.compose.SubcomposeAsyncImage
-import coil3.request.ImageRequest
-import com.omnitune.app.R
-import com.omnitune.app.constants.HidePlayerThumbnailKey
-import com.omnitune.app.constants.OmniPlayerButtonColorMode
-import com.omnitune.app.constants.OmniPlayerButtonColorModeKey
-import com.omnitune.app.constants.OmniPlayerBackgroundStyle
-import com.omnitune.app.constants.OmniPlayerBackgroundStyleKey
-import com.omnitune.app.constants.OmniPlayerDesignStyle
-import com.omnitune.app.constants.OmniPlayerDesignStyleKey
-import com.omnitune.app.constants.OmniSliderStyle
-import com.omnitune.app.constants.OmniSliderStyleKey
-import com.omnitune.app.lyrics.InlineLyricState
-import com.omnitune.app.lyrics.InlineLyrics
-import com.omnitune.app.models.LyricsLine
-import com.omnitune.app.models.MediaMetadata
-import com.omnitune.app.playback.PlayerConnection
-import com.omnitune.app.ui.component.OmniTuneLoader
-import com.omnitune.app.ui.component.omniTypeNumericTime
-import com.omnitune.app.ui.screens.DownloadsViewModel
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.omniColors
-import com.omnitune.app.ui.theme.LocalOmniAccents
-import com.omnitune.app.ui.theme.OmniMotion
-import com.omnitune.app.ui.theme.OmniShapes
-import com.omnitune.app.ui.theme.OmniSpacing
-import com.omnitune.app.ui.theme.OmniTextStyles
-import com.omnitune.app.ui.theme.omniPressScale
-import com.omnitune.app.ui.theme.omniSoftBorder
-import com.omnitune.app.utils.rememberEnumPreference
-import com.omnitune.app.utils.formatDurationMs
-import com.omnitune.app.utils.rememberPreference
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.omnitune.app.models.toSuvSong
-import com.omnitune.app.models.toMediaMetadata
-import com.omnitune.app.ui.component.rememberDominantColors
-import com.omnitune.app.ui.component.WaveformSeeker
-import com.omnitune.app.ui.player.components.AlbumArtwork
-import com.omnitune.app.ui.player.components.PlaybackControls
-import com.omnitune.app.ui.player.components.PlayerActionChips
-import com.omnitune.app.ui.player.components.PlayerTopBar
-import com.omnitune.app.ui.player.components.QueueHandle
-import com.omnitune.app.ui.player.components.ModernQueueView
-import com.omnitune.app.ui.player.components.SongInfoSection
-import com.omnitune.app.ui.player.components.TimeLabelsWithQuality
-import androidx.compose.foundation.layout.aspectRatio
-import com.omnitune.app.extensions.toMediaItem
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player.STATE_BUFFERING
+import androidx.window.core.layout.WindowWidthSizeClass
+import com.omnitune.app.LocalDownloadUtil
+import com.omnitune.app.constants.EqualizerBandLevelsMbKey
+import com.omnitune.app.constants.EqualizerBassBoostEnabledKey
+import com.omnitune.app.constants.EqualizerBassBoostStrengthKey
+import com.omnitune.app.constants.DoubleTapSeekSecondsKey
+import com.omnitune.app.constants.EqualizerEnabledKey
+import com.omnitune.app.constants.EqualizerPreampLevelMbKey
+import com.omnitune.app.constants.EqualizerVirtualizerEnabledKey
+import com.omnitune.app.constants.EqualizerVirtualizerStrengthKey
+import com.omnitune.app.extensions.mediaItems
 import com.omnitune.app.extensions.metadata
+import com.omnitune.app.extensions.toMediaItem
+import com.omnitune.app.models.ArtworkShape
+import com.omnitune.app.models.ArtworkSize
+import com.omnitune.app.models.DownloadState
+import com.omnitune.app.models.MediaMetadata
+import com.omnitune.app.models.PlayerStyle
+import com.omnitune.app.models.RepeatMode
+import com.omnitune.app.models.SeekbarStyle
+import com.omnitune.app.models.SleepTimerOption
+import com.omnitune.app.models.Song
+import com.omnitune.app.models.SongSource
+import com.omnitune.app.models.SponsorSegment
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.playback.EqualizerBand
+import com.omnitune.app.playback.EqualizerPresets
+import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.decodeEqualizerBands
+import com.omnitune.app.playback.encodeEqualizerBands
+import com.omnitune.app.playback.withPreamp
+import com.omnitune.app.ui.component.AddToPlaylistSheet
+import com.omnitune.app.ui.component.CreatePlaylistDialog
+import com.omnitune.app.ui.component.DominantColors
+import com.omnitune.app.ui.component.SongInfoScreen
+import com.omnitune.app.ui.component.VideoErrorDialog
+import com.omnitune.app.ui.component.glass.GlassArtwork
+import com.omnitune.app.ui.component.glass.LocalGlassArtwork
+import com.omnitune.app.ui.component.rememberDominantColors
+import com.omnitune.app.ui.player.components.EqualizerSheet
+import com.omnitune.app.ui.player.components.GlassArtBackground
+import com.omnitune.app.ui.player.components.ModernQueueView
+import com.omnitune.app.ui.player.components.OutputDeviceSheet
+import com.omnitune.app.ui.player.components.PlaybackSpeedSheet
+import com.omnitune.app.ui.player.components.QueuePlayerHeader
+import com.omnitune.app.ui.player.components.RelatedSheet
+import com.omnitune.app.ui.player.components.SleepTimerSheet
+import com.omnitune.app.ui.player.components.SongActionsSheet
+import com.omnitune.app.ui.player.components.VolumeControl
+import com.omnitune.app.ui.player.styles.ClassicPlayerStyle
+import com.omnitune.app.ui.player.styles.LiquidGlassPlayerStyle
+import com.omnitune.app.ui.player.styles.YTMusicPlayerStyle
+import com.omnitune.app.ui.screens.PlaylistManagementViewModel
+import com.omnitune.app.ui.theme.YtFlatBackground
+import com.omnitune.app.utils.rememberPreference
+import com.omnitune.app.viewmodels.PlayerViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
-private const val ARTWORK_REQUEST_SIZE = 800
-
+/**
+ * Top-level PlayerScreen bound to PlayerConnection and PlayerViewModel.
+ */
 @Composable
 fun PlayerScreen(
     playerConnection: PlayerConnection?,
-    modifier: Modifier = Modifier,
-    onDismiss: () -> Unit = {},
+    onDismiss: () -> Unit,
     onOpenQueue: () -> Unit = {},
-    onNavigateToAlbum: ((String) -> Unit)? = null,
-    onNavigateToArtist: ((String) -> Unit)? = null,
+    onNavigateToAlbum: (String) -> Unit = {},
+    onNavigateToArtist: (String) -> Unit = {},
+    viewModel: PlayerViewModel = hiltViewModel(),
+    volumeKeyEvents: SharedFlow<Unit>? = null
 ) {
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
-    val shuffleEnabled by (playerConnection?.shuffleModeEnabled ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val repeatMode by (playerConnection?.repeatMode ?: flowOf(REPEAT_MODE_OFF)).collectAsStateWithLifecycle(initialValue = REPEAT_MODE_OFF)
-    val isSeeking = remember { mutableFloatStateOf(-1f) }
-    var showOptionsSheet by remember { mutableStateOf(false) }
-    var showSleepTimerDialog by remember { mutableStateOf(false) }
-    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
-    var showLyricsSheet by remember { mutableStateOf(false) }
-    var showArtistSelectionDialog by remember { mutableStateOf(false) }
-    val lyricsViewModel: LyricsViewModel = hiltViewModel()
-    val lyricsUiState by lyricsViewModel.uiState.collectAsStateWithLifecycle()
-    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val libraryViewModel: com.omnitune.app.ui.screens.LibraryViewModel = hiltViewModel()
-    val playlists by libraryViewModel.playlists.collectAsStateWithLifecycle(initialValue = emptyList())
-    val scope = rememberCoroutineScope()
-
     val context = LocalContext.current
-    val gradientState = com.omnitune.app.ui.player.rememberPlayerGradient(
-        thumbnailUrl = mediaMetadata?.thumbnailUrl,
-        videoId = mediaMetadata?.id,
-    )
-    val playerBackgroundStyle by rememberEnumPreference(
-        OmniPlayerBackgroundStyleKey,
-        OmniPlayerBackgroundStyle.DYNAMIC_GRADIENT,
-    )
-    val playerDesignStyle by rememberEnumPreference(
-        OmniPlayerDesignStyleKey,
-        OmniPlayerDesignStyle.DEFAULT,
-    )
-    val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
-    val buttonColorMode by rememberEnumPreference(
-        OmniPlayerButtonColorModeKey,
-        OmniPlayerButtonColorMode.DYNAMIC,
-    )
-    val sliderStyle by rememberEnumPreference(
-        OmniSliderStyleKey,
-        OmniSliderStyle.DEFAULT,
-    )
-    val dynamicPalette = gradientState.palette
-    val dynamicAccent = dynamicPalette.accent
-    val headerTitle = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "Now playing"
-    val controlAccent = when (buttonColorMode) {
-        OmniPlayerButtonColorMode.DYNAMIC -> dynamicAccent
-        OmniPlayerButtonColorMode.DEFAULT -> LocalOmniAccents.current.primary
-        OmniPlayerButtonColorMode.MONOCHROME -> omniColors().textPrimary
-    }
-    val playerBackgroundModifier = when {
-        playerBackgroundStyle == OmniPlayerBackgroundStyle.SOLID_DARK ->
-            Modifier.background(omniColors().background)
-        playerDesignStyle == OmniPlayerDesignStyle.IMMERSIVE ->
-            Modifier
-                .background(gradientState.backgroundBrush)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(dynamicPalette.accent.copy(alpha = 0.18f), Color.Transparent),
-                    )
-                )
-                .background(dynamicPalette.gradientStart.copy(alpha = 0.18f))
-        else ->
-            Modifier
-                .background(gradientState.backgroundBrush)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(dynamicPalette.accent.copy(alpha = 0.12f), Color.Transparent),
-                    )
-                )
-    }
+    val meta by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val playbackStateInt by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
+    val sleepTimerRemaining by (playerConnection?.sleepTimerRemaining ?: flowOf(0L)).collectAsStateWithLifecycle(initialValue = 0L)
+    val repeatModeInt by (playerConnection?.repeatMode ?: flowOf(Player.REPEAT_MODE_OFF)).collectAsStateWithLifecycle(initialValue = Player.REPEAT_MODE_OFF)
+    val shuffleEnabled by (playerConnection?.shuffleModeEnabled ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
+    val currentMediaItemIndex by (playerConnection?.currentMediaItemIndex ?: flowOf(-1)).collectAsStateWithLifecycle(initialValue = -1)
+    val queueIndices by (playerConnection?.queueIndices ?: flowOf(emptyList())).collectAsStateWithLifecycle(initialValue = emptyList())
+    val playbackParameters by (playerConnection?.playbackParameters ?: flowOf(PlaybackParameters.DEFAULT)).collectAsStateWithLifecycle(initialValue = PlaybackParameters.DEFAULT)
 
-    LaunchedEffect(
-        mediaMetadata?.id,
-        mediaMetadata?.title,
-        mediaMetadata?.artists,
-        mediaMetadata?.duration,
-    ) {
-        val metadata = mediaMetadata ?: return@LaunchedEffect
-        if (metadata.title.isNotBlank()) {
-            lyricsViewModel.loadLyrics(
-                songId = metadata.id,
-                title = metadata.title,
-                artist = metadata.artists.joinToString(", ") { it.name },
-                duration = metadata.duration.toLong(),
-            )
-        }
-    }
+    val currentSongEntity by (playerConnection?.currentSong ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
 
-
-
-    val suvSong = remember(mediaMetadata) { mediaMetadata?.toSuvSong() }
-    val dominantColors = rememberDominantColors(suvSong?.thumbnailUrl)
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
+    var showVideoErrorDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(playerConnection, isPlaying) {
-        while (true) {
-            val pc = playerConnection
-            if (pc != null) {
-                currentPosition = pc.player.currentPosition
-                val d = pc.player.duration
-                duration = if (d > 0) d else (mediaMetadata?.duration ?: 0) * 1000L
+        while (isActive) {
+            val p = playerConnection?.player
+            if (p != null) {
+                currentPosition = p.currentPosition.coerceAtLeast(0L)
+                val d = p.duration
+                duration = if (d > 0) d else meta?.duration?.toLong()?.times(1000L) ?: 0L
             }
-            delay(250)
-        }
-    }
-    val progressProvider: () -> Float = {
-        if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-    }
-    var showQueueScreen by remember { mutableStateOf(false) }
-
-    if (showQueueScreen) {
-        val player = playerConnection?.player
-        val queueSongs = remember(player, player?.mediaItemCount) {
-            if (player != null) {
-                (0 until player.mediaItemCount).mapNotNull { idx ->
-                    player.getMediaItemAt(idx).metadata?.toSuvSong()
-                }
-            } else emptyList()
-        }
-        val currentIndex = player?.currentMediaItemIndex ?: 0
-        ModernQueueView(
-            currentSong = suvSong,
-            queue = queueSongs,
-            upNextSongs = if (queueSongs.isNotEmpty()) queueSongs.drop((currentIndex + 1).coerceAtLeast(0)) else emptyList(),
-            selectedQueueIndices = emptySet(),
-            onToggleSelection = {},
-            onSelectAll = {},
-            onClearSelection = {},
-            currentIndex = currentIndex,
-            isPlaying = isPlaying,
-            shuffleEnabled = shuffleEnabled,
-            repeatMode = repeatMode,
-            isAutoplayEnabled = false,
-            isFavorite = mediaMetadata?.liked == true,
-            onBack = { showQueueScreen = false },
-            onSongClick = { idx -> player?.seekToDefaultPosition(idx) },
-            onPlayPause = { player?.let { if (it.isPlaying) it.pause() else it.play() } },
-            onToggleShuffle = { player?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } },
-            onToggleRepeat = { playerConnection?.toggleRepeatMode() },
-            onToggleAutoplay = {},
-            onToggleLike = { playerConnection?.toggleLike() },
-            onMoreClick = { showOptionsSheet = true },
-            onMoveItem = { from, to -> player?.moveMediaItem(from, to) },
-            onRemoveItems = { list -> list.sortedDescending().forEach { player?.removeMediaItem(it) } },
-            onSaveAsPlaylist = { _, _, _, _ -> },
-            onAddToPlaylistClick = { showAddToPlaylistDialog = true },
-            onPlayNext = { songs -> songs.forEach { s -> playerConnection?.playNext(s.toMediaMetadata().toMediaItem()) } },
-            onAddToQueue = { songs -> songs.forEach { s -> playerConnection?.addToQueue(s.toMediaMetadata().toMediaItem()) } },
-            onClearQueue = { player?.clearMediaItems() },
-            dominantColors = dominantColors,
-        )
-        return
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(dominantColors.primary)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            PlayerTopBar(
-                onBack = onDismiss,
-                dominantColors = dominantColors,
-                onMoreClick = { showOptionsSheet = true },
-            )
-
-            Spacer(modifier = Modifier.weight(0.18f))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(8f, fill = false)
-                    .aspectRatio(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                AlbumArtwork(
-                    imageUrl = suvSong?.thumbnailUrl,
-                    title = suvSong?.title,
-                    dominantColors = dominantColors,
-                    isLoading = playbackState == Player.STATE_BUFFERING,
-                    isPlaying = isPlaying,
-                    isRotatingEnabled = false,
-                    onSwipeLeft = { playerConnection?.seekToNext() },
-                    onSwipeRight = { playerConnection?.seekToPrevious() },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(0.4f))
-
-            SongInfoSection(
-                song = suvSong,
-                isFavorite = mediaMetadata?.liked == true,
-                onFavoriteClick = { playerConnection?.toggleLike() },
-                onMoreClick = { showOptionsSheet = true },
-                onArtistClick = { artistId -> onNavigateToArtist?.invoke(artistId) },
-                onAlbumClick = { albumId -> onNavigateToAlbum?.invoke(albumId) },
-                dominantColors = dominantColors,
-                isLoading = playbackState == Player.STATE_BUFFERING,
-                compact = false,
-                sleepTimerOption = if (sleepTimerRunning) com.omnitune.app.models.SleepTimerOption.FIFTEEN_MIN else com.omnitune.app.models.SleepTimerOption.OFF,
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            PlayerActionChips(
-                isFavorite = mediaMetadata?.liked == true,
-                isDisliked = false,
-                onToggleLike = { playerConnection?.toggleLike() },
-                onToggleDislike = {},
-                onLyricsClick = { showLyricsSheet = true },
-                onRelatedClick = {},
-                onDownloadClick = {},
-                downloadState = com.omnitune.app.models.DownloadState.NOT_DOWNLOADED,
-                dominantColors = dominantColors,
-                onSleepTimerClick = { showSleepTimerDialog = true },
-                onSpeedClick = {},
-                playbackSpeed = playerConnection?.playbackParameters?.value?.speed ?: 1.0f,
-            )
-
-            Spacer(modifier = Modifier.weight(0.15f))
-
-            Box(
-                modifier = Modifier.fillMaxWidth().height(44.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (playbackState == Player.STATE_BUFFERING) {
-                    com.omnitune.app.ui.player.components.M3ESeekbarShimmer(
-                        isVisible = true,
-                        dominantColors = dominantColors,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    WaveformSeeker(
-                        progressProvider = progressProvider,
-                        isPlaying = isPlaying,
-                        onSeek = { fraction ->
-                            if (duration > 0) {
-                                playerConnection?.player?.seekTo((fraction * duration).toLong())
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        activeColor = dominantColors.accent,
-                        inactiveColor = dominantColors.onBackground.copy(alpha = 0.3f),
-                        duration = duration,
-                        contentPadding = 0.dp
-                    )
-                }
-            }
-
-            TimeLabelsWithQuality(
-                currentPositionProvider = { currentPosition },
-                durationProvider = { duration },
-                dominantColors = dominantColors,
-                horizontalPadding = 0.dp
-            )
-
-            Spacer(modifier = Modifier.weight(0.08f))
-
-            PlaybackControls(
-                isPlaying = isPlaying,
-                shuffleEnabled = shuffleEnabled,
-                repeatMode = repeatMode,
-                onPlayPause = { playerConnection?.player?.let { if (it.isPlaying) it.pause() else it.play() } },
-                onNext = { playerConnection?.seekToNext() },
-                onPrevious = { playerConnection?.seekToPrevious() },
-                onShuffleToggle = { playerConnection?.player?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } },
-                onRepeatToggle = { playerConnection?.toggleRepeatMode() },
-                dominantColors = dominantColors,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            QueueHandle(
-                onClick = { showQueueScreen = true },
-                dominantColors = dominantColors
-            )
-        }
-    }
-    if (showOptionsSheet) {
-        PlayerOptionsBottomSheet(
-            playerConnection = playerConnection,
-            onDismissRequest = { showOptionsSheet = false },
-            onNavigateToRadio = {
-                showOptionsSheet = false
-                playerConnection?.startRadioSeamlessly()
-                Toast.makeText(context, "Starting radio...", Toast.LENGTH_SHORT).show()
-            },
-            onAddToPlaylist = {
-                showOptionsSheet = false
-                showAddToPlaylistDialog = true
-            },
-            onCopyLink = {
-                showOptionsSheet = false
-                val videoId = mediaMetadata?.id
-                if (!videoId.isNullOrBlank()) {
-                    val clip = android.content.ClipData.newPlainText("OmniTune link", "https://music.youtube.com/watch?v=$videoId")
-                    (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(clip)
-                    android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
-                }
-            },
-            onNavigateToAlbum = onNavigateToAlbum?.let { navigate -> { showOptionsSheet = false; val id = mediaMetadata?.album?.id; if (id != null) navigate(id) } },
-            onNavigateToArtist = onNavigateToArtist?.let { navigate ->
-                {
-                    val artists = mediaMetadata?.artists
-                    if (artists != null && artists.size > 1) {
-                        showArtistSelectionDialog = true
-                    } else {
-                        showOptionsSheet = false
-                        val id = artists?.firstOrNull()?.id
-                        if (id != null) navigate(id)
-                    }
-                }
-            },
-            onShare = {
-                showOptionsSheet = false
-                val videoId = mediaMetadata?.id
-                val title = mediaMetadata?.title
-                if (!videoId.isNullOrBlank()) {
-                    val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(android.content.Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=$videoId")
-                        if (title != null) putExtra(android.content.Intent.EXTRA_SUBJECT, title)
-                    }
-                    context.startActivity(android.content.Intent.createChooser(sendIntent, "Share via"))
-                }
-            },
-            onSleepTimer = {
-                showOptionsSheet = false
-                showSleepTimerDialog = true
-            },
-            onOpenQueue = {
-                showOptionsSheet = false
-                onOpenQueue()
-            },
-        )
-    }
-    if (showLyricsSheet) {
-        LyricsBottomSheet(
-            playerConnection = playerConnection,
-            onDismissRequest = { showLyricsSheet = false },
-            viewModel = lyricsViewModel,
-        )
-    }
-    if (showSleepTimerDialog) {
-        SleepTimerDialog(
-            onDismiss = { showSleepTimerDialog = false },
-            onSet = { minutes, endOfSong ->
-                playerConnection?.service?.sleepTimer?.start(
-                    durationMs = minutes * 60_000L,
-                    stopAtEndOfSong = endOfSong,
-                )
-                showSleepTimerDialog = false
-            },
-            onCancel = {
-                playerConnection?.service?.sleepTimer?.cancel()
-                showSleepTimerDialog = false
-            },
-            isRunning = sleepTimerRunning,
-        )
-    }
-    if (showAddToPlaylistDialog) {
-        com.omnitune.app.ui.component.AddToPlaylistDialog(
-            playlists = playlists,
-            onDismissRequest = { showAddToPlaylistDialog = false },
-            onPlaylistSelected = { playlist ->
-                val meta = mediaMetadata
-                if (meta != null) {
-                    libraryViewModel.ensureSongExists(meta)
-                    scope.launch {
-                        val added = libraryViewModel.addToPlaylist(playlist, meta.id)
-                        if (!added) {
-                            Toast.makeText(context, "Already in playlist", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Added to playlist", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-                showAddToPlaylistDialog = false
-            },
-            onCreatePlaylist = { name ->
-                val meta = mediaMetadata
-                if (meta != null) {
-                    libraryViewModel.ensureSongExists(meta)
-                    libraryViewModel.createPlaylist(name, meta.id)
-                    Toast.makeText(context, "Playlist created", Toast.LENGTH_SHORT).show()
-                }
-                showAddToPlaylistDialog = false
-            },
-        )
-    }
-
-    if (showArtistSelectionDialog) {
-        val artists = mediaMetadata?.artists ?: emptyList()
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showArtistSelectionDialog = false },
-            containerColor = omniColors().surfaceRaised,
-            titleContentColor = omniColors().textPrimary,
-            title = { Text("Select Artist", fontWeight = FontWeight.Bold) },
-            text = {
-                androidx.compose.foundation.lazy.LazyColumn {
-                    items(artists.size) { index ->
-                        val artist = artists[index]
-                        Text(
-                            text = artist.name,
-                            color = omniColors().textPrimary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    onClick = {
-                                        showArtistSelectionDialog = false
-                                        showOptionsSheet = false
-                                        artist.id?.let { onNavigateToArtist?.invoke(it) }
-                                    }
-                                )
-                                .padding(vertical = OmniSpacing.medium)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { showArtistSelectionDialog = false }) {
-                    Text("Cancel", color = omniColors().textSecondary)
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun PlayerTopBar(
-    title: String,
-    onDismiss: () -> Unit,
-    onOpenQueue: () -> Unit,
-    onShowOptions: () -> Unit,
-    hasQueue: Boolean,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = OmniSpacing.micro),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .size(38.dp)
-                .clip(OmniShapes.Pill)
-                .background(omniColors().surfaceRaised)
-                .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = "Dismiss",
-                tint = omniColors().textPrimary,
-                modifier = Modifier
-                    .size(18.dp)
-                    .graphicsLayer { rotationZ = -90f },
-            )
-        }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = OmniSpacing.small),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "NOW PLAYING",
-                style = OmniTextStyles.eyebrow.copy(
-                    fontSize = 9.sp,
-                    letterSpacing = 1.3.sp,
-                    color = omniColors().accent,
-                ),
-                maxLines = 1,
-            )
-            Text(
-                text = title,
-                style = OmniTextStyles.songTitle.copy(
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = omniColors().textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.compact)) {
-            IconButton(
-                onClick = onOpenQueue,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(omniColors().surfaceRaised)
-                    .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_list),
-                    contentDescription = "Queue",
-                    tint = omniColors().textPrimary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            IconButton(
-                onClick = onShowOptions,
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(OmniShapes.Pill)
-                    .background(omniColors().surfaceRaised)
-                    .border(1.dp, omniColors().borderSubtle, OmniShapes.Pill),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more_vert),
-                    contentDescription = "More options",
-                    tint = omniColors().textPrimary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-    }
-}
-
-private fun buildArtworkCandidates(videoId: String?, thumbnailUrl: String?): List<String> {
-    val candidates = mutableListOf<String>()
-    if (videoId != null && videoId.matches(Regex("^[a-zA-Z0-9_-]{11}$"))) {
-        candidates.add("https://i.ytimg.com/vi/$videoId/maxresdefault.jpg")
-        candidates.add("https://i.ytimg.com/vi/$videoId/sddefault.jpg")
-    }
-    if (thumbnailUrl != null) candidates.add(thumbnailUrl)
-    return candidates
-}
-
-@Composable
-private fun ArtworkHero(
-    mediaMetadata: MediaMetadata?,
-    isPlaying: Boolean,
-    height: Dp,
-    widthFraction: Float,
-    accentColor: Color = LocalOmniAccents.current.primary,
-) {
-    val context = LocalContext.current
-    val videoId = mediaMetadata?.id
-    val thumbnailUrl = mediaMetadata?.thumbnailUrl
-    val candidates = remember(videoId, thumbnailUrl) { buildArtworkCandidates(videoId, thumbnailUrl) }
-    var candidateIndex by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(videoId, thumbnailUrl) {
-        candidateIndex = 0
-    }
-
-    val currentUrl = candidates.getOrNull(candidateIndex)
-    val imageRequest = remember(currentUrl, candidateIndex) {
-        currentUrl?.let { url ->
-            ImageRequest.Builder(context)
-                .data(url)
-                .size(ARTWORK_REQUEST_SIZE, ARTWORK_REQUEST_SIZE)
-                .memoryCacheKey("full-artwork:${mediaMetadata?.id}:$url")
-                .build()
+            delay(500)
         }
     }
 
-    val glowAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.22f else 0.10f,
-        animationSpec = OmniMotion.gentleSpring(),
-        label = "artwork_glow",
+    val song: Song? = remember(meta, currentSongEntity) {
+        val metadata = meta
+        if (metadata != null) {
+            Song(
+                id = metadata.id,
+                title = metadata.title,
+                artist = metadata.artists.joinToString(", ") { it.name },
+                album = metadata.album?.title.orEmpty(),
+                artistId = metadata.artists.firstOrNull()?.id,
+                thumbnailUrl = metadata.thumbnailUrl,
+                duration = metadata.duration.toLong() * 1000L,
+                source = if (currentSongEntity?.song?.isLocal == true) SongSource.LOCAL else SongSource.YOUTUBE
+            )
+        } else {
+            null
+        }
+    }
+
+    val repeatMode = when (repeatModeInt) {
+        Player.REPEAT_MODE_ONE -> RepeatMode.ONE
+        Player.REPEAT_MODE_ALL -> RepeatMode.ALL
+        else -> RepeatMode.OFF
+    }
+
+    val queueSongs = remember(playerConnection, queueIndices, currentMediaItemIndex, meta) {
+        playerConnection?.player?.mediaItems
+            ?.map { item -> item.toQueueSong() }
+            .orEmpty()
+    }
+    val isVideoMode by viewModel.isVideoMode.collectAsStateWithLifecycle()
+    val availableDevices by viewModel.availableDevices.collectAsStateWithLifecycle()
+
+    val pState = PlayerState(
+        currentSong = song,
+        isPlaying = isPlaying,
+        currentPosition = currentPosition,
+        duration = duration,
+        isLoading = playbackStateInt == STATE_BUFFERING,
+        queue = queueSongs,
+        currentIndex = currentMediaItemIndex,
+        repeatMode = repeatMode,
+        shuffleEnabled = shuffleEnabled,
+        isLiked = currentSongEntity?.song?.liked ?: (meta?.liked == true),
+        playbackSpeed = playbackParameters.speed,
+        pitch = playbackParameters.pitch,
+        isVideoMode = isVideoMode,
+        availableDevices = availableDevices,
+        selectedDevice = availableDevices.firstOrNull { it.isSelected }
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(widthFraction)
-            .height(height)
-            .shadow(
-                elevation = if (isPlaying) 26.dp else 18.dp,
-                shape = OmniShapes.ArtworkLarge,
-                ambientColor = Color.Black.copy(alpha = 0.42f),
-                spotColor = accentColor.copy(alpha = glowAlpha),
-            )
-            .clip(OmniShapes.ArtworkLarge)
-            .omniSoftBorder(
-                shape = OmniShapes.ArtworkLarge,
-                color = omniColors().borderStrong.copy(alpha = 0.18f),
-            ),
-        contentAlignment = Alignment.Center,
+
+    val activeOverlay by viewModel.activeOverlay.collectAsStateWithLifecycle()
+    val relatedSongs by viewModel.relatedSongs.collectAsStateWithLifecycle()
+    val isFetchingRelated by viewModel.isFetchingRelated.collectAsStateWithLifecycle()
+    val selectedRelatedIndices by viewModel.selectedRelatedIndices.collectAsStateWithLifecycle()
+    val selectedQueueIndices by viewModel.selectedQueueIndices.collectAsStateWithLifecycle()
+    val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
+    val seekbarStyle by viewModel.seekbarStyle.collectAsStateWithLifecycle()
+    val artworkShape by viewModel.artworkShape.collectAsStateWithLifecycle()
+    val artworkSize by viewModel.artworkSize.collectAsStateWithLifecycle()
+    val sponsorSegments by viewModel.sponsorSegments.collectAsStateWithLifecycle()
+    val isFullScreen by viewModel.isFullScreen.collectAsStateWithLifecycle()
+    val audioArEnabled by viewModel.audioArEnabled.collectAsStateWithLifecycle()
+    val isRotatingEnabled by viewModel.isRotatingEnabled.collectAsStateWithLifecycle()
+
+    val screenState = PlayerScreenState(
+        playbackInfo = pState,
+        playerState = pState,
+        relatedSongs = relatedSongs,
+        isFetchingRelated = isFetchingRelated,
+        selectedRelatedIndices = selectedRelatedIndices,
+        sleepTimerOption = if (sleepTimerRemaining > 0) SleepTimerOption.CUSTOM else SleepTimerOption.OFF,
+        sleepTimerRemainingMs = if (sleepTimerRemaining > 0) sleepTimerRemaining else null
+    )
+
+    LaunchedEffect(queueSongs.size) {
+        viewModel.pruneQueueSelection(queueSongs.size)
+    }
+
+    val actions = PlayerScreenActions(
+        onBack = onDismiss,
+        onPlayPause = {
+            if (isPlaying) {
+                playerConnection?.pause()
+            } else {
+                playerConnection?.playOrResolveCurrent()
+            }
+        },
+        onNext = { playerConnection?.seekToNext() },
+        onPrevious = { playerConnection?.seekToPrevious() },
+        onSeekTo = { pos -> playerConnection?.player?.seekTo(pos) },
+        onToggleLike = { playerConnection?.toggleLike() },
+        onShuffleToggle = {
+            val p = playerConnection?.player
+            if (p != null) {
+                p.shuffleModeEnabled = !p.shuffleModeEnabled
+                playerConnection.shuffleModeEnabled.value = p.shuffleModeEnabled
+            }
+        },
+        onRepeatToggle = {
+            val p = playerConnection?.player
+            if (p != null) {
+                val nextMode = when (p.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
+                }
+                p.repeatMode = nextMode
+                playerConnection.repeatMode.value = nextMode
+            }
+        },
+        onArtistClick = { artistId -> onNavigateToArtist(artistId) },
+        onAlbumClick = { albumId -> onNavigateToAlbum(albumId) },
+        onAlbumClickWithSong = { albumId, _ -> onNavigateToAlbum(albumId) },
+        onDownload = {
+            song?.let { current ->
+                playerConnection?.service?.downloadUtil?.enqueue(current.id, current.title) { _, message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
+        onToggleVideoMode = {
+            val p = playerConnection?.player
+            val hasVideoTrack = p?.currentTracks?.isTypeSupported(C.TRACK_TYPE_VIDEO) == true ||
+                ((p?.videoSize?.width ?: 0) > 0 && (p?.videoSize?.height ?: 0) > 0)
+            when {
+                song?.source != SongSource.YOUTUBE -> {
+                    showVideoErrorDialog = true
+                    viewModel.setVideoMode(false)
+                }
+                p == null -> Toast.makeText(context, "Player is not ready yet", Toast.LENGTH_SHORT).show()
+                hasVideoTrack -> viewModel.toggleVideoMode()
+                else -> {
+                    showVideoErrorDialog = true
+                    viewModel.setVideoMode(false)
+                }
+            }
+        },
+        onPlayFromQueue = { index ->
+            playerConnection?.seekTo(index, 0)
+        },
+        onSetSleepTimer = { option, minutes ->
+            playerConnection?.applySleepTimer(option, minutes)
+        },
+        onSetPlaybackParameters = { speed, pitch ->
+            playerConnection?.setPlaybackParameters(speed, pitch)
+        },
+        onToggleRelatedSelection = { viewModel.toggleRelatedSelection(it) },
+        onSelectAllRelated = { viewModel.selectAllRelated() },
+        onClearRelatedSelection = { viewModel.clearRelatedSelection() },
+        onAddRelatedToQueue = { songsToAdd ->
+            playerConnection?.addToQueue(songsToAdd.toPlaybackMediaItems())
+        },
+        onPlayRelated = { related ->
+            playerConnection?.playNext(related.toPlaybackMediaItem())
+            playerConnection?.seekToNext()
+        },
+        onClearQueue = { playerConnection?.clearQueue() }
+    )
+
+    PlayerScreen(
+        state = screenState,
+        originalActions = actions,
+        player = playerConnection?.player,
+        playerViewModel = viewModel,
+        volumeKeyEvents = volumeKeyEvents,
+        playerConnection = playerConnection
+    )
+
+    if (showVideoErrorDialog) {
+        VideoErrorDialog(
+            onDismiss = { showVideoErrorDialog = false },
+            onSwitchToAudio = {
+                showVideoErrorDialog = false
+                viewModel.setVideoMode(false)
+            },
+            dominantColors = rememberDominantColors(song?.thumbnailUrl, isSystemInDarkTheme())
+        )
+    }
+}
+
+/**
+ * Core PlayerScreen implementation matching SuvMusic layout and overlays.
+ */
+@Composable
+fun PlayerScreen(
+    state: PlayerScreenState,
+    originalActions: PlayerScreenActions,
+    player: Player? = null,
+    playerViewModel: PlayerViewModel = hiltViewModel(),
+    volumeKeyEvents: SharedFlow<Unit>? = null,
+    playerConnection: PlayerConnection? = null
+) {
+    val playbackInfo = state.playbackInfo
+    val playerState = state.playerState
+    val song = playbackInfo.currentSong
+    val context = LocalContext.current
+
+    val sponsorSegments by playerViewModel.sponsorSegments.collectAsStateWithLifecycle()
+    val isFullScreen by playerViewModel.isFullScreen.collectAsStateWithLifecycle()
+    val playerStyle by playerViewModel.playerStyle.collectAsStateWithLifecycle()
+    val seekbarStyle by playerViewModel.seekbarStyle.collectAsStateWithLifecycle()
+    val artworkShape by playerViewModel.artworkShape.collectAsStateWithLifecycle()
+    val artworkSize by viewModelArtworkSize(playerViewModel)
+    val animatedBackgroundEnabled by playerViewModel.animatedBackgroundEnabled.collectAsStateWithLifecycle()
+    val albumArtDynamicColorsEnabled by playerViewModel.albumArtDynamicColorsEnabled.collectAsStateWithLifecycle()
+    val audioArEnabled by playerViewModel.audioArEnabled.collectAsStateWithLifecycle()
+    val isRotatingEnabled by playerViewModel.isRotatingEnabled.collectAsStateWithLifecycle()
+    val activeOverlay by playerViewModel.activeOverlay.collectAsStateWithLifecycle()
+
+    val formFactor = com.omnitune.app.ui.utils.LocalDeviceFormFactor.current
+    val isExpanded = formFactor.isTabletLike
+
+    val isDarkTheme = isSystemInDarkTheme()
+    val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val extractedColors = rememberDominantColors(song?.thumbnailUrl, isDarkTheme)
+    val finalColors = if (albumArtDynamicColorsEnabled) {
+        extractedColors
+    } else if (isDarkTheme) {
+        DominantColors()
+    } else {
+        DominantColors(
+            primary = Color(0xFFF5F5F5),
+            secondary = Color(0xFFE8E8E8),
+            accent = Color(0xFF666666),
+            onBackground = Color(0xFF1A1A1A)
+        )
+    }
+    val animatedPrimary by animateColorAsState(targetValue = finalColors.primary, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow), label = "primary")
+    val animatedSecondary by animateColorAsState(targetValue = finalColors.secondary, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow), label = "secondary")
+    val animatedAccent by animateColorAsState(targetValue = finalColors.accent, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow), label = "accent")
+    val animatedOnBg by animateColorAsState(targetValue = finalColors.onBackground, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow), label = "onBg")
+
+    val dominantColors = DominantColors(primary = animatedPrimary, secondary = animatedSecondary, accent = animatedAccent, onBackground = animatedOnBg)
+
+    val bgLoadingAlpha by animateFloatAsState(
+        targetValue = if (playerState.isLoading) 0.85f else 1f,
+        animationSpec = spring(Spring.DampingRatioNoBouncy, Spring.StiffnessMediumLow),
+        label = "bgLoadingDim"
+    )
+
+    DisposableEffect(isDarkTheme) {
+        val window = (context as? Activity)?.window
+        if (window != null) {
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            val previousLightStatusBars = insetsController.isAppearanceLightStatusBars
+            insetsController.isAppearanceLightStatusBars = !isDarkTheme
+            insetsController.show(WindowInsetsCompat.Type.systemBars())
+            onDispose { insetsController.isAppearanceLightStatusBars = previousLightStatusBars }
+        } else {
+            onDispose { }
+        }
+    }
+
+
+    BackHandler {
+        if (activeOverlay != PlayerOverlay.None) {
+            val overlay = activeOverlay
+            when {
+                overlay is PlayerOverlay.Actions && overlay.fromQueue -> playerViewModel.setActiveOverlay(PlayerOverlay.Queue)
+                overlay is PlayerOverlay.Actions && overlay.fromRelated -> playerViewModel.setActiveOverlay(PlayerOverlay.Related)
+                else -> playerViewModel.dismissOverlay()
+            }
+        } else {
+            originalActions.onBack()
+        }
+    }
+
+    var pendingSeekPosition by remember { mutableStateOf<Long?>(null) }
+    var seekDebounceJob by remember { mutableStateOf<Job?>(null) }
+    val playerStateProvider by rememberUpdatedState(playerState)
+
+    val progressProvider = remember { { playerStateProvider.progress } }
+    val positionProvider = remember { { playerStateProvider.currentPosition } }
+    val durationProvider = remember { { playerStateProvider.duration } }
+    val doubleTapSeekSeconds by rememberPreference(DoubleTapSeekSecondsKey, 10)
+
+    val handleDoubleTapSeek: (Boolean) -> Unit = remember(doubleTapSeekSeconds) {
+        { forward ->
+            val currentPos = playerStateProvider.currentPosition
+            val durationMs = playerStateProvider.duration
+            val current = pendingSeekPosition ?: currentPos
+            val seekAmount = doubleTapSeekSeconds.coerceAtLeast(1) * 1000L
+            val newPos = if (forward) (current + seekAmount).coerceAtMost(durationMs) else (current - seekAmount).coerceAtLeast(0)
+            pendingSeekPosition = newPos
+            seekDebounceJob?.cancel()
+            seekDebounceJob = coroutineScope.launch {
+                delay(400)
+                originalActions.onSeekTo(newPos)
+                delay(600)
+                pendingSeekPosition = null
+            }
+        }
+    }
+
+    val playerBackgroundColor = if (isDarkTheme) Color.Black else Color.White
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalGlassArtwork provides GlassArtwork(
+            artworkUrl = song?.thumbnailUrl?.takeIf { !playerState.isVideoMode },
+            colors = dominantColors,
+            isDarkTheme = isDarkTheme
+        )
     ) {
-        // Background gradient
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            accentColor.copy(alpha = 0.10f),
-                            OmniColors.OmniGlassStrong,
-                            omniColors().backgroundElevated,
-                        )
-                    )
+                .background(playerBackgroundColor)
+                .graphicsLayer { alpha = bgLoadingAlpha }
+        ) {
+            if (animatedBackgroundEnabled && playerStyle != PlayerStyle.LIQUID_GLASS) {
+                GlassArtBackground(
+                    thumbnailUrl = song?.thumbnailUrl,
+                    isDarkTheme = isDarkTheme,
+                    isVideoMode = playerState.isVideoMode,
+                    dominantColors = dominantColors,
+                    blurRadius = 60f,
+                    intensity = 1f
                 )
-        )
+            }
 
-        // Foreground artwork fills the 16:9 card
-        if (imageRequest != null) {
-            SubcomposeAsyncImage(
-                model = imageRequest,
-                contentDescription = "Album Art",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                loading = {
-                    OmniTuneLoader(
-                        modifier = Modifier.size(48.dp),
-                        color = accentColor,
-                        size = 48.dp,
-                    )
-                },
-                error = {
-                    LaunchedEffect(candidateIndex) {
-                        if (candidateIndex < candidates.size - 1) {
-                            candidateIndex += 1
-                            Timber.tag("OmniTuneArtwork").w(
-                                "Full player artwork candidate %d/%d failed, trying next",
-                                candidateIndex + 1, candidates.size
+            val playerMainContent: @Composable () -> Unit = {
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val useWideLayout = maxWidth > 520.dp && maxWidth > maxHeight
+                    val isCompactHeight = maxHeight < 600.dp
+
+                    when (playerStyle) {
+                        PlayerStyle.YT_MUSIC -> {
+                            YTMusicPlayerStyle(
+                                song = song,
+                                playerState = playerState,
+                                playbackInfo = playbackInfo,
+                                dominantColors = dominantColors,
+                                currentArtworkShape = artworkShape,
+                                currentArtworkSize = artworkSize,
+                                currentSeekbarStyle = seekbarStyle,
+                                sponsorSegments = sponsorSegments,
+                                audioArEnabled = audioArEnabled,
+                                isRotatingEnabled = isRotatingEnabled,
+                                player = player,
+                                isFullScreen = isFullScreen,
+                                isCompactHeight = isCompactHeight,
+                                useWideLayout = useWideLayout,
+                                actions = originalActions,
+                                onShowActions = { playerViewModel.setActiveOverlay(PlayerOverlay.Actions(song)) },
+                                onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
+                                onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
+                                onShowRelated = {
+                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.Related)
+                                },
+                                onShowDevices = {
+                                    playerViewModel.refreshDevices()
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.OutputDevice)
+                                },
+                                onShowSleepTimer = { playerViewModel.setActiveOverlay(PlayerOverlay.SleepTimer) },
+                                onShowPlaybackSpeed = { playerViewModel.setActiveOverlay(PlayerOverlay.PlaybackSpeed) },
+                                onShowEqualizer = { playerViewModel.setActiveOverlay(PlayerOverlay.Equalizer) },
+                                handleDoubleTapSeek = handleDoubleTapSeek,
+                                onShapeChange = { shape -> playerViewModel.setArtworkShape(shape) },
+                                onSeekbarStyleChange = { style -> playerViewModel.setSeekbarStyle(style) },
+                                onRecenterAr = playerViewModel::refreshDevices,
+                                onSetFullScreen = { playerViewModel.setFullScreen(it) },
+                                 isSwitchingMode = false,
+                                sleepTimerOption = state.sleepTimerOption,
+                                sleepTimerRemainingMs = state.sleepTimerRemainingMs,
+                                progressProvider = progressProvider,
+                                positionProvider = positionProvider,
+                                durationProvider = durationProvider
+                            )
+                        }
+                        PlayerStyle.LIQUID_GLASS -> {
+                            LiquidGlassPlayerStyle(
+                                song = song,
+                                playerState = playerState,
+                                playbackInfo = playbackInfo,
+                                dominantColors = dominantColors,
+                                currentArtworkShape = artworkShape,
+                                currentArtworkSize = artworkSize,
+                                currentSeekbarStyle = seekbarStyle,
+                                sponsorSegments = sponsorSegments,
+                                audioArEnabled = audioArEnabled,
+                                isRotatingEnabled = isRotatingEnabled,
+                                player = player,
+                                isFullScreen = isFullScreen,
+                                isCompactHeight = isCompactHeight,
+                                useWideLayout = useWideLayout,
+                                actions = originalActions,
+                                onShowActions = { playerViewModel.setActiveOverlay(PlayerOverlay.Actions(song)) },
+                                onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
+                                onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
+                                onShowRelated = {
+                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.Related)
+                                },
+                                onShowDevices = {
+                                    playerViewModel.refreshDevices()
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.OutputDevice)
+                                },
+                                onShowSleepTimer = { playerViewModel.setActiveOverlay(PlayerOverlay.SleepTimer) },
+                                onShowPlaybackSpeed = { playerViewModel.setActiveOverlay(PlayerOverlay.PlaybackSpeed) },
+                                onShowEqualizer = { playerViewModel.setActiveOverlay(PlayerOverlay.Equalizer) },
+                                handleDoubleTapSeek = handleDoubleTapSeek,
+                                onShapeChange = { shape -> playerViewModel.setArtworkShape(shape) },
+                                onSeekbarStyleChange = { style -> playerViewModel.setSeekbarStyle(style) },
+                                onRecenterAr = playerViewModel::refreshDevices,
+                                onSetFullScreen = { playerViewModel.setFullScreen(it) },
+                                isSwitchingMode = false,
+                                sleepTimerOption = state.sleepTimerOption,
+                                sleepTimerRemainingMs = state.sleepTimerRemainingMs,
+                                progressProvider = progressProvider,
+                                positionProvider = positionProvider,
+                                durationProvider = durationProvider,
+                                isAIEnabled = false,
+                                aiStatus = null,
+                                backgroundArtworkUrl = if (animatedBackgroundEnabled) song?.thumbnailUrl else ""
+                            )
+                        }
+                        PlayerStyle.CLASSIC -> {
+                            ClassicPlayerStyle(
+                                song = song,
+                                playerState = playerState,
+                                playbackInfo = playbackInfo,
+                                dominantColors = dominantColors,
+                                currentArtworkShape = artworkShape,
+                                currentArtworkSize = artworkSize,
+                                currentSeekbarStyle = seekbarStyle,
+                                sponsorSegments = sponsorSegments,
+                                audioArEnabled = audioArEnabled,
+                                isRotatingEnabled = isRotatingEnabled,
+                                player = player,
+                                isFullScreen = isFullScreen,
+                                isCompactHeight = isCompactHeight,
+                                useWideLayout = useWideLayout,
+                                actions = originalActions,
+                                onShowActions = { playerViewModel.setActiveOverlay(PlayerOverlay.Actions(song)) },
+                                onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
+                                onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
+                                onShowRelated = {
+                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.Related)
+                                },
+                                onShowDevices = {
+                                    playerViewModel.refreshDevices()
+                                    playerViewModel.setActiveOverlay(PlayerOverlay.OutputDevice)
+                                },
+                                onShowSleepTimer = { playerViewModel.setActiveOverlay(PlayerOverlay.SleepTimer) },
+                                onShowPlaybackSpeed = { playerViewModel.setActiveOverlay(PlayerOverlay.PlaybackSpeed) },
+                                onShowEqualizer = { playerViewModel.setActiveOverlay(PlayerOverlay.Equalizer) },
+                                handleDoubleTapSeek = handleDoubleTapSeek,
+                                onShapeChange = { shape -> playerViewModel.setArtworkShape(shape) },
+                                onSeekbarStyleChange = { style -> playerViewModel.setSeekbarStyle(style) },
+                                onRecenterAr = playerViewModel::refreshDevices,
+                                onSetFullScreen = { playerViewModel.setFullScreen(it) },
+                                isSwitchingMode = false,
+                                sleepTimerOption = state.sleepTimerOption,
+                                sleepTimerRemainingMs = state.sleepTimerRemainingMs,
+                                progressProvider = progressProvider,
+                                positionProvider = positionProvider,
+                                durationProvider = durationProvider
                             )
                         }
                     }
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        OmniTuneLoader(
-                            modifier = Modifier.size(32.dp),
-                            color = accentColor,
-                            size = 32.dp,
-                        )
-                    }
-                },
-            )
-        } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(OmniSpacing.compact),
+                }
+            }
+
+            playerMainContent()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                OverlaysContent(
+                    state = state,
+                    actions = originalActions,
+                    activeOverlay = activeOverlay,
+                    onOverlayChange = { playerViewModel.setActiveOverlay(it) },
+                    dominantColors = dominantColors,
+                    playerViewModel = playerViewModel,
+                    isAppInDarkTheme = isDarkTheme,
+                    volumeSliderEnabled = true,
+                    volumeKeyEvents = volumeKeyEvents,
+                    isFullScreen = isFullScreen,
+                    isExpanded = isExpanded,
+                    animatedBackgroundEnabled = animatedBackgroundEnabled,
+                    progressProvider = progressProvider,
+                    positionProvider = positionProvider,
+                    durationProvider = durationProvider,
+                    playerConnection = playerConnection
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isFullScreen && playerState.isVideoMode && player != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_album),
-                    contentDescription = null,
-                    tint = omniColors().textTertiary,
-                    modifier = Modifier.size(58.dp),
-                )
-                Text(
-                    text = "No artwork",
-                    style = OmniTextStyles.caption,
-                    color = omniColors().textTertiary,
-                )
-            }
-        }
-    }
-}
-@Composable
-private fun MetadataBlock(
-    playerConnection: PlayerConnection?,
-    lyricsUiState: LyricsUiState,
-    lyricAccentColor: Color,
-    onOpenLyrics: () -> Unit,
-    onShare: () -> Unit
-) {
-    val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-    val currentSong by (playerConnection?.currentSong ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-    val liked = currentSong?.song?.liked == true || mediaMetadata?.liked == true
-    val title = mediaMetadata?.title?.takeIf { it.isNotBlank() } ?: "No track"
-    val artist = mediaMetadata
-        ?.artists
-        ?.joinToString(", ") { it.name }
-        ?.takeIf { it.isNotBlank() }
-        ?: "Unknown artist"
-    val album = mediaMetadata?.album?.title?.takeIf { it.isNotBlank() }
-    val fallbackSubtitle = artist + (if (album != null) " • $album" else "")
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = OmniSpacing.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.micro),
-        ) {
-            AnimatedContent(
-                targetState = title,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "player_title",
-            ) { currentTitle ->
-                Text(
-                    text = currentTitle,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = omniColors().textPrimary,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Text(
-                text = fallbackSubtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = omniColors().textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
-        IconButton(onClick = onShare) {
-            Icon(
-                painter = painterResource(R.drawable.ic_share),
-                contentDescription = "Share",
-                tint = omniColors().textSecondary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        IconButton(onClick = { playerConnection?.toggleLike() }) {
-            Icon(
-                painter = painterResource(if (liked) R.drawable.ic_favorite else R.drawable.ic_favorite_border),
-                contentDescription = if (liked) "Unlike" else "Like",
-                tint = if (liked) omniColors().accent else omniColors().textSecondary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun InlineLyricSubtitle(
-    state: InlineLyricState,
-    fallbackText: String,
-    accentColor: Color,
-    onOpenLyrics: () -> Unit,
-) {
-    val showLyrics = state.hasLyrics && !state.currentLine.isNullOrBlank()
-    val targetActiveColor = remember(accentColor) { accentColor.toInlineLyricActiveColor() }
-    val lyricSecondary = omniColors().textSecondary
-    val targetNextColor = remember(targetActiveColor, lyricSecondary) {
-        lerp(lyricSecondary, targetActiveColor, 0.42f).copy(alpha = 0.82f)
-    }
-    val targetContainerColor = remember(targetActiveColor) { targetActiveColor.copy(alpha = 0.12f) }
-    val activeColor by animateColorAsState(
-        targetValue = targetActiveColor,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "inline_lyric_active_color",
-    )
-    val nextColor by animateColorAsState(
-        targetValue = targetNextColor,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "inline_lyric_next_color",
-    )
-    val containerColor by animateColorAsState(
-        targetValue = targetContainerColor,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "inline_lyric_container_color",
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (showLyrics) {
-                    Modifier
-                        .clip(OmniShapes.Small)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    containerColor,
-                                    containerColor.copy(alpha = 0.05f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        )
-                        .clickable(onClick = onOpenLyrics)
-                        .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact)
-                } else {
-                    Modifier
-                }
-            ),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            text = state.currentLine.takeIf { showLyrics } ?: fallbackText,
-            style = MaterialTheme.typography.titleMedium,
-            color = if (showLyrics) activeColor else omniColors().textSecondary,
-            maxLines = if (showLyrics) 2 else 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (showLyrics && !state.nextLine.isNullOrBlank()) {
-            Text(
-                text = state.nextLine,
-                style = MaterialTheme.typography.bodyMedium,
-                color = nextColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-private fun Color.toInlineLyricActiveColor(): Color {
-    val lifted = lerp(this, Color.White, if (luminance() < 0.36f) 0.38f else 0.22f)
-    return if (lifted.luminance() < 0.44f) {
-        lerp(lifted, Color.White, 0.24f)
-    } else {
-        lifted
-    }
-}
-
-@Composable
-private fun PlayerLyricsPreview(
-    lines: List<LyricsLine>,
-    playerConnection: PlayerConnection?,
-    onOpenLyrics: () -> Unit,
-    onOpenQueue: () -> Unit,
-) {
-    var positionMs by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection) {
-        while (true) {
-            positionMs = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
-            delay(250L)
-        }
-    }
-    val readableLines = remember(lines) { lines.filter { it.text.isNotBlank() } }
-    if (readableLines.isEmpty()) return
-    val activeIndex = remember(readableLines, positionMs) {
-        readableLines.indexOfLast { line -> line.timestamp <= positionMs }.coerceAtLeast(0)
-    }
-    val visibleLines = remember(readableLines, activeIndex) {
-        val start = (activeIndex - 1).coerceAtLeast(0)
-        readableLines.drop(start).take(5)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .background(omniColors().surfaceRaised.copy(alpha = 0.92f))
-            .border(1.dp, omniColors().accent.copy(alpha = 0.28f), OmniShapes.Large)
-            .padding(OmniSpacing.medium),
-        verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-            PlayerPreviewTab(
-                label = "Lyrics",
-                selected = true,
-                onClick = onOpenLyrics,
-                modifier = Modifier.weight(1f),
-            )
-            PlayerPreviewTab(
-                label = "Queue",
-                selected = false,
-                onClick = onOpenQueue,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpenLyrics),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-        ) {
-            visibleLines.forEach { line ->
-                val active = line == readableLines.getOrNull(activeIndex)
-                Text(
-                    text = line.text,
-                    style = if (active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                    color = if (active) omniColors().accentSecondary else omniColors().textSecondary,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerPreviewTab(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .height(OmniSpacing.touchTarget)
-            .clip(OmniShapes.Pill)
-            .background(if (selected) omniColors().accent.copy(alpha = 0.62f) else omniColors().surfaceQuiet)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = if (selected) omniColors().textPrimary else omniColors().textSecondary,
-        )
-    }
-}
-
-@Composable
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-private fun PlayerSeekBar(
-    playerConnection: PlayerConnection?,
-    isSeeking: androidx.compose.runtime.MutableFloatState,
-    accentColor: Color = LocalOmniAccents.current.primary,
-    sliderStyle: OmniSliderStyle = OmniSliderStyle.DEFAULT,
-) {
-    val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val playbackState by (playerConnection?.playbackState ?: flowOf(Player.STATE_IDLE)).collectAsStateWithLifecycle(initialValue = Player.STATE_IDLE)
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
-
-    LaunchedEffect(playerConnection, playbackState) {
-        while (true) {
-            val pc = playerConnection
-            if (pc != null) {
-                val dur = pc.duration
-                if (playbackState == Player.STATE_ENDED && dur > 0) {
-                    currentPosition = dur
-                    duration = dur
-                } else {
-                    duration = if (dur > 0) dur else 0L
-                    if (isSeeking.floatValue < 0f) {
-                        currentPosition = pc.currentPosition
-                    }
-                }
-            } else {
-                currentPosition = 0L
-                duration = 0L
-            }
-            delay(250)
-        }
-    }
-
-    val progressTarget = if (duration > 0L) {
-        (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-    } else {
-        0f
-    }
-    val progress by animateFloatAsState(
-        targetValue = progressTarget,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
-        label = "player_progress",
-    )
-    val displayPosition = if (isSeeking.floatValue >= 0f && duration > 0L) {
-        (isSeeking.floatValue * duration).toLong()
-    } else {
-        currentPosition
-    }
-    val sliderAmplitude = when (sliderStyle) {
-        OmniSliderStyle.DEFAULT -> if (isPlaying) 2.dp else 0.dp
-        OmniSliderStyle.THIN -> 0.dp
-        OmniSliderStyle.ROUNDED -> if (isPlaying) 1.dp else 0.dp
-    }
-    val sliderStrokeWidth = when (sliderStyle) {
-        OmniSliderStyle.DEFAULT -> 6.dp
-        OmniSliderStyle.THIN -> 3.dp
-        OmniSliderStyle.ROUNDED -> 8.dp
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(OmniShapes.Large)
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.micro)
-            .semantics { contentDescription = "Playback progress" },
-    ) {
-        me.saket.squiggles.SquigglySlider(
-            value = if (isSeeking.floatValue >= 0f) isSeeking.floatValue else progress,
-            onValueChange = { isSeeking.floatValue = it },
-            onValueChangeFinished = {
-                if (playerConnection != null && duration > 0L) {
-                    playerConnection.seekTo((isSeeking.floatValue * duration).toLong())
-                }
-                isSeeking.floatValue = -1f
-            },
-            colors = SliderDefaults.colors(
-                thumbColor = accentColor,
-                activeTrackColor = accentColor,
-                inactiveTrackColor = OmniColors.OmniGlassStrong,
-            ),
-            squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
-                amplitude = sliderAmplitude,
-                strokeWidth = sliderStrokeWidth,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics {
-                    stateDescription = "At ${formatDurationMs(displayPosition)} of ${formatDurationMs(duration)}"
-                },
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = formatDurationMs(displayPosition),
-                style = omniTypeNumericTime(),
-                color = omniColors().textTertiary,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-            Text(
-                text = formatDurationMs(duration),
-                style = omniTypeNumericTime(),
-                color = omniColors().textTertiary,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayerControlRow(
-    isPlaying: Boolean,
-    playbackState: Int,
-    shuffleEnabled: Boolean,
-    repeatMode: Int,
-    playerConnection: PlayerConnection?,
-    accentColor: Color = LocalOmniAccents.current.primary,
-) {
-    val canSkipPrevious by (playerConnection?.canSkipPrevious ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val canSkipNext by (playerConnection?.canSkipNext ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    val context = LocalContext.current
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Shuffle Button (Icon only)
-        IconButton(
-            onClick = {
-                val pc = playerConnection
-                if (pc != null) {
-                    if (pc.mediaItemCount <= 1) {
-                        Toast.makeText(context, "Shuffle requires more than one track", Toast.LENGTH_SHORT).show()
-                    } else {
-                        pc.setShuffleModeEnabled(!shuffleEnabled)
-                    }
-                }
-            },
-            modifier = Modifier
-                .size(40.dp)
-                .clip(OmniShapes.Pill)
-                .background(if (shuffleEnabled) accentColor.copy(alpha = 0.16f) else Color.Transparent)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_shuffle),
-                contentDescription = if (shuffleEnabled) "Shuffle on" else "Shuffle off",
-                tint = if (shuffleEnabled) accentColor else omniColors().textPrimary.copy(alpha = 0.4f),
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        // Keep skip actions visually light; the primary action is play/pause.
-        IconButton(
-            onClick = { playerConnection?.seekToPrevious() },
-            enabled = canSkipPrevious,
-            modifier = Modifier.size(40.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_skip_previous),
-                contentDescription = "Previous",
-                tint = omniColors().textPrimary.copy(alpha = if (canSkipPrevious) 0.9f else 0.4f),
-                modifier = Modifier.size(26.dp)
-            )
-        }
-
-        PlayPauseButton(
-            isPlaying = isPlaying,
-            playbackState = playbackState,
-            accentColor = accentColor,
-            onClick = {
-                val pc = playerConnection ?: return@PlayPauseButton
-                if (playbackState == Player.STATE_ENDED || !isPlaying) {
-                    pc.playOrResolveCurrent()
-                } else {
-                    pc.pause()
-                }
-            },
-        )
-
-        IconButton(
-            onClick = { playerConnection?.seekToNext() },
-            enabled = canSkipNext,
-            modifier = Modifier.size(40.dp),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_skip_next),
-                contentDescription = "Next",
-                tint = omniColors().textPrimary.copy(alpha = if (canSkipNext) 0.9f else 0.4f),
-                modifier = Modifier.size(26.dp)
-            )
-        }
-
-        // Repeat Button (Icon only)
-        IconButton(
-            onClick = { playerConnection?.toggleRepeatMode() },
-            modifier = Modifier
-                .size(40.dp)
-                .clip(OmniShapes.Pill)
-                .background(if (repeatMode != REPEAT_MODE_OFF) accentColor.copy(alpha = 0.16f) else Color.Transparent)
-        ) {
-            Icon(
-                painter = painterResource(
-                    when (repeatMode) {
-                        REPEAT_MODE_OFF, REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                        REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                        else -> R.drawable.ic_repeat
-                    }
-                ),
-                contentDescription = "Repeat",
-                tint = if (repeatMode == REPEAT_MODE_OFF) omniColors().textPrimary.copy(alpha = 0.4f) else accentColor,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlayPauseButton(
-    isPlaying: Boolean,
-    playbackState: Int,
-    accentColor: Color = LocalOmniAccents.current.primary,
-    onClick: () -> Unit,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    IconButton(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        modifier = Modifier
-            .size(64.dp)
-            .shadow(
-                elevation = 8.dp,
-                shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.3f),
-                spotColor = Color.Black.copy(alpha = 0.3f),
-            )
-            .clip(CircleShape)
-            .background(accentColor)
-            .omniPressScale(interactionSource),
-    ) {
-        Icon(
-            painter = painterResource(
-                if (playbackState == Player.STATE_BUFFERING) {
-                    R.drawable.ic_pause
-                } else if (playbackState == Player.STATE_ENDED || !isPlaying) {
-                    R.drawable.ic_play_arrow
-                } else {
-                    R.drawable.ic_pause
-                }
-            ),
-            contentDescription = if (isPlaying) "Pause" else "Play",
-            tint = if (accentColor.luminance() > 0.52f) Color.Black else Color.White,
-            modifier = Modifier.size(36.dp),
-        )
-    }
-}
-
-@Composable
-private fun PlayerIconButton(
-    icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    active: Boolean = false,
-    enabled: Boolean = true,
-    size: Dp = 48.dp,
-    iconSize: Dp = 24.dp,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        interactionSource = interactionSource,
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(
-                if (active) {
-                    LocalOmniAccents.current.primary.copy(alpha = 0.18f)
-                } else {
-                    OmniColors.OmniGlassSubtle
-                }
-            )
-            .omniPressScale(interactionSource),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            tint = when {
-                !enabled -> omniColors().textDisabled
-                active -> LocalOmniAccents.current.secondary
-                else -> omniColors().textSecondary
-            },
-            modifier = Modifier.size(iconSize),
-        )
-    }
-}
-
-@Composable
-private fun GlassIconButton(
-    icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    IconButton(
-        onClick = onClick,
-        enabled = enabled,
-        interactionSource = interactionSource,
-        modifier = Modifier
-            .size(46.dp)
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.OmniGlassMedium)
-            .omniSoftBorder(OmniShapes.Medium, omniColors().borderSubtle)
-            .omniPressScale(interactionSource),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            tint = if (enabled) omniColors().textPrimary else omniColors().textDisabled,
-            modifier = Modifier.size(22.dp),
-        )
-    }
-}
-
-@Composable
-private fun PlayerActionsRow(
-    playerConnection: PlayerConnection?,
-    onOpenQueue: () -> Unit,
-    onShowSleepTimer: () -> Unit,
-    onShowOptions: () -> Unit = {},
-    onOpenLyrics: () -> Unit = {},
-    accentColor: Color = LocalOmniAccents.current.primary,
-) {
-    val sleepTimerRunning by (playerConnection?.sleepTimerRunning ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.small),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier
-                .clip(OmniShapes.Small)
-                .clickable(onClick = onOpenQueue)
-                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(painterResource(R.drawable.ic_list), contentDescription = "Queue", tint = omniColors().textSecondary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(OmniSpacing.compact))
-            Text("Queue", color = omniColors().textSecondary, style = MaterialTheme.typography.labelLarge)
-        }
-
-        IconButton(onClick = onShowSleepTimer) {
-            Icon(painterResource(R.drawable.ic_bedtime), contentDescription = "Sleep timer", tint = if (sleepTimerRunning) accentColor else omniColors().textSecondary)
-        }
-
-        Row(
-            modifier = Modifier
-                .clip(OmniShapes.Small)
-                .clickable(onClick = onOpenLyrics)
-                .padding(horizontal = OmniSpacing.small, vertical = OmniSpacing.compact),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(painterResource(R.drawable.ic_lyrics), contentDescription = "Lyrics", tint = omniColors().textSecondary, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(OmniSpacing.compact))
-            Text("Lyrics", color = omniColors().textSecondary, style = MaterialTheme.typography.labelLarge)
-        }
-
-        IconButton(onClick = onShowOptions) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options", tint = omniColors().textSecondary)
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(
-    icon: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    active: Boolean = false,
-    activeTint: Color = LocalOmniAccents.current.secondary,
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(
-                if (active) {
-                    activeTint.copy(alpha = 0.18f)
-                } else {
-                    omniColors().backgroundElevated.copy(alpha = 0.88f)
-                }
-            ),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            tint = if (active) activeTint else omniColors().textSecondary.copy(alpha = 0.92f),
-            modifier = Modifier.size(22.dp),
-        )
-    }
-}
-
-@Composable
-private fun AudioEffectsDialog(
-    playerConnection: PlayerConnection?,
-    onDismiss: () -> Unit,
-) {
-    var tempo by remember { mutableFloatStateOf(playerConnection?.playbackSpeed ?: 1f) }
-    var pitch by remember { mutableFloatStateOf(playerConnection?.playbackPitch ?: 1f) }
-    var skipSilence by remember { mutableStateOf(playerConnection?.skipSilenceEnabled ?: false) }
-    val context = LocalContext.current
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .clip(OmniShapes.ExtraLarge)
-                .background(omniColors().backgroundElevated)
-                .omniSoftBorder(OmniShapes.ExtraLarge, omniColors().borderStrong)
-                .padding(OmniSpacing.section),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
-        ) {
-            Text(
-                text = "Audio Effects",
-                style = OmniTextStyles.sectionHeader,
-                color = omniColors().textPrimary,
-            )
-
-            EffectSlider(
-                label = "Tempo",
-                valueText = String.format(Locale.US, "%.2fx", tempo),
-                value = tempo,
-                onValueChange = { tempo = it },
-                onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
-                valueRange = 0.5f..2.0f,
-            )
-
-            EffectSlider(
-                label = "Pitch",
-                valueText = String.format(Locale.US, "%.2fx", pitch),
-                value = pitch,
-                onValueChange = { pitch = it },
-                onValueChangeFinished = { playerConnection?.setPlaybackParameters(tempo, pitch) },
-                valueRange = 0.5f..2.0f,
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Skip Silence",
-                    color = omniColors().textPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = skipSilence,
-                    onCheckedChange = {
-                        skipSilence = it
-                        playerConnection?.setSkipSilenceEnabled(it)
-                    },
-                )
-            }
-
-            Button(
-                onClick = {
-                    val audioSessionId = playerConnection?.audioSessionId ?: 0
-                    if (audioSessionId != 0) {
-                        try {
-                            val intent = android.content.Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                            intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
-                            intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                            intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "No system equalizer found", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(context, "Audio session not ready", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = LocalOmniAccents.current.primary),
-            ) {
-                Text("Open System Equalizer", color = omniColors().textOnAccent)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EffectSlider(
-    label: String,
-    valueText: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    onValueChangeFinished: () -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(label, color = omniColors().textPrimary, style = MaterialTheme.typography.bodyMedium)
-            Text(valueText, color = omniColors().textSecondary, style = MaterialTheme.typography.bodyMedium)
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            onValueChangeFinished = onValueChangeFinished,
-            valueRange = valueRange,
-            colors = SliderDefaults.colors(
-                thumbColor = LocalOmniAccents.current.primary,
-                activeTrackColor = LocalOmniAccents.current.primary,
-                inactiveTrackColor = OmniColors.OmniGlassStrong,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun SleepTimerDialog(
-    onDismiss: () -> Unit,
-    onSet: (minutes: Int, endOfSong: Boolean) -> Unit,
-    onCancel: () -> Unit,
-    isRunning: Boolean,
-) {
-    var selectedMinutes by remember { mutableIntStateOf(30) }
-    var endOfSong by remember { mutableStateOf(false) }
-    val options = listOf(15, 30, 45, 60, 90, 120)
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .clip(OmniShapes.ExtraLarge)
-                .background(omniColors().backgroundElevated)
-                .omniSoftBorder(OmniShapes.ExtraLarge, omniColors().borderStrong)
-                .padding(OmniSpacing.section),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium),
-        ) {
-            Text(
-                text = "Sleep Timer",
-                style = OmniTextStyles.sectionHeader,
-                color = omniColors().textPrimary,
-            )
-
-            options.forEach { minutes ->
-                val selected = selectedMinutes == minutes
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(OmniShapes.Small)
-                        .background(
-                            if (selected) {
-                                LocalOmniAccents.current.primary.copy(alpha = 0.18f)
-                            } else {
-                                Color.Transparent
-                            }
-                        )
-                        .clickable { selectedMinutes = minutes }
-                        .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "$minutes minutes",
-                        color = omniColors().textPrimary,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Stop at end of song",
-                    color = omniColors().textPrimary,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(checked = endOfSong, onCheckedChange = { endOfSong = it })
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-                if (isRunning) {
-                    Button(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = omniColors().accent),
-                    ) {
-                        Text("Cancel Timer")
-                    }
-                }
-                Button(
-                    onClick = { onSet(selectedMinutes, endOfSong) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = LocalOmniAccents.current.primary),
-                ) {
-                    Text(
-                        text = if (isRunning) "Restart" else "Set Timer",
-                        color = omniColors().textOnAccent,
+                if (player != null) {
+                    FullScreenVideoPlayer(
+                        player = player,
+                        playerState = playerState,
+                        actions = originalActions,
+                        dominantColors = dominantColors,
+                        onDismiss = { playerViewModel.setFullScreen(false) }
                     )
                 }
             }
@@ -1680,310 +680,445 @@ private fun SleepTimerDialog(
     }
 }
 
+@Composable
+private fun viewModelArtworkSize(viewModel: PlayerViewModel) =
+    viewModel.artworkSize.collectAsStateWithLifecycle()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerOptionsBottomSheet(
-    playerConnection: PlayerConnection?,
-    onDismissRequest: () -> Unit,
-    onNavigateToRadio: () -> Unit = {},
-    onAddToPlaylist: () -> Unit = {},
-    onCopyLink: () -> Unit = {},
-    onNavigateToAlbum: (() -> Unit)? = null,
-    onNavigateToArtist: (() -> Unit)? = null,
-    onShare: (() -> Unit)? = null,
-    onSleepTimer: () -> Unit = {},
-    onOpenQueue: () -> Unit = {},
+fun BoxScope.OverlaysContent(
+    state: PlayerScreenState,
+    actions: PlayerScreenActions,
+    activeOverlay: PlayerOverlay,
+    onOverlayChange: (PlayerOverlay) -> Unit,
+    dominantColors: DominantColors,
+    playerViewModel: PlayerViewModel,
+    isAppInDarkTheme: Boolean,
+    volumeSliderEnabled: Boolean,
+    volumeKeyEvents: SharedFlow<Unit>?,
+    isFullScreen: Boolean,
+    isExpanded: Boolean = false,
+    animatedBackgroundEnabled: Boolean = true,
+    progressProvider: () -> Float,
+    positionProvider: () -> Long,
+    durationProvider: () -> Long,
+    playerConnection: PlayerConnection? = null
 ) {
-    var showMediaInfoDialog by remember { mutableStateOf(false) }
-    val currentFormat by (playerConnection?.currentFormat ?: kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-    val currentMetadata by (playerConnection?.mediaMetadata ?: kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val song = state.playbackInfo.currentSong
+    val playerState = state.playerState
+    val currentOverlay by rememberUpdatedState(activeOverlay)
+    val context = LocalContext.current
+    val downloadUtil = LocalDownloadUtil.current
+    val playlistViewModel: PlaylistManagementViewModel = hiltViewModel()
+    val playlistMgmtState by playlistViewModel.uiState.collectAsStateWithLifecycle()
+    val selectedQueueIndices by playerViewModel.selectedQueueIndices.collectAsStateWithLifecycle()
 
-    androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-        containerColor = omniColors().backgroundElevated,
-        shape = OmniShapes.ExtraLarge,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = OmniSpacing.section, vertical = OmniSpacing.medium)
-        ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (currentMetadata?.thumbnailUrl != null) {
-                    coil3.compose.AsyncImage(
-                        model = currentMetadata?.thumbnailUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(OmniShapes.Medium),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                }
-                Spacer(modifier = Modifier.width(OmniSpacing.medium))
-                Column {
-                    Text("Now Playing", color = omniColors().textSecondary, style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        text = currentMetadata?.title ?: "No track",
-                        color = omniColors().textPrimary,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = currentMetadata?.artists?.joinToString(", ") { it.name } ?: "Unknown artist",
-                        color = omniColors().textSecondary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
+    var storedEqualizerBands by rememberPreference(EqualizerBandLevelsMbKey, "")
+    var equalizerEnabled by rememberPreference(EqualizerEnabledKey, false)
+    var equalizerPreampLevelMb by rememberPreference(EqualizerPreampLevelMbKey, 0)
+    var bassBoostEnabled by rememberPreference(EqualizerBassBoostEnabledKey, false)
+    var bassBoostStrength by rememberPreference(EqualizerBassBoostStrengthKey, 0)
+    var virtualizerEnabled by rememberPreference(EqualizerVirtualizerEnabledKey, false)
+    var virtualizerStrength by rememberPreference(EqualizerVirtualizerStrengthKey, 0)
 
-            Spacer(modifier = Modifier.height(OmniSpacing.large))
-
-            // Volume slider
-            var volume by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.volume ?: 1f) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (volume == 0f) R.drawable.ic_volume_off else R.drawable.ic_volume_up
-                    ),
-                    contentDescription = "Volume",
-                    tint = omniColors().textSecondary,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                me.saket.squiggles.SquigglySlider(
-                    value = volume,
-                    onValueChange = {
-                        volume = it
-                        playerConnection?.player?.setVolume(it)
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = SliderDefaults.colors(
-                        thumbColor = LocalOmniAccents.current.primary,
-                        activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = omniColors().surfaceRaised,
-                    ),
-                    squigglesSpec = me.saket.squiggles.SquigglySlider.SquigglesSpec(
-                        amplitude = 2.dp,
-                        strokeWidth = 6.dp
-                    ),
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Text(
-                    text = "${(volume * 100).toInt()}%",
-                    color = omniColors().textSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.End,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-
-            // Speed slider
-            var speed by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.playbackParameters?.speed ?: 1f) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_play_arrow),
-                    contentDescription = "Speed",
-                    tint = omniColors().textSecondary,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Slider(
-                    value = speed,
-                    onValueChange = {
-                        speed = it
-                        playerConnection?.player?.let { player ->
-                            player.playbackParameters = player.playbackParameters.withSpeed(it)
-                        }
-                    },
-                    valueRange = 0.5f..2.0f,
-                    modifier = Modifier.weight(1f),
-                    colors = SliderDefaults.colors(
-                        thumbColor = LocalOmniAccents.current.primary,
-                        activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = omniColors().surfaceRaised,
-                    )
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Text(
-                    text = String.format(Locale.US, "%.1fx", speed),
-                    color = omniColors().textSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.End,
-                )
-            }
-
-            // Pitch slider
-            var pitch by remember(playerConnection) { mutableFloatStateOf(playerConnection?.player?.playbackParameters?.pitch ?: 1f) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_settings), // fallback icon for pitch
-                    contentDescription = "Pitch",
-                    tint = omniColors().textSecondary,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Slider(
-                    value = pitch,
-                    onValueChange = {
-                        pitch = it
-                        playerConnection?.player?.let { player ->
-                            // using an extension or recreating PlaybackParameters if withPitch doesn't exist
-                            player.playbackParameters = androidx.media3.common.PlaybackParameters(player.playbackParameters.speed, it)
-                        }
-                    },
-                    valueRange = 0.5f..2.0f,
-                    modifier = Modifier.weight(1f),
-                    colors = SliderDefaults.colors(
-                        thumbColor = LocalOmniAccents.current.primary,
-                        activeTrackColor = LocalOmniAccents.current.primary,
-                        inactiveTrackColor = omniColors().surfaceRaised,
-                    )
-                )
-                Spacer(modifier = Modifier.width(OmniSpacing.small))
-                Text(
-                    text = String.format(Locale.US, "%.1fx", pitch),
-                    color = omniColors().textSecondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.End,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(OmniSpacing.medium))
-
-            val context = LocalContext.current
-            val downloadsViewModel: DownloadsViewModel = hiltViewModel()
-            val optionItems = buildList {
-                add(PlayerOption(R.drawable.ic_insights, "Start radio", onNavigateToRadio))
-                add(PlayerOption(R.drawable.ic_list, "Add to playlist", onAddToPlaylist))
-                add(PlayerOption(R.drawable.ic_share, "Copy link", onCopyLink))
-                add(PlayerOption(R.drawable.ic_info, "Media info") { showMediaInfoDialog = true })
-                if (onNavigateToAlbum != null) add(PlayerOption(R.drawable.ic_album, "Go to album", onNavigateToAlbum))
-                if (onNavigateToArtist != null) add(PlayerOption(R.drawable.ic_artist, "Go to artist", onNavigateToArtist))
-                if (onShare != null) add(PlayerOption(R.drawable.ic_share, "Share", onShare))
-                add(PlayerOption(R.drawable.ic_bedtime, "Sleep timer", onSleepTimer))
-                add(PlayerOption(R.drawable.ic_list, "Queue", onOpenQueue))
-                add(
-                    PlayerOption(R.drawable.ic_download, "Download") {
-                        val videoId = currentMetadata?.id
-                        val title = currentMetadata?.title
-                        if (!videoId.isNullOrBlank() && !title.isNullOrBlank()) {
-                            downloadsViewModel.startDownload(videoId, title, null) { _, msg ->
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                )
-            }
-            OptionGrid(options = optionItems)
-
-            if (showMediaInfoDialog) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { showMediaInfoDialog = false },
-                    containerColor = omniColors().surfaceRaised,
-                    titleContentColor = omniColors().textPrimary,
-                    textContentColor = omniColors().textSecondary,
-                    title = { Text("Media Information", fontWeight = FontWeight.Bold) },
-                    text = {
-                        Column {
-                            Text("Codec: ${currentFormat?.codecs ?: "Unknown"}")
-                            Text("Bitrate: ${currentFormat?.bitrate?.let { "${it / 1000} kbps" } ?: "Unknown"}")
-                            Text("Sample Rate: ${currentFormat?.sampleRate?.let { "${it / 1000} kHz" } ?: "Unknown"}")
-                        }
-                    },
-                    confirmButton = {
-                        androidx.compose.material3.TextButton(onClick = { showMediaInfoDialog = false }) {
-                            Text("Close", color = LocalOmniAccents.current.primary)
-                        }
-                    }
-                )
-            }
-            Spacer(Modifier.height(OmniSpacing.hero))
-        }
+    val equalizerBands = remember(storedEqualizerBands) {
+        decodeEqualizerBands(storedEqualizerBands) ?: EqualizerPresets.FLAT.bands
     }
-}
-
-private data class PlayerOption(
-    val icon: Int,
-    val label: String,
-    val onClick: () -> Unit,
-)
-
-@Composable
-private fun OptionGrid(options: List<PlayerOption>) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
-        options.chunked(4).forEach { rowOptions ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
-            ) {
-                rowOptions.forEach { option ->
-                    OptionButton(
-                        icon = option.icon,
-                        label = option.label,
-                        onClick = option.onClick,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                repeat(4 - rowOptions.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
+    val equalizerBandLevels = remember(equalizerBands) {
+        equalizerBands.map { it.gainDb }.toFloatArray()
     }
-}
 
-@Composable
-private fun OptionButton(
-    icon: Int,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .clip(OmniShapes.Medium)
-            .clickable(onClick = onClick)
-            .padding(vertical = OmniSpacing.compact, horizontal = OmniSpacing.micro)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(OmniShapes.Large)
-                .background(omniColors().surfaceRaised),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(painterResource(icon), contentDescription = null, tint = omniColors().textPrimary, modifier = Modifier.size(24.dp))
-        }
-        Spacer(modifier = Modifier.height(OmniSpacing.compact))
-        Text(
-            text = label,
-            color = omniColors().textSecondary,
-            style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+    if (volumeSliderEnabled) {
+        VolumeControl(
+            dominantColors = dominantColors,
+            volumeKeyEvents = volumeKeyEvents,
+            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(0.3f).padding(end = 16.dp)
         )
+    }
+
+    if (!isExpanded) {
+        val actionsOverlay = activeOverlay as? PlayerOverlay.Actions
+        val queueVisible = activeOverlay is PlayerOverlay.Queue || actionsOverlay?.fromQueue == true
+        if (queueVisible) {
+            val queueSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+            val isQueueExpanded by remember {
+                derivedStateOf { queueSheetState.targetValue == SheetValue.Expanded }
+            }
+            ModalBottomSheet(
+                onDismissRequest = { if (currentOverlay is PlayerOverlay.Queue) onOverlayChange(PlayerOverlay.None) },
+                sheetState = queueSheetState,
+                containerColor = if (isAppInDarkTheme) YtFlatBackground else MaterialTheme.colorScheme.surface,
+                contentWindowInsets = { WindowInsets(0) },
+                dragHandle = if (isQueueExpanded) null else ({ BottomSheetDefaults.DragHandle() }),
+                scrimColor = Color.Black.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                ModernQueueView(
+                    currentSong = song,
+                    queue = playerState.queue,
+                    upNextSongs = emptyList(),
+                    selectedQueueIndices = selectedQueueIndices,
+                    onToggleSelection = playerViewModel::toggleQueueSelection,
+                    onSelectAll = { playerViewModel.selectAllQueue(playerState.queue.size) },
+                    onClearSelection = playerViewModel::clearQueueSelection,
+                    currentIndex = playerState.currentIndex,
+                    isPlaying = playerState.isPlaying,
+                    shuffleEnabled = playerState.shuffleEnabled,
+                    repeatMode = playerState.repeatMode.ordinal,
+                    isAutoplayEnabled = playerState.isAutoplayEnabled,
+                    isFavorite = playerState.isLiked,
+                    isRadioMode = state.isRadioMode,
+                    isLoadingMore = state.isLoadingMoreSongs,
+                    onBack = { if (currentOverlay is PlayerOverlay.Queue) onOverlayChange(PlayerOverlay.None) },
+                    onSongClick = actions.onPlayFromQueue,
+                    onPlayPause = actions.onPlayPause,
+                    onToggleShuffle = actions.onShuffleToggle,
+                    onToggleRepeat = actions.onRepeatToggle,
+                    onToggleAutoplay = actions.onToggleAutoplay,
+                    onToggleLike = actions.onToggleLike,
+                    onMoreClick = { onOverlayChange(PlayerOverlay.Actions(it, fromQueue = true)) },
+                    onLoadMore = actions.onLoadMoreRadioSongs,
+                    onMoveItem = { from, to ->
+                        val count = playerConnection?.mediaItemCount ?: 0
+                        if (from in 0 until count && to in 0 until count && from != to) {
+                            playerConnection?.moveMediaItem(from, to)
+                        }
+                    },
+                    onRemoveItems = { indices ->
+                        val count = playerConnection?.mediaItemCount ?: 0
+                        indices
+                            .filter { it in 0 until count }
+                            .sortedDescending()
+                            .forEach { index -> playerConnection?.removeMediaItem(index) }
+                        playerViewModel.clearQueueSelection()
+                    },
+                    onSaveAsPlaylist = { _, _, _, _ -> },
+                    onAddToPlaylistClick = { songs ->
+                        playlistViewModel.showAddToPlaylistSheet(songs)
+                        playerViewModel.clearQueueSelection()
+                    },
+                    onPlayNext = { songs ->
+                        playerConnection?.playNext(songs.toPlaybackMediaItems())
+                        playerViewModel.clearQueueSelection()
+                    },
+                    onAddToQueue = { songs ->
+                        playerConnection?.addToQueue(songs.toPlaybackMediaItems())
+                        playerViewModel.clearQueueSelection()
+                    },
+                    onClearQueue = {
+                        actions.onClearQueue()
+                        playerViewModel.clearQueueSelection()
+                    },
+                    dominantColors = dominantColors,
+                    animatedBackgroundEnabled = animatedBackgroundEnabled,
+                    isDarkTheme = isAppInDarkTheme,
+                    modalMode = true,
+                    nowPlayingHeaderOverride = if (isQueueExpanded) {
+                        {
+                            QueuePlayerHeader(
+                                song = song,
+                                isPlaying = playerState.isPlaying,
+                                dominantColors = dominantColors,
+                                progressProvider = progressProvider,
+                                onPlayPause = actions.onPlayPause,
+                                onNext = actions.onNext,
+                                onPrevious = actions.onPrevious,
+                                isDarkTheme = isAppInDarkTheme
+                            )
+                        }
+                    } else null
+                )
+            }
+        }
+
+        if (activeOverlay is PlayerOverlay.Lyrics) {
+            LyricsBottomSheet(
+                playerConnection = playerConnection,
+                onDismissRequest = { if (currentOverlay is PlayerOverlay.Lyrics) onOverlayChange(PlayerOverlay.None) }
+            )
+        }
+
+        val songInfoOverlay = activeOverlay as? PlayerOverlay.SongInfo
+        AnimatedVisibility(
+            visible = songInfoOverlay != null,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it }
+        ) {
+            val infoSong = songInfoOverlay?.song
+            if (infoSong != null) {
+                SongInfoScreen(
+                    song = infoSong,
+                    onBack = { if (currentOverlay is PlayerOverlay.SongInfo) onOverlayChange(PlayerOverlay.None) },
+                    onArtistClick = actions.onArtistClick,
+                    onAlbumClick = actions.onAlbumClickWithSong,
+                    audioCodec = playerState.audioCodec,
+                    audioBitrate = playerState.audioBitrate,
+                    dominantColors = dominantColors,
+                    isDarkTheme = isAppInDarkTheme
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = activeOverlay is PlayerOverlay.Related || actionsOverlay?.fromRelated == true,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it }
+        ) {
+            RelatedSheet(
+                isVisible = true,
+                relatedSongs = state.relatedSongs,
+                isLoading = state.isFetchingRelated,
+                selectedIndices = state.selectedRelatedIndices,
+                onToggleSelection = actions.onToggleRelatedSelection,
+                onSelectAll = actions.onSelectAllRelated,
+                onClearSelection = actions.onClearRelatedSelection,
+                onAddSelectedToQueue = {
+                    val selectedSongs = state.selectedRelatedSongs()
+                    if (selectedSongs.isNotEmpty()) {
+                        actions.onAddRelatedToQueue(selectedSongs)
+                        actions.onClearRelatedSelection()
+                    }
+                },
+                onAddSelectedToPlaylist = {
+                    val selectedSongs = state.selectedRelatedSongs()
+                    if (selectedSongs.isNotEmpty()) {
+                        playlistViewModel.showAddToPlaylistSheet(selectedSongs)
+                        actions.onClearRelatedSelection()
+                    }
+                },
+                onSongClick = { actions.onPlayRelated(it); onOverlayChange(PlayerOverlay.None) },
+                onMoreClick = { onOverlayChange(PlayerOverlay.Actions(it, fromRelated = true)) },
+                onClose = { if (currentOverlay is PlayerOverlay.Related) onOverlayChange(PlayerOverlay.None) },
+                dominantColors = dominantColors,
+                isDarkTheme = isAppInDarkTheme
+            )
+        }
+    }
+
+    val menuSong = (activeOverlay as? PlayerOverlay.Actions)?.targetSong ?: song
+    if (menuSong != null) {
+        SongActionsSheet(
+            song = menuSong,
+            isVisible = activeOverlay is PlayerOverlay.Actions,
+            onDismiss = {
+                val overlay = currentOverlay
+                if (overlay is PlayerOverlay.Actions) {
+                    when {
+                        overlay.fromQueue -> onOverlayChange(PlayerOverlay.Queue)
+                        overlay.fromRelated -> onOverlayChange(PlayerOverlay.Related)
+                        else -> onOverlayChange(PlayerOverlay.None)
+                    }
+                }
+            },
+            dominantColors = dominantColors,
+            onDownload = {
+                downloadUtil.enqueue(menuSong.id, menuSong.title) { _, message ->
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onToggleFavorite = { actions.onToggleLike() },
+            onToggleDislike = { actions.onToggleDislike() },
+            isFavorite = playerState.isLiked,
+            isDisliked = playerState.isDisliked,
+            onPlayNext = { playerConnection?.playNext(menuSong.toPlaybackMediaItem()) },
+            onAddToQueue = { playerConnection?.addToQueue(menuSong.toPlaybackMediaItem()) },
+            onViewInfo = { onOverlayChange(PlayerOverlay.SongInfo(menuSong)) },
+            onAddToPlaylist = {
+                playlistViewModel.showAddToPlaylistSheet(menuSong)
+                onOverlayChange(PlayerOverlay.None)
+            },
+            onSleepTimer = { onOverlayChange(PlayerOverlay.SleepTimer) },
+            onStartRadio = { actions.onStartRadio() },
+            onPlaybackSpeed = { onOverlayChange(PlayerOverlay.PlaybackSpeed) },
+            onEqualizerClick = { onOverlayChange(PlayerOverlay.Equalizer) },
+            currentSpeed = playerState.playbackSpeed,
+            isFromQueue = (activeOverlay as? PlayerOverlay.Actions)?.fromQueue ?: false,
+            isCurrentlyPlaying = menuSong.id == song?.id,
+            isDarkTheme = isAppInDarkTheme
+        )
+    }
+
+    SleepTimerSheet(
+        isVisible = activeOverlay is PlayerOverlay.SleepTimer,
+        currentOption = state.sleepTimerOption,
+        remainingTimeFormatted = state.sleepTimerRemainingMs?.let { String.format(java.util.Locale.US, "%d:%02d", it / 60000, (it / 1000) % 60) },
+        onSelectOption = actions.onSetSleepTimer,
+        onDismiss = { if (currentOverlay is PlayerOverlay.SleepTimer) onOverlayChange(PlayerOverlay.None) },
+        accentColor = dominantColors.accent,
+        dominantColors = dominantColors,
+        isDarkTheme = isAppInDarkTheme
+    )
+
+    if (activeOverlay is PlayerOverlay.Equalizer) {
+        EqualizerSheet(
+            isVisible = true,
+            onDismiss = { onOverlayChange(PlayerOverlay.None) },
+            dominantColor = dominantColors.accent,
+            initialEnabled = equalizerEnabled,
+            initialBands = equalizerBandLevels,
+            initialPreamp = equalizerPreampLevelMb / 100f,
+            initialBassBoost = if (bassBoostEnabled) bassBoostStrength / 1000f else 0f,
+            initialVirtualizer = if (virtualizerEnabled) virtualizerStrength / 1000f else 0f,
+            onEnabledChange = { enabled ->
+                equalizerEnabled = enabled
+                playerConnection?.setEqualizerEnabled(enabled)
+            },
+            onBandChange = { index, gain ->
+                val nextLevels = equalizerBandLevels.copyOf()
+                if (index in nextLevels.indices) {
+                    nextLevels[index] = gain
+                    val nextBands = nextLevels.toEqualizerBands()
+                    storedEqualizerBands = encodeEqualizerBands(nextBands)
+                    playerConnection?.applyEqualizerBands(nextBands.withPreamp(equalizerPreampLevelMb / 100f))
+                }
+            },
+            onBandsChange = { levels ->
+                val nextBands = levels.toEqualizerBands()
+                storedEqualizerBands = encodeEqualizerBands(nextBands)
+                playerConnection?.applyEqualizerBands(nextBands.withPreamp(equalizerPreampLevelMb / 100f))
+            },
+            onPreampChange = { preamp ->
+                equalizerPreampLevelMb = (preamp * 100).toInt()
+                playerConnection?.applyEqualizerBands(equalizerBands.withPreamp(preamp))
+            },
+            onBassBoostChange = { value ->
+                bassBoostStrength = (value.coerceIn(0f, 1f) * 1000).toInt()
+                bassBoostEnabled = value > 0f
+            },
+            onVirtualizerChange = { value ->
+                virtualizerStrength = (value.coerceIn(0f, 1f) * 1000).toInt()
+                virtualizerEnabled = value > 0f
+            },
+            onReset = {
+                storedEqualizerBands = encodeEqualizerBands(EqualizerPresets.FLAT.bands)
+                equalizerPreampLevelMb = 0
+                bassBoostStrength = 0
+                bassBoostEnabled = false
+                virtualizerStrength = 0
+                virtualizerEnabled = false
+                playerConnection?.applyEqualizerBands(EqualizerPresets.FLAT.bands)
+            },
+            onAIEqualizerClick = actions.onShowAIEqualizer,
+            dominantColors = dominantColors,
+            isDarkTheme = isAppInDarkTheme
+        )
+    }
+
+    PlaybackSpeedSheet(
+        isVisible = activeOverlay is PlayerOverlay.PlaybackSpeed,
+        currentSpeed = playerState.playbackSpeed,
+        currentPitch = playerState.pitch,
+        onDismiss = { if (currentOverlay is PlayerOverlay.PlaybackSpeed) onOverlayChange(PlayerOverlay.None) },
+        onApply = { speed, pitch ->
+            playerConnection?.player?.playbackParameters = androidx.media3.common.PlaybackParameters(speed, pitch)
+            actions.onSetPlaybackParameters(speed, pitch)
+        },
+        dominantColors = dominantColors,
+        isDarkTheme = isAppInDarkTheme
+    )
+
+    OutputDeviceSheet(
+        isVisible = activeOverlay is PlayerOverlay.OutputDevice,
+        devices = playerState.availableDevices,
+        onDeviceSelected = { actions.onSwitchDevice(it) },
+        onDismiss = { if (currentOverlay is PlayerOverlay.OutputDevice) onOverlayChange(PlayerOverlay.None) },
+        onRefreshDevices = { actions.onRefreshDevices() },
+        accentColor = dominantColors.accent,
+        dominantColors = dominantColors,
+        isDarkTheme = isAppInDarkTheme
+    )
+
+    AddToPlaylistSheet(
+        songs = playlistMgmtState.selectedSongs,
+        isVisible = playlistMgmtState.showAddToPlaylistSheet,
+        playlists = playlistMgmtState.userPlaylists,
+        isLoading = playlistMgmtState.isLoadingPlaylists,
+        onDismiss = playlistViewModel::hideAddToPlaylistSheet,
+        onAddToPlaylist = playlistViewModel::addSongsToPlaylist,
+        onCreateNewPlaylist = {
+            playlistViewModel.hideAddToPlaylistSheet()
+            playlistViewModel.showCreatePlaylistDialog()
+        }
+    )
+
+    CreatePlaylistDialog(
+        isVisible = playlistMgmtState.showCreatePlaylistDialog,
+        isCreating = playlistMgmtState.isCreatingPlaylist,
+        onDismiss = playlistViewModel::hideCreatePlaylistDialog,
+        onCreate = playlistViewModel::createPlaylist
+    )
+
+    LaunchedEffect(playlistMgmtState.successMessage, playlistMgmtState.errorMessage) {
+        val message = playlistMgmtState.successMessage ?: playlistMgmtState.errorMessage
+        if (!message.isNullOrBlank()) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            playlistViewModel.clearMessages()
+        }
+    }
+}
+
+private fun MediaItem.toQueueSong(): Song {
+    val omniMetadata = metadata
+    if (omniMetadata != null) {
+        return omniMetadata.toSuvSong()
+    }
+
+    val fallbackTitle = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() } ?: mediaId
+    val fallbackArtist = mediaMetadata.artist?.toString()
+        ?: mediaMetadata.subtitle?.toString()
+        ?: ""
+    return Song(
+        id = mediaId,
+        title = fallbackTitle,
+        artist = fallbackArtist,
+        album = mediaMetadata.albumTitle?.toString().orEmpty(),
+        thumbnailUrl = mediaMetadata.artworkUri?.toString()
+    )
+}
+
+private fun MediaMetadata.toSuvSong(): Song =
+    Song(
+        id = id,
+        title = title,
+        artist = artists.joinToString(", ") { it.name },
+        album = album?.title.orEmpty(),
+        duration = duration.takeIf { it > 0 }?.toLong()?.times(1000L) ?: 0L,
+        thumbnailUrl = thumbnailUrl,
+        artistId = artists.firstOrNull()?.id,
+        setVideoId = setVideoId
+    )
+
+private fun Song.toPlaybackMediaItem(): MediaItem =
+    toMediaMetadata().toMediaItem()
+
+private fun List<Song>.toPlaybackMediaItems(): List<MediaItem> =
+    map { it.toPlaybackMediaItem() }
+
+private fun PlayerScreenState.selectedRelatedSongs(): List<Song> =
+    selectedRelatedIndices
+        .sorted()
+        .mapNotNull { index -> relatedSongs.getOrNull(index) }
+
+private fun FloatArray.toEqualizerBands(): List<EqualizerBand> =
+    EqualizerPresets.FREQUENCIES.mapIndexed { index, frequency ->
+        EqualizerBand(
+            centerFrequencyHz = frequency,
+            gainDb = getOrNull(index)?.coerceIn(-15f, 15f) ?: 0f
+        )
+    }
+
+private fun PlayerConnection.applySleepTimer(option: SleepTimerOption, customMinutes: Int?) {
+    when (option) {
+        SleepTimerOption.OFF -> cancelSleepTimer()
+        SleepTimerOption.CUSTOM -> customMinutes
+            ?.takeIf { it > 0 }
+            ?.let { minutes -> startSleepTimer(minutes * 60_000L) }
+        SleepTimerOption.END_OF_SONG -> startSleepTimer(1_000L, stopAtEndOfSong = true)
+        SleepTimerOption.FADE_OUT_GENTLE -> startFadeOutSleepTimer(120_000L)
+        SleepTimerOption.FADE_OUT_FAST -> startFadeOutSleepTimer(60_000L)
+        else -> if (option.minutes > 0) {
+            startSleepTimer(option.minutes * 60_000L)
+        }
     }
 }

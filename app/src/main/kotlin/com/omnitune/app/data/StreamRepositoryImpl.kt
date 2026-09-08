@@ -4,6 +4,7 @@ import com.omnitune.app.models.AppResult
 import com.omnitune.app.models.StreamInfo
 import com.omnitune.app.models.StreamQuality
 import com.omnitune.app.models.StreamResult
+import com.omnitune.app.utils.NetworkMonitor
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -12,15 +13,22 @@ import kotlinx.coroutines.flow.first
 class StreamRepositoryImpl @Inject constructor(
     private val streamExtractor: StreamExtractor,
     private val streamCache: StreamCache,
-    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
+    private val networkMonitor: NetworkMonitor,
 ) : StreamRepository {
 
     private suspend fun getPreferredQuality(): StreamQuality {
         val prefs = dataStore.data.first()
-        val qualityName = prefs[com.omnitune.app.constants.AudioQualityKey] ?: com.omnitune.app.constants.AudioQuality.HIGH.name
+        val legacyQuality = prefs[com.omnitune.app.constants.AudioQualityKey]
+        val qualityName = if (networkMonitor.isOnWifi()) {
+            prefs[com.omnitune.app.constants.WifiAudioQualityKey] ?: legacyQuality ?: com.omnitune.app.constants.AudioQuality.HIGH.name
+        } else {
+            prefs[com.omnitune.app.constants.MobileAudioQualityKey] ?: legacyQuality ?: com.omnitune.app.constants.AudioQuality.MEDIUM.name
+        }
         val audioQuality = try { com.omnitune.app.constants.AudioQuality.valueOf(qualityName) } catch (e: Exception) { com.omnitune.app.constants.AudioQuality.HIGH }
         return when (audioQuality) {
             com.omnitune.app.constants.AudioQuality.LOW -> StreamQuality.LOW
+            com.omnitune.app.constants.AudioQuality.MEDIUM -> StreamQuality.MEDIUM
             com.omnitune.app.constants.AudioQuality.HIGH -> StreamQuality.HIGH
             com.omnitune.app.constants.AudioQuality.HIGHEST -> StreamQuality.BEST
             com.omnitune.app.constants.AudioQuality.AUTO -> StreamQuality.HIGH

@@ -8,7 +8,7 @@
 
 package com.omnitune.app.ui.menu
 
-import com.omnitune.app.ui.component.OmniTuneLoader
+import com.omnitune.app.ui.component.LoadingIndicator
 import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -365,7 +365,7 @@ fun SelectionSongMenu(
                     ListItem(
                         headlineContent = { Text(text = stringResource(R.string.downloading)) },
                         leadingContent = {
-                            OmniTuneLoader(size = 24.dp)
+                            LoadingIndicator(modifier = Modifier.size(24.dp))
                         },
                         modifier = Modifier.clickable {
                             showRemoveDownloadDialog = true

@@ -42,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap
 val PlayerFallbackGradient: List<Color>
     get() = listOf(
         OmniColors.OmniAccentGlow.copy(alpha = 0.40f),
-        OmniColors.OmniBackgroundGradientTop.copy(alpha = 0.82f),
+        OmniColors.OmniBackgroundTop.copy(alpha = 0.82f),
         OmniColors.OmniBackgroundElevated,
         OmniColors.OmniBackgroundBase,
     )
@@ -71,7 +71,7 @@ private suspend fun loadArtworkColors(
         try {
             val request = ImageRequest.Builder(context)
                 .data(url)
-                .size(Size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE))
+                .size(120, 120)
                 .scale(Scale.FILL)
                 .memoryCacheKey("palette:$url")
                 .build()

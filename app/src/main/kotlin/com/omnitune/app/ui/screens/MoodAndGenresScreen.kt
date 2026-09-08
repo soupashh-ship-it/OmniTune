@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,25 +45,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.R
-import com.omnitune.app.ui.component.OmniChrome
-import com.omnitune.app.ui.component.OmniSectionHeader
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerShape
-import com.omnitune.app.ui.theme.LocalOmniAccents
-import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.ui.theme.OmniMotion
-import com.omnitune.app.ui.theme.OmniShapes
-import com.omnitune.app.ui.theme.OmniSpacing
-import com.omnitune.app.ui.theme.OmniTextStyles
+import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.innertube.pages.MoodAndGenres
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun MoodAndGenresScreen(
     onBack: () -> Unit,
-    onBrowse: (String, String?) -> Unit,
+    onBrowse: (String, String?, String) -> Unit,
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -78,17 +73,17 @@ fun MoodAndGenresScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(OmniColors.BackgroundGradient),
+                .background(MaterialTheme.colorScheme.background),
         )
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = OmniSpacing.large,
-                end = OmniSpacing.large,
-                bottom = OmniChrome.BottomContentPaddingWithPlayer,
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 140.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(OmniSpacing.large),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item(contentType = "header") {
                 MoodGenresHeader(onBack = onBack)
@@ -139,30 +134,30 @@ private fun MoodGenresHeader(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(top = OmniSpacing.compact),
+            .padding(top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
             Icon(
                 painter = painterResource(R.drawable.ic_arrow_back),
                 contentDescription = "Back",
-                tint = OmniColors.TextPrimary,
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Mood and Genres",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "Browse real YouTube Music collections",
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -172,28 +167,28 @@ private fun MoodGenresHeader(onBack: () -> Unit) {
 
 @Composable
 private fun MoodGenresHero(totalCategories: Int) {
-    val accent = LocalOmniAccents.current.secondary
+    val accent = MaterialTheme.colorScheme.secondary
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Large)
+            .clip(SquircleShape)
             .background(
                 Brush.linearGradient(
                     listOf(
                         accent.copy(alpha = 0.20f),
-                        OmniColors.SurfacePanel,
-                        OmniColors.SurfaceQuiet,
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        MaterialTheme.colorScheme.surfaceContainer,
                     ),
                 ),
             )
-            .border(1.dp, accent.copy(alpha = 0.15f), OmniShapes.Large)
-            .padding(OmniSpacing.cardPadding),
+            .border(1.dp, accent.copy(alpha = 0.15f), SquircleShape)
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(54.dp)
-                .clip(OmniShapes.Pill)
+                .clip(CircleShape)
                 .background(accent.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center,
         ) {
@@ -204,20 +199,20 @@ private fun MoodGenresHero(totalCategories: Int) {
                 modifier = Modifier.size(26.dp),
             )
         }
-        Spacer(modifier = Modifier.width(OmniSpacing.medium))
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Find a mood, open a full collection",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = OmniColors.TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = if (totalCategories > 0) "$totalCategories playable categories" else "Loading categories",
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -229,21 +224,26 @@ private fun MoodGenresHero(totalCategories: Int) {
 private fun MoodChipBrowseGroup(
     title: String,
     chips: List<MoodChip>,
-    onBrowse: (String, String?) -> Unit,
+    onBrowse: (String, String?, String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = title)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
         chips.chunked(2).forEachIndexed { rowIndex, row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 row.forEachIndexed { columnIndex, chip ->
                     val index = rowIndex * 2 + columnIndex
                     val metadata = HomeDefaultCatalog.findCollection(chip.id)
                     AnimatedVisibility(
                         visible = true,
-                        enter = fadeIn(animationSpec = tween(delayMillis = OmniMotion.listItemDelayMs(index, 18, 12))) +
+                        enter = fadeIn(animationSpec = tween(delayMillis = (index * 12).coerceAtMost(100))) +
                             slideInVertically(
                                 animationSpec = spring(dampingRatio = 0.82f),
                                 initialOffsetY = { it / 5 },
@@ -256,7 +256,7 @@ private fun MoodChipBrowseGroup(
                             onClick = {
                                 val providerId = metadata?.providerId
                                 if (!providerId.isNullOrBlank()) {
-                                    onBrowse(providerId, metadata.browseParams)
+                                    onBrowse(providerId, metadata.browseParams, chip.label)
                                 }
                             },
                         )
@@ -277,11 +277,11 @@ private fun MoodChipBrowseButton(
     onClick: () -> Unit,
 ) {
     val fallbackAccents = listOf(
-        LocalOmniAccents.current.secondary,
-        LocalOmniAccents.current.primary,
-        OmniColors.OmniAccentTertiary,
-        OmniColors.Hot,
-        OmniColors.Warning,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
     )
     val accent = fallbackAccents[index % fallbackAccents.size]
 
@@ -289,40 +289,40 @@ private fun MoodChipBrowseButton(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp)
-            .clip(OmniShapes.Medium)
+            .clip(SquircleShape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        OmniColors.SurfaceSubtle.copy(alpha = 0.88f),
+                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.88f),
                         accent.copy(alpha = 0.12f),
                     ),
                 ),
             )
-            .border(1.dp, accent.copy(alpha = 0.12f), OmniShapes.Medium)
+            .border(1.dp, accent.copy(alpha = 0.12f), SquircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .clip(OmniShapes.Pill)
+                .clip(CircleShape)
                 .background(accent),
         )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = chip.label,
-                style = OmniTextStyles.songTitle,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "Browse",
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -334,20 +334,25 @@ private fun MoodChipBrowseButton(
 private fun MoodGenresGroup(
     group: MoodAndGenres,
     groupIndex: Int,
-    onBrowse: (String, String?) -> Unit,
+    onBrowse: (String, String?, String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.medium)) {
-        OmniSectionHeader(title = group.title)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = group.title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
         group.items.chunked(2).forEachIndexed { rowIndex, row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 row.forEachIndexed { columnIndex, item ->
                     val index = groupIndex * 12 + rowIndex * 2 + columnIndex
                     AnimatedVisibility(
                         visible = true,
-                        enter = fadeIn(animationSpec = tween(delayMillis = OmniMotion.listItemDelayMs(index, 18, 12))) +
+                        enter = fadeIn(animationSpec = tween(delayMillis = (index * 12).coerceAtMost(100))) +
                             slideInVertically(
                                 animationSpec = spring(dampingRatio = 0.82f),
                                 initialOffsetY = { it / 5 },
@@ -358,7 +363,7 @@ private fun MoodGenresGroup(
                             item = item,
                             sectionTitle = group.title,
                             index = index,
-                            onClick = { onBrowse(item.endpoint.browseId, item.endpoint.params) },
+                            onClick = { onBrowse(item.endpoint.browseId, item.endpoint.params, item.title) },
                         )
                     }
                 }
@@ -378,11 +383,11 @@ private fun MoodGenresButton(
     onClick: () -> Unit,
 ) {
     val fallbackAccents = listOf(
-        LocalOmniAccents.current.secondary,
-        LocalOmniAccents.current.primary,
-        OmniColors.OmniAccentTertiary,
-        OmniColors.Hot,
-        OmniColors.Warning,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.tertiary,
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
     )
     val providerAccent = item.stripeColor.toProviderColor()
     val accent = providerAccent.takeUnless { it == Color.Unspecified } ?: fallbackAccents[index % fallbackAccents.size]
@@ -391,40 +396,40 @@ private fun MoodGenresButton(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 58.dp)
-            .clip(OmniShapes.Medium)
+            .clip(SquircleShape)
             .background(
                 Brush.linearGradient(
                     listOf(
-                        OmniColors.SurfaceSubtle.copy(alpha = 0.88f),
+                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.88f),
                         accent.copy(alpha = 0.12f),
                     ),
                 ),
             )
-            .border(1.dp, accent.copy(alpha = 0.12f), OmniShapes.Medium)
+            .border(1.dp, accent.copy(alpha = 0.12f), SquircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = OmniSpacing.medium, vertical = OmniSpacing.small),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .clip(OmniShapes.Pill)
+                .clip(CircleShape)
                 .background(accent),
         )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.title,
-                style = OmniTextStyles.songTitle,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = OmniColors.TextPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = sectionTitle,
-                style = OmniTextStyles.caption,
-                color = OmniColors.TextTertiary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -436,14 +441,14 @@ private fun MoodGenresButton(
 private fun MoodGenresLoading() {
     ShimmerHost {
         repeat(4) {
-            Column(verticalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ShimmerShape(
                     modifier = Modifier
                         .fillMaxWidth(0.42f)
                         .height(18.dp),
                 )
                 repeat(3) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(OmniSpacing.small)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         ShimmerShape(
                             modifier = Modifier
                                 .weight(1f)
@@ -456,7 +461,7 @@ private fun MoodGenresLoading() {
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(OmniSpacing.small))
+                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -470,31 +475,31 @@ private fun MoodGenresError(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(OmniShapes.Medium)
-            .background(OmniColors.Warning.copy(alpha = 0.10f))
+            .clip(SquircleShape)
+            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.10f))
             .clickable(onClick = onRetry)
-            .padding(OmniSpacing.medium),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_info),
             contentDescription = null,
-            tint = OmniColors.Warning,
+            tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(22.dp),
         )
-        Spacer(modifier = Modifier.width(OmniSpacing.small))
+        Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Couldn't load moods",
-                style = OmniTextStyles.songTitle,
-                color = OmniColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = "$message Tap to retry.",
-                style = OmniTextStyles.metadata,
-                color = OmniColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

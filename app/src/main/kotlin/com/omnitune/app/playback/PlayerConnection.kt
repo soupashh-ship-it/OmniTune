@@ -160,6 +160,27 @@ class PlayerConnection(
         service.addToQueue(items)
     }
 
+    fun clearQueue() {
+        val currentIndex = player.currentMediaItemIndex
+        for (index in player.mediaItemCount - 1 downTo 0) {
+            if (index != currentIndex) {
+                player.removeMediaItem(index)
+            }
+        }
+    }
+
+    fun startSleepTimer(durationMs: Long, stopAtEndOfSong: Boolean = false) {
+        service.sleepTimer.start(durationMs, stopAtEndOfSong)
+    }
+
+    fun startFadeOutSleepTimer(stepIntervalMs: Long) {
+        service.sleepTimer.startFadeOut(stepIntervalMs)
+    }
+
+    fun cancelSleepTimer() {
+        service.sleepTimer.cancel()
+    }
+
     fun toggleLibrary() {
         val meta = mediaMetadata.value ?: return
         service.scope.launch(Dispatchers.IO) {

@@ -210,7 +210,7 @@ constructor(
         val preferred =
             context.dataStore.data
                 .first()[PreferredLyricsProviderKey]
-                .toEnum(PreferredLyricsProvider.LRCLIB)
+                .toPreferredLyricsProvider()
 
         val first =
             when (preferred) {
@@ -222,6 +222,14 @@ constructor(
 
         return (listOf(YouTubeLyricsProvider, SimpMusicLyricsProvider, first) + baseProviders).distinct()
     }
+
+    private fun String?.toPreferredLyricsProvider(): PreferredLyricsProvider =
+        when (this) {
+            "BetterLyrics" -> PreferredLyricsProvider.BETTER_LYRICS
+            "Kugou" -> PreferredLyricsProvider.KUGOU
+            "SimpMusic" -> PreferredLyricsProvider.SIMPMUSIC
+            else -> toEnum(PreferredLyricsProvider.LRCLIB)
+        }
 
     private fun isMeaningfulLyrics(lyrics: String): Boolean {
         if (lyrics == LYRICS_NOT_FOUND) return false
