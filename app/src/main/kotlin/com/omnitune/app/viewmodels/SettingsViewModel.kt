@@ -53,8 +53,6 @@ data class SettingsUiState(
     val logoVariant: LogoVariant = LogoVariant.DEFAULT,
     val dynamicColorEnabled: Boolean = true,
     val pureBlackEnabled: Boolean = false,
-    val gaplessPlaybackEnabled: Boolean = false,
-    val automixEnabled: Boolean = true,
     val volumeNormalizationEnabled: Boolean = true,
     val volumeSliderEnabled: Boolean = true,
     val musicSource: MusicSource = MusicSource.YOUTUBE,
@@ -82,8 +80,6 @@ data class SettingsUiState(
     val lyricsFontSize: Float = 26f,
     val lyricsBlur: Float = 2.5f,
     val audioOffloadEnabled: Boolean = false,
-    val volumeBoostEnabled: Boolean = false,
-    val volumeBoostAmount: Int = 0,
     val sponsorBlockEnabled: Boolean = true,
     val sponsorBlockCategories: Set<String> = setOf("sponsor", "selfpromo", "interaction", "intro", "outro", "preview", "music_offtopic"),
     val lastFmUsername: String? = null,
@@ -107,7 +103,6 @@ data class SettingsUiState(
     val nextSongPreloadingEnabled: Boolean = true,
     val nextSongPreloadDelay: Int = 10,
     val crossfadeMs: Int = 0,
-    val crossfeedEnabled: Boolean = false,
     val eqEnabled: Boolean = false,
     val eqBands: FloatArray = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f),
     val navBarAlpha: Float = 1.0f,
@@ -193,9 +188,7 @@ class SettingsViewModel @Inject constructor(
                         geminiSecret = sensitiveSettings.geminiSecret,
                         geminiModel = prefs[GeminiModelKey] ?: "gemini-1.5-pro",
                         selectedAiProvider = prefs[SelectedAiProviderKey] ?: "gemini",
-                        volumeBoostEnabled = prefs[VolumeBoostEnabledKey] ?: false,
-                        volumeBoostAmount = prefs[VolumeBoostAmountKey] ?: 0,
-                        audioOffloadEnabled = prefs[AudioOffloadEnabledKey] ?: false,
+                        audioOffloadEnabled = prefs[AudioOffloadEnabledKey] ?: prefs[AudioOffload] ?: false,
                         wifiAudioQuality = prefs[WifiAudioQualityKey]
                             ?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() }
                             ?: prefs[AudioQualityKey]
@@ -210,16 +203,15 @@ class SettingsViewModel @Inject constructor(
                             ?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() }
                             ?: AudioQuality.HIGH,
                         doubleTapSeekSeconds = prefs[DoubleTapSeekSecondsKey] ?: 10,
-                        gaplessPlaybackEnabled = prefs[GaplessPlaybackKey] ?: false,
-                        automixEnabled = prefs[AutomixKey] ?: true,
-                        volumeNormalizationEnabled = prefs[VolumeNormalizationKey] ?: true,
+                        volumeNormalizationEnabled = prefs[VolumeNormalizationKey] ?: prefs[AudioNormalizationKey] ?: true,
                         volumeSliderEnabled = prefs[VolumeSliderEnabledKey] ?: true,
                         pauseMusicOnMediaMuted = prefs[PauseOnDeviceMuteKey] ?: false,
                         pictureInPictureEnabled = prefs[PictureInPictureEnabledKey] ?: true,
                         keepScreenOn = prefs[KeepScreenOnKey] ?: false,
                         stopMusicOnTaskClear = prefs[StopMusicOnTaskClearKey] ?: false,
-                        crossfadeMs = prefs[CrossfadeMsKey] ?: 0,
-                        crossfeedEnabled = prefs[CrossfeedEnabledKey] ?: false,
+                        crossfadeMs = prefs[CrossfadeMsKey]
+                            ?: prefs[AudioCrossfadeDurationKey]?.times(1_000)
+                            ?: 0,
                         nextSongPreloadingEnabled = prefs[NextSongPreloadingKey] ?: true,
                         playerCacheLimit = prefs[PlayerCacheLimitKey] ?: -1L
                     )
@@ -333,19 +325,14 @@ class SettingsViewModel @Inject constructor(
     fun setGeminiSecret(secret: String) = setSensitivePreference(GeminiApiKey, secret)
     fun setGeminiModel(model: String) = setPreference(GeminiModelKey, model)
     fun setSelectedAiProvider(provider: String) = setPreference(SelectedAiProviderKey, provider)
-    fun setVolumeBoostEnabled(enabled: Boolean) = setPreference(VolumeBoostEnabledKey, enabled)
-    fun setVolumeBoostAmount(amount: Int) = setPreference(VolumeBoostAmountKey, amount)
     fun setAudioOffloadEnabled(enabled: Boolean) = setPreference(AudioOffloadEnabledKey, enabled)
     fun setPauseMusicOnMediaMuted(enabled: Boolean) = setPreference(PauseOnDeviceMuteKey, enabled)
     fun setPictureInPictureEnabled(enabled: Boolean) = setPreference(PictureInPictureEnabledKey, enabled)
     fun setKeepScreenOn(enabled: Boolean) = setPreference(KeepScreenOnKey, enabled)
     fun setStopMusicOnTaskClear(enabled: Boolean) = setPreference(StopMusicOnTaskClearKey, enabled)
-    fun setGaplessPlaybackEnabled(enabled: Boolean) = setPreference(GaplessPlaybackKey, enabled)
-    fun setAutomixEnabled(enabled: Boolean) = setPreference(AutomixKey, enabled)
     fun setVolumeNormalizationEnabled(enabled: Boolean) = setPreference(VolumeNormalizationKey, enabled)
     fun setVolumeSliderEnabled(enabled: Boolean) = setPreference(VolumeSliderEnabledKey, enabled)
     fun setCrossfadeMs(ms: Int) = setPreference(CrossfadeMsKey, ms)
-    fun setCrossfeedEnabled(enabled: Boolean) = setPreference(CrossfeedEnabledKey, enabled)
     fun setNextSongPreloadingEnabled(enabled: Boolean) = setPreference(NextSongPreloadingKey, enabled)
     fun setPlayerCacheLimit(limit: Long) = setPreference(PlayerCacheLimitKey, limit)
 

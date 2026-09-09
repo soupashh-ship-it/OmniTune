@@ -6,6 +6,8 @@
 package com.omnitune.app.playback
 
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
@@ -96,15 +98,20 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private suspend fun getPlaybackQualityMode(): com.omnitune.app.models.PlaybackQualityMode {
         return try {
             val prefs = this.dataStore.data.first()
-            val modeName = prefs[com.omnitune.app.constants.PlaybackQualityModeKey]
-            if (modeName != null) {
-                com.omnitune.app.models.PlaybackQualityMode.valueOf(modeName)
-            } else {
-                com.omnitune.app.models.PlaybackQualityMode.AUTO
-            }
+            PlaybackQualityPreferenceMapper.fromPreferences(
+                preferences = prefs,
+                onWifi = isActiveNetworkWifi(),
+            )
         } catch (e: Exception) {
             com.omnitune.app.models.PlaybackQualityMode.AUTO
         }
+    }
+
+    private fun isActiveNetworkWifi(): Boolean {
+        val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = connectivityManager.activeNetwork ?: return false
+        return connectivityManager.getNetworkCapabilities(network)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
     }
 
     inner class MusicBinder : Binder() {
@@ -147,6 +154,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private val playbackFadeFactor = MutableStateFlow(1f)
     private val crossfadeDurationMs = MutableStateFlow(0)
     private val audioNormalizationEnabled = MutableStateFlow(true)
+    private val nextSongPreloadingEnabled = MutableStateFlow(true)
     private var crossfadePlaybackCoordinator: CrossfadePlaybackCoordinator? = null
     private var playbackPreferenceObserver: PlaybackPreferenceObserver? = null
     private var autoDownloadOnLikeCoordinator: AutoDownloadOnLikeCoordinator? = null
@@ -304,7 +312,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             normalizationFactor = volumeNormalizationController.factor,
             crossfadeDurationMs = crossfadeDurationMs,
             audioNormalizationEnabled = audioNormalizationEnabled,
+            nextSongPreloadingEnabled = nextSongPreloadingEnabled,
             onAutoSkipNextOnErrorChanged = { playbackRecoveryCoordinator.setAutoSkipNextOnError(it) },
+            onNextSongPreloadingChanged = { enabled ->
+                if (!enabled) {
+                    cancelPreResolveNextTrack()
+                } else if (::player.isInitialized && player.isPlaying) {
+                    preResolveNextTrack()
+                }
+            },
         ).also { it.start() }
         startAutoDownloadOnLikeObserver()
         equalizerEffectObserver = EqualizerEffectObserver(
@@ -652,7 +668,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private var preResolveJob: kotlinx.coroutines.Job? = null
 
     private fun preResolveNextTrack() {
-        preResolveJob?.cancel()
+        if (!nextSongPreloadingEnabled.value) {
+            cancelPreResolveNextTrack()
+            return
+        }
+        cancelPreResolveNextTrack()
         preResolveJob = scope.launch(kotlinx.coroutines.Dispatchers.Main) {
             try {
                 val index = player.nextMediaItemIndex
@@ -677,6 +697,11 @@ class MusicService : MediaLibraryService(), Player.Listener {
                 Timber.w(e, "Pre-resolve failed")
             }
         }
+    }
+
+    private fun cancelPreResolveNextTrack() {
+        preResolveJob?.cancel()
+        preResolveJob = null
     }
 
     private suspend fun seekToResolvedMediaItem(index: Int, positionMs: Long): Boolean {
@@ -1069,7 +1094,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         if (isPlaying) {
             startQueuePositionCheckpoint()
-            preResolveNextTrack()
+            if (nextSongPreloadingEnabled.value) {
+                preResolveNextTrack()
+            }
             val mediaItem = player.currentMediaItem
             val mediaId = mediaItem?.mediaId
             if (mediaId != null) {

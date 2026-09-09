@@ -251,9 +251,8 @@ class TopLevelScreensEdgeCaseTest {
 
     private val sampleSettingsIndex = listOf(
         MockSettingsSearchEntry("Appearance", "Theme, dark mode, colors, liquid glass", "theme dark mode light colors dynamic material amoled gradient glass"),
-        MockSettingsSearchEntry("Playback", "Audio quality, gapless, equalizer, crossfade", "audio quality bitrate gapless equalizer eq crossfade normalization loudness"),
+        MockSettingsSearchEntry("Playback", "Audio quality, equalizer, crossfade", "audio quality bitrate equalizer eq crossfade normalization loudness preloading offload"),
         MockSettingsSearchEntry("Customization", "Player UI, artwork shape/size, seekbar style", "player ui artwork shape size seekbar style mini player vinyl glass"),
-        MockSettingsSearchEntry("AI Assistant", "Google Gemini, OpenAI, Anthropic", "ai assistant openai anthropic gemini equalizer smart"),
         MockSettingsSearchEntry("SponsorBlock", "Skip non-music segments", "sponsorblock skip segments intro outro sponsor"),
         MockSettingsSearchEntry("Storage Manager", "Manage downloads & cache", "storage downloads cache clear space data"),
         MockSettingsSearchEntry("Listening Insights", "Your listening stats & habits", "stats statistics listening history wrapped activity")
@@ -289,7 +288,7 @@ class TopLevelScreensEdgeCaseTest {
 
     @Test
     fun settingsSearch_matchesSubtitle() {
-        val results = filterSettings("gapless")
+        val results = filterSettings("crossfade")
         assertEquals(1, results.size)
         assertEquals("Playback", results.first().title)
     }
@@ -300,9 +299,9 @@ class TopLevelScreensEdgeCaseTest {
         assertEquals(1, results.size)
         assertEquals("Appearance", results.first().title)
 
-        val resultsGemini = filterSettings("gemini")
-        assertEquals(1, resultsGemini.size)
-        assertEquals("AI Assistant", resultsGemini.first().title)
+        val resultsPreloading = filterSettings("preloading")
+        assertEquals(1, resultsPreloading.size)
+        assertEquals("Playback", resultsPreloading.first().title)
     }
 
     @Test

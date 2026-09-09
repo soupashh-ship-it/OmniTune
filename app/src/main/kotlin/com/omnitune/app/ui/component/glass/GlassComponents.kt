@@ -31,9 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.floatPreferencesKey
 import com.omnitune.app.constants.GlassNavigationBarKey
+import com.omnitune.app.constants.LiquidGlassEnabledKey
+import com.omnitune.app.constants.NavBarBlurKey
 import com.omnitune.app.utils.rememberPreference
 
 /**
@@ -46,12 +46,9 @@ data class LiquidGlassConfig(
     val isDarkTheme: Boolean = true
 )
 
-private val LiquidGlassEnabledKey = booleanPreferencesKey("iosLiquidGlassEnabled")
-private val NavBarBlurKey = floatPreferencesKey("navBarBlur")
-
 @Composable
 fun rememberLiquidGlassConfig(): LiquidGlassConfig {
-    val glassEnabled by rememberPreference(LiquidGlassEnabledKey, false)
+    val glassEnabled by rememberPreference(LiquidGlassEnabledKey, true)
     val navBarGlass by rememberPreference(GlassNavigationBarKey, false)
     val blur by rememberPreference(NavBarBlurKey, 60f)
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f

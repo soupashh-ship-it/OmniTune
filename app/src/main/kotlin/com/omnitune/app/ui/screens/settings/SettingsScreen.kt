@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.omnitune.app.ui.component.BetaBadge
@@ -78,9 +78,8 @@ fun SettingsScreen(
     val searchIndex = remember {
         listOf(
             SettingsSearchEntry("Appearance", "Theme, dark mode, colors, liquid glass", "theme dark mode light colors dynamic material amoled gradient glass", Icons.Default.DarkMode, onAppearanceClick),
-            SettingsSearchEntry("Playback", "Audio quality, gapless, equalizer, crossfade", "audio quality bitrate gapless equalizer eq crossfade normalization loudness", Icons.Default.GraphicEq, onPlaybackClick),
+            SettingsSearchEntry("Playback", "Audio quality, equalizer, crossfade", "audio quality bitrate equalizer eq crossfade normalization loudness preloading offload", Icons.Default.GraphicEq, onPlaybackClick),
             SettingsSearchEntry("Customization", "Player UI, artwork shape/size, seekbar style", "player ui artwork shape size seekbar style mini player vinyl glass", Icons.Default.Tune, onCustomizationClick),
-            SettingsSearchEntry("AI Assistant", "Google Gemini, OpenAI, Anthropic", "ai assistant openai anthropic gemini equalizer smart", Icons.Default.Psychology, onAISettingsClick),
             SettingsSearchEntry("SponsorBlock", "Skip non-music segments", "sponsorblock skip segments intro outro sponsor", Icons.Default.FastForward, onSponsorBlockClick),
             SettingsSearchEntry("Scrobbling", "ListenBrainz & track history", "listenbrainz scrobble scrobbling history", Icons.Default.MusicNote, onLastFmClick),
             SettingsSearchEntry("Discord RPC", "Rich presence activity status", "discord rpc activity status presence", Icons.Default.MusicNote, onDiscordClick),
@@ -232,7 +231,7 @@ fun SettingsScreen(
                     SettingsCard {
                         SettingsNavRow(
                             title = "Playback Engine",
-                            subtitle = "Bitrate quality, gapless, automix, volume boost",
+                            subtitle = "Bitrate quality, crossfade, normalization",
                             icon = Icons.Default.GraphicEq,
                             onClick = onPlaybackClick
                         )
@@ -241,12 +240,6 @@ fun SettingsScreen(
                             subtitle = "Artwork shape, size, miniplayer & seekbar style",
                             icon = Icons.Default.Tune,
                             onClick = onCustomizationClick
-                        )
-                        SettingsNavRow(
-                            title = "AI Neural Engine",
-                            subtitle = "Gemini, OpenAI, Claude & automated equalizer",
-                            icon = Icons.Default.Psychology,
-                            onClick = onAISettingsClick
                         )
                         SettingsNavRow(
                             title = "SponsorBlock",

@@ -9,9 +9,6 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.omnitune.app.constants.AudioCrossfadeDurationKey
-import com.omnitune.app.constants.AudioNormalizationKey
-import com.omnitune.app.constants.AudioOffload
 import com.omnitune.app.constants.AutoSkipNextOnErrorKey
 import com.omnitune.app.constants.PlayerVolumeKey
 import com.omnitune.app.constants.RepeatModeKey
@@ -41,7 +38,9 @@ class PlaybackPreferenceObserver internal constructor(
     private val normalizationFactor: StateFlow<Float>,
     private val crossfadeDurationMs: MutableStateFlow<Int>,
     private val audioNormalizationEnabled: MutableStateFlow<Boolean>,
+    private val nextSongPreloadingEnabled: MutableStateFlow<Boolean>,
     private val onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
+    private val onNextSongPreloadingChanged: (Boolean) -> Unit,
 ) {
     constructor(
         context: Context,
@@ -52,7 +51,9 @@ class PlaybackPreferenceObserver internal constructor(
         normalizationFactor: StateFlow<Float>,
         crossfadeDurationMs: MutableStateFlow<Int>,
         audioNormalizationEnabled: MutableStateFlow<Boolean>,
+        nextSongPreloadingEnabled: MutableStateFlow<Boolean>,
         onAutoSkipNextOnErrorChanged: (Boolean) -> Unit,
+        onNextSongPreloadingChanged: (Boolean) -> Unit,
     ) : this(
         preferences = context.applicationContext.dataStore.data,
         player = player,
@@ -62,7 +63,9 @@ class PlaybackPreferenceObserver internal constructor(
         normalizationFactor = normalizationFactor,
         crossfadeDurationMs = crossfadeDurationMs,
         audioNormalizationEnabled = audioNormalizationEnabled,
+        nextSongPreloadingEnabled = nextSongPreloadingEnabled,
         onAutoSkipNextOnErrorChanged = onAutoSkipNextOnErrorChanged,
+        onNextSongPreloadingChanged = onNextSongPreloadingChanged,
     )
 
     private val jobs = mutableListOf<Job>()
@@ -89,17 +92,19 @@ class PlaybackPreferenceObserver internal constructor(
 
         // Crossfade needs decoded PCM so both players can mix without an offload transition gap.
         jobs += scope.launch {
-            combine(
-                preferences.map { it[AudioOffload] ?: false }.distinctUntilChanged(),
-                preferences.map { (it[AudioCrossfadeDurationKey] ?: 0) * 1000 }.distinctUntilChanged(),
-                preferences.map { it[SkipSilenceKey] ?: false }.distinctUntilChanged(),
-            ) { offload, durationMs, skipSilence -> Triple(offload, durationMs, skipSilence) }
+            preferences
+                .map { PlaybackEnginePreferenceMapper.fromPreferences(it) }
                 .distinctUntilChanged()
-                .collect { (offload, durationMs, skipSilence) ->
-                    crossfadeDurationMs.value = durationMs
-                    player.setOffloadEnabled(offload && durationMs == 0 && !skipSilence)
+                .collect { enginePrefs ->
+                    crossfadeDurationMs.value = enginePrefs.crossfadeDurationMs
+                    nextSongPreloadingEnabled.value = enginePrefs.nextSongPreloadingEnabled
+                    onNextSongPreloadingChanged(enginePrefs.nextSongPreloadingEnabled)
+                    player.setOffloadEnabled(enginePrefs.shouldEnableAudioOffload)
                     Timber.tag("MusicService").d(
-                        "Audio offload: ${offload && durationMs == 0 && !skipSilence}, crossfade: ${durationMs}ms"
+                        "Audio offload: %s, crossfade: %dms, next preload: %s",
+                        enginePrefs.shouldEnableAudioOffload,
+                        enginePrefs.crossfadeDurationMs,
+                        enginePrefs.nextSongPreloadingEnabled,
                     )
                 }
             }
@@ -113,8 +118,8 @@ class PlaybackPreferenceObserver internal constructor(
 
         // Combine volumes for crossfade + normalization
         jobs += scope.launch {
-            combine(playerVolume, playbackFadeFactor, normalizationFactor) { vol, fade, norm ->
-                (vol * fade * norm).coerceIn(0f, 1f)
+            combine(playerVolume, playbackFadeFactor, normalizationFactor, audioNormalizationEnabled) { vol, fade, norm, normalizationEnabled ->
+                (vol * fade * if (normalizationEnabled) norm else 1f).coerceIn(0f, 1f)
             }.collectLatest { finalVolume ->
                 player.volume = finalVolume
             }
@@ -138,7 +143,10 @@ class PlaybackPreferenceObserver internal constructor(
 
         // Audio Normalization
         jobs += scope.launch {
-            preferences.map { it[AudioNormalizationKey] ?: true }.distinctUntilChanged().collect { enabled ->
+            preferences
+                .map { PlaybackEnginePreferenceMapper.fromPreferences(it).volumeNormalizationEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
                 audioNormalizationEnabled.value = enabled
             }
         }

@@ -308,7 +308,7 @@ fun EqualizerSheet(
                             ) {
                                 androidx.compose.material3.Icon(
                                     imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = "AI Equalizer",
+                                    contentDescription = "Smart Equalizer",
                                     tint = if (isEnabled) finalAccentColor else finalContentColor.copy(alpha = 0.38f)
                                 )
                             }

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,7 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.models.*
 import com.omnitune.app.ui.component.LogoPickerSection
@@ -137,7 +138,7 @@ fun AppearanceSettingsScreen(
                     )
                     SettingsSwitchRow(
                         title = "Force High Refresh Rate",
-                        subtitle = "Lock display to 90/120Hz for ultra-smooth animations",
+                        subtitle = "Request the highest refresh rate this display supports",
                         icon = Icons.Default.Speed,
                         checked = uiState.forceMaxRefreshRateEnabled,
                         onCheckedChange = viewModel::setForceMaxRefreshRate
@@ -202,7 +203,7 @@ fun AppearanceSettingsScreen(
                     SettingsNavRow(
                         title = "Text Alignment",
                         subtitle = uiState.lyricsTextPosition.name.lowercase().replaceFirstChar { it.uppercase() },
-                        icon = Icons.Default.FormatAlignLeft,
+                        icon = Icons.AutoMirrored.Filled.FormatAlignLeft,
                         onClick = { showLyricsPositionSheet = true }
                     )
                     SettingsNavRow(

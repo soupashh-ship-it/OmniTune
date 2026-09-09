@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,7 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.constants.AudioQuality
 import com.omnitune.app.viewmodels.SettingsViewModel
@@ -105,29 +106,15 @@ fun PlaybackSettingsScreen(
                 )
                 SettingsCard {
                     SettingsSwitchRow(
-                        title = "Gapless Playback",
-                        subtitle = "Continuous transition without silent gaps between tracks",
-                        icon = Icons.Default.GraphicEq,
-                        checked = uiState.gaplessPlaybackEnabled,
-                        onCheckedChange = viewModel::setGaplessPlaybackEnabled
-                    )
-                    SettingsSwitchRow(
-                        title = "Automix",
-                        subtitle = "Smoothly blend transitions between queue songs",
-                        icon = Icons.Default.Shuffle,
-                        checked = uiState.automixEnabled,
-                        onCheckedChange = viewModel::setAutomixEnabled
-                    )
-                    SettingsSwitchRow(
                         title = "Audio Normalization",
                         subtitle = "Maintain consistent loudness across all tracks",
-                        icon = Icons.Default.VolumeUp,
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
                         checked = uiState.volumeNormalizationEnabled,
                         onCheckedChange = viewModel::setVolumeNormalizationEnabled
                     )
                     SettingsSwitchRow(
                         title = "Next Song Preloading",
-                        subtitle = "Preload incoming track for instant instant gapless start",
+                        subtitle = "Resolve the next queued stream before the current song ends",
                         icon = Icons.Default.Speed,
                         checked = uiState.nextSongPreloadingEnabled,
                         onCheckedChange = viewModel::setNextSongPreloadingEnabled
@@ -194,13 +181,13 @@ fun PlaybackSettingsScreen(
                     SettingsSwitchRow(
                         title = "Volume Overlay",
                         subtitle = "Show the donor volume slider while music is playing",
-                        icon = Icons.Default.VolumeUp,
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
                         checked = uiState.volumeSliderEnabled,
                         onCheckedChange = viewModel::setVolumeSliderEnabled
                     )
                     SettingsSwitchRow(
                         title = "Audio Offload",
-                        subtitle = "Offload audio processing to DSP to save battery",
+                        subtitle = "Use hardware audio offload when crossfade and skip silence are off",
                         icon = Icons.Default.BatteryChargingFull,
                         checked = uiState.audioOffloadEnabled,
                         onCheckedChange = viewModel::setAudioOffloadEnabled

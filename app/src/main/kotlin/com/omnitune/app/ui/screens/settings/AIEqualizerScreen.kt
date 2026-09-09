@@ -57,7 +57,7 @@ fun AIEqualizerScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Neural Equalizer", fontWeight = FontWeight.Bold)
+                        Text("Smart Equalizer", fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(8.dp))
                         BetaBadge()
                     }
@@ -139,7 +139,7 @@ fun AIEqualizerScreen(
             ) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Generate AI EQ Profile", fontWeight = FontWeight.Bold)
+                Text("Generate Smart EQ Profile", fontWeight = FontWeight.Bold)
             }
 
             if (generatedStatus != null || selectedProfileId == "AI_GENERATED" || storedBands.isNotBlank()) {
