@@ -248,6 +248,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation(libs.coroutines.test)
     testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation(libs.json)
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.room:room-testing:2.8.4")

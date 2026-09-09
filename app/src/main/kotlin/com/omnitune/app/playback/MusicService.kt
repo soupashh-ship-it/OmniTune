@@ -91,6 +91,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
     @Inject lateinit var okHttpClient: okhttp3.OkHttpClient
 
     private lateinit var scrobblingManager: ScrobblingManager
+    private lateinit var sponsorBlockCoordinator: SponsorBlockPlaybackCoordinator
 
     private lateinit var networkPlaybackMonitor: NetworkPlaybackMonitor
     private lateinit var playbackRecoveryCoordinator: PlaybackRecoveryCoordinator
@@ -321,6 +322,12 @@ class MusicService : MediaLibraryService(), Player.Listener {
                     preResolveNextTrack()
                 }
             },
+        ).also { it.start() }
+        sponsorBlockCoordinator = SponsorBlockPlaybackCoordinator(
+            player = player,
+            preferences = dataStore.data,
+            client = SponsorBlockApiClient(okHttpClient),
+            scope = scope,
         ).also { it.start() }
         startAutoDownloadOnLikeObserver()
         equalizerEffectObserver = EqualizerEffectObserver(
@@ -979,6 +986,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
         if (::bluetoothAudioHandler.isInitialized) {
             bluetoothAudioHandler.stop()
+        }
+        if (::sponsorBlockCoordinator.isInitialized) {
+            sponsorBlockCoordinator.stop()
         }
 
         scopeJob.cancel()
