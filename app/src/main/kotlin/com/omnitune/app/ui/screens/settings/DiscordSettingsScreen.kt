@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -29,8 +28,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.constants.ListenBrainzEnabledKey
 import com.omnitune.app.constants.ListenBrainzNowPlayingKey
 import com.omnitune.app.constants.ListenBrainzTokenKey
@@ -43,72 +40,6 @@ import com.omnitune.app.ui.component.SettingsSwitchRow
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.rememberPreference
-import com.omnitune.app.viewmodels.SettingsViewModel
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DiscordSettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel(),
-    onBackClick: () -> Unit
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var token by remember(uiState.discordToken) { mutableStateOf(uiState.discordToken) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Discord Rich Presence", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                SettingsCard {
-                    SettingsSwitchRow(
-                        title = "Enable Discord RPC",
-                        subtitle = "Display currently playing song as your Discord activity",
-                        icon = Icons.Default.MusicNote,
-                        checked = uiState.discordRpcEnabled,
-                        onCheckedChange = viewModel::setDiscordRpcEnabled
-                    )
-                }
-            }
-
-            item {
-                SettingsCard {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        SecretSettingsField(
-                            value = token,
-                            persistedValue = uiState.discordToken,
-                            label = "Discord User Token (Optional)",
-                            onValueChange = { token = it },
-                            onSave = viewModel::setDiscordToken,
-                            onClear = {
-                                token = ""
-                                viewModel.setDiscordToken("")
-                            },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

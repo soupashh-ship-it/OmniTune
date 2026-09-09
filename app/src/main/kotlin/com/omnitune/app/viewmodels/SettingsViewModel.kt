@@ -33,7 +33,6 @@ import java.io.File
 import javax.inject.Inject
 
 private data class SensitiveSettings(
-    val discordToken: String,
     val openaiSecret: String,
     val anthropicSecret: String,
     val geminiSecret: String,
@@ -97,9 +96,6 @@ data class SettingsUiState(
     val geminiSecret: String = "",
     val geminiModel: String = "gemini-1.5-pro",
     val selectedAiProvider: String = "gemini",
-    val discordRpcEnabled: Boolean = false,
-    val discordToken: String = "",
-    val discordUseDetails: Boolean = true,
     val nextSongPreloadingEnabled: Boolean = true,
     val nextSongPreloadDelay: Int = 10,
     val crossfadeMs: Int = 0,
@@ -179,8 +175,6 @@ class SettingsViewModel @Inject constructor(
                         sponsorBlockEnabled = prefs[SponsorBlockEnabledKey] ?: true,
                         lastFmUsername = prefs[LastFmUsernameKey],
                         lastFmScrobblingEnabled = prefs[LastFmScrobblingEnabledKey] ?: false,
-                        discordRpcEnabled = prefs[DiscordRpcEnabledKey] ?: false,
-                        discordToken = sensitiveSettings.discordToken,
                         openaiSecret = sensitiveSettings.openaiSecret,
                         openaiModel = prefs[OpenaiModelKey] ?: "gpt-4o",
                         anthropicSecret = sensitiveSettings.anthropicSecret,
@@ -222,27 +216,10 @@ class SettingsViewModel @Inject constructor(
 
     private suspend fun readSensitiveSettings(prefs: Preferences): SensitiveSettings =
         SensitiveSettings(
-            discordToken = readDiscordToken(prefs),
             openaiSecret = readSensitivePreference(prefs, OpenaiApiKey),
             anthropicSecret = readSensitivePreference(prefs, AnthropicApiKey),
             geminiSecret = readSensitivePreference(prefs, GeminiApiKey),
         )
-
-    private suspend fun readDiscordToken(prefs: Preferences): String {
-        val secureToken = readSensitivePreference(prefs, DiscordTokenKey)
-        if (secureToken.isNotBlank()) return secureToken
-
-        val legacyToken = decodeSensitivePreference(prefs[LegacyDiscordTokenKey])
-        if (legacyToken.plainValue.isNotBlank()) {
-            context.dataStore.edit { settings ->
-                SensitivePreferenceCodec
-                    .encodeForStorage(legacyToken.plainValue, SecurePreferenceCipher::encrypt)
-                    ?.let { settings[DiscordTokenKey] = it }
-                settings.remove(LegacyDiscordTokenKey)
-            }
-        }
-        return legacyToken.plainValue
-    }
 
     private suspend fun readSensitivePreference(
         prefs: Preferences,
@@ -316,8 +293,6 @@ class SettingsViewModel @Inject constructor(
     fun setSponsorBlockEnabled(enabled: Boolean) = setPreference(SponsorBlockEnabledKey, enabled)
     fun setLastFmScrobblingEnabled(enabled: Boolean) = setPreference(LastFmScrobblingEnabledKey, enabled)
     fun setLastFmUsername(username: String) = setPreference(LastFmUsernameKey, username)
-    fun setDiscordRpcEnabled(enabled: Boolean) = setPreference(DiscordRpcEnabledKey, enabled)
-    fun setDiscordToken(token: String) = setSensitivePreference(DiscordTokenKey, token)
     fun setOpenaiSecret(secret: String) = setSensitivePreference(OpenaiApiKey, secret)
     fun setOpenaiModel(model: String) = setPreference(OpenaiModelKey, model)
     fun setAnthropicSecret(secret: String) = setSensitivePreference(AnthropicApiKey, secret)

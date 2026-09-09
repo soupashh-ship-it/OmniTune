@@ -68,7 +68,6 @@ fun SettingsScreen(
     onSponsorBlockClick: () -> Unit = {},
     onCreditsClick: () -> Unit = {},
     onLastFmClick: () -> Unit = {},
-    onDiscordClick: () -> Unit = {},
     onAISettingsClick: () -> Unit = {},
     onUpdaterClick: () -> Unit = {}
 ) {
@@ -82,7 +81,6 @@ fun SettingsScreen(
             SettingsSearchEntry("Customization", "Player UI, artwork shape/size, seekbar style", "player ui artwork shape size seekbar style mini player vinyl glass", Icons.Default.Tune, onCustomizationClick),
             SettingsSearchEntry("SponsorBlock", "Skip non-music segments", "sponsorblock skip segments intro outro sponsor", Icons.Default.FastForward, onSponsorBlockClick),
             SettingsSearchEntry("Scrobbling", "ListenBrainz & track history", "listenbrainz scrobble scrobbling history", Icons.Default.MusicNote, onLastFmClick),
-            SettingsSearchEntry("Discord RPC", "Rich presence activity status", "discord rpc activity status presence", Icons.Default.MusicNote, onDiscordClick),
             SettingsSearchEntry("Advanced", "Diagnostics, experimental & lyrics order", "advanced misc diagnostics experimental logs lyrics", Icons.Default.Settings, onMiscClick),
             SettingsSearchEntry("Storage Manager", "Manage downloads & cache", "storage downloads cache clear space data", Icons.Default.Storage, onStorageClick),
             SettingsSearchEntry("Listening Insights", "Your listening stats & habits", "stats statistics listening history wrapped activity", Icons.Default.Info, onStatsClick),
@@ -252,12 +250,6 @@ fun SettingsScreen(
                             subtitle = "Sync listens with ListenBrainz",
                             icon = Icons.Default.MusicNote,
                             onClick = onLastFmClick
-                        )
-                        SettingsNavRow(
-                            title = "Discord RPC",
-                            subtitle = "Show current song on Discord profile",
-                            icon = Icons.Default.Tag,
-                            onClick = onDiscordClick
                         )
                     }
                 }

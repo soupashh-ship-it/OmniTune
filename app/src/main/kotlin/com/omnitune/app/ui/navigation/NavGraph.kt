@@ -271,7 +271,6 @@ fun NavGraph(
                 onSupportClick = { navController.navigate(Destination.Support) },
                 onMiscClick = { navController.navigate(Destination.Misc) },
                 onSponsorBlockClick = { navController.navigate(Destination.SponsorBlockSettings) },
-                onDiscordClick = { navController.navigate(Destination.DiscordSettings) },
                 onAISettingsClick = { navController.navigate(Destination.AISettings) },
                 onCreditsClick = { navController.navigate(Destination.Credits) },
                 onUpdaterClick = { navController.navigate(Destination.Updater) },
@@ -371,10 +370,6 @@ fun NavGraph(
 
         composable<Destination.SponsorBlockSettings> {
             SponsorBlockSettingsScreen(onBackClick = { navController.popBackStack() })
-        }
-
-        composable<Destination.DiscordSettings> {
-            DiscordSettingsScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable<Destination.AIEqualizer> {

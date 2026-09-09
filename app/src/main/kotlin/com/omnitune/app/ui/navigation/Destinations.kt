@@ -70,8 +70,6 @@ sealed class Destination {
     @Serializable
     data object SponsorBlockSettings : Destination()
     @Serializable
-    data object DiscordSettings : Destination()
-    @Serializable
     data object AIEqualizer : Destination()
     @Serializable
     data object AISettings : Destination()

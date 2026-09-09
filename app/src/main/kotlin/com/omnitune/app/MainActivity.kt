@@ -143,7 +143,6 @@ private fun NavDestination?.topLevelDestination(): Destination = when {
     this?.hasRoute<Destination.Misc>() == true -> Destination.Settings
     this?.hasRoute<Destination.LyricsProviders>() == true -> Destination.Settings
     this?.hasRoute<Destination.SponsorBlockSettings>() == true -> Destination.Settings
-    this?.hasRoute<Destination.DiscordSettings>() == true -> Destination.Settings
     this?.hasRoute<Destination.PoToken>() == true -> Destination.Settings
     this?.hasRoute<Destination.Equalizer>() == true -> Destination.Settings
     this?.hasRoute<Destination.AIEqualizer>() == true -> Destination.Settings

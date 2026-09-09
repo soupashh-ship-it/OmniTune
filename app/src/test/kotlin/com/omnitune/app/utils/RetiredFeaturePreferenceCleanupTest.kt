@@ -16,18 +16,24 @@ class RetiredFeaturePreferenceCleanupTest {
     @Test
     fun cleanupRemovesOnlyPreferencesOwnedByRetiredFeatures() {
         val retiredToken = stringPreferencesKey("discordToken")
+        val retiredEncryptedToken = stringPreferencesKey("discordTokenEncrypted")
         val retiredFlag = booleanPreferencesKey("together_welcome_shown")
+        val retiredCurrentFlag = booleanPreferencesKey("discordRpcEnabled")
         val retainedPreference = stringPreferencesKey("unrelated_preference")
         val preferences = mutablePreferencesOf(
             retiredToken to "legacy-value",
+            retiredEncryptedToken to "encrypted-value",
             retiredFlag to true,
+            retiredCurrentFlag to true,
             retainedPreference to "retain-this",
         )
 
         RetiredFeaturePreferenceCleanup.removeFrom(preferences)
 
         assertNull(preferences[retiredToken])
+        assertNull(preferences[retiredEncryptedToken])
         assertNull(preferences[retiredFlag])
+        assertNull(preferences[retiredCurrentFlag])
         assertEquals("retain-this", preferences[retainedPreference])
     }
 }

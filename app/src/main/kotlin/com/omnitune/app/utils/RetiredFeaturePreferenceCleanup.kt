@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.first
  * unknown preferences, so existing user settings and account credentials remain intact.
  */
 object RetiredFeaturePreferenceCleanup {
-    private const val migrationVersion = 1
+    private const val migrationVersion = 2
     private val migrationVersionKey = intPreferencesKey("retired_feature_cleanup_version")
 
     private val stringKeys = listOf(
@@ -31,6 +31,7 @@ object RetiredFeaturePreferenceCleanup {
         "together_last_join_link",
         "together_online_endpoint_cache",
         "discordToken",
+        "discordTokenEncrypted",
         "discordUsername",
         "discordName",
         "discordActivityName",
@@ -62,6 +63,7 @@ object RetiredFeaturePreferenceCleanup {
         "together_require_host_approval_to_join",
         "together_welcome_shown",
         "discordInfoDismissed",
+        "discordRpcEnabled",
         "discordRPCEnable",
         "discordActivityButton1Enabled",
         "discordActivityButton2Enabled",
