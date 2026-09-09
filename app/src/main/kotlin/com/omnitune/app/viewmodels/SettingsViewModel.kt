@@ -17,8 +17,6 @@ import com.omnitune.app.constants.*
 import com.omnitune.app.models.*
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.LauncherIconSwitcher
-import com.omnitune.app.utils.SecurePreferenceCipher
-import com.omnitune.app.utils.SensitivePreferenceCodec
 import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,12 +29,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
-
-private data class SensitiveSettings(
-    val openaiSecret: String,
-    val anthropicSecret: String,
-    val geminiSecret: String,
-)
 
 data class SettingsUiState(
     val isLoggedIn: Boolean = false,
@@ -89,13 +81,6 @@ data class SettingsUiState(
     val scrobbleDelayPercent: Float = 0.5f,
     val scrobbleMinDuration: Int = 30,
     val scrobbleDelaySeconds: Int = 180,
-    val openaiSecret: String = "",
-    val openaiModel: String = "gpt-4o",
-    val anthropicSecret: String = "",
-    val anthropicModel: String = "claude-3-5-sonnet-20240620",
-    val geminiSecret: String = "",
-    val geminiModel: String = "gemini-1.5-pro",
-    val selectedAiProvider: String = "gemini",
     val nextSongPreloadingEnabled: Boolean = true,
     val nextSongPreloadDelay: Int = 10,
     val crossfadeMs: Int = 0,
@@ -125,7 +110,6 @@ class SettingsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             context.dataStore.data.collect { prefs ->
-                val sensitiveSettings = readSensitiveSettings(prefs)
                 _uiState.update { current ->
                     current.copy(
                         pureBlackEnabled = prefs[PureBlackKey] ?: false,
@@ -175,13 +159,6 @@ class SettingsViewModel @Inject constructor(
                         sponsorBlockEnabled = prefs[SponsorBlockEnabledKey] ?: true,
                         lastFmUsername = prefs[LastFmUsernameKey],
                         lastFmScrobblingEnabled = prefs[LastFmScrobblingEnabledKey] ?: false,
-                        openaiSecret = sensitiveSettings.openaiSecret,
-                        openaiModel = prefs[OpenaiModelKey] ?: "gpt-4o",
-                        anthropicSecret = sensitiveSettings.anthropicSecret,
-                        anthropicModel = prefs[AnthropicModelKey] ?: "claude-3-5-sonnet-20240620",
-                        geminiSecret = sensitiveSettings.geminiSecret,
-                        geminiModel = prefs[GeminiModelKey] ?: "gemini-1.5-pro",
-                        selectedAiProvider = prefs[SelectedAiProviderKey] ?: "gemini",
                         audioOffloadEnabled = prefs[AudioOffloadEnabledKey] ?: prefs[AudioOffload] ?: false,
                         wifiAudioQuality = prefs[WifiAudioQualityKey]
                             ?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() }
@@ -214,51 +191,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun readSensitiveSettings(prefs: Preferences): SensitiveSettings =
-        SensitiveSettings(
-            openaiSecret = readSensitivePreference(prefs, OpenaiApiKey),
-            anthropicSecret = readSensitivePreference(prefs, AnthropicApiKey),
-            geminiSecret = readSensitivePreference(prefs, GeminiApiKey),
-        )
-
-    private suspend fun readSensitivePreference(
-        prefs: Preferences,
-        key: Preferences.Key<String>,
-    ): String {
-        val decoded = decodeSensitivePreference(prefs[key])
-        decoded.migratedStorageValue?.let { migratedValue ->
-            context.dataStore.edit { settings ->
-                settings[key] = migratedValue
-            }
-        }
-        return decoded.plainValue
-    }
-
-    private fun decodeSensitivePreference(rawValue: String?) =
-        SensitivePreferenceCodec.decodeForRead(
-            rawValue = rawValue,
-            isEncrypted = SecurePreferenceCipher::isEncrypted,
-            decryptOrPlain = SecurePreferenceCipher::decryptOrPlain,
-            encrypt = SecurePreferenceCipher::encrypt,
-        )
-
     private fun <T> setPreference(key: Preferences.Key<T>, value: T) {
         PreferenceStore.launchEdit(context.dataStore) {
             this[key] = value
-        }
-    }
-
-    private fun setSensitivePreference(key: Preferences.Key<String>, value: String) {
-        PreferenceStore.launchEdit(context.dataStore) {
-            val encryptedValue = SensitivePreferenceCodec.encodeForStorage(
-                plainValue = value,
-                encrypt = SecurePreferenceCipher::encrypt,
-            )
-            if (encryptedValue == null) {
-                remove(key)
-            } else {
-                this[key] = encryptedValue
-            }
         }
     }
 
@@ -293,13 +228,6 @@ class SettingsViewModel @Inject constructor(
     fun setSponsorBlockEnabled(enabled: Boolean) = setPreference(SponsorBlockEnabledKey, enabled)
     fun setLastFmScrobblingEnabled(enabled: Boolean) = setPreference(LastFmScrobblingEnabledKey, enabled)
     fun setLastFmUsername(username: String) = setPreference(LastFmUsernameKey, username)
-    fun setOpenaiSecret(secret: String) = setSensitivePreference(OpenaiApiKey, secret)
-    fun setOpenaiModel(model: String) = setPreference(OpenaiModelKey, model)
-    fun setAnthropicSecret(secret: String) = setSensitivePreference(AnthropicApiKey, secret)
-    fun setAnthropicModel(model: String) = setPreference(AnthropicModelKey, model)
-    fun setGeminiSecret(secret: String) = setSensitivePreference(GeminiApiKey, secret)
-    fun setGeminiModel(model: String) = setPreference(GeminiModelKey, model)
-    fun setSelectedAiProvider(provider: String) = setPreference(SelectedAiProviderKey, provider)
     fun setAudioOffloadEnabled(enabled: Boolean) = setPreference(AudioOffloadEnabledKey, enabled)
     fun setPauseMusicOnMediaMuted(enabled: Boolean) = setPreference(PauseOnDeviceMuteKey, enabled)
     fun setPictureInPictureEnabled(enabled: Boolean) = setPreference(PictureInPictureEnabledKey, enabled)

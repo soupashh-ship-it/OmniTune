@@ -146,7 +146,6 @@ private fun NavDestination?.topLevelDestination(): Destination = when {
     this?.hasRoute<Destination.PoToken>() == true -> Destination.Settings
     this?.hasRoute<Destination.Equalizer>() == true -> Destination.Settings
     this?.hasRoute<Destination.AIEqualizer>() == true -> Destination.Settings
-    this?.hasRoute<Destination.AISettings>() == true -> Destination.Settings
     this?.hasRoute<Destination.Credits>() == true -> Destination.Settings
     this?.hasRoute<Destination.Updater>() == true -> Destination.Settings
     this?.hasRoute<Destination.LastFmLogin>() == true -> Destination.Settings

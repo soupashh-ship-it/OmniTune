@@ -271,7 +271,6 @@ fun NavGraph(
                 onSupportClick = { navController.navigate(Destination.Support) },
                 onMiscClick = { navController.navigate(Destination.Misc) },
                 onSponsorBlockClick = { navController.navigate(Destination.SponsorBlockSettings) },
-                onAISettingsClick = { navController.navigate(Destination.AISettings) },
                 onCreditsClick = { navController.navigate(Destination.Credits) },
                 onUpdaterClick = { navController.navigate(Destination.Updater) },
                 onLastFmClick = { navController.navigate(Destination.LastFmLogin) },
@@ -374,10 +373,6 @@ fun NavGraph(
 
         composable<Destination.AIEqualizer> {
             AIEqualizerScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable<Destination.AISettings> {
-            AISettingsScreen(onBack = { navController.popBackStack() })
         }
 
         composable<Destination.Credits> {

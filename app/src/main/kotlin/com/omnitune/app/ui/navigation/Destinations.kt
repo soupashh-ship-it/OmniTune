@@ -72,8 +72,6 @@ sealed class Destination {
     @Serializable
     data object AIEqualizer : Destination()
     @Serializable
-    data object AISettings : Destination()
-    @Serializable
     data object Credits : Destination()
     @Serializable
     data object Updater : Destination()
