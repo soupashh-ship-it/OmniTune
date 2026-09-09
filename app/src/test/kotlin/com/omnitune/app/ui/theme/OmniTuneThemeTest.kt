@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.omnitune.app.models.AppTheme
 import com.omnitune.app.models.ThemeMode
+import com.omnitune.app.models.ThemeModePreferenceMapper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -25,6 +26,33 @@ class OmniTuneThemeTest {
         assertEquals("Dark", ThemeMode.DARK.label)
         assertEquals("Light", ThemeMode.LIGHT.label)
         assertEquals("System default", ThemeMode.SYSTEM.label)
+    }
+
+    @Test
+    fun themeModeMapperPrefersVisibleThemeModeKey() {
+        assertEquals(
+            ThemeMode.LIGHT,
+            ThemeModePreferenceMapper.resolveMode(
+                themeModeValue = ThemeMode.LIGHT.name,
+                legacyDarkModeValue = "ON",
+            ),
+        )
+    }
+
+    @Test
+    fun themeModeMapperSupportsLegacyDarkModeValues() {
+        assertEquals(ThemeMode.DARK, ThemeModePreferenceMapper.resolveMode(null, "ON"))
+        assertEquals(ThemeMode.LIGHT, ThemeModePreferenceMapper.resolveMode(null, "OFF"))
+        assertEquals(ThemeMode.SYSTEM, ThemeModePreferenceMapper.resolveMode(null, "AUTO"))
+    }
+
+    @Test
+    fun themeModeMapperDefaultsToSystemAndResolvesDarkness() {
+        assertEquals(ThemeMode.SYSTEM, ThemeModePreferenceMapper.resolveMode(null, null))
+        assertTrue(ThemeModePreferenceMapper.isDarkTheme(ThemeMode.SYSTEM, systemDark = true))
+        assertEquals(false, ThemeModePreferenceMapper.isDarkTheme(ThemeMode.SYSTEM, systemDark = false))
+        assertTrue(ThemeModePreferenceMapper.isDarkTheme(ThemeMode.DARK, systemDark = false))
+        assertEquals(false, ThemeModePreferenceMapper.isDarkTheme(ThemeMode.LIGHT, systemDark = true))
     }
 
     @Test

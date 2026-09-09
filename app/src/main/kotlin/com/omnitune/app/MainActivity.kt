@@ -76,6 +76,7 @@ import com.omnitune.app.constants.NavBarBlurKey
 import com.omnitune.app.constants.PictureInPictureEnabledKey
 import com.omnitune.app.constants.PureBlackKey
 import com.omnitune.app.constants.SwipeDownToDismissPlayerKey
+import com.omnitune.app.constants.ThemeModeKey
 import com.omnitune.app.constants.VolumeSliderEnabledKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.ExtraIsMusicVideo
@@ -84,6 +85,7 @@ import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.MiniPlayerStyle
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.SongSource
+import com.omnitune.app.models.ThemeModePreferenceMapper
 import com.omnitune.app.models.toDomainSong
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.pip.PipHelper
@@ -319,18 +321,17 @@ class MainActivity : ComponentActivity() {
                 try { AppTheme.valueOf(appThemeStr) } catch (_: Exception) { AppTheme.DEFAULT }
             }
 
-            val darkModePref by remember {
-                context.dataStore.data.map { it[DarkModeKey] ?: "ON" }
-            }.collectAsStateWithLifecycle(initialValue = "ON")
-
-            val isDark = isSystemInDarkTheme()
-            val darkTheme = remember(darkModePref, isDark) {
-                when (darkModePref) {
-                    "OFF" -> false
-                    "AUTO" -> isDark
-                    else -> true
+            val themeMode by remember {
+                context.dataStore.data.map { prefs ->
+                    ThemeModePreferenceMapper.resolveMode(
+                        themeModeValue = prefs[ThemeModeKey],
+                        legacyDarkModeValue = prefs[DarkModeKey],
+                    )
                 }
-            }
+            }.collectAsStateWithLifecycle(initialValue = ThemeModePreferenceMapper.DefaultMode)
+
+            val isSystemDark = isSystemInDarkTheme()
+            val darkTheme = ThemeModePreferenceMapper.isDarkTheme(themeMode, isSystemDark)
 
             val currentMetadata by remember(playerConnection) {
                 playerConnection?.mediaMetadata ?: flowOf(null)

@@ -93,9 +93,10 @@ class SettingsViewModel @Inject constructor(
                     current.copy(
                         pureBlackEnabled = prefs[PureBlackKey] ?: false,
                         dynamicColorEnabled = prefs[DynamicThemeKey] ?: true,
-                        themeMode = try {
-                            ThemeMode.valueOf(prefs[ThemeModeKey] ?: ThemeMode.SYSTEM.name)
-                        } catch (e: Exception) { ThemeMode.SYSTEM },
+                        themeMode = ThemeModePreferenceMapper.resolveMode(
+                            themeModeValue = prefs[ThemeModeKey],
+                            legacyDarkModeValue = prefs[DarkModeKey],
+                        ),
                         appTheme = try {
                             AppTheme.valueOf(prefs[AppThemeKey] ?: AppTheme.DEFAULT.name)
                         } catch (e: Exception) { AppTheme.DEFAULT },
