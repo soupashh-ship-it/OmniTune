@@ -17,7 +17,8 @@ SuvMusic UI remediation prerelease.
 - Restored real download state, retry, cancel, delete, storage, and video mapping.
 - Repaired PiP, deep links, media library browsing, output routing, volume-key behavior, and keep-screen-on handling.
 - Wired customization, launcher icon variants, route-aware mini-player insets, prerelease updates, and the AI equalizer shortcut.
-- Encrypted sensitive AI/Discord token storage and cleaned incomplete localization resources.
+- Wired SponsorBlock skipping into playback and retired inert Discord/AI provider settings.
+- Cleaned stale Last.fm settings state and incomplete localization resources.
 - Reduced lint issues from blocking errors to non-blocking warnings.
 
 ## Verification
