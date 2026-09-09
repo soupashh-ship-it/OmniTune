@@ -432,15 +432,3 @@ enum class LyricsAnimationType {
     WORD,
     KARAOKE
 }
-
-enum class HapticsMode {
-    OFF,
-    BASIC,
-    ADVANCED
-}
-
-enum class HapticsIntensity {
-    LIGHT,
-    MEDIUM,
-    STRONG
-}

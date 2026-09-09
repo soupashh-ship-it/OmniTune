@@ -120,7 +120,7 @@ fun DownloadsScreen(
                 .padding(paddingValues)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TabRow(selectedTabIndex = selectedTab) {
+                SecondaryTabRow(selectedTabIndex = selectedTab) {
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },

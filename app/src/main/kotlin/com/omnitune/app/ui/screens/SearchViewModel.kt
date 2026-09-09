@@ -101,7 +101,6 @@ data class SearchUiState(
     val isSuggestionsLoading: Boolean = false,
     val isSearchActive: Boolean = false,
     val error: String? = null,
-    val currentSource: SongSource = SongSource.YOUTUBE,
     val resultFilter: ResultFilter = ResultFilter.ALL,
     val trendingSearches: List<String> = listOf(
         "Trending Hits",

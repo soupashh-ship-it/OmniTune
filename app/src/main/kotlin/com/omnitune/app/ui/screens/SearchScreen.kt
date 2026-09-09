@@ -33,7 +33,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +74,7 @@ fun SearchScreen(
     playlistViewModel: PlaylistManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val effectiveSelectedTab = SearchSourcePolicy.normalize(uiState.selectedTab)
     val playlistMgmtState by playlistViewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -252,7 +252,7 @@ fun SearchScreen(
                                 }
                             }
 
-                            if (uiState.query.isBlank() && uiState.selectedTab == SearchTab.YOUTUBE_MUSIC) {
+                            if (uiState.query.isBlank() && effectiveSelectedTab == SearchTab.YOUTUBE_MUSIC) {
                                 item {
                                     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                                         Text(
@@ -323,19 +323,17 @@ fun SearchScreen(
 
                     val visibleTabs = SearchSourcePolicy.visibleTabs
                     if (visibleTabs.size > 1) {
-                        val visibleSelectedIdx = visibleTabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
-                        TabRow(
+                        val visibleSelectedIdx = visibleTabs.indexOf(effectiveSelectedTab).coerceAtLeast(0)
+                        SecondaryTabRow(
                             selectedTabIndex = visibleSelectedIdx,
                             containerColor = Color.Transparent,
                             contentColor = accentColor,
                             divider = {},
-                            indicator = { tabPositions ->
-                                if (visibleSelectedIdx < tabPositions.size) {
-                                    TabRowDefaults.SecondaryIndicator(
-                                        Modifier.tabIndicatorOffset(tabPositions[visibleSelectedIdx]),
-                                        color = accentColor
-                                    )
-                                }
+                            indicator = {
+                                TabRowDefaults.SecondaryIndicator(
+                                    Modifier.tabIndicatorOffset(visibleSelectedIdx, matchContentSize = false),
+                                    color = accentColor
+                                )
                             },
                             modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
@@ -345,7 +343,7 @@ fun SearchScreen(
                                     SearchTab.REMOTE -> "HQ Audio"
                                 }
                                 Tab(
-                                    selected = uiState.selectedTab == tab,
+                                    selected = effectiveSelectedTab == tab,
                                     onClick = { viewModel.onTabChange(tab) },
                                     text = { Text(label, style = MaterialTheme.typography.titleSmall) }
                                 )
@@ -354,13 +352,13 @@ fun SearchScreen(
                     }
 
                     // Filter chips / segmented buttons
-                    if (uiState.selectedTab in visibleTabs) {
+                    if (effectiveSelectedTab in visibleTabs) {
                         AnimatedVisibility(
                             visible = uiState.query.isNotBlank(),
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically()
                         ) {
-                            val filters = SearchSourcePolicy.filtersFor(uiState.selectedTab)
+                            val filters = SearchSourcePolicy.filtersFor(effectiveSelectedTab)
 
                             SingleChoiceSegmentedButtonRow(
                                 modifier = Modifier
@@ -407,7 +405,7 @@ fun SearchScreen(
                     }
                 }
 
-                if (uiState.selectedTab == SearchTab.YOUTUBE_MUSIC) {
+                if (effectiveSelectedTab == SearchTab.YOUTUBE_MUSIC) {
                     if (uiState.resultFilter != ResultFilter.ALL && !uiState.isLoading) {
                         when (uiState.resultFilter) {
                             ResultFilter.SONGS, ResultFilter.VIDEOS -> {
@@ -571,205 +569,6 @@ fun SearchScreen(
                                         showSongMenu = true
                                     }
                                 )
-                            }
-                        }
-                    }
-                } else if (uiState.selectedTab == SearchTab.REMOTE) {
-                    // RemoteAudio results (320 kbps HQ audio)
-                    if (!uiState.isLoading && uiState.query.isNotBlank()) {
-                        if (uiState.resultFilter != ResultFilter.ALL) {
-                            when (uiState.resultFilter) {
-                                ResultFilter.SONGS, ResultFilter.VIDEOS -> {
-                                    itemsIndexed(uiState.results, key = { index, song -> "remote_song_${index}_${song.id}" }) { index, song ->
-                                        SearchResultItem(
-                                            song = song,
-                                            isPlaying = currentSong?.id == song.id,
-                                            onClick = {
-                                                viewModel.addToRecentSearches(RecentSearchItem.SongItem(song))
-                                                onSongClick(uiState.results, index)
-                                            },
-                                            onArtistClick = onArtistClick,
-                                            onMoreClick = {
-                                                selectedSong = song
-                                                showSongMenu = true
-                                            }
-                                        )
-                                    }
-                                }
-                                ResultFilter.ARTISTS -> {
-                                    items(uiState.artistResults, key = { it.id }) { artist ->
-                                        ArtistSearchListItem(artist = artist, onClick = { onArtistClick(artist.id) })
-                                    }
-                                }
-                                ResultFilter.ALBUMS -> {
-                                    items(uiState.albumResults, key = { it.id }) { album ->
-                                        AlbumSearchListItem(
-                                            album = album,
-                                            onClick = {
-                                                viewModel.addToRecentSearches(RecentSearchItem.AlbumItem(album))
-                                                onAlbumClick(album)
-                                            }
-                                        )
-                                    }
-                                }
-                                ResultFilter.COMMUNITY_PLAYLISTS, ResultFilter.FEATURED_PLAYLISTS -> {
-                                    items(uiState.playlistResults, key = { it.id }) { playlist ->
-                                        PlaylistSearchListItem(
-                                            playlist = playlist,
-                                            onClick = {
-                                                viewModel.addToRecentSearches(RecentSearchItem.PlaylistItem(playlist))
-                                                onPlaylistClick(playlist.id)
-                                            }
-                                        )
-                                    }
-                                }
-                                else -> {}
-                            }
-
-                            val activeResultsEmpty = when (uiState.resultFilter) {
-                                ResultFilter.SONGS, ResultFilter.VIDEOS -> uiState.results.isEmpty()
-                                ResultFilter.ARTISTS -> uiState.artistResults.isEmpty()
-                                ResultFilter.ALBUMS -> uiState.albumResults.isEmpty()
-                                ResultFilter.COMMUNITY_PLAYLISTS, ResultFilter.FEATURED_PLAYLISTS -> uiState.playlistResults.isEmpty()
-                                else -> false
-                            }
-                            if (activeResultsEmpty) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Text(
-                                        uiState.error ?: "No HQ Audio results found for \"${uiState.query}\"",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(20.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            if (uiState.artistResults.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Column {
-                                        Text(
-                                            "Artists",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)
-                                        )
-                                        LazyRow(
-                                            contentPadding = PaddingValues(horizontal = 20.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                            modifier = Modifier.padding(vertical = 12.dp)
-                                        ) {
-                                            items(uiState.artistResults, key = { it.id }) { artist ->
-                                                ArtistSearchCard(artist = artist, onClick = { onArtistClick(artist.id) })
-                                            }
-                                        }
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            if (uiState.playlistResults.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Column {
-                                        Text(
-                                            "Playlists",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)
-                                        )
-                                        LazyRow(
-                                            contentPadding = PaddingValues(horizontal = 20.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            modifier = Modifier.padding(vertical = 12.dp)
-                                        ) {
-                                            items(uiState.playlistResults, key = { it.id }) { playlist ->
-                                                PlaylistSearchCard(
-                                                    playlist = playlist,
-                                                    onClick = {
-                                                        viewModel.addToRecentSearches(RecentSearchItem.PlaylistItem(playlist))
-                                                        onPlaylistClick(playlist.id)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            if (uiState.albumResults.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Column {
-                                        Text(
-                                            "Albums",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp)
-                                        )
-                                        LazyRow(
-                                            contentPadding = PaddingValues(horizontal = 20.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                            modifier = Modifier.padding(vertical = 12.dp)
-                                        ) {
-                                            items(uiState.albumResults, key = { it.id }) { album ->
-                                                AlbumSearchCard(
-                                                    album = album,
-                                                    onClick = {
-                                                        viewModel.addToRecentSearches(RecentSearchItem.AlbumItem(album))
-                                                        onAlbumClick(album)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            if (uiState.results.isNotEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Text(
-                                        "Songs",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 8.dp)
-                                    )
-                                }
-                                itemsIndexed(uiState.results, key = { index, song -> "remote_main_song_${index}_${song.id}" }) { index, song ->
-                                    SearchResultItem(
-                                        song = song,
-                                        isPlaying = currentSong?.id == song.id,
-                                        onClick = {
-                                            viewModel.addToRecentSearches(RecentSearchItem.SongItem(song))
-                                            onSongClick(uiState.results, index)
-                                        },
-                                        onArtistClick = onArtistClick,
-                                        onMoreClick = {
-                                            selectedSong = song
-                                            showSongMenu = true
-                                        }
-                                    )
-                                }
-                            }
-
-                            if (uiState.results.isEmpty() && uiState.artistResults.isEmpty() && uiState.albumResults.isEmpty() && uiState.playlistResults.isEmpty()) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Text(
-                                        uiState.error ?: "No HQ Audio results found for \"${uiState.query}\"",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(20.dp)
-                                    )
-                                }
                             }
                         }
                     }
