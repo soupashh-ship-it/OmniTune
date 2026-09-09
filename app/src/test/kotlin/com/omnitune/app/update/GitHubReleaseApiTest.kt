@@ -3,6 +3,7 @@ package com.omnitune.app.update
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GitHubReleaseApiTest {
@@ -37,5 +38,25 @@ class GitHubReleaseApiTest {
         assertEquals("OmniTune-v0.12.7-release.apk", release.assets.single().name)
         assertEquals(23781615L, release.assets.single().size)
         assertEquals("sha256:4e943538", release.assets.single().digest)
+    }
+
+    @Test
+    fun parseReleases_mapsReleaseList() {
+        val releases = api.parseReleases(
+            """
+            [
+              {
+                "tag_name": "v1.2.0-pre5",
+                "name": "OmniTune 1.2.0 pre5",
+                "published_at": "2026-09-08T00:00:00Z",
+                "prerelease": true,
+                "assets": []
+              }
+            ]
+            """.trimIndent()
+        )
+
+        assertEquals("v1.2.0-pre5", releases.single().tagName)
+        assertTrue(releases.single().prerelease)
     }
 }

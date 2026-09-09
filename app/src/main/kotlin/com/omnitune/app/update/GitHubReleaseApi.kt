@@ -32,16 +32,38 @@ class GitHubReleaseApi @Inject constructor(
         }
     }
 
+    suspend fun fetchReleases(): List<GitHubRelease> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(RELEASES_URL)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "OmniTune-Android")
+            .build()
+
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IllegalStateException("GitHub update check failed: HTTP ${response.code}")
+            }
+            parseReleases(response.body.string())
+        }
+    }
+
     internal fun parseRelease(body: String): GitHubRelease {
         val release = json.decodeFromString<GitHubReleaseResponse>(body)
+        return release.toRelease()
+    }
+
+    internal fun parseReleases(body: String): List<GitHubRelease> =
+        json.decodeFromString<List<GitHubReleaseResponse>>(body).map { it.toRelease() }
+
+    private fun GitHubReleaseResponse.toRelease(): GitHubRelease {
         return GitHubRelease(
-            tagName = release.tagName,
-            name = release.name,
-            body = release.body,
-            publishedAt = release.publishedAt,
-            prerelease = release.prerelease,
-            draft = release.draft,
-            assets = release.assets.map { asset ->
+            tagName = tagName,
+            name = name,
+            body = body,
+            publishedAt = publishedAt,
+            prerelease = prerelease,
+            draft = draft,
+            assets = assets.map { asset ->
                 GitHubReleaseAsset(
                     name = asset.name,
                     browserDownloadUrl = asset.browserDownloadUrl,
@@ -55,6 +77,7 @@ class GitHubReleaseApi @Inject constructor(
 
     private companion object {
         const val LATEST_RELEASE_URL = "https://api.github.com/repos/soupashh-ship-it/OmniTune/releases/latest"
+        const val RELEASES_URL = "https://api.github.com/repos/soupashh-ship-it/OmniTune/releases?per_page=30"
     }
 }
 

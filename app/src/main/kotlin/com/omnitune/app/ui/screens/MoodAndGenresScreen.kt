@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.R
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerShape
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.innertube.pages.MoodAndGenres
 
@@ -61,6 +62,7 @@ fun MoodAndGenresScreen(
     viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val chromeInsets = LocalRouteChromeInsets.current
     val fallbackChips = GenreChipsHolder.chips.filter { chip ->
         val metadata = HomeDefaultCatalog.findCollection(chip.id)
         metadata?.source == HomeCatalogSource.ProviderBrowse &&
@@ -81,7 +83,7 @@ fun MoodAndGenresScreen(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                bottom = 140.dp,
+                bottom = chromeInsets.contentBottomPadding,
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

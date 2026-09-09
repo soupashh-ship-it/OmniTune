@@ -57,6 +57,7 @@ import com.omnitune.app.ui.component.PremiumLoadingScreen
 import com.omnitune.app.ui.component.ReorderableSongRow
 import com.omnitune.app.ui.component.SelectionTopBar
 import com.omnitune.app.ui.component.SongMenuBottomSheet
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.PillShape
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.ui.utils.ImageUtils
@@ -79,6 +80,7 @@ fun AlbumScreen(
     val album = uiState.album
     val focusedSongId = viewModel.selectedSongId ?: currentSong?.id
     val playerConnection = LocalPlayerConnection.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     LaunchedEffect(playerConnection) {
         viewModel.setPlayerConnection(playerConnection)
@@ -237,7 +239,10 @@ fun AlbumScreen(
             album != null -> {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(top = 60.dp, bottom = 100.dp),
+                    contentPadding = PaddingValues(
+                        top = 60.dp,
+                        bottom = chromeInsets.contentBottomPadding,
+                    ),
                     modifier = Modifier.fillMaxSize()
                 ) {
                     // Album Header

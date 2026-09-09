@@ -57,8 +57,10 @@ import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.models.*
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.ui.component.*
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.ui.utils.dpadFocusable
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +81,7 @@ fun SearchScreen(
     val playerConnection = LocalPlayerConnection.current
     val downloadUtil = LocalDownloadUtil.current
     val listState = rememberLazyGridState()
+    val chromeInsets = LocalRouteChromeInsets.current
 
     var isSearchActive by remember { mutableStateOf(false) }
     var isHeaderVisible by remember { mutableStateOf(true) }
@@ -101,11 +104,17 @@ fun SearchScreen(
     }
 
     // Always show header at the very top
-    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            isHeaderVisible = true
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         }
-    }
+            .distinctUntilChanged()
+            .collect { isAtTop ->
+                if (isAtTop) {
+                    isHeaderVisible = true
+                }
+            }
+        }
 
     // Always show headers when search is expanded/active
     val effectiveHeaderVisibility = isHeaderVisible || isSearchActive
@@ -312,73 +321,46 @@ fun SearchScreen(
                         }
                     }
 
-                    // Tab Selection (YouTube Music / HQ Audio)
-                    val visibleTabs = remember(uiState.currentSource) {
-                        buildList {
-                            if (uiState.currentSource == SongSource.REMOTE) {
-                                add(SearchTab.REMOTE)
-                                add(SearchTab.YOUTUBE_MUSIC)
-                            } else {
-                                add(SearchTab.YOUTUBE_MUSIC)
-                                add(SearchTab.REMOTE)
-                            }
-                        }
-                    }
-                    val visibleSelectedIdx = visibleTabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
-                    TabRow(
-                        selectedTabIndex = visibleSelectedIdx,
-                        containerColor = Color.Transparent,
-                        contentColor = accentColor,
-                        divider = {},
-                        indicator = { tabPositions ->
-                            if (visibleSelectedIdx < tabPositions.size) {
-                                TabRowDefaults.SecondaryIndicator(
-                                    Modifier.tabIndicatorOffset(tabPositions[visibleSelectedIdx]),
-                                    color = accentColor
+                    val visibleTabs = SearchSourcePolicy.visibleTabs
+                    if (visibleTabs.size > 1) {
+                        val visibleSelectedIdx = visibleTabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
+                        TabRow(
+                            selectedTabIndex = visibleSelectedIdx,
+                            containerColor = Color.Transparent,
+                            contentColor = accentColor,
+                            divider = {},
+                            indicator = { tabPositions ->
+                                if (visibleSelectedIdx < tabPositions.size) {
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[visibleSelectedIdx]),
+                                        color = accentColor
+                                    )
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            visibleTabs.forEach { tab ->
+                                val label = when (tab) {
+                                    SearchTab.YOUTUBE_MUSIC -> "YouTube Music"
+                                    SearchTab.REMOTE -> "HQ Audio"
+                                }
+                                Tab(
+                                    selected = uiState.selectedTab == tab,
+                                    onClick = { viewModel.onTabChange(tab) },
+                                    text = { Text(label, style = MaterialTheme.typography.titleSmall) }
                                 )
                             }
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        visibleTabs.forEach { tab ->
-                            val label = when (tab) {
-                                SearchTab.YOUTUBE_MUSIC -> "YouTube Music"
-                                SearchTab.REMOTE -> "HQ Audio"
-                            }
-                            Tab(
-                                selected = uiState.selectedTab == tab,
-                                onClick = { viewModel.onTabChange(tab) },
-                                text = { Text(label, style = MaterialTheme.typography.titleSmall) }
-                            )
                         }
                     }
 
                     // Filter chips / segmented buttons
-                    if (uiState.selectedTab == SearchTab.YOUTUBE_MUSIC || uiState.selectedTab == SearchTab.REMOTE) {
+                    if (uiState.selectedTab in visibleTabs) {
                         AnimatedVisibility(
                             visible = uiState.query.isNotBlank(),
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically()
                         ) {
-                            val filters = if (uiState.selectedTab == SearchTab.REMOTE) {
-                                listOf(
-                                    ResultFilter.ALL to "All",
-                                    ResultFilter.SONGS to "Songs",
-                                    ResultFilter.ALBUMS to "Albums",
-                                    ResultFilter.ARTISTS to "Artists",
-                                    ResultFilter.COMMUNITY_PLAYLISTS to "Playlists"
-                                )
-                            } else {
-                                listOf(
-                                    ResultFilter.ALL to "All",
-                                    ResultFilter.SONGS to "Songs",
-                                    ResultFilter.VIDEOS to "Videos",
-                                    ResultFilter.ALBUMS to "Albums",
-                                    ResultFilter.ARTISTS to "Artists",
-                                    ResultFilter.COMMUNITY_PLAYLISTS to "Community",
-                                    ResultFilter.FEATURED_PLAYLISTS to "Featured"
-                                )
-                            }
+                            val filters = SearchSourcePolicy.filtersFor(uiState.selectedTab)
 
                             SingleChoiceSegmentedButtonRow(
                                 modifier = Modifier
@@ -417,7 +399,7 @@ fun SearchScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(nestedScrollConnection),
-                contentPadding = PaddingValues(bottom = 140.dp)
+                contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding)
             ) {
                 if (uiState.isLoading) {
                     item(span = { GridItemSpan(maxLineSpan) }) {

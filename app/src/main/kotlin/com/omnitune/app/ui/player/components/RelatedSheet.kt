@@ -47,6 +47,8 @@ fun RelatedSheet(
     isVisible: Boolean,
     relatedSongs: List<Song>,
     isLoading: Boolean,
+    errorMessage: String? = null,
+    onRetry: () -> Unit = {},
     selectedIndices: Set<Int>,
     onToggleSelection: (Int) -> Unit,
     onSelectAll: () -> Unit,
@@ -189,6 +191,30 @@ fun RelatedSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     LoadingIndicator(color = dominantColors.accent)
+                }
+            } else if (errorMessage != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(horizontal = 32.dp),
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = secondaryContentColor
+                        )
+                        FilledTonalButton(onClick = onRetry) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Retry")
+                        }
+                    }
                 }
             } else if (relatedSongs.isEmpty()) {
                 Box(

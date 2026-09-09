@@ -9,17 +9,26 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.LibraryParams
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionError
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.Futures
 import com.omnitune.app.constants.MediaSessionConstants
+import com.omnitune.app.db.MusicDatabase
 import dagger.hilt.android.scopes.ServiceScoped
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.guava.future
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -28,6 +37,9 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
 
     private var player: Player? = null
     private var playerListener: Player.Listener? = null
+    private var libraryBrowser: MediaLibraryBrowser? = null
+    private var serviceScope: CoroutineScope? = null
+    private var resolveExternalMediaItems: (suspend (List<MediaItem>) -> List<MediaItem>)? = null
     var onToggleLike: (() -> Unit)? = null
     var onToggleLibrary: (() -> Unit)? = null
     var onStartRadio: (() -> Unit)? = null
@@ -83,9 +95,23 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
         }.also(player::addListener)
     }
 
+    fun configureLibrary(
+        database: MusicDatabase,
+        downloadUtil: DownloadUtil,
+        scope: CoroutineScope,
+        resolveExternalMediaItems: suspend (List<MediaItem>) -> List<MediaItem>,
+    ) {
+        libraryBrowser = MediaLibraryBrowser(database, downloadUtil)
+        serviceScope = scope
+        this.resolveExternalMediaItems = resolveExternalMediaItems
+    }
+
     fun onDestroy() {
         detachPlayerListener()
         player = null
+        libraryBrowser = null
+        serviceScope = null
+        resolveExternalMediaItems = null
         _playbackState.value = Player.STATE_IDLE
         _currentMediaItem.value = null
     }
@@ -118,9 +144,124 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
         controller: MediaSession.ControllerInfo,
         mediaItems: MutableList<MediaItem>,
     ): ListenableFuture<MutableList<MediaItem>> {
-        // Items are enriched at the call site before being sent to the session
-        // In-process controllers preserve the tag set by the UI
-        return Futures.immediateFuture(mediaItems)
+        val resolver = resolveExternalMediaItems ?: return Futures.immediateFuture(mediaItems)
+        val scope = serviceScope ?: return Futures.immediateFuture(mediaItems)
+        val requestedItems = mediaItems.toList()
+        return scope.future(Dispatchers.IO) {
+            runCatching {
+                resolver(requestedItems).toMutableList()
+            }.getOrElse { error ->
+                Timber.tag("MediaSession").w(error, "External media item resolution failed")
+                requestedItems.toMutableList()
+            }
+        }
+    }
+
+    override fun onGetLibraryRoot(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        params: LibraryParams?,
+    ): ListenableFuture<LibraryResult<MediaItem>> {
+        return Futures.immediateFuture(
+            LibraryResult.ofItem(MediaLibraryBrowser.rootItem(), params)
+        )
+    }
+
+    override fun onGetItem(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        mediaId: String,
+    ): ListenableFuture<LibraryResult<MediaItem>> {
+        val library = libraryBrowser ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+        val scope = serviceScope ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+
+        return scope.future(Dispatchers.IO) {
+            val item = library.item(mediaId)
+            if (item != null) {
+                LibraryResult.ofItem(item, null)
+            } else {
+                LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+            }
+        }
+    }
+
+    override fun onGetChildren(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        parentId: String,
+        page: Int,
+        pageSize: Int,
+        params: LibraryParams?,
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+        val library = libraryBrowser ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+        val scope = serviceScope ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+
+        return scope.future(Dispatchers.IO) {
+            val children = library.children(
+                parentId = parentId,
+                page = page,
+                pageSize = pageSize,
+                offlineOnly = params?.isOffline == true,
+            )
+            if (children != null) {
+                LibraryResult.ofItemList(ImmutableList.copyOf(children), params)
+            } else {
+                LibraryResult.ofError(SessionError.ERROR_BAD_VALUE, params)
+            }
+        }
+    }
+
+    override fun onSearch(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        query: String,
+        params: LibraryParams?,
+    ): ListenableFuture<LibraryResult<Void>> {
+        val library = libraryBrowser ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+        val scope = serviceScope ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+
+        return scope.future(Dispatchers.IO) {
+            val count = library.searchResultCount(query)
+            session.notifySearchResultChanged(browser, query, count, params)
+            LibraryResult.ofVoid(params)
+        }
+    }
+
+    override fun onGetSearchResult(
+        session: MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        query: String,
+        page: Int,
+        pageSize: Int,
+        params: LibraryParams?,
+    ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+        val library = libraryBrowser ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+        val scope = serviceScope ?: return Futures.immediateFuture(
+            LibraryResult.ofError(SessionError.ERROR_NOT_SUPPORTED)
+        )
+
+        return scope.future(Dispatchers.IO) {
+            val results = library.search(
+                query = query,
+                page = page,
+                pageSize = pageSize,
+            )
+            LibraryResult.ofItemList(ImmutableList.copyOf(results), params)
+        }
     }
 
     override fun onCustomCommand(

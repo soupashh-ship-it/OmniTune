@@ -20,11 +20,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -181,7 +184,7 @@ fun ModernQueueView(
                                 onClearSelection()
                             }
                         }) {
-                            Icon(Icons.Default.PlaylistPlay, null, tint = contentColor)
+                            Icon(Icons.AutoMirrored.Filled.PlaylistPlay, null, tint = contentColor)
                         }
 
                         IconButton(onClick = {
@@ -192,7 +195,7 @@ fun ModernQueueView(
                             }
                             onAddToPlaylistClick(selectedSongs)
                         }) {
-                            Icon(Icons.Default.PlaylistAdd, null, tint = contentColor)
+                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null, tint = contentColor)
                         }
                         IconButton(onClick = { onRemoveItems(selectedQueueIndices.toList()) }) {
                             Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
@@ -240,7 +243,7 @@ fun ModernQueueView(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(Icons.Default.PlaylistAdd, null, tint = contentColor, modifier = Modifier.size(20.dp))
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null, tint = contentColor, modifier = Modifier.size(20.dp))
                                 Text(
                                     "Save",
                                     style = MaterialTheme.typography.labelLarge,
@@ -534,7 +537,7 @@ private fun LazyItemScope.ModernQueueListItem(
     onDragMove: (Int, Int) -> Unit, itemIndex: Int,
     dominantColors: DominantColors, isDarkTheme: Boolean, contentColor: Color, secondaryContentColor: Color
 ) {
-    var offsetY by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current

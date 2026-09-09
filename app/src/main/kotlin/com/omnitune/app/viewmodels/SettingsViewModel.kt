@@ -16,6 +16,9 @@ import androidx.lifecycle.viewModelScope
 import com.omnitune.app.constants.*
 import com.omnitune.app.models.*
 import com.omnitune.app.utils.PreferenceStore
+import com.omnitune.app.utils.LauncherIconSwitcher
+import com.omnitune.app.utils.SecurePreferenceCipher
+import com.omnitune.app.utils.SensitivePreferenceCodec
 import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,6 +31,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+
+private data class SensitiveSettings(
+    val discordToken: String,
+    val openaiSecret: String,
+    val anthropicSecret: String,
+    val geminiSecret: String,
+)
 
 data class SettingsUiState(
     val isLoggedIn: Boolean = false,
@@ -56,6 +66,7 @@ data class SettingsUiState(
     val hapticsMode: HapticsMode = HapticsMode.BASIC,
     val hapticsIntensity: HapticsIntensity = HapticsIntensity.MEDIUM,
     val stopMusicOnTaskClear: Boolean = false,
+    val pictureInPictureEnabled: Boolean = true,
     val pauseMusicOnMediaMuted: Boolean = false,
     val keepScreenOn: Boolean = false,
     val swipeDownToDismissEnabled: Boolean = true,
@@ -100,9 +111,10 @@ data class SettingsUiState(
     val eqEnabled: Boolean = false,
     val eqBands: FloatArray = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f),
     val navBarAlpha: Float = 1.0f,
-    val navBarBlur: Float = 24.0f,
+    val navBarBlur: Float = 60.0f,
     val iosLiquidGlassEnabled: Boolean = true,
-    val miniPlayerAlpha: Float = 1.0f,
+    val miniPlayerAlpha: Float = 0.0f,
+    val miniPlayerBlur: Float = 50.0f,
     val miniPlayerStyle: MiniPlayerStyle = MiniPlayerStyle.LIQUID_GLASS,
     val playerStyle: PlayerStyle = PlayerStyle.LIQUID_GLASS,
     val artworkShape: ArtworkShape = ArtworkShape.ROUNDED_SQUARE,
@@ -122,6 +134,7 @@ class SettingsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             context.dataStore.data.collect { prefs ->
+                val sensitiveSettings = readSensitiveSettings(prefs)
                 _uiState.update { current ->
                     current.copy(
                         pureBlackEnabled = prefs[PureBlackKey] ?: false,
@@ -157,7 +170,9 @@ class SettingsViewModel @Inject constructor(
                         albumArtDynamicColorsEnabled = prefs[AlbumArtDynamicColorsEnabledKey] ?: true,
                         rotatingVinylAnimationEnabled = prefs[RotatingVinylAnimationEnabledKey] ?: true,
                         navBarAlpha = prefs[NavBarAlphaKey] ?: 1.0f,
-                        navBarBlur = prefs[NavBarBlurKey] ?: 24.0f,
+                        navBarBlur = prefs[NavBarBlurKey] ?: 60.0f,
+                        miniPlayerAlpha = prefs[MiniPlayerAlphaKey] ?: 0.0f,
+                        miniPlayerBlur = prefs[MiniPlayerBlurKey] ?: 50.0f,
                         lyricsAnimationType = try {
                             LyricsAnimationType.valueOf(prefs[LyricsAnimationTypeKey] ?: LyricsAnimationType.WORD.name)
                         } catch (e: Exception) { LyricsAnimationType.WORD },
@@ -170,12 +185,12 @@ class SettingsViewModel @Inject constructor(
                         lastFmUsername = prefs[LastFmUsernameKey],
                         lastFmScrobblingEnabled = prefs[LastFmScrobblingEnabledKey] ?: false,
                         discordRpcEnabled = prefs[DiscordRpcEnabledKey] ?: false,
-                        discordToken = prefs[DiscordTokenKey] ?: "",
-                        openaiSecret = prefs[OpenaiApiKey] ?: "",
+                        discordToken = sensitiveSettings.discordToken,
+                        openaiSecret = sensitiveSettings.openaiSecret,
                         openaiModel = prefs[OpenaiModelKey] ?: "gpt-4o",
-                        anthropicSecret = prefs[AnthropicApiKey] ?: "",
+                        anthropicSecret = sensitiveSettings.anthropicSecret,
                         anthropicModel = prefs[AnthropicModelKey] ?: "claude-3-5-sonnet-20240620",
-                        geminiSecret = prefs[GeminiApiKey] ?: "",
+                        geminiSecret = sensitiveSettings.geminiSecret,
                         geminiModel = prefs[GeminiModelKey] ?: "gemini-1.5-pro",
                         selectedAiProvider = prefs[SelectedAiProviderKey] ?: "gemini",
                         volumeBoostEnabled = prefs[VolumeBoostEnabledKey] ?: false,
@@ -198,7 +213,9 @@ class SettingsViewModel @Inject constructor(
                         gaplessPlaybackEnabled = prefs[GaplessPlaybackKey] ?: false,
                         automixEnabled = prefs[AutomixKey] ?: true,
                         volumeNormalizationEnabled = prefs[VolumeNormalizationKey] ?: true,
+                        volumeSliderEnabled = prefs[VolumeSliderEnabledKey] ?: true,
                         pauseMusicOnMediaMuted = prefs[PauseOnDeviceMuteKey] ?: false,
+                        pictureInPictureEnabled = prefs[PictureInPictureEnabledKey] ?: true,
                         keepScreenOn = prefs[KeepScreenOnKey] ?: false,
                         stopMusicOnTaskClear = prefs[StopMusicOnTaskClearKey] ?: false,
                         crossfadeMs = prefs[CrossfadeMsKey] ?: 0,
@@ -211,9 +228,68 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    private suspend fun readSensitiveSettings(prefs: Preferences): SensitiveSettings =
+        SensitiveSettings(
+            discordToken = readDiscordToken(prefs),
+            openaiSecret = readSensitivePreference(prefs, OpenaiApiKey),
+            anthropicSecret = readSensitivePreference(prefs, AnthropicApiKey),
+            geminiSecret = readSensitivePreference(prefs, GeminiApiKey),
+        )
+
+    private suspend fun readDiscordToken(prefs: Preferences): String {
+        val secureToken = readSensitivePreference(prefs, DiscordTokenKey)
+        if (secureToken.isNotBlank()) return secureToken
+
+        val legacyToken = decodeSensitivePreference(prefs[LegacyDiscordTokenKey])
+        if (legacyToken.plainValue.isNotBlank()) {
+            context.dataStore.edit { settings ->
+                SensitivePreferenceCodec
+                    .encodeForStorage(legacyToken.plainValue, SecurePreferenceCipher::encrypt)
+                    ?.let { settings[DiscordTokenKey] = it }
+                settings.remove(LegacyDiscordTokenKey)
+            }
+        }
+        return legacyToken.plainValue
+    }
+
+    private suspend fun readSensitivePreference(
+        prefs: Preferences,
+        key: Preferences.Key<String>,
+    ): String {
+        val decoded = decodeSensitivePreference(prefs[key])
+        decoded.migratedStorageValue?.let { migratedValue ->
+            context.dataStore.edit { settings ->
+                settings[key] = migratedValue
+            }
+        }
+        return decoded.plainValue
+    }
+
+    private fun decodeSensitivePreference(rawValue: String?) =
+        SensitivePreferenceCodec.decodeForRead(
+            rawValue = rawValue,
+            isEncrypted = SecurePreferenceCipher::isEncrypted,
+            decryptOrPlain = SecurePreferenceCipher::decryptOrPlain,
+            encrypt = SecurePreferenceCipher::encrypt,
+        )
+
     private fun <T> setPreference(key: Preferences.Key<T>, value: T) {
         PreferenceStore.launchEdit(context.dataStore) {
             this[key] = value
+        }
+    }
+
+    private fun setSensitivePreference(key: Preferences.Key<String>, value: String) {
+        PreferenceStore.launchEdit(context.dataStore) {
+            val encryptedValue = SensitivePreferenceCodec.encodeForStorage(
+                plainValue = value,
+                encrypt = SecurePreferenceCipher::encrypt,
+            )
+            if (encryptedValue == null) {
+                remove(key)
+            } else {
+                this[key] = encryptedValue
+            }
         }
     }
 
@@ -221,7 +297,14 @@ class SettingsViewModel @Inject constructor(
     fun setPureBlackEnabled(enabled: Boolean) = setPreference(PureBlackKey, enabled)
     fun setDynamicColor(enabled: Boolean) = setPreference(DynamicThemeKey, enabled)
     fun setAppTheme(theme: AppTheme) = setPreference(AppThemeKey, theme.name)
-    fun setLogoVariant(variant: LogoVariant) = setPreference(LogoVariantKey, variant.name)
+    fun setLogoVariant(variant: LogoVariant) {
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) {
+                LauncherIconSwitcher(context).apply(variant)
+            }
+            setPreference(LogoVariantKey, variant.name)
+        }
+    }
     fun setPlayerStyle(style: PlayerStyle) = setPreference(PlayerStyleKey, style.name)
     fun setMiniPlayerStyle(style: MiniPlayerStyle) = setPreference(MiniPlayerStyleKey, style.name)
     fun setArtworkShape(shape: ArtworkShape) = setPreference(ArtworkShapeKey, shape.name)
@@ -230,8 +313,10 @@ class SettingsViewModel @Inject constructor(
     fun setIosLiquidGlassEnabled(enabled: Boolean) = setPreference(LiquidGlassEnabledKey, enabled)
     fun setForceMaxRefreshRate(enabled: Boolean) = setPreference(ForceMaxRefreshRateKey, enabled)
     fun setSwipeDownToDismissEnabled(enabled: Boolean) = setPreference(SwipeDownToDismissPlayerKey, enabled)
-    fun setNavBarAlpha(alpha: Float) = setPreference(NavBarAlphaKey, alpha)
-    fun setNavBarBlur(blur: Float) = setPreference(NavBarBlurKey, blur)
+    fun setNavBarAlpha(alpha: Float) = setPreference(NavBarAlphaKey, alpha.coerceIn(0f, 1f))
+    fun setNavBarBlur(blur: Float) = setPreference(NavBarBlurKey, blur.coerceIn(0f, 100f))
+    fun setMiniPlayerAlpha(alpha: Float) = setPreference(MiniPlayerAlphaKey, alpha.coerceIn(0f, 1f))
+    fun setMiniPlayerBlur(blur: Float) = setPreference(MiniPlayerBlurKey, blur.coerceIn(0f, 100f))
     fun setLyricsTextPosition(position: LyricsTextPosition) = setPreference(LyricsTextPositionKey, position.name)
     fun setLyricsAnimationType(type: LyricsAnimationType) = setPreference(LyricsAnimationTypeKey, type.name)
     fun setLyricsBlur(blur: Float) = setPreference(LyricsBlurKey, blur)
@@ -240,23 +325,25 @@ class SettingsViewModel @Inject constructor(
     fun setLastFmScrobblingEnabled(enabled: Boolean) = setPreference(LastFmScrobblingEnabledKey, enabled)
     fun setLastFmUsername(username: String) = setPreference(LastFmUsernameKey, username)
     fun setDiscordRpcEnabled(enabled: Boolean) = setPreference(DiscordRpcEnabledKey, enabled)
-    fun setDiscordToken(token: String) = setPreference(DiscordTokenKey, token)
-    fun setOpenaiSecret(secret: String) = setPreference(OpenaiApiKey, secret)
+    fun setDiscordToken(token: String) = setSensitivePreference(DiscordTokenKey, token)
+    fun setOpenaiSecret(secret: String) = setSensitivePreference(OpenaiApiKey, secret)
     fun setOpenaiModel(model: String) = setPreference(OpenaiModelKey, model)
-    fun setAnthropicSecret(secret: String) = setPreference(AnthropicApiKey, secret)
+    fun setAnthropicSecret(secret: String) = setSensitivePreference(AnthropicApiKey, secret)
     fun setAnthropicModel(model: String) = setPreference(AnthropicModelKey, model)
-    fun setGeminiSecret(secret: String) = setPreference(GeminiApiKey, secret)
+    fun setGeminiSecret(secret: String) = setSensitivePreference(GeminiApiKey, secret)
     fun setGeminiModel(model: String) = setPreference(GeminiModelKey, model)
     fun setSelectedAiProvider(provider: String) = setPreference(SelectedAiProviderKey, provider)
     fun setVolumeBoostEnabled(enabled: Boolean) = setPreference(VolumeBoostEnabledKey, enabled)
     fun setVolumeBoostAmount(amount: Int) = setPreference(VolumeBoostAmountKey, amount)
     fun setAudioOffloadEnabled(enabled: Boolean) = setPreference(AudioOffloadEnabledKey, enabled)
     fun setPauseMusicOnMediaMuted(enabled: Boolean) = setPreference(PauseOnDeviceMuteKey, enabled)
+    fun setPictureInPictureEnabled(enabled: Boolean) = setPreference(PictureInPictureEnabledKey, enabled)
     fun setKeepScreenOn(enabled: Boolean) = setPreference(KeepScreenOnKey, enabled)
     fun setStopMusicOnTaskClear(enabled: Boolean) = setPreference(StopMusicOnTaskClearKey, enabled)
     fun setGaplessPlaybackEnabled(enabled: Boolean) = setPreference(GaplessPlaybackKey, enabled)
     fun setAutomixEnabled(enabled: Boolean) = setPreference(AutomixKey, enabled)
     fun setVolumeNormalizationEnabled(enabled: Boolean) = setPreference(VolumeNormalizationKey, enabled)
+    fun setVolumeSliderEnabled(enabled: Boolean) = setPreference(VolumeSliderEnabledKey, enabled)
     fun setCrossfadeMs(ms: Int) = setPreference(CrossfadeMsKey, ms)
     fun setCrossfeedEnabled(enabled: Boolean) = setPreference(CrossfeedEnabledKey, enabled)
     fun setNextSongPreloadingEnabled(enabled: Boolean) = setPreference(NextSongPreloadingKey, enabled)

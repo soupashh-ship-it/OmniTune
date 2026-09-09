@@ -7,6 +7,9 @@
 package com.omnitune.app.viewmodels
 
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import androidx.media3.common.MediaItem
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -32,7 +35,13 @@ import com.omnitune.app.models.SleepTimerOption
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.SponsorSegment
 import com.omnitune.app.models.toDomainSong
+import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.models.toPresentationSong
+import com.omnitune.app.extensions.metadata
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.continuation.OmniAutoplayRecommendationProvider
+import com.omnitune.app.ui.player.AudioOutputDeviceMapper
+import com.omnitune.app.ui.player.AudioOutputRoute
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.player.OutputDevice
 import com.omnitune.app.ui.player.PlayerOverlay
@@ -49,6 +58,31 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import timber.log.Timber
+
+internal object RelatedSongsMapper {
+    fun fromMediaItems(currentSongId: String, mediaItems: List<MediaItem>, limit: Int = 50): List<Song> =
+        mediaItems
+            .mapNotNull { item -> item.metadata?.toDomainSong() ?: item.toFallbackSong() }
+            .filter { song -> song.id.isNotBlank() && song.id != currentSongId }
+            .distinctBy { song -> song.id }
+            .take(limit)
+
+    private fun MediaItem.toFallbackSong(): Song? {
+        val id = mediaId.takeIf { it.isNotBlank() } ?: return null
+        val title = mediaMetadata.title?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        val artist = mediaMetadata.artist?.toString()
+            ?: mediaMetadata.subtitle?.toString()
+            ?: ""
+        return Song(
+            id = id,
+            title = title,
+            artist = artist,
+            album = mediaMetadata.albumTitle?.toString().orEmpty(),
+            thumbnailUrl = mediaMetadata.artworkUri?.toString(),
+        )
+    }
+}
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -69,6 +103,9 @@ class PlayerViewModel @Inject constructor(
     private val _isFetchingRelated = MutableStateFlow(false)
     val isFetchingRelated: StateFlow<Boolean> = _isFetchingRelated.asStateFlow()
 
+    private val _relatedError = MutableStateFlow<String?>(null)
+    val relatedError: StateFlow<String?> = _relatedError.asStateFlow()
+
     private val _selectedRelatedIndices = MutableStateFlow<Set<Int>>(emptySet())
     val selectedRelatedIndices: StateFlow<Set<Int>> = _selectedRelatedIndices.asStateFlow()
 
@@ -86,6 +123,7 @@ class PlayerViewModel @Inject constructor(
 
     private val _availableDevices = MutableStateFlow<List<OutputDevice>>(emptyList())
     val availableDevices: StateFlow<List<OutputDevice>> = _availableDevices.asStateFlow()
+    private var preferredOutputRouteId: Int? = null
 
     val playerStyle: StateFlow<PlayerStyle> = dataStore.data.map { prefs ->
         val name = prefs[PlayerStyleKey] ?: PlayerStyle.YT_MUSIC.name
@@ -220,12 +258,38 @@ class PlayerViewModel @Inject constructor(
 
     fun refreshRelatedSongs(currentSongId: String?) {
         if (currentSongId.isNullOrBlank()) return
+        refreshRelatedSongs(Song(id = currentSongId, title = currentSongId, artist = ""))
+    }
+
+    fun refreshRelatedSongs(currentSong: Song?) {
+        if (currentSong?.id.isNullOrBlank()) return
+        val seed = currentSong
         viewModelScope.launch(Dispatchers.IO) {
             _isFetchingRelated.value = true
+            _relatedError.value = null
             try {
-                _relatedSongs.value = emptyList()
+                val cached = runCatching {
+                    database.relatedSongs(seed.id).map { it.toPresentationSong() }
+                }.getOrDefault(emptyList())
+                    .filter { it.id != seed.id }
+                    .distinctBy { it.id }
+
+                if (cached.isNotEmpty()) {
+                    _relatedSongs.value = cached
+                    return@launch
+                }
+
+                val provider = OmniAutoplayRecommendationProvider(database)
+                val seedMetadata = seed.toMediaMetadata()
+                val mediaItems = provider.songsRelatedToTrack(seedMetadata)
+                    .ifEmpty { provider.songsForTitleSearch(seedMetadata) }
+                    .ifEmpty { provider.quickPicks(seedMetadata) }
+
+                _relatedSongs.value = RelatedSongsMapper.fromMediaItems(seed.id, mediaItems)
             } catch (e: Exception) {
+                Timber.w(e, "Unable to load related songs for %s", seed.id)
                 _relatedSongs.value = emptyList()
+                _relatedError.value = "Couldn't load related tracks. Check your connection and try again."
             } finally {
                 _isFetchingRelated.value = false
             }
@@ -233,10 +297,47 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun refreshDevices() {
-        // Output device detection logic
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
-        val devices = mutableListOf<OutputDevice>()
-        devices.add(OutputDevice(id = "phone_speaker", name = "This Device", type = com.omnitune.app.ui.player.DeviceType.PHONE, isSelected = true))
-        _availableDevices.value = devices
+        val routes = currentAudioOutputRoutes()
+        val selectedRouteId = preferredOutputRouteId?.takeIf { selected ->
+            routes.any { it.id == selected }
+        }
+        if (selectedRouteId == null && preferredOutputRouteId != null) {
+            preferredOutputRouteId = null
+        }
+        _availableDevices.value = AudioOutputDeviceMapper.build(routes, selectedRouteId)
+    }
+
+    fun switchOutputDevice(device: OutputDevice, playerConnection: PlayerConnection?) {
+        val targetRouteId = device.routeId
+        val targetDevice = targetRouteId?.let(::findAudioOutputDevice)
+        if (targetRouteId != null && targetDevice == null) {
+            Timber.w("Requested output route %s is no longer available", targetRouteId)
+            refreshDevices()
+            return
+        }
+
+        try {
+            playerConnection?.setPreferredAudioDevice(targetDevice)
+            preferredOutputRouteId = targetRouteId
+            refreshDevices()
+        } catch (e: Exception) {
+            Timber.w(e, "Unable to switch audio output route")
+            refreshDevices()
+        }
+    }
+
+    private fun currentAudioOutputRoutes(): List<AudioOutputRoute> {
+        val audioManager = context.getSystemService(AudioManager::class.java) ?: return emptyList()
+        return audioManager
+            .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .filter { it.isSink }
+            .map(AudioOutputDeviceMapper::descriptorFrom)
+    }
+
+    private fun findAudioOutputDevice(routeId: Int): AudioDeviceInfo? {
+        val audioManager = context.getSystemService(AudioManager::class.java) ?: return null
+        return audioManager
+            .getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .firstOrNull { it.id == routeId && it.isSink }
     }
 }

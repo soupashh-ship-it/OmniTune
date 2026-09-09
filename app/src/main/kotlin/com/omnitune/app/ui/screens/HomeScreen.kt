@@ -73,6 +73,7 @@ import com.omnitune.app.models.PlaylistDisplayItem
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.ui.component.*
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -98,6 +99,7 @@ fun HomeScreen(
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val downloadUtil = LocalDownloadUtil.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     var showSongMenu by remember { mutableStateOf(false) }
     var selectedSong: Song? by remember { mutableStateOf(null) }
@@ -180,7 +182,7 @@ fun HomeScreen(
                     LazyColumn(
                         state = lazyListState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 140.dp),
+                        contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding),
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         item(key = "header", contentType = "header") {
@@ -338,6 +340,27 @@ fun HomeScreen(
                                     )
                                 }
                             }
+                        }
+
+                        if (uiState.isLoadingMore) {
+                            item(key = "loading_more", contentType = "loading_more") {
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                )
+                            }
+                        } else {
+                            val paginationError = uiState.paginationError
+                        if (paginationError != null) {
+                            item(key = "pagination_error", contentType = "pagination_error") {
+                                PaginationErrorCard(
+                                    message = paginationError,
+                                    onRetry = viewModel::loadMore,
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                        }
                         }
 
                         item(key = "create_mix_card") {
@@ -655,6 +678,34 @@ private fun QuickAccessGrid(
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaginationErrorCard(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = SquircleShape,
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onRetry) {
+                Text("Retry")
             }
         }
     }

@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.omnitune.app.update.ChangelogSource
 import com.omnitune.app.update.ChangelogViewModel
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.component.SettingsCard as PortedSettingsCard
 import com.omnitune.app.ui.theme.SquircleShape
 
@@ -53,6 +54,7 @@ fun ChangelogScreen(
     val release = state.release
     val surfaceColor = MaterialTheme.colorScheme.surface
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
+    val chromeInsets = LocalRouteChromeInsets.current
 
     Scaffold(
         topBar = {
@@ -77,7 +79,12 @@ fun ChangelogScreen(
                     ),
                 )
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = chromeInsets.contentBottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {

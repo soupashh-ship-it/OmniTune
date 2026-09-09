@@ -17,7 +17,9 @@ data class OutputDevice(
     val id: String,
     val name: String,
     val type: DeviceType,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val routeId: Int? = null,
+    val subtitle: String? = null,
 )
 
 enum class DeviceType {
@@ -103,6 +105,7 @@ data class PlayerScreenState(
     val isFetchingLyrics: Boolean = false,
     val relatedSongs: List<Song> = emptyList(),
     val isFetchingRelated: Boolean = false,
+    val relatedError: String? = null,
     val selectedRelatedIndices: Set<Int> = emptySet(),
     val isLoggedIn: Boolean = false,
     val sleepTimerOption: SleepTimerOption = SleepTimerOption.OFF,

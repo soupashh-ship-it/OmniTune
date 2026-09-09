@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,11 +36,8 @@ import androidx.compose.ui.unit.sp
 import com.omnitune.app.models.MusicSource
 import com.omnitune.app.models.SleepTimerOption
 import com.omnitune.app.models.Song
-import com.omnitune.app.ui.component.BetaBadge
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.screens.player.formatDuration
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.CircularProgressIndicator
 
 val LocalCurrentDownloadProgress = androidx.compose.runtime.compositionLocalOf<Float?> { null }
 
@@ -62,8 +58,6 @@ fun SongInfoSection(
     sleepTimerOption: SleepTimerOption = SleepTimerOption.OFF,
     showMoreButton: Boolean = true,
     isClassic: Boolean = false,
-    isAIEnabled: Boolean = false,
-    aiStatus: String? = null,
     showInlineLikeCapsule: Boolean = true,
     showTitleArrow: Boolean = false,
     onTitleArrowClick: () -> Unit = {},
@@ -83,7 +77,7 @@ fun SongInfoSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     AnimatedContent(
-                        targetState = song?.id,
+                        targetState = song?.title ?: "No song playing",
                         transitionSpec = {
                             (slideInVertically(
                                 animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
@@ -93,7 +87,7 @@ fun SongInfoSection(
                             ) { -it / 3 } + fadeOut())
                         },
                         label = "song_title_animation"
-                    ) { _ ->
+                    ) { title ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -101,7 +95,7 @@ fun SongInfoSection(
                                 .then(if (showTitleArrow) Modifier.clickable(onClick = onTitleArrowClick) else Modifier)
                         ) {
                             Text(
-                                text = song?.title ?: "No song playing",
+                                text = title,
                                 style = (if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.headlineSmall).copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = if (compact) 20.sp else 24.sp
@@ -132,7 +126,7 @@ fun SongInfoSection(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     AnimatedContent(
-                        targetState = song?.id,
+                        targetState = song?.artist ?: "Unknown Artist",
                         transitionSpec = {
                             (slideInVertically(
                                 animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
@@ -142,9 +136,9 @@ fun SongInfoSection(
                             ) { -it / 4 } + fadeOut())
                         },
                         label = "song_artist_animation"
-                    ) { _ ->
+                    ) { artist ->
                         Text(
-                            text = song?.artist ?: "Unknown Artist",
+                            text = artist,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = if (compact) 14.sp else 16.sp
                             ),
@@ -152,7 +146,7 @@ fun SongInfoSection(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
-                                .clickable(enabled = !song?.artist.isNullOrEmpty()) {
+                                .clickable(enabled = artist.isNotBlank() && artist != "Unknown Artist") {
                                     song?.artist?.let(onArtistClick)
                                 }
                                 .basicMarquee(

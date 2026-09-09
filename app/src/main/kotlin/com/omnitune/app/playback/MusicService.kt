@@ -116,6 +116,7 @@ class MusicService : MediaLibraryService(), Player.Listener {
         const val NOTIFICATION_ID = PlaybackNotificationManager.NOTIFICATION_ID
         private const val ACTION_PLAY = PlaybackNotificationManager.ACTION_PLAY
         private const val ACTION_PAUSE = PlaybackNotificationManager.ACTION_PAUSE
+        private const val ACTION_PLAY_PAUSE = PlaybackActions.ACTION_PLAY_PAUSE
         private const val ACTION_NEXT = PlaybackNotificationManager.ACTION_NEXT
         private const val ACTION_PREVIOUS = PlaybackNotificationManager.ACTION_PREVIOUS
         private const val ACTION_LIKE = PlaybackNotificationManager.ACTION_LIKE
@@ -206,6 +207,15 @@ class MusicService : MediaLibraryService(), Player.Listener {
             ACTION_PAUSE -> {
                 pausePlayback()
                 postMediaNotificationFallback("action-pause", force = true)
+                return START_STICKY
+            }
+            ACTION_PLAY_PAUSE -> {
+                if (::player.isInitialized && player.isPlaying) {
+                    pausePlayback()
+                } else {
+                    playOrResolveCurrent()
+                }
+                postMediaNotificationFallback("action-play-pause", force = true)
                 return START_STICKY
             }
             ACTION_NEXT -> {
@@ -453,6 +463,19 @@ class MusicService : MediaLibraryService(), Player.Listener {
             }
 
         sessionCallback.onPlayerReady(player)
+        sessionCallback.configureLibrary(
+            database = database,
+            downloadUtil = downloadUtil,
+            scope = scope,
+            resolveExternalMediaItems = { items ->
+                StreamUrlResolver.resolveMediaItems(
+                    items = items,
+                    streamExtractor = streamExtractor,
+                    downloadUtil = downloadUtil,
+                    qualityMode = getPlaybackQualityMode(),
+                )
+            },
+        )
 
         crossfadePlaybackCoordinator = CrossfadePlaybackCoordinator(
             context = this,

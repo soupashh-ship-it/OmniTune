@@ -44,12 +44,12 @@ class PlaybackNotificationContractTest {
         val paused = PlaybackNotificationContract.actions(isPlaying = false, isLiked = false)
         assertEquals(
             listOf(
-                PlaybackNotificationManager.ACTION_PREVIOUS,
-                PlaybackNotificationManager.ACTION_PLAY,
-                PlaybackNotificationManager.ACTION_NEXT,
-                PlaybackNotificationManager.ACTION_LIKE,
-                PlaybackNotificationManager.ACTION_REPEAT,
-                PlaybackNotificationManager.ACTION_STOP,
+                PlaybackActions.ACTION_PREVIOUS,
+                PlaybackActions.ACTION_PLAY,
+                PlaybackActions.ACTION_NEXT,
+                PlaybackActions.ACTION_LIKE,
+                PlaybackActions.ACTION_REPEAT,
+                PlaybackActions.ACTION_STOP,
             ),
             paused.map(PlaybackNotificationActionSpec::action),
         )
@@ -57,8 +57,16 @@ class PlaybackNotificationContractTest {
         assertEquals("Play", paused[1].title)
 
         val playing = PlaybackNotificationContract.actions(isPlaying = true, isLiked = true)
-        assertEquals(PlaybackNotificationManager.ACTION_PAUSE, playing[1].action)
+        assertEquals(PlaybackActions.ACTION_PAUSE, playing[1].action)
         assertEquals("Pause", playing[1].title)
         assertEquals("Like", playing[3].title)
+    }
+
+    @Test
+    fun pipBroadcastActionsRouteToPlaybackActionNamespace() {
+        assertEquals("com.omnitune.app.pip.action.PLAY_PAUSE", PlaybackActions.ACTION_PIP_PLAY_PAUSE)
+        assertEquals("com.omnitune.app.playback.action.PLAY_PAUSE", PlaybackActions.ACTION_PLAY_PAUSE)
+        assertEquals("com.omnitune.app.playback.action.NEXT", PlaybackActions.ACTION_NEXT)
+        assertEquals("com.omnitune.app.playback.action.PREVIOUS", PlaybackActions.ACTION_PREVIOUS)
     }
 }

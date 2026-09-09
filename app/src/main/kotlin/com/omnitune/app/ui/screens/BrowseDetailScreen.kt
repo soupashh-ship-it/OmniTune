@@ -56,6 +56,7 @@ import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.ui.component.AddToPlaylistSheet
 import com.omnitune.app.ui.component.CreatePlaylistDialog
 import com.omnitune.app.ui.component.SongMenuBottomSheet
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.component.shimmer.ShimmerHost
 import com.omnitune.app.ui.component.shimmer.ShimmerShape
 import com.omnitune.app.ui.theme.SquircleShape
@@ -77,6 +78,7 @@ fun BrowseDetailScreen(
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val downloadUtil = LocalDownloadUtil.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     var selectedSong by remember { mutableStateOf<Song?>(null) }
     var showSongMenu by remember { mutableStateOf(false) }
@@ -88,7 +90,7 @@ fun BrowseDetailScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 140.dp),
+            contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item(contentType = "header") {

@@ -2,8 +2,8 @@
 <!-- Aether — Single Tone variant. Black marks on cyan/violet gradient. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="400dp"
-    android:height="400dp"
+    android:width="200dp"
+    android:height="200dp"
     android:viewportWidth="400"
     android:viewportHeight="400">
     <path android:pathData="M0,0h400v400h-400z" android:fillType="nonZero">

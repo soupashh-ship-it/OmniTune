@@ -77,8 +77,6 @@ fun LiquidGlassPlayerStyle(
     progressProvider: () -> Float,
     positionProvider: () -> Long,
     durationProvider: () -> Long,
-    isAIEnabled: Boolean = false,
-    aiStatus: String? = null,
     windowSizeClass: WindowSizeClass? = null,
     blurRadius: Float = 60f,
     intensity: Float = 1f,
@@ -196,8 +194,6 @@ fun LiquidGlassPlayerStyle(
             progressProvider = progressProvider,
             positionProvider = positionProvider,
             durationProvider = durationProvider,
-            isAIEnabled = isAIEnabled,
-            aiStatus = aiStatus,
             windowSizeClass = windowSizeClass
         )
     }

@@ -8,25 +8,29 @@ object AppChangelog {
         releaseName = "OmniTune v${BuildConfig.VERSION_NAME}",
         source = ChangelogSource.Bundled,
         body = """
-# OmniTune v0.13.4
+# OmniTune v${BuildConfig.VERSION_NAME}
 
-Short donation reliability hotfix.
+SuvMusic UI remediation prerelease.
 
 ## Fixes
 
-- Added a visible UPI ID in Settings > About donation card.
-- Added a Copy UPI fallback for payment apps that reject the direct UPI intent.
-- Kept donation amount entry inside the user's UPI app so donors can choose their own amount.
+- Restored real download state, retry, cancel, delete, storage, and video mapping.
+- Repaired PiP, deep links, media library browsing, output routing, volume-key behavior, and keep-screen-on handling.
+- Wired customization, launcher icon variants, route-aware mini-player insets, prerelease updates, and the AI equalizer shortcut.
+- Encrypted sensitive AI/Discord token storage and cleaned incomplete localization resources.
+- Reduced lint issues from blocking errors to non-blocking warnings.
 
 ## Verification
 
-- Focused About metadata unit test: passed
-- `compileDebugKotlin`: passed
+- `assembleDebug`: passed
+- `testDebugUnitTest`: passed
+- `lintDebug`: passed
+- `assembleRelease`: passed
 
 ## Build
 
-- Version: `0.13.4`
-- Version code: `73`
+- Version: `${BuildConfig.VERSION_NAME}`
+- Version code: `${BuildConfig.VERSION_CODE}`
         """.trimIndent(),
     )
 }

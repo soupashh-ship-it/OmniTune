@@ -24,7 +24,9 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import coil3.compose.AsyncImage
 import com.omnitune.app.ui.utils.LyricsStyle
 
@@ -39,6 +41,7 @@ fun DynamicLyricsBackground(
     
     Box(modifier = modifier.fillMaxSize().background(overlayColor)) {
         val infiniteTransition = rememberInfiniteTransition(label = "blobs")
+        val density = LocalDensity.current
         
         val blob1Offset by infiniteTransition.animateValue(
             initialValue = (-100).dp,
@@ -66,7 +69,11 @@ fun DynamicLyricsBackground(
         Box(
             modifier = Modifier
                 .size(400.dp)
-                .offset(x = blob1Offset, y = blob2Offset)
+                .offset {
+                    with(density) {
+                        IntOffset(blob1Offset.roundToPx(), blob2Offset.roundToPx())
+                    }
+                }
                 .alpha(0.4f)
                 .blur(40.dp)
                 .background(
@@ -85,7 +92,11 @@ fun DynamicLyricsBackground(
         Box(
             modifier = Modifier
                 .size(300.dp)
-                .offset(x = blob2Offset, y = blob1Offset)
+                .offset {
+                    with(density) {
+                        IntOffset(blob2Offset.roundToPx(), blob1Offset.roundToPx())
+                    }
+                }
                 .alpha(0.3f)
                 .blur(32.dp)
                 .background(

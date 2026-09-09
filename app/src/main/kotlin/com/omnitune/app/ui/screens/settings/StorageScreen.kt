@@ -28,7 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.LocalDownloadUtil
 import com.omnitune.app.ui.theme.SquircleShape
@@ -37,6 +37,7 @@ import com.omnitune.app.viewmodels.SettingsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -469,6 +470,7 @@ private fun formatStorageSize(bytes: Long): String {
         .toInt()
         .coerceIn(0, units.lastIndex)
     return String.format(
+        Locale.US,
         "%.1f %s",
         bytes / Math.pow(1024.0, digitGroups.toDouble()),
         units[digitGroups],

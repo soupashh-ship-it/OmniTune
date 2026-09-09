@@ -41,7 +41,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -91,6 +90,7 @@ import com.omnitune.app.models.toMediaMetadata
 import com.omnitune.app.playback.EqualizerBand
 import com.omnitune.app.playback.EqualizerPresets
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.PlayerProgressState
 import com.omnitune.app.playback.decodeEqualizerBands
 import com.omnitune.app.playback.encodeEqualizerBands
 import com.omnitune.app.playback.withPreamp
@@ -119,12 +119,10 @@ import com.omnitune.app.ui.screens.PlaylistManagementViewModel
 import com.omnitune.app.ui.theme.YtFlatBackground
 import com.omnitune.app.utils.rememberPreference
 import com.omnitune.app.viewmodels.PlayerViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -137,8 +135,10 @@ fun PlayerScreen(
     onOpenQueue: () -> Unit = {},
     onNavigateToAlbum: (String) -> Unit = {},
     onNavigateToArtist: (String) -> Unit = {},
+    onOpenAIEqualizer: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel(),
-    volumeKeyEvents: SharedFlow<Unit>? = null
+    volumeKeyEvents: SharedFlow<Unit>? = null,
+    volumeSliderEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     val meta by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
@@ -150,24 +150,16 @@ fun PlayerScreen(
     val currentMediaItemIndex by (playerConnection?.currentMediaItemIndex ?: flowOf(-1)).collectAsStateWithLifecycle(initialValue = -1)
     val queueIndices by (playerConnection?.queueIndices ?: flowOf(emptyList())).collectAsStateWithLifecycle(initialValue = emptyList())
     val playbackParameters by (playerConnection?.playbackParameters ?: flowOf(PlaybackParameters.DEFAULT)).collectAsStateWithLifecycle(initialValue = PlaybackParameters.DEFAULT)
+    val initialProgress = remember(meta?.id, meta?.duration) {
+        PlayerProgressState(durationMs = meta?.duration?.toLong()?.takeIf { it > 0L }?.times(1000L) ?: 0L)
+    }
+    val progressState by remember(playerConnection, meta?.id, meta?.duration) {
+        playerConnection?.progressState ?: flowOf(initialProgress)
+    }.collectAsStateWithLifecycle(initialValue = initialProgress)
 
     val currentSongEntity by (playerConnection?.currentSong ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
 
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
     var showVideoErrorDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(playerConnection, isPlaying) {
-        while (isActive) {
-            val p = playerConnection?.player
-            if (p != null) {
-                currentPosition = p.currentPosition.coerceAtLeast(0L)
-                val d = p.duration
-                duration = if (d > 0) d else meta?.duration?.toLong()?.times(1000L) ?: 0L
-            }
-            delay(500)
-        }
-    }
 
     val song: Song? = remember(meta, currentSongEntity) {
         val metadata = meta
@@ -204,8 +196,8 @@ fun PlayerScreen(
     val pState = PlayerState(
         currentSong = song,
         isPlaying = isPlaying,
-        currentPosition = currentPosition,
-        duration = duration,
+        currentPosition = progressState.positionMs,
+        duration = progressState.durationMs,
         isLoading = playbackStateInt == STATE_BUFFERING,
         queue = queueSongs,
         currentIndex = currentMediaItemIndex,
@@ -223,6 +215,7 @@ fun PlayerScreen(
     val activeOverlay by viewModel.activeOverlay.collectAsStateWithLifecycle()
     val relatedSongs by viewModel.relatedSongs.collectAsStateWithLifecycle()
     val isFetchingRelated by viewModel.isFetchingRelated.collectAsStateWithLifecycle()
+    val relatedError by viewModel.relatedError.collectAsStateWithLifecycle()
     val selectedRelatedIndices by viewModel.selectedRelatedIndices.collectAsStateWithLifecycle()
     val selectedQueueIndices by viewModel.selectedQueueIndices.collectAsStateWithLifecycle()
     val playerStyle by viewModel.playerStyle.collectAsStateWithLifecycle()
@@ -239,6 +232,7 @@ fun PlayerScreen(
         playerState = pState,
         relatedSongs = relatedSongs,
         isFetchingRelated = isFetchingRelated,
+        relatedError = relatedError,
         selectedRelatedIndices = selectedRelatedIndices,
         sleepTimerOption = if (sleepTimerRemaining > 0) SleepTimerOption.CUSTOM else SleepTimerOption.OFF,
         sleepTimerRemainingMs = if (sleepTimerRemaining > 0) sleepTimerRemaining else null
@@ -313,6 +307,10 @@ fun PlayerScreen(
         onSetSleepTimer = { option, minutes ->
             playerConnection?.applySleepTimer(option, minutes)
         },
+        onSwitchDevice = { device ->
+            viewModel.switchOutputDevice(device, playerConnection)
+        },
+        onRefreshDevices = viewModel::refreshDevices,
         onSetPlaybackParameters = { speed, pitch ->
             playerConnection?.setPlaybackParameters(speed, pitch)
         },
@@ -326,6 +324,7 @@ fun PlayerScreen(
             playerConnection?.playNext(related.toPlaybackMediaItem())
             playerConnection?.seekToNext()
         },
+        onShowAIEqualizer = onOpenAIEqualizer,
         onClearQueue = { playerConnection?.clearQueue() }
     )
 
@@ -335,6 +334,7 @@ fun PlayerScreen(
         player = playerConnection?.player,
         playerViewModel = viewModel,
         volumeKeyEvents = volumeKeyEvents,
+        volumeSliderEnabled = volumeSliderEnabled,
         playerConnection = playerConnection
     )
 
@@ -360,6 +360,7 @@ fun PlayerScreen(
     player: Player? = null,
     playerViewModel: PlayerViewModel = hiltViewModel(),
     volumeKeyEvents: SharedFlow<Unit>? = null,
+    volumeSliderEnabled: Boolean = true,
     playerConnection: PlayerConnection? = null
 ) {
     val playbackInfo = state.playbackInfo
@@ -519,7 +520,7 @@ fun PlayerScreen(
                                 onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
                                 onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
                                 onShowRelated = {
-                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.refreshRelatedSongs(song)
                                     playerViewModel.setActiveOverlay(PlayerOverlay.Related)
                                 },
                                 onShowDevices = {
@@ -563,7 +564,7 @@ fun PlayerScreen(
                                 onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
                                 onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
                                 onShowRelated = {
-                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.refreshRelatedSongs(song)
                                     playerViewModel.setActiveOverlay(PlayerOverlay.Related)
                                 },
                                 onShowDevices = {
@@ -584,8 +585,6 @@ fun PlayerScreen(
                                 progressProvider = progressProvider,
                                 positionProvider = positionProvider,
                                 durationProvider = durationProvider,
-                                isAIEnabled = false,
-                                aiStatus = null,
                                 backgroundArtworkUrl = if (animatedBackgroundEnabled) song?.thumbnailUrl else ""
                             )
                         }
@@ -610,7 +609,7 @@ fun PlayerScreen(
                                 onShowQueue = { playerViewModel.setActiveOverlay(PlayerOverlay.Queue) },
                                 onShowLyrics = { playerViewModel.setActiveOverlay(PlayerOverlay.Lyrics) },
                                 onShowRelated = {
-                                    playerViewModel.refreshRelatedSongs(song?.id)
+                                    playerViewModel.refreshRelatedSongs(song)
                                     playerViewModel.setActiveOverlay(PlayerOverlay.Related)
                                 },
                                 onShowDevices = {
@@ -648,7 +647,7 @@ fun PlayerScreen(
                     dominantColors = dominantColors,
                     playerViewModel = playerViewModel,
                     isAppInDarkTheme = isDarkTheme,
-                    volumeSliderEnabled = true,
+                    volumeSliderEnabled = volumeSliderEnabled,
                     volumeKeyEvents = volumeKeyEvents,
                     isFullScreen = isFullScreen,
                     isExpanded = isExpanded,
@@ -869,6 +868,8 @@ fun BoxScope.OverlaysContent(
                 isVisible = true,
                 relatedSongs = state.relatedSongs,
                 isLoading = state.isFetchingRelated,
+                errorMessage = state.relatedError,
+                onRetry = { playerViewModel.refreshRelatedSongs(song) },
                 selectedIndices = state.selectedRelatedIndices,
                 onToggleSelection = actions.onToggleRelatedSelection,
                 onSelectAll = actions.onSelectAllRelated,

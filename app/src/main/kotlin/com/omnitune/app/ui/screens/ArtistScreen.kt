@@ -66,6 +66,7 @@ import com.omnitune.app.ui.component.PremiumLoadingScreen
 import com.omnitune.app.ui.component.SongMenuBottomSheet
 import com.omnitune.app.ui.component.bounceClick
 import com.omnitune.app.ui.component.rememberDominantColors
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.PillShape
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.ui.utils.ImageUtils
@@ -94,6 +95,7 @@ fun ArtistScreen(
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val downloadUtil = LocalDownloadUtil.current
+    val chromeInsets = LocalRouteChromeInsets.current
     var showSongMenu by remember { mutableStateOf(false) }
     var selectedSong by remember { mutableStateOf<Song?>(null) }
 
@@ -150,7 +152,7 @@ fun ArtistScreen(
                 LazyColumn(
                     state = scrollState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 120.dp)
+                    contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding)
                 ) {
                     // Immersive Header
                     item {

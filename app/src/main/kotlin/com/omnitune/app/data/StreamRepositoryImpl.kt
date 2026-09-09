@@ -73,8 +73,6 @@ class StreamRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun probeStream(url: String): Boolean = true
-
     override fun getCachedStream(songId: String): StreamInfo? = streamCache.get(songId)
 
     override fun clearCache() = streamCache.clear()

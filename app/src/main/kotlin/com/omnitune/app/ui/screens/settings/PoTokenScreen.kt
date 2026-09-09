@@ -50,6 +50,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.omnitune.app.ui.component.LeadingIconBox
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.component.SettingsCard as PortedSettingsCard
 import com.omnitune.app.ui.component.SettingsSectionTitle as PortedSettingsSectionTitle
 import com.omnitune.app.ui.component.SettingsSwitchRow as PortedSettingsSwitchRow
@@ -63,6 +64,7 @@ fun PoTokenScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val chromeInsets = LocalRouteChromeInsets.current
     var gvsInput by rememberSaveable { mutableStateOf("") }
     var playerInput by rememberSaveable { mutableStateOf("") }
     var initializedInputs by rememberSaveable { mutableStateOf(false) }
@@ -104,7 +106,12 @@ fun PoTokenScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = chromeInsets.contentBottomPadding,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {

@@ -153,6 +153,13 @@ fun OutputDeviceSheet(
                                     ),
                                     color = finalContentColor
                                 )
+                                currentDevice.subtitle?.let { subtitle ->
+                                    Text(
+                                        text = subtitle,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = finalContentColor.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
                             Icon(
                                 Icons.Rounded.Check,
@@ -177,17 +184,22 @@ fun OutputDeviceSheet(
                 if (devices.isEmpty()) {
                     ScanningState(finalAccentColor, finalContentColor)
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(bottom = 8.dp)
-                    ) {
-                        items(items = devices.filter { !it.isSelected }, key = { it.id }) { device ->
-                            DeviceListItem(
-                                device = device,
-                                onClick = { onDeviceSelected(device) },
-                                contentColor = finalContentColor,
-                                accentColor = finalAccentColor
-                            )
+                    val alternateDevices = devices.filter { !it.isSelected }
+                    if (alternateDevices.isEmpty()) {
+                        NoAlternateDevicesState(finalContentColor)
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(bottom = 8.dp)
+                        ) {
+                            items(items = alternateDevices, key = { it.id }) { device ->
+                                DeviceListItem(
+                                    device = device,
+                                    onClick = { onDeviceSelected(device) },
+                                    contentColor = finalContentColor,
+                                    accentColor = finalAccentColor
+                                )
+                            }
                         }
                     }
                 }
@@ -283,7 +295,7 @@ private fun DeviceListItem(
                 color = contentColor
             )
             Text(
-                text = device.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                text = device.subtitle ?: device.type.name.lowercase().replaceFirstChar { it.uppercase() },
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.copy(alpha = 0.4f)
             )
@@ -328,6 +340,23 @@ private fun ScanningState(accentColor: Color, contentColor: Color) {
                 color = contentColor.copy(alpha = 0.5f)
             )
         }
+    }
+}
+
+@Composable
+private fun NoAlternateDevicesState(contentColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(128.dp)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No alternate Android audio routes are available.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = contentColor.copy(alpha = 0.5f)
+        )
     }
 }
 

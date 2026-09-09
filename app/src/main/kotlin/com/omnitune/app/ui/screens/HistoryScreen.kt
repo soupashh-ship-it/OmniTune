@@ -87,6 +87,7 @@ import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.ui.component.AddToPlaylistSheet
 import com.omnitune.app.ui.component.CreatePlaylistDialog
 import com.omnitune.app.ui.component.SongMenuBottomSheet
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import java.text.SimpleDateFormat
 import java.time.ZoneId
 import java.util.Date
@@ -108,6 +109,7 @@ fun HistoryScreen(
     val playlistState by playlistViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
+    val chromeInsets = LocalRouteChromeInsets.current
     val haptic = LocalHapticFeedback.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
@@ -349,7 +351,7 @@ fun HistoryScreen(
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 120.dp),
+                        contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding),
                     ) {
                         groupedByDate.forEach { (dateLabel, itemsForDate) ->
                             stickyHeader {

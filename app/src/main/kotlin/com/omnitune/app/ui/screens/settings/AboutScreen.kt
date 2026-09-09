@@ -38,6 +38,7 @@ import com.omnitune.app.ui.screens.settings.about.AboutHeroSection
 import com.omnitune.app.ui.screens.settings.about.AboutInformationSection
 import com.omnitune.app.ui.screens.settings.about.AboutStorySection
 import com.omnitune.app.ui.screens.settings.about.AboutTechStackSection
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.utils.animateEnter
 import com.omnitune.app.ui.utils.dpadFocusable
 
@@ -54,6 +55,7 @@ fun AboutScreen(
     onSupportClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -84,7 +86,7 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 100.dp),
+            contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding),
         ) {
             item { Column(modifier = Modifier.animateEnter(0)) { AboutHeroSection() } }
             item { Column(modifier = Modifier.animateEnter(1)) { AboutDescriptionSection() } }

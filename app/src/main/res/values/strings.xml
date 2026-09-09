@@ -220,7 +220,7 @@
     <string name="error_connection_message">Could not load artist data. Please check your internet connection and try again.</string>
     <string name="error_generic_title">Something Went Wrong</string>
     <string name="error_generic_message">An unknown error occurred while loading the artist page.</string>
-    <string name="error_loading">Loading...</string>
+    <string name="error_loading">Loading&#8230;</string>
     <string name="listen_together">Listen Together</string>
     <string name="nav_home">Home</string>
     <string name="nav_search">Search</string>

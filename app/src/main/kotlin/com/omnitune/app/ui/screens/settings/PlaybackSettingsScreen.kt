@@ -192,6 +192,13 @@ fun PlaybackSettingsScreen(
                         onClick = { showDoubleTapSeekSheet = true }
                     )
                     SettingsSwitchRow(
+                        title = "Volume Overlay",
+                        subtitle = "Show the donor volume slider while music is playing",
+                        icon = Icons.Default.VolumeUp,
+                        checked = uiState.volumeSliderEnabled,
+                        onCheckedChange = viewModel::setVolumeSliderEnabled
+                    )
+                    SettingsSwitchRow(
                         title = "Audio Offload",
                         subtitle = "Offload audio processing to DSP to save battery",
                         icon = Icons.Default.BatteryChargingFull,

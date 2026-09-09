@@ -23,7 +23,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.ui.component.BetaBadge
 import com.omnitune.app.ui.component.SettingsCard
-import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.viewmodels.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,16 +103,16 @@ fun AISettingsScreen(
                 )
                 SettingsCard {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        SecretSettingsField(
                             value = geminiValue,
-                            onValueChange = {
-                                geminiValue = it
-                                viewModel.setGeminiSecret(it)
+                            persistedValue = uiState.geminiSecret,
+                            label = "Gemini API Key",
+                            onValueChange = { geminiValue = it },
+                            onSave = viewModel::setGeminiSecret,
+                            onClear = {
+                                geminiValue = ""
+                                viewModel.setGeminiSecret("")
                             },
-                            label = { Text("Gemini API Key") },
-                            singleLine = true,
-                            shape = SquircleShape,
-                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -136,16 +135,16 @@ fun AISettingsScreen(
                 )
                 SettingsCard {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        SecretSettingsField(
                             value = openaiValue,
-                            onValueChange = {
-                                openaiValue = it
-                                viewModel.setOpenaiSecret(it)
+                            persistedValue = uiState.openaiSecret,
+                            label = "OpenAI API Key",
+                            onValueChange = { openaiValue = it },
+                            onSave = viewModel::setOpenaiSecret,
+                            onClear = {
+                                openaiValue = ""
+                                viewModel.setOpenaiSecret("")
                             },
-                            label = { Text("OpenAI API Key") },
-                            singleLine = true,
-                            shape = SquircleShape,
-                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -168,16 +167,16 @@ fun AISettingsScreen(
                 )
                 SettingsCard {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        SecretSettingsField(
                             value = anthropicValue,
-                            onValueChange = {
-                                anthropicValue = it
-                                viewModel.setAnthropicSecret(it)
+                            persistedValue = uiState.anthropicSecret,
+                            label = "Anthropic API Key",
+                            onValueChange = { anthropicValue = it },
+                            onSave = viewModel::setAnthropicSecret,
+                            onClear = {
+                                anthropicValue = ""
+                                viewModel.setAnthropicSecret("")
                             },
-                            label = { Text("Anthropic API Key") },
-                            singleLine = true,
-                            shape = SquircleShape,
-                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(

@@ -30,9 +30,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = UpdateState.Checking
             runCatching {
-                appUpdateChecker.checkForUpdate(
-                    allowPrereleases = channel == UpdateChannel.NIGHTLY,
-                )
+                appUpdateChecker.checkForUpdate(channel = channel)
             }
                 .onSuccess { update ->
                     _state.value = if (update == null) {

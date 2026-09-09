@@ -8,6 +8,7 @@
 
 package com.omnitune.app.ui.utils
 
+import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -38,7 +39,12 @@ class AppHaptics(
     }
 
     fun reject() {
-        performViewFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY_RELEASE)
+        val feedback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            android.view.HapticFeedbackConstants.VIRTUAL_KEY_RELEASE
+        } else {
+            android.view.HapticFeedbackConstants.LONG_PRESS
+        }
+        performViewFeedback(feedback)
     }
 }
 

@@ -291,12 +291,12 @@ class PlaybackNotificationManager(
     companion object {
         const val CHANNEL_ID = "music_player"
         const val NOTIFICATION_ID = 1
-        const val ACTION_PLAY = "com.omnitune.app.playback.action.PLAY"
-        const val ACTION_PAUSE = "com.omnitune.app.playback.action.PAUSE"
-        const val ACTION_NEXT = "com.omnitune.app.playback.action.NEXT"
-        const val ACTION_PREVIOUS = "com.omnitune.app.playback.action.PREVIOUS"
-        const val ACTION_LIKE = "com.omnitune.app.playback.action.LIKE"
-        const val ACTION_REPEAT = "com.omnitune.app.playback.action.REPEAT"
-        const val ACTION_STOP = "com.omnitune.app.playback.action.STOP"
+        const val ACTION_PLAY = PlaybackActions.ACTION_PLAY
+        const val ACTION_PAUSE = PlaybackActions.ACTION_PAUSE
+        const val ACTION_NEXT = PlaybackActions.ACTION_NEXT
+        const val ACTION_PREVIOUS = PlaybackActions.ACTION_PREVIOUS
+        const val ACTION_LIKE = PlaybackActions.ACTION_LIKE
+        const val ACTION_REPEAT = PlaybackActions.ACTION_REPEAT
+        const val ACTION_STOP = PlaybackActions.ACTION_STOP
     }
 }

@@ -92,16 +92,16 @@ fun DiscordSettingsScreen(
             item {
                 SettingsCard {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        OutlinedTextField(
+                        SecretSettingsField(
                             value = token,
-                            onValueChange = {
-                                token = it
-                                viewModel.setDiscordToken(it)
+                            persistedValue = uiState.discordToken,
+                            label = "Discord User Token (Optional)",
+                            onValueChange = { token = it },
+                            onSave = viewModel::setDiscordToken,
+                            onClear = {
+                                token = ""
+                                viewModel.setDiscordToken("")
                             },
-                            label = { Text("Discord User Token (Optional)") },
-                            singleLine = true,
-                            shape = SquircleShape,
-                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

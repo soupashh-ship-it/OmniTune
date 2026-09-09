@@ -6,6 +6,7 @@
 package com.omnitune.app.playback
 
 import android.content.Context
+import android.media.AudioDeviceInfo
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
@@ -27,6 +28,9 @@ import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.reportException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -37,6 +41,7 @@ import com.omnitune.app.constants.AutoDownloadOnLikeKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -94,6 +99,21 @@ class PlayerConnection(
     val sleepTimerRunning: StateFlow<Boolean> = service.sleepTimer.isRunning
     val sleepTimerRemaining: StateFlow<Long> = service.sleepTimer.remainingMs
 
+    private val _progressState = MutableStateFlow(
+        PlayerProgressMapper.snapshot(
+            playerPositionMs = player.currentPosition,
+            playerDurationMs = player.duration,
+            metadataDurationSeconds = player.currentMetadata?.duration,
+        )
+    )
+    val progressState: StateFlow<PlayerProgressState> = _progressState.asStateFlow()
+    private val progressJob: Job = scope.launch {
+        while (isActive) {
+            updateProgressState()
+            delay(PROGRESS_UPDATE_MS)
+        }
+    }
+
     init {
         player.addListener(this)
 
@@ -115,6 +135,7 @@ class PlayerConnection(
                 mediaMetadata.value = mediaItem.metadata
             }
         }
+        updateProgressState()
     }
 
     fun playQueue(queue: Queue) {
@@ -234,6 +255,7 @@ class PlayerConnection(
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state
         error.value = player.playerError
+        updateProgressState()
     }
 
     override fun onPlayWhenReadyChanged(
@@ -255,6 +277,7 @@ class PlayerConnection(
         mediaMetadata.value = meta
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
+        updateProgressState()
         updateCanSkipPreviousAndNext()
     }
 
@@ -266,6 +289,7 @@ class PlayerConnection(
         queueTitle.value = service.queueTitle
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
+        updateProgressState()
         updateCanSkipPreviousAndNext()
     }
 
@@ -304,7 +328,16 @@ class PlayerConnection(
         }
     }
 
+    private fun updateProgressState() {
+        _progressState.value = PlayerProgressMapper.snapshot(
+            playerPositionMs = player.currentPosition,
+            playerDurationMs = player.duration,
+            metadataDurationSeconds = mediaMetadata.value?.duration,
+        )
+    }
+
     fun dispose() {
+        progressJob.cancel()
         player.removeListener(this)
     }
 
@@ -328,7 +361,11 @@ class PlayerConnection(
     fun setSkipSilenceEnabled(enabled: Boolean) { player.skipSilenceEnabled = enabled }
     val audioSessionId: Int get() = player.audioSessionId
     fun setPlaybackParameters(speed: Float, pitch: Float) { player.playbackParameters = PlaybackParameters(speed, pitch) }
+    fun setPreferredAudioDevice(device: AudioDeviceInfo?) { player.setPreferredAudioDevice(device) }
     val playbackSpeed: Float get() = player.playbackParameters.speed
     val playbackPitch: Float get() = player.playbackParameters.pitch
 
+    private companion object {
+        const val PROGRESS_UPDATE_MS = 500L
+    }
 }

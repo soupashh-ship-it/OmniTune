@@ -439,6 +439,9 @@ interface SongDao {
     @Query("SELECT * FROM set_video_id WHERE videoId = :videoId")
     suspend fun getSetVideoId(videoId: String): SetVideoIdEntity?
 
+    @Query("SELECT videoId FROM set_video_id WHERE setVideoId IS NOT NULL")
+    fun videoIds(): Flow<List<String>>
+
 
 
 

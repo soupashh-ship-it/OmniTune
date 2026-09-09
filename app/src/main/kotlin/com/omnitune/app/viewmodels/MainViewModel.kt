@@ -1,19 +1,20 @@
 package com.omnitune.app.viewmodels
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.utils.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,8 +49,9 @@ class MainViewModel @Inject constructor(
     val isOnline: StateFlow<Boolean> = networkMonitor.isConnected
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    private val _events = MutableSharedFlow<MainEvent>()
-    val events: SharedFlow<MainEvent> = _events.asSharedFlow()
+    private val _events = Channel<MainEvent>(Channel.BUFFERED)
+    val events: Flow<MainEvent> = _events.receiveAsFlow()
+    private var lastHandledIntentKey: String? = null
 
     init {
         viewModelScope.launch {
@@ -59,47 +61,40 @@ class MainViewModel @Inject constructor(
 
     fun handleDeepLink(uri: Uri?) {
         if (uri == null) return
-        
-        viewModelScope.launch {
-            if (isYouTubeLink(uri)) {
-                val videoId = extractVideoId(uri)
-                if (videoId != null) {
-                    _events.emit(MainEvent.PlayFromDeepLink(videoId))
-                }
-            }
+
+        val videoId = IncomingIntentParser.extractYouTubeVideoId(uri)
+        val playlistId = IncomingIntentParser.extractYouTubePlaylistId(uri)
+        when {
+            videoId != null -> sendEvent(MainEvent.PlayFromDeepLink(videoId))
+            playlistId != null -> sendEvent(MainEvent.NavigateToPlaylist(playlistId))
         }
     }
 
-    fun handleAudioIntent(uri: Uri?) {
+    fun handleAudioIntent(uri: Uri?, mimeType: String? = null) {
         if (uri == null) return
-        viewModelScope.launch {
-            _events.emit(MainEvent.PlayFromLocalUri(uri))
-        }
+        if (!IncomingIntentParser.isSupportedAudioUri(uri, mimeType)) return
+        sendEvent(MainEvent.PlayFromLocalUri(uri))
     }
 
-    private fun isYouTubeLink(uri: Uri): Boolean {
-        val host = uri.host ?: return false
-        return host.contains("youtube.com") || host.contains("youtu.be") || host.contains("music.youtube.com")
-    }
+    fun handleIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        val intentKey = listOf(intent.action, intent.type, uri.toString()).joinToString("|")
+        if (lastHandledIntentKey == intentKey) return
+        lastHandledIntentKey = intentKey
+        val mimeType = intent.type ?: runCatching { context.contentResolver.getType(uri) }.getOrNull()
 
-    private fun extractVideoId(uri: Uri): String? {
-        return try {
-            val url = uri.toString()
-            when {
-                url.contains("youtu.be/") -> {
-                    url.substringAfter("youtu.be/").substringBefore("?").substringBefore("&")
-                }
-                url.contains("/shorts/") -> {
-                    url.substringAfter("/shorts/").substringBefore("?").substringBefore("&")
-                }
-                url.contains("v=") -> {
-                    uri.getQueryParameter("v")
-                }
-                else -> null
+        when {
+            intent.action == Intent.ACTION_VIEW && IncomingIntentParser.isAcceptedYouTubeHost(uri.host) -> {
+                handleDeepLink(uri)
             }
-        } catch (_: Exception) {
-            null
+            intent.action == Intent.ACTION_VIEW && IncomingIntentParser.isSupportedAudioUri(uri, mimeType) -> {
+                handleAudioIntent(uri, mimeType)
+            }
         }
+    }
+
+    private fun sendEvent(event: MainEvent) {
+        _events.trySend(event)
     }
 
     fun setPictureInPictureMode(inPip: Boolean) {

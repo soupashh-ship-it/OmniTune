@@ -54,6 +54,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.IntOffset
 import kotlin.random.Random
 
 /**
@@ -262,11 +270,16 @@ private fun LiquidGlassNavBar(
         )
 
         // Layer 4: Morphing Indicator (equal-width tabs — no onGloballyPositioned state)
+        val density = LocalDensity.current
         BoxWithConstraints(modifier = Modifier.matchParentSize()) {
             val tabWidth = maxWidth / navItems.size
             Box(
                 modifier = Modifier
-                    .offset(x = tabWidth * indicatorIndex)
+                    .offset {
+                        with(density) {
+                            IntOffset((tabWidth * indicatorIndex).roundToPx(), 0)
+                        }
+                    }
                     .width(tabWidth)
                     .fillMaxHeight()
                     .padding(vertical = 6.dp, horizontal = 4.dp)
@@ -347,8 +360,15 @@ private fun LiquidGlassNavItem(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                role = Role.Tab,
                 onClick = onClick
             )
+            .semantics {
+                contentDescription = item.label
+                role = Role.Tab
+                selected = isSelected
+                stateDescription = if (isSelected) "Selected" else "Not selected"
+            }
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -361,7 +381,7 @@ private fun LiquidGlassNavItem(
         ) {
             Icon(
                 imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                contentDescription = item.label,
+                contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = contentColor
             )
@@ -466,8 +486,15 @@ private fun StandardNavItem(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
+                role = Role.Tab,
                 onClick = onClick
             )
+            .semantics {
+                contentDescription = item.label
+                role = Role.Tab
+                selected = isSelected
+                stateDescription = if (isSelected) "Selected" else "Not selected"
+            }
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -477,7 +504,7 @@ private fun StandardNavItem(
         ) {
             Icon(
                 imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-                contentDescription = item.label,
+                contentDescription = null,
                 modifier = Modifier.size(26.dp),
                 tint = contentColor
             )

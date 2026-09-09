@@ -104,8 +104,6 @@ fun ClassicPlayerStyle(
     progressProvider: () -> Float = { 0f },
     positionProvider: () -> Long = { 0L },
     durationProvider: () -> Long = { 0L },
-    isAIEnabled: Boolean = false,
-    aiStatus: String? = null,
     windowSizeClass: WindowSizeClass? = null
 ) {
     if (useWideLayout) {
@@ -142,8 +140,6 @@ fun ClassicPlayerStyle(
             progressProvider = progressProvider,
             positionProvider = positionProvider,
             durationProvider = durationProvider,
-            isAIEnabled = isAIEnabled,
-            aiStatus = aiStatus,
             windowSizeClass = windowSizeClass
         )
     } else {
@@ -181,8 +177,6 @@ fun ClassicPlayerStyle(
             progressProvider = progressProvider,
             positionProvider = positionProvider,
             durationProvider = durationProvider,
-            isAIEnabled = isAIEnabled,
-            aiStatus = aiStatus,
             windowSizeClass = windowSizeClass
         )
     }
@@ -223,8 +217,6 @@ private fun ClassicPortraitContent(
     progressProvider: () -> Float = { 0f },
     positionProvider: () -> Long = { 0L },
     durationProvider: () -> Long = { 0L },
-    isAIEnabled: Boolean = false,
-    aiStatus: String? = null,
     windowSizeClass: WindowSizeClass? = null
 ) {
     val combinedLoading = playerState.isLoading || isSwitchingMode
@@ -435,8 +427,6 @@ private fun ClassicLandscapeContent(
     progressProvider: () -> Float = { 0f },
     positionProvider: () -> Long = { 0L },
     durationProvider: () -> Long = { 0L },
-    isAIEnabled: Boolean = false,
-    aiStatus: String? = null,
     windowSizeClass: WindowSizeClass? = null
 ) {
     val combinedLoading = playerState.isLoading || isSwitchingMode

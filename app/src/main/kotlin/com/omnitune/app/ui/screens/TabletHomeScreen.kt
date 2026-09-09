@@ -77,6 +77,7 @@ import com.omnitune.app.models.HomeItem
 import com.omnitune.app.models.HomeSection
 import com.omnitune.app.models.PlaylistDisplayItem
 import com.omnitune.app.models.Song
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.utils.ImageUtils
 import java.util.Calendar
 
@@ -97,6 +98,7 @@ fun TabletHomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val chromeInsets = LocalRouteChromeInsets.current
 
     if (uiState.isLoading && uiState.homeSections.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -229,7 +231,10 @@ fun TabletHomeScreen(
                     .weight(0.6f)
                     .fillMaxHeight()
                     .padding(start = 12.dp, end = 24.dp),
-                contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
+                contentPadding = PaddingValues(
+                    top = 24.dp,
+                    bottom = chromeInsets.contentBottomPadding,
+                )
             ) {
                 val allSections = buildList {
                     addAll(uiState.contextSections)

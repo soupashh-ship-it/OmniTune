@@ -6,11 +6,13 @@ import android.app.PictureInPictureParams
 import android.app.RemoteAction
 import android.content.Context
 import android.content.Intent
+import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.Rational
 import androidx.annotation.RequiresApi
 import com.omnitune.app.R
+import com.omnitune.app.playback.PlaybackActions
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,7 +21,7 @@ import javax.inject.Singleton
  * Encapsulates Picture-in-Picture logic for both audio and video modes.
  * 
  * - Video mode: 16:9 aspect ratio with play/pause, next, previous actions
- * - Audio mode: 1:1 aspect ratio with play/pause, next, previous actions
+ * - Audio-only playback remains in the normal background-media path.
  */
 @Singleton
 class PipHelper @Inject constructor(
@@ -30,7 +32,12 @@ class PipHelper @Inject constructor(
      * Build PiP parameters with appropriate aspect ratio and remote actions.
      * Returns null if PiP is not supported on this API level.
      */
-    fun buildPipParams(isVideoMode: Boolean, isPlaying: Boolean, isPipEnabled: Boolean = true): PictureInPictureParams? {
+    fun buildPipParams(
+        isVideoMode: Boolean,
+        isPlaying: Boolean,
+        isPipEnabled: Boolean = true,
+        sourceRectHint: Rect? = null,
+    ): PictureInPictureParams? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
 
         val aspectRatio = if (isVideoMode) {
@@ -46,6 +53,7 @@ class PipHelper @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setAutoEnterEnabled(if (isPipEnabled) isVideoMode else false)
             builder.setSeamlessResizeEnabled(true)
+            sourceRectHint?.let(builder::setSourceRectHint)
         }
 
         return builder.build()
@@ -62,9 +70,14 @@ class PipHelper @Inject constructor(
         isPipEnabled: Boolean = true
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        if (!hasSong || !isPipEnabled) return
+        if (!hasSong || !isPipEnabled || !isVideoMode) return
 
-        val params = buildPipParams(isVideoMode, isPlaying, isPipEnabled) ?: return
+        val params = buildPipParams(
+            isVideoMode = isVideoMode,
+            isPlaying = isPlaying,
+            isPipEnabled = isPipEnabled,
+            sourceRectHint = activity.pipSourceRect(),
+        ) ?: return
 
         try {
             activity.enterPictureInPictureMode(params)
@@ -79,7 +92,12 @@ class PipHelper @Inject constructor(
     fun updatePipParams(activity: Activity, isPlaying: Boolean = false, isVideoMode: Boolean = false, isPipEnabled: Boolean = true) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
 
-        val params = buildPipParams(isVideoMode, isPlaying, isPipEnabled) ?: return
+        val params = buildPipParams(
+            isVideoMode = isVideoMode,
+            isPlaying = isPlaying,
+            isPipEnabled = isPipEnabled,
+            sourceRectHint = activity.pipSourceRect(),
+        ) ?: return
 
         try {
             activity.setPictureInPictureParams(params)
@@ -101,7 +119,8 @@ class PipHelper @Inject constructor(
                 PendingIntent.getBroadcast(
                     context,
                     REQUEST_CODE_PREVIOUS,
-                    Intent(PipActionReceiver.ACTION_PREVIOUS).setPackage(context.packageName),
+                    Intent(context, PipActionReceiver::class.java)
+                        .setAction(PlaybackActions.ACTION_PIP_PREVIOUS),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )
@@ -123,7 +142,8 @@ class PipHelper @Inject constructor(
                 PendingIntent.getBroadcast(
                     context,
                     REQUEST_CODE_PLAY_PAUSE,
-                    Intent(PipActionReceiver.ACTION_PLAY_PAUSE).setPackage(context.packageName),
+                    Intent(context, PipActionReceiver::class.java)
+                        .setAction(PlaybackActions.ACTION_PIP_PLAY_PAUSE),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )
@@ -138,7 +158,8 @@ class PipHelper @Inject constructor(
                 PendingIntent.getBroadcast(
                     context,
                     REQUEST_CODE_NEXT,
-                    Intent(PipActionReceiver.ACTION_NEXT).setPackage(context.packageName),
+                    Intent(context, PipActionReceiver::class.java)
+                        .setAction(PlaybackActions.ACTION_PIP_NEXT),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )
@@ -152,4 +173,10 @@ class PipHelper @Inject constructor(
         private const val REQUEST_CODE_NEXT = 101
         private const val REQUEST_CODE_PREVIOUS = 102
     }
+}
+
+private fun Activity.pipSourceRect(): Rect {
+    val rect = Rect()
+    window.decorView.getGlobalVisibleRect(rect)
+    return rect
 }

@@ -149,7 +149,7 @@ fun EqualizerSheet(
     onAIEqualizerClick: () -> Unit = {},
     dominantColor: Color = MaterialTheme.colorScheme.primary,
     initialEnabled: Boolean = false,
-    initialBands: FloatArray = FloatArray(10) { 0f },
+    initialBands: FloatArray = FloatArray(10),
     initialPreamp: Float = 0f,
     initialBassBoost: Float = 0f,
     initialVirtualizer: Float = 0f,

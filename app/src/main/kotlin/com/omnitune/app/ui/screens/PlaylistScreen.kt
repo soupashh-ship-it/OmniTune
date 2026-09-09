@@ -46,6 +46,7 @@ import com.omnitune.app.models.SortOrder
 import com.omnitune.app.models.SortType
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.ui.component.*
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,7 @@ fun PlaylistScreen(
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val downloadUtil = LocalDownloadUtil.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val backgroundColor = if (isDarkTheme) Color(0xFF0D0D0D) else Color.White
@@ -187,7 +189,7 @@ fun PlaylistScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 140.dp)
+                        contentPadding = PaddingValues(bottom = chromeInsets.contentBottomPadding)
                     ) {
                         item {
                             PlaylistHeader(

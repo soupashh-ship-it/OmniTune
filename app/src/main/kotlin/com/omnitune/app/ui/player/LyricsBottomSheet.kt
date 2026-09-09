@@ -79,6 +79,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1352,7 +1353,7 @@ private fun LyricsList(
         LyricsTextPosition.RIGHT -> Arrangement.End
     }
 
-    var activeLineIndex by remember { mutableStateOf(-1) }
+    var activeLineIndex by remember { mutableIntStateOf(-1) }
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIndices by remember { mutableStateOf(setOf<Int>()) }
     var isSharing by remember { mutableStateOf(false) }

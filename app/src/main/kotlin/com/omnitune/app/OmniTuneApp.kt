@@ -26,6 +26,7 @@ import com.omnitune.app.constants.CustomThemeColorKey
 import com.omnitune.app.constants.DataSyncIdKey
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.ListenBrainzTokenKey
+import com.omnitune.app.constants.LogoVariantKey
 import com.omnitune.app.constants.MaxImageCacheSizeKey
 import com.omnitune.app.constants.PoTokenGvsKey
 import com.omnitune.app.constants.PoTokenKey
@@ -44,6 +45,7 @@ import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.backup.OfflineDownloadArchive
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
+import com.omnitune.app.models.LogoVariant
 import com.omnitune.kugou.KuGou
 import com.omnitune.app.ui.player.CanvasArtworkPlaybackCache
 import com.omnitune.app.ui.screens.settings.ThemePalettes
@@ -55,6 +57,7 @@ import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.RetiredFeaturePreferenceCleanup
 import com.omnitune.app.utils.GlobalLogTree
+import com.omnitune.app.utils.LauncherIconSwitcher
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.forgetAccount
 import com.omnitune.innertube.YouTube
@@ -150,6 +153,10 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     Timber.i("Removed preferences owned by retired features")
                 }
                 val prefs = dataStore.data.first()
+                val logoVariant = prefs[LogoVariantKey]
+                    ?.let { runCatching { LogoVariant.valueOf(it) }.getOrNull() }
+                    ?: LogoVariant.DEFAULT
+                LauncherIconSwitcher(this@OmniTuneApp).apply(logoVariant)
 
                 prefs[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { country ->
                     YouTube.locale = YouTube.locale.copy(gl = country)

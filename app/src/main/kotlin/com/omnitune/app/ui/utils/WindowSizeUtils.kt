@@ -12,6 +12,9 @@ import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.dp
 
 @Composable
 fun isLandscape(): Boolean {
@@ -39,11 +42,13 @@ sealed class WindowSize {
 
 @Composable
 fun rememberWindowSize(): WindowSize {
-    val configuration = LocalConfiguration.current
-    return remember(configuration.screenWidthDp) {
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp() }
+    return remember(screenWidthDp) {
         when {
-            configuration.screenWidthDp >= 840 -> WindowSize.Expanded
-            configuration.screenWidthDp >= 600 -> WindowSize.Medium
+            screenWidthDp >= 840.dp -> WindowSize.Expanded
+            screenWidthDp >= 600.dp -> WindowSize.Medium
             else -> WindowSize.Compact
         }
     }

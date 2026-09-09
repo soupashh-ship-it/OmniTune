@@ -47,6 +47,7 @@ import coil3.compose.AsyncImage
 import com.omnitune.app.LocalPlayerConnection
 import com.omnitune.app.models.*
 import com.omnitune.app.ui.component.*
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +67,7 @@ fun LibraryScreen(
     val playlistMgmtState by playlistViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
+    val chromeInsets = LocalRouteChromeInsets.current
 
     var selectedPlaylist: PlaylistDisplayItem? by remember { mutableStateOf(null) }
     var showPlaylistMenu by remember { mutableStateOf(false) }
@@ -112,7 +114,7 @@ fun LibraryScreen(
                 shape = SquircleShape,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(bottom = 120.dp)
+                modifier = Modifier.padding(bottom = chromeInsets.contentBottomPadding)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create Playlist")
             }
@@ -200,7 +202,11 @@ fun LibraryScreen(
                         LibraryFilter.SONGS -> {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = chromeInsets.contentBottomPadding,
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 itemsIndexed(uiState.librarySongs) { index, song ->
@@ -243,7 +249,11 @@ fun LibraryScreen(
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(150.dp),
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = chromeInsets.contentBottomPadding,
+                                ),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -283,7 +293,11 @@ fun LibraryScreen(
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(130.dp),
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = chromeInsets.contentBottomPadding,
+                                ),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -315,7 +329,11 @@ fun LibraryScreen(
                         LibraryFilter.FOLDERS -> {
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+                                contentPadding = PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    bottom = chromeInsets.contentBottomPadding,
+                                ),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(uiState.localFolders.entries.toList()) { entry ->
@@ -580,10 +598,15 @@ private fun PlaylistsGrid(
     onMoreClick: (PlaylistDisplayItem) -> Unit
 ) {
     val gridState = rememberLazyGridState()
+    val chromeInsets = LocalRouteChromeInsets.current
     LazyVerticalGrid(
         columns = GridCells.Adaptive(150.dp),
         state = gridState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            bottom = chromeInsets.contentBottomPadding,
+        ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize().stylishScrollbar(gridState, MaterialTheme.colorScheme.primary)
@@ -654,9 +677,14 @@ private fun PlaylistsList(
     onMoreClick: (PlaylistDisplayItem) -> Unit
 ) {
     val listState = rememberLazyListState()
+    val chromeInsets = LocalRouteChromeInsets.current
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 140.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            bottom = chromeInsets.contentBottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxSize().stylishScrollbar(listState, MaterialTheme.colorScheme.primary)
     ) {

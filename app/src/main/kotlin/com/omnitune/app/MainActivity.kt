@@ -12,15 +12,21 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.OpenableColumns
+import android.view.Display
 import android.view.KeyEvent
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,23 +64,42 @@ import androidx.window.layout.WindowInfoTracker
 import com.omnitune.app.constants.DarkModeKey
 import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.constants.DynamicThemeKey
+import com.omnitune.app.constants.ArtworkShapeKey
+import com.omnitune.app.constants.ForceMaxRefreshRateKey
+import com.omnitune.app.constants.KeepScreenOnKey
+import com.omnitune.app.constants.LiquidGlassEnabledKey
+import com.omnitune.app.constants.MiniPlayerAlphaKey
+import com.omnitune.app.constants.MiniPlayerBlurKey
 import com.omnitune.app.constants.MiniPlayerStyleKey
+import com.omnitune.app.constants.NavBarAlphaKey
+import com.omnitune.app.constants.NavBarBlurKey
+import com.omnitune.app.constants.PictureInPictureEnabledKey
 import com.omnitune.app.constants.PureBlackKey
 import com.omnitune.app.constants.SwipeDownToDismissPlayerKey
+import com.omnitune.app.constants.VolumeSliderEnabledKey
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.extensions.ExtraIsMusicVideo
 import com.omnitune.app.models.AppTheme
+import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.MiniPlayerStyle
 import com.omnitune.app.models.Song
+import com.omnitune.app.models.SongSource
 import com.omnitune.app.models.toDomainSong
 import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.pip.PipHelper
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.MusicService
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.PlayerProgressState
+import com.omnitune.app.playback.VolumeKeyRoutingPolicy
 import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.ui.component.*
 import com.omnitune.app.ui.navigation.Destination
+import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.navigation.NavGraph
+import com.omnitune.app.ui.navigation.RouteChromeInsets
+import com.omnitune.app.ui.navigation.RouteChromeMode
+import com.omnitune.app.ui.navigation.RouteChromePolicy
 import com.omnitune.app.ui.player.ExpandablePlayerSheet
 import com.omnitune.app.ui.player.PlayerScreen
 import com.omnitune.app.ui.theme.OmniTuneTheme
@@ -82,8 +107,12 @@ import com.omnitune.app.ui.utils.DeviceFormFactor
 import com.omnitune.app.ui.utils.LocalDeviceFormFactor
 import com.omnitune.app.ui.utils.rememberDeviceFormFactor
 import com.omnitune.app.utils.NetworkMonitor
+import com.omnitune.app.utils.DisplayModeCandidate
+import com.omnitune.app.utils.DisplayModeSelector
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.reportException
+import com.omnitune.app.viewmodels.MainEvent
+import com.omnitune.app.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -125,6 +154,76 @@ private fun NavDestination?.topLevelDestination(): Destination = when {
     else -> Destination.Home
 }
 
+private fun NavDestination?.routeChromeMode(): RouteChromeMode = when {
+    this?.hasRoute<Destination.YouTubeLogin>() == true -> RouteChromeMode.Immersive
+    this?.hasRoute<Destination.LastFmLogin>() == true -> RouteChromeMode.Immersive
+    this?.hasRoute<Destination.ImportPlaylist>() == true -> RouteChromeMode.Immersive
+    this?.hasRoute<Destination.PickMusic>() == true -> RouteChromeMode.Immersive
+    else -> RouteChromeMode.Standard
+}
+
+private fun Context.displayNameFor(uri: Uri): String {
+    if (uri.scheme.equals("content", ignoreCase = true)) {
+        runCatching {
+            contentResolver.query(
+                uri,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0 && cursor.moveToFirst()) {
+                    cursor.getString(index)?.takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()?.let { return it }
+    }
+
+    return uri.lastPathSegment
+        ?.substringAfterLast('/')
+        ?.takeIf { it.isNotBlank() }
+        ?: "Local audio"
+}
+
+private fun PlayerConnection.playSingleSong(title: String, song: Song) {
+    playQueue(
+        ListQueue(
+            title = title,
+            items = listOf(song.toMediaItem()),
+            startIndex = 0
+        )
+    )
+}
+
+private fun Display.Mode.toCandidate(): DisplayModeCandidate =
+    DisplayModeCandidate(
+        modeId = modeId,
+        width = physicalWidth,
+        height = physicalHeight,
+        refreshRate = refreshRate,
+    )
+
+private fun ComponentActivity.applyRefreshRatePreference(forceMaxRefreshRate: Boolean) {
+    val preferredModeId = if (forceMaxRefreshRate) {
+        val display = window.decorView.display ?: return
+        DisplayModeSelector.highestRefreshRateMode(
+            currentMode = display.mode.toCandidate(),
+            supportedModes = display.supportedModes.map { it.toCandidate() },
+        )?.modeId ?: 0
+    } else {
+        0
+    }
+
+    val attributes = window.attributes
+    if (attributes.preferredDisplayModeId != preferredModeId) {
+        attributes.preferredDisplayModeId = preferredModeId
+        window.attributes = attributes
+    }
+}
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -139,6 +238,7 @@ class MainActivity : ComponentActivity() {
     private var isSongPlaying: Boolean = false
     private var isVolumeSliderEnabled: Boolean = true
     private var isPipEnabled: Boolean = true
+    private val mainViewModel: MainViewModel by viewModels()
 
     private val _volumeKeyEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -242,13 +342,41 @@ class MainActivity : ComponentActivity() {
                 playerConnection?.isPlaying ?: flowOf(false)
             }.collectAsStateWithLifecycle(initialValue = false)
 
+            val pipEnabled by remember {
+                context.dataStore.data.map { it[PictureInPictureEnabledKey] ?: true }
+            }.collectAsStateWithLifecycle(initialValue = true)
+
+            val volumeSliderEnabled by remember {
+                context.dataStore.data.map { it[VolumeSliderEnabledKey] ?: true }
+            }.collectAsStateWithLifecycle(initialValue = true)
+
+            val forceMaxRefreshRate by remember {
+                context.dataStore.data.map { it[ForceMaxRefreshRateKey] ?: false }
+            }.collectAsStateWithLifecycle(initialValue = false)
+
+            LaunchedEffect(forceMaxRefreshRate) {
+                applyRefreshRatePreference(forceMaxRefreshRate)
+            }
+
+            DisposableEffect(Unit) {
+                onDispose { applyRefreshRatePreference(false) }
+            }
+
             val currentThumbnailUrl = currentMetadata?.thumbnailUrl
             val currentDomainSong = remember(currentMetadata) {
                 currentMetadata?.toDomainSong()
             }
 
-            LaunchedEffect(isPlayingState) {
+            LaunchedEffect(playerConnection, currentMetadata?.id, isPlayingState, pipEnabled, volumeSliderEnabled) {
                 isSongPlaying = isPlayingState
+                isPipEnabled = pipEnabled
+                isVolumeSliderEnabled = volumeSliderEnabled
+                pipHelper.updatePipParams(
+                    activity = this@MainActivity,
+                    isPlaying = isPlayingState,
+                    isVideoMode = currentMediaItemIsVideo(),
+                    isPipEnabled = pipEnabled,
+                )
             }
 
             val albumArtColors = rememberDominantColors(
@@ -280,11 +408,14 @@ class MainActivity : ComponentActivity() {
                     LocalDownloadUtil provides downloadUtil,
                 ) {
                     OmniTuneAppRoot(
+                        mainViewModel = mainViewModel,
                         networkMonitor = networkMonitor,
                         playerConnection = playerConnection,
                         currentSong = currentDomainSong,
+                        initialIntent = this@MainActivity.intent,
                         isPlaying = isPlayingState,
                         volumeKeyEvents = _volumeKeyEvents,
+                        volumeSliderEnabled = volumeSliderEnabled,
                         dominantColors = albumArtColors,
                         formFactor = formFactor
                     )
@@ -293,27 +424,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (!isSongPlaying || !isVolumeSliderEnabled) {
-            return super.dispatchKeyEvent(event)
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        mainViewModel.handleIntent(intent)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (!VolumeKeyRoutingPolicy.shouldIntercept(isSongPlaying, isVolumeSliderEnabled, keyCode)) {
+            return super.onKeyDown(keyCode, event)
         }
 
-        return when (event.keyCode) {
+        return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 0)
-                    _volumeKeyEvents.tryEmit(Unit)
-                }
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 0)
+                _volumeKeyEvents.tryEmit(Unit)
                 true
             }
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
-                    _volumeKeyEvents.tryEmit(Unit)
-                }
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
+                _volumeKeyEvents.tryEmit(Unit)
                 true
             }
-            else -> super.dispatchKeyEvent(event)
+            else -> super.onKeyDown(keyCode, event)
         }
     }
 
@@ -321,10 +454,12 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         playerConnection?.let { conn ->
             val hasSong = conn.player.currentMediaItem != null
+            val isVideoMode = currentMediaItemIsVideo()
             pipHelper.enterPipIfEligible(
                 activity = this,
                 hasSong = hasSong,
                 isPlaying = isSongPlaying,
+                isVideoMode = isVideoMode,
                 isPipEnabled = isPipEnabled
             )
         }
@@ -332,7 +467,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        mainViewModel.setPictureInPictureMode(isInPictureInPictureMode)
     }
+
+    private fun currentMediaItemIsVideo(): Boolean =
+        playerConnection
+            ?.player
+            ?.currentMediaItem
+            ?.mediaMetadata
+            ?.extras
+            ?.getBoolean(ExtraIsMusicVideo, false) == true
 
     override fun onStop() {
         super.onStop()
@@ -348,11 +492,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun OmniTuneAppRoot(
+    mainViewModel: MainViewModel,
     networkMonitor: NetworkMonitor,
     playerConnection: PlayerConnection?,
     currentSong: Song?,
+    initialIntent: Intent?,
     isPlaying: Boolean,
     volumeKeyEvents: SharedFlow<Unit>,
+    volumeSliderEnabled: Boolean,
     dominantColors: DominantColors,
     formFactor: DeviceFormFactor
 ) {
@@ -363,15 +510,16 @@ private fun OmniTuneAppRoot(
     val currentDestination = remember(navBackStackEntry) {
         navBackStackEntry?.destination.topLevelDestination()
     }
+    val routeChromeMode = remember(navBackStackEntry) {
+        navBackStackEntry?.destination.routeChromeMode()
+    }
 
     val isOnline by networkMonitor.isConnected.collectAsStateWithLifecycle(initialValue = true)
 
     var isPlayerExpanded by remember { mutableStateOf(false) }
     var isMiniPlayerDismissed by remember { mutableStateOf(false) }
-    var currentPosition by remember(playerConnection) { mutableLongStateOf(0L) }
-    var currentDuration by remember(playerConnection, currentSong?.id) {
-        mutableLongStateOf(currentSong?.duration ?: 0L)
-    }
+    var pendingPlaybackEvent by remember { mutableStateOf<MainEvent?>(null) }
+    val latestPlayerConnection by rememberUpdatedState(playerConnection)
 
     val onboardingCompleted by remember {
         context.dataStore.data.map { it[OnboardingCompletedKey] ?: false }
@@ -384,12 +532,114 @@ private fun OmniTuneAppRoot(
         context.dataStore.data.map { it[MiniPlayerStyleKey] ?: MiniPlayerStyle.YT_MUSIC.name }
     }.collectAsStateWithLifecycle(initialValue = MiniPlayerStyle.YT_MUSIC.name)
 
+    val miniPlayerAlpha by remember {
+        context.dataStore.data.map { it[MiniPlayerAlphaKey] ?: 0f }
+    }.collectAsStateWithLifecycle(initialValue = 0f)
+
+    val miniPlayerBlur by remember {
+        context.dataStore.data.map { it[MiniPlayerBlurKey] ?: 50f }
+    }.collectAsStateWithLifecycle(initialValue = 50f)
+
+    val miniPlayerArtworkShape by remember {
+        context.dataStore.data.map { prefs ->
+            val savedShape = prefs[ArtworkShapeKey] ?: ArtworkShape.ROUNDED_SQUARE.name
+            runCatching { ArtworkShape.valueOf(savedShape).name }
+                .getOrDefault(ArtworkShape.ROUNDED_SQUARE.name)
+        }
+    }.collectAsStateWithLifecycle(initialValue = ArtworkShape.ROUNDED_SQUARE.name)
+
+    val iosLiquidGlassEnabled by remember {
+        context.dataStore.data.map { it[LiquidGlassEnabledKey] ?: true }
+    }.collectAsStateWithLifecycle(initialValue = true)
+
+    val navBarAlpha by remember {
+        context.dataStore.data.map { it[NavBarAlphaKey] ?: 1f }
+    }.collectAsStateWithLifecycle(initialValue = 1f)
+
+    val navBarBlur by remember {
+        context.dataStore.data.map { it[NavBarBlurKey] ?: 60f }
+    }.collectAsStateWithLifecycle(initialValue = 60f)
+
     val swipeDownToDismissPlayer by remember {
         context.dataStore.data.map { it[SwipeDownToDismissPlayerKey] ?: true }
     }.collectAsStateWithLifecycle(initialValue = true)
 
     val miniPlayerStyle = remember(miniPlayerStyleName) {
         try { MiniPlayerStyle.valueOf(miniPlayerStyleName) } catch (_: Exception) { MiniPlayerStyle.YT_MUSIC }
+    }
+
+    val keepScreenOnEnabled by remember {
+        context.dataStore.data.map { it[KeepScreenOnKey] ?: false }
+    }.collectAsStateWithLifecycle(initialValue = false)
+
+    fun playIncomingEvent(event: MainEvent): Boolean {
+        val connection = latestPlayerConnection ?: return false
+        when (event) {
+            is MainEvent.PlayFromDeepLink -> {
+                val song = Song(
+                    id = event.videoId,
+                    title = "YouTube link",
+                    artist = "YouTube Music",
+                    source = SongSource.YOUTUBE
+                )
+                connection.playSingleSong("YouTube link", song)
+            }
+            is MainEvent.PlayFromLocalUri -> {
+                val title = context.displayNameFor(event.uri)
+                val song = Song(
+                    id = event.uri.toString(),
+                    title = title,
+                    artist = "Local file",
+                    source = SongSource.LOCAL,
+                    localUri = event.uri.toString()
+                )
+                connection.playSingleSong(title, song)
+            }
+            else -> return true
+        }
+        isMiniPlayerDismissed = false
+        return true
+    }
+
+    LaunchedEffect(mainViewModel) {
+        mainViewModel.events.collect { event ->
+            when (event) {
+                is MainEvent.PlayFromDeepLink,
+                is MainEvent.PlayFromLocalUri -> {
+                    if (!playIncomingEvent(event)) {
+                        pendingPlaybackEvent = event
+                    }
+                }
+                is MainEvent.NavigateToPlaylist -> {
+                    navController.navigate(Destination.Playlist(playlistId = event.playlistId))
+                }
+                is MainEvent.NavigateToAlbum -> {
+                    navController.navigate(Destination.Album(albumId = event.browseId))
+                }
+                is MainEvent.NavigateToArtist -> {
+                    navController.navigate(Destination.Artist(event.channelId))
+                }
+                is MainEvent.NavigateToSearch -> {
+                    navController.navigate(Destination.Search) {
+                        launchSingleTop = true
+                    }
+                }
+                is MainEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(initialIntent) {
+        mainViewModel.handleIntent(initialIntent)
+    }
+
+    LaunchedEffect(playerConnection, pendingPlaybackEvent) {
+        val pending = pendingPlaybackEvent ?: return@LaunchedEffect
+        if (playIncomingEvent(pending)) {
+            pendingPlaybackEvent = null
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -432,45 +682,40 @@ private fun OmniTuneAppRoot(
         )
     }
 
-    val hasSong = currentSong != null
-    val showMiniPlayer = !isMiniPlayerDismissed && hasSong
-    val showBottomNav = !isPlayerExpanded
-    val miniPlayerProgressProvider: () -> Float = {
-        if (currentDuration > 0L) {
-            (currentPosition.toFloat() / currentDuration.toFloat()).coerceIn(0f, 1f)
-        } else {
-            0f
-        }
-    }
-
     LaunchedEffect(playerConnection, currentSong?.id, isPlaying) {
         isMiniPlayerDismissed = false
-        while (true) {
-            val connection = playerConnection
-            if (connection == null) {
-                currentPosition = 0L
-                currentDuration = currentSong?.duration ?: 0L
-            } else {
-                currentPosition = connection.currentPosition.coerceAtLeast(0L)
-                currentDuration = connection.duration
-                    .takeIf { it > 0L }
-                    ?: currentSong?.duration
-                    ?: 0L
-            }
-            kotlinx.coroutines.delay(500L)
-        }
     }
+
+    KeepScreenOnEffect(keepScreenOnEnabled && isPlayerExpanded && currentSong != null)
 
     val density = LocalDensity.current
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val navBarHeight = if (showBottomNav && formFactor != DeviceFormFactor.TV) 80.dp else 0.dp
+    val imeBottomPadding = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val isImeVisible = imeBottomPadding > 0.dp
+    val routeChromeLayout = RouteChromePolicy.resolve(
+        routeMode = routeChromeMode,
+        formFactor = formFactor,
+        hasCurrentSong = currentSong != null,
+        isMiniPlayerDismissed = isMiniPlayerDismissed,
+        isPlayerExpanded = isPlayerExpanded,
+        isBlockingOverlayVisible = showWelcomeDialog,
+        isImeVisible = isImeVisible,
+    )
+    val showMiniPlayer = routeChromeLayout.showPlayerSheet
+    val navBarHeight = routeChromeLayout.miniPlayerBottomPaddingDp.dp
     val bottomPaddingPx = with(density) { navBarPadding.toPx() + navBarHeight.toPx() }
+    val snackbarBottomPadding = if (isImeVisible) {
+        imeBottomPadding + RouteChromePolicy.SnackbarMarginDp.dp
+    } else {
+        navBarPadding + routeChromeLayout.snackbarBottomInsetDp.dp
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                if (showBottomNav && formFactor.isPhoneLike) {
+                if (routeChromeLayout.showBottomNavigation) {
                     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
                     val navBarColor = if (showMiniPlayer) {
                         if (miniPlayerStyle == MiniPlayerStyle.YT_MUSIC && isDarkTheme) {
@@ -491,13 +736,26 @@ private fun OmniTuneAppRoot(
                                 restoreState = true
                             }
                         },
-                        backgroundColor = navBarColor
+                        alpha = navBarAlpha,
+                        iosLiquidGlassEnabled = iosLiquidGlassEnabled,
+                        backgroundColor = navBarColor,
+                        iosNavBarBlur = navBarBlur
                     )
                 }
             }
         ) { innerPadding ->
+            val contentBottomPadding = if (innerPadding.calculateBottomPadding() > 0.dp) {
+                routeChromeLayout.contentBottomInsetDp.dp
+            } else {
+                navBarPadding + routeChromeLayout.contentBottomInsetDp.dp
+            }
+            val routeChromeInsets = RouteChromeInsets(
+                contentBottomPadding = contentBottomPadding,
+                snackbarBottomPadding = snackbarBottomPadding,
+                imeVisible = isImeVisible,
+            )
             Row(modifier = Modifier.fillMaxSize()) {
-                if (showBottomNav && !formFactor.isPhoneLike) {
+                if (routeChromeLayout.showNavigationRail) {
                     when {
                         formFactor == DeviceFormFactor.TV -> {
                             TvNavigationRail(
@@ -531,48 +789,50 @@ private fun OmniTuneAppRoot(
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f)
-                        .padding(bottom = 0.dp)
+                        .padding(innerPadding)
                 ) {
-                    NavGraph(
-                        navController = navController,
-                        onPlaySong = { songs: List<Song>, index: Int ->
-                            playerConnection?.let { conn ->
-                                val mediaItems = songs.map { it.toMediaItem() }
-                                conn.playQueue(
-                                    ListQueue(
-                                        title = songs.getOrNull(index)?.title ?: "Playing",
-                                        items = mediaItems,
-                                        startIndex = index
+                    CompositionLocalProvider(LocalRouteChromeInsets provides routeChromeInsets) {
+                        NavGraph(
+                            navController = navController,
+                            onPlaySong = { songs: List<Song>, index: Int ->
+                                playerConnection?.let { conn ->
+                                    val mediaItems = songs.map { it.toMediaItem() }
+                                    conn.playQueue(
+                                        ListQueue(
+                                            title = songs.getOrNull(index)?.title ?: "Playing",
+                                            items = mediaItems,
+                                            startIndex = index
+                                        )
                                     )
-                                )
-                            }
-                        },
-                        onPlayPause = {
-                            playerConnection?.let { conn ->
-                                if (isPlaying) conn.player.pause() else conn.player.play()
-                            }
-                        },
-                        onSeekTo = { pos: Long ->
-                            playerConnection?.player?.seekTo(pos)
-                        },
-                        onNext = {
-                            playerConnection?.player?.seekToNextMediaItem()
-                        },
-                        onPrevious = {
-                            playerConnection?.player?.seekToPreviousMediaItem()
-                        },
-                        onStartRadio = {
-                            playerConnection?.startRadioSeamlessly()
-                        },
-                        onApplyEqualizerBands = { bands ->
-                            playerConnection?.applyEqualizerBands(bands)
-                        },
-                        onSetEqualizerEnabled = { enabled ->
-                            playerConnection?.setEqualizerEnabled(enabled)
-                        },
-                        currentSong = currentSong,
-                        dominantColors = dominantColors
-                    )
+                                }
+                            },
+                            onPlayPause = {
+                                playerConnection?.let { conn ->
+                                    if (isPlaying) conn.player.pause() else conn.player.play()
+                                }
+                            },
+                            onSeekTo = { pos: Long ->
+                                playerConnection?.player?.seekTo(pos)
+                            },
+                            onNext = {
+                                playerConnection?.player?.seekToNextMediaItem()
+                            },
+                            onPrevious = {
+                                playerConnection?.player?.seekToPreviousMediaItem()
+                            },
+                            onStartRadio = {
+                                playerConnection?.startRadioSeamlessly()
+                            },
+                            onApplyEqualizerBands = { bands ->
+                                playerConnection?.applyEqualizerBands(bands)
+                            },
+                            onSetEqualizerEnabled = { enabled ->
+                                playerConnection?.setEqualizerEnabled(enabled)
+                            },
+                            currentSong = currentSong,
+                            dominantColors = dominantColors
+                        )
+                    }
                 }
             }
         }
@@ -616,38 +876,129 @@ private fun OmniTuneAppRoot(
         }
 
         // Expandable Player Sheet overlay
-        if (showMiniPlayer) {
-            ExpandablePlayerSheet(
-                currentSong = currentSong,
+        currentSong?.takeIf { showMiniPlayer }?.let { miniSong ->
+            MiniPlayerSheetOverlay(
+                currentSong = miniSong,
                 isPlaying = isPlaying,
-                isLoading = false,
-                progressProvider = miniPlayerProgressProvider,
+                playerConnection = playerConnection,
+                volumeKeyEvents = volumeKeyEvents,
+                volumeSliderEnabled = volumeSliderEnabled,
                 dominantColors = dominantColors,
-                onPlayPause = {
-                    playerConnection?.let { conn ->
-                        if (isPlaying) conn.player.pause() else conn.player.play()
-                    }
-                },
-                onNext = { playerConnection?.player?.seekToNextMediaItem() },
-                onPrevious = { playerConnection?.player?.seekToPreviousMediaItem() },
+                bottomPadding = bottomPaddingPx,
+                isExpanded = isPlayerExpanded,
+                onExpandChange = { isPlayerExpanded = it },
                 onClose = {
                     playerConnection?.player?.stop()
                     isMiniPlayerDismissed = true
                 },
-                bottomPadding = bottomPaddingPx,
-                isExpanded = isPlayerExpanded,
-                onExpandChange = { isPlayerExpanded = it },
                 style = miniPlayerStyle,
+                userAlpha = miniPlayerAlpha,
+                artworkShape = miniPlayerArtworkShape,
+                glassBlurAmount = miniPlayerBlur,
                 swipeDownToDismissEnabled = swipeDownToDismissPlayer,
+                onOpenAIEqualizer = {
+                    isPlayerExpanded = false
+                    navController.navigate(Destination.AIEqualizer) {
+                        launchSingleTop = true
+                    }
+                },
                 modifier = Modifier.align(Alignment.BottomCenter),
-                expandedContent = { onCollapse ->
-                    PlayerScreen(
-                        playerConnection = playerConnection,
-                        onDismiss = onCollapse,
-                        volumeKeyEvents = volumeKeyEvents
-                    )
-                }
             )
         }
     }
+}
+
+@Composable
+private fun KeepScreenOnEffect(enabled: Boolean) {
+    val activity = LocalActivity.current
+    var applied by remember(activity) { mutableStateOf(false) }
+
+    LaunchedEffect(activity, enabled) {
+        activity ?: return@LaunchedEffect
+        when {
+            enabled && !applied -> {
+                activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                applied = true
+            }
+            !enabled && applied -> {
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                applied = false
+            }
+        }
+    }
+
+    DisposableEffect(activity) {
+        onDispose {
+            if (activity != null && applied) {
+                activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                applied = false
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayerSheetOverlay(
+    currentSong: Song,
+    isPlaying: Boolean,
+    playerConnection: PlayerConnection?,
+    volumeKeyEvents: SharedFlow<Unit>,
+    volumeSliderEnabled: Boolean,
+    dominantColors: DominantColors,
+    bottomPadding: Float,
+    isExpanded: Boolean,
+    onExpandChange: (Boolean) -> Unit,
+    onClose: () -> Unit,
+    style: MiniPlayerStyle,
+    userAlpha: Float,
+    artworkShape: String,
+    glassBlurAmount: Float,
+    swipeDownToDismissEnabled: Boolean,
+    onOpenAIEqualizer: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val initialProgress = remember(currentSong.id, currentSong.duration) {
+        PlayerProgressState(durationMs = currentSong.duration)
+    }
+    val progressState by remember(playerConnection, currentSong.id, currentSong.duration) {
+        playerConnection?.progressState ?: flowOf(initialProgress)
+    }.collectAsStateWithLifecycle(initialValue = initialProgress)
+    val latestProgressState by rememberUpdatedState(progressState)
+    val progressProvider = remember {
+        { latestProgressState.progress }
+    }
+
+    ExpandablePlayerSheet(
+        currentSong = currentSong,
+        isPlaying = isPlaying,
+        isLoading = false,
+        progressProvider = progressProvider,
+        dominantColors = dominantColors,
+        onPlayPause = {
+            playerConnection?.let { conn ->
+                if (isPlaying) conn.player.pause() else conn.player.play()
+            }
+        },
+        onNext = { playerConnection?.player?.seekToNextMediaItem() },
+        onPrevious = { playerConnection?.player?.seekToPreviousMediaItem() },
+        onClose = onClose,
+        bottomPadding = bottomPadding,
+        isExpanded = isExpanded,
+        onExpandChange = onExpandChange,
+        style = style,
+        userAlpha = userAlpha,
+        artworkShape = artworkShape,
+        glassBlurAmount = glassBlurAmount,
+        swipeDownToDismissEnabled = swipeDownToDismissEnabled,
+        modifier = modifier,
+        expandedContent = { onCollapse ->
+            PlayerScreen(
+                playerConnection = playerConnection,
+                onDismiss = onCollapse,
+                onOpenAIEqualizer = onOpenAIEqualizer,
+                volumeKeyEvents = volumeKeyEvents,
+                volumeSliderEnabled = volumeSliderEnabled
+            )
+        }
+    )
 }

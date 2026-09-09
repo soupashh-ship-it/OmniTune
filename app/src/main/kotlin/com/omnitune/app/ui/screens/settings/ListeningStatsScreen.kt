@@ -87,6 +87,7 @@ import coil3.request.crossfade
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.component.LoadingIndicator
 import com.omnitune.app.ui.component.MeshGradientBackground
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -118,7 +119,7 @@ fun ListeningStatsScreen(
                         onClick = {
                             val topArtist = uiState.topArtists.firstOrNull()?.artist ?: "Unknown"
                             val totalMinutes = uiState.totalListeningTimeMs / 60000
-                            val months = String.format("%.1f", uiState.totalMonthsListened)
+                            val months = String.format(Locale.US, "%.1f", uiState.totalMonthsListened)
                             val text = "My Music Insights on OmniTune\n\n" +
                                 "Personality: ${uiState.musicPersonality.title}\n" +
                                 "Total Playtime: $totalMinutes mins\n" +
@@ -405,7 +406,7 @@ private fun MusicInsightsShareCard(
                     StatValue("Top Songs", uiState.uniqueSongsPlayed.toString(), Modifier.weight(1f))
                 }
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    StatValue("Months Listened", String.format("%.1f", uiState.totalMonthsListened), Modifier.weight(1f))
+                    StatValue("Months Listened", String.format(Locale.US, "%.1f", uiState.totalMonthsListened), Modifier.weight(1f))
                     StatValue("Top Artist", uiState.topArtists.firstOrNull()?.artist ?: "None", Modifier.weight(1f))
                 }
             }
@@ -752,7 +753,7 @@ private fun GlobalStatsRow(uiState: ListeningStatsUiState) {
             StatCardSmall(
                 modifier = Modifier.weight(1f),
                 title = "Months With Us",
-                value = String.format("%.1f", uiState.totalMonthsListened),
+                value = String.format(Locale.US, "%.1f", uiState.totalMonthsListened),
                 icon = Icons.Default.Timeline
             )
             StatCardSmall(

@@ -31,6 +31,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withPermit
@@ -59,6 +63,9 @@ class DownloadUtil @Inject constructor(
     private val downloadStateMutex = Mutex()
     private val resolvingIds = ConcurrentHashMap.newKeySet<String>()
     private val staleRepairIds = ConcurrentHashMap.newKeySet<String>()
+    private val _resolvingDownloads = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    val resolvingDownloads: StateFlow<Map<String, String>> = _resolvingDownloads.asStateFlow()
 
     data class StorageInfo(
         val progressiveCacheBytes: Long,
@@ -121,25 +128,29 @@ class DownloadUtil @Inject constructor(
 
     private fun updateDatabaseDownloadState(download: Download, removed: Boolean = false) {
         downloadScope.launch {
-            downloadStateMutex.withLock {
-                val current = if (removed) null else downloadManager.downloadIndex.getDownload(download.request.id)
-                val hasCompleteCache = current?.let(::hasCompleteCache) == true
-                val state = DownloadLifecyclePolicy.persistedState(
-                    downloadState = current?.state,
-                    removed = removed,
-                    hasCompleteCache = hasCompleteCache,
+            updateDatabaseDownloadStateNow(download, removed)
+        }
+    }
+
+    private suspend fun updateDatabaseDownloadStateNow(download: Download, removed: Boolean = false) {
+        downloadStateMutex.withLock {
+            val current = if (removed) null else downloadManager.downloadIndex.getDownload(download.request.id)
+            val hasCompleteCache = current?.let(::hasCompleteCache) == true
+            val state = DownloadLifecyclePolicy.persistedState(
+                downloadState = current?.state,
+                removed = removed,
+                hasCompleteCache = hasCompleteCache,
+            )
+            database.withTransaction {
+                updateDownloadState(
+                    songId = download.request.id,
+                    state = state,
+                    downloadedAt = if (state == 2) java.time.LocalDateTime.now() else null,
                 )
-                database.withTransaction {
-                    updateDownloadState(
-                        songId = download.request.id,
-                        state = state,
-                        downloadedAt = if (state == 2) java.time.LocalDateTime.now() else null,
-                    )
-                    refreshDownloadedPlaylists(download.request.id)
-                }
-                if (current?.state == Download.STATE_COMPLETED && !hasCompleteCache) {
-                    repairStaleCompletedDownload(current, "completed entry has incomplete cache data")
-                }
+                refreshDownloadedPlaylists(download.request.id)
+            }
+            if (current?.state == Download.STATE_COMPLETED && !hasCompleteCache) {
+                repairStaleCompletedDownload(current, "completed entry has incomplete cache data")
             }
         }
     }
@@ -200,6 +211,7 @@ class DownloadUtil @Inject constructor(
             onResult(true, "Download already starting")
             return
         }
+        _resolvingDownloads.update { it + (videoId to title) }
 
         downloadScope.launch {
             try {
@@ -235,6 +247,7 @@ class DownloadUtil @Inject constructor(
                 withContext(Dispatchers.Main) { onResult(false, "Download failed: stream unavailable") }
             } finally {
                 resolvingIds.remove(videoId)
+                _resolvingDownloads.update { it - videoId }
             }
         }
     }
@@ -243,6 +256,18 @@ class DownloadUtil @Inject constructor(
         DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, videoId, false)
     }
 
+    suspend fun refreshDownloadIndex() {
+        withContext(Dispatchers.IO) {
+            val cursor = downloadManager.downloadIndex.getDownloads()
+            try {
+                while (cursor.moveToNext()) {
+                    updateDatabaseDownloadStateNow(cursor.download)
+                }
+            } finally {
+                cursor.close()
+            }
+        }
+    }
 
     private fun isConnectedToWifi(): Boolean {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return false
@@ -252,7 +277,9 @@ class DownloadUtil @Inject constructor(
     }
 
     private fun availableDownloadStorageBytes(): Long = runCatching {
-        StatFs(context.filesDir.absolutePath).availableBytes.coerceAtLeast(0L)
+        val downloadDirectory = OfflineDownloadArchive.downloadDirectory(context)
+        if (!downloadDirectory.exists()) downloadDirectory.mkdirs()
+        StatFs(downloadDirectory.absolutePath).availableBytes.coerceAtLeast(0L)
     }.getOrDefault(0L)
 
     private fun playbackCacheLimitBytes(): Long {
