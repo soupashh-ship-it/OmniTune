@@ -463,8 +463,6 @@ val LyricsPositionKey = stringPreferencesKey("lyricsPosition")
 
 val LyricsBlurKey = floatPreferencesKey("lyricsBlur")
 val SponsorBlockEnabledKey = booleanPreferencesKey("sponsorBlockEnabled")
-val LastFmUsernameKey = stringPreferencesKey("lastFmUsername")
-val LastFmScrobblingEnabledKey = booleanPreferencesKey("lastFmScrobblingEnabled")
 val VolumeBoostEnabledKey = booleanPreferencesKey("volumeBoostEnabled")
 val VolumeBoostAmountKey = intPreferencesKey("volumeBoostAmount")
 val AudioOffloadEnabledKey = booleanPreferencesKey("audioOffloadEnabled")

@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.first
  * unknown preferences, so existing user settings and account credentials remain intact.
  */
 object RetiredFeaturePreferenceCleanup {
-    private const val migrationVersion = 3
+    private const val migrationVersion = 4
     private val migrationVersionKey = intPreferencesKey("retired_feature_cleanup_version")
 
     private val stringKeys = listOf(
@@ -62,6 +62,7 @@ object RetiredFeaturePreferenceCleanup {
         "selectedAiProvider",
         "lastfmSession",
         "lastfmUsername",
+        "lastFmUsername",
     ).map(::stringPreferencesKey)
 
     private val booleanKeys = listOf(
@@ -76,6 +77,7 @@ object RetiredFeaturePreferenceCleanup {
         "discordActivityButton2Enabled",
         "discordShowWhenPaused",
         "lastfmScrobblingEnable",
+        "lastFmScrobblingEnabled",
         "lastfmUseNowPlaying",
     ).map(::booleanPreferencesKey)
 

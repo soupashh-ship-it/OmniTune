@@ -73,11 +73,6 @@ data class SettingsUiState(
     val audioOffloadEnabled: Boolean = false,
     val sponsorBlockEnabled: Boolean = true,
     val sponsorBlockCategories: Set<String> = setOf("sponsor", "selfpromo", "interaction", "intro", "outro", "preview", "music_offtopic"),
-    val lastFmUsername: String? = null,
-    val lastFmScrobblingEnabled: Boolean = false,
-    val lastFmRecommendationsEnabled: Boolean = true,
-    val lastFmUseNowPlaying: Boolean = true,
-    val lastFmSendLikes: Boolean = false,
     val scrobbleDelayPercent: Float = 0.5f,
     val scrobbleMinDuration: Int = 30,
     val scrobbleDelaySeconds: Int = 180,
@@ -157,8 +152,6 @@ class SettingsViewModel @Inject constructor(
                         lyricsBlur = prefs[LyricsBlurKey] ?: 2.5f,
                         preferredLyricsProvider = prefs[PreferredLyricsProviderKey] ?: PreferredLyricsProvider.BETTER_LYRICS.name,
                         sponsorBlockEnabled = prefs[SponsorBlockEnabledKey] ?: true,
-                        lastFmUsername = prefs[LastFmUsernameKey],
-                        lastFmScrobblingEnabled = prefs[LastFmScrobblingEnabledKey] ?: false,
                         audioOffloadEnabled = prefs[AudioOffloadEnabledKey] ?: prefs[AudioOffload] ?: false,
                         wifiAudioQuality = prefs[WifiAudioQualityKey]
                             ?.let { runCatching { AudioQuality.valueOf(it) }.getOrNull() }
@@ -226,8 +219,6 @@ class SettingsViewModel @Inject constructor(
     fun setLyricsBlur(blur: Float) = setPreference(LyricsBlurKey, blur)
     fun setPreferredLyricsProvider(provider: String) = setPreference(PreferredLyricsProviderKey, provider)
     fun setSponsorBlockEnabled(enabled: Boolean) = setPreference(SponsorBlockEnabledKey, enabled)
-    fun setLastFmScrobblingEnabled(enabled: Boolean) = setPreference(LastFmScrobblingEnabledKey, enabled)
-    fun setLastFmUsername(username: String) = setPreference(LastFmUsernameKey, username)
     fun setAudioOffloadEnabled(enabled: Boolean) = setPreference(AudioOffloadEnabledKey, enabled)
     fun setPauseMusicOnMediaMuted(enabled: Boolean) = setPreference(PauseOnDeviceMuteKey, enabled)
     fun setPictureInPictureEnabled(enabled: Boolean) = setPreference(PictureInPictureEnabledKey, enabled)
