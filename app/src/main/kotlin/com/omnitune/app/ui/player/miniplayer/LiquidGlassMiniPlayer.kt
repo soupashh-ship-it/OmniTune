@@ -75,17 +75,17 @@ import com.omnitune.app.ui.player.glass.LiquidGlassSurface
 fun LiquidGlassMiniPlayer(
     song: Song,
     isPlaying: Boolean,
-    isLoading: Boolean = false,
     dominantColors: DominantColors,
     progressProvider: () -> Float,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     userAlpha: Float = 0f,
     artworkShape: String = "ROUNDED_SQUARE",
-    blurAmount: Float = 50f,
-    modifier: Modifier = Modifier
+    blurAmount: Float = 50f
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val effectiveAlpha = 1f - userAlpha

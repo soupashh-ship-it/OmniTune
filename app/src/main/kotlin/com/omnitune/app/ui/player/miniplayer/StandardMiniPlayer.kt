@@ -53,16 +53,16 @@ import com.omnitune.app.ui.component.DominantColors
 fun StandardMiniPlayer(
     song: Song,
     isPlaying: Boolean,
-    isLoading: Boolean = false,
     dominantColors: DominantColors,
     progressProvider: () -> Float,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     userAlpha: Float = 0f,
-    artworkShape: String = "ROUNDED_SQUARE",
-    modifier: Modifier = Modifier
+    artworkShape: String = "ROUNDED_SQUARE"
 ) {
     val effectiveAlpha = 1f - userAlpha
     

@@ -89,6 +89,7 @@ fun AlbumArtwork(
     imageUrl: String?,
     title: String?,
     dominantColors: DominantColors,
+    modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     isPlaying: Boolean = false,
     isRotatingEnabled: Boolean = false,
@@ -99,8 +100,7 @@ fun AlbumArtwork(
     onShapeChange: ((ArtworkShape) -> Unit)? = null,
     onDoubleTapLeft: () -> Unit = {},
     onDoubleTapRight: () -> Unit = {},
-    songId: String? = null,
-    modifier: Modifier = Modifier
+    songId: String? = null
 ) {
     val context = LocalContext.current
     val colorFlashingEnabled = false
