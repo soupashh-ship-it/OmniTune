@@ -14,17 +14,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import com.omnitune.app.models.MiniPlayerStyle
 import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.PlayerProgressState
 import com.omnitune.app.ui.component.rememberDominantColors
 import com.omnitune.app.ui.player.miniplayer.LiquidGlassMiniPlayer
 import com.omnitune.app.ui.player.miniplayer.PillMiniPlayer
@@ -47,23 +45,19 @@ fun MiniPlayer(
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(playerConnection, isPlaying) {
-        while (true) {
-            val pc = playerConnection
-            if (pc != null) {
-                currentPosition = pc.player.currentPosition
-            }
-            delay(250)
-        }
+    val initialProgress = remember(mediaMetadata?.id, mediaMetadata?.duration) {
+        PlayerProgressState(durationMs = mediaMetadata?.duration?.toLong()?.takeIf { it > 0L }?.times(1000L) ?: 0L)
     }
-    val duration = (mediaMetadata?.duration ?: 0) * 1000L
+    val progressState by remember(playerConnection, mediaMetadata?.id, mediaMetadata?.duration) {
+        playerConnection?.progressState ?: flowOf(initialProgress)
+    }.collectAsStateWithLifecycle(initialValue = initialProgress)
 
     val song = remember(mediaMetadata) { mediaMetadata?.toPresentationSong() } ?: return
     val dominantColors = rememberDominantColors(song.thumbnailUrl)
 
-    val progressProvider: () -> Float = {
-        if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+    val latestProgress by rememberUpdatedState(progressState.progress)
+    val progressProvider: () -> Float = remember {
+        { latestProgress }
     }
 
     Box(

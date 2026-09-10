@@ -124,6 +124,7 @@ import com.omnitune.app.models.LyricsAnimationType
 import com.omnitune.app.models.LyricsLine
 import com.omnitune.app.models.LyricsTextPosition
 import com.omnitune.app.playback.PlayerConnection
+import com.omnitune.app.playback.PlayerProgressState
 import com.omnitune.app.ui.component.BounceButton
 import com.omnitune.app.ui.component.DynamicLyricsBackground
 import com.omnitune.app.ui.component.LoadingIndicator
@@ -132,7 +133,6 @@ import com.omnitune.app.ui.utils.MoodDetector
 import com.omnitune.app.utils.TimeUtil
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -146,8 +146,15 @@ fun LyricsBottomSheet(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val isPlaying by (playerConnection?.isPlaying ?: flowOf(false)).collectAsStateWithLifecycle(initialValue = false)
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var currentDuration by remember { mutableLongStateOf(0L) }
+    val metadataDurationMs = remember(mediaMetadata?.id, mediaMetadata?.duration) {
+        mediaMetadata?.duration?.toLong()?.takeIf { it > 0L }?.times(1000L) ?: 0L
+    }
+    val initialProgress = remember(metadataDurationMs) {
+        PlayerProgressState(durationMs = metadataDurationMs)
+    }
+    val progressState by remember(playerConnection, mediaMetadata?.id, mediaMetadata?.duration) {
+        playerConnection?.progressState ?: flowOf(initialProgress)
+    }.collectAsStateWithLifecycle(initialValue = initialProgress)
 
     var lyricsTextPosition by rememberEnumPreference(LyricsTextPositionKey, LyricsTextPosition.CENTER)
     val lyricsAnimationType by rememberEnumPreference(LyricsAnimationTypeKey, LyricsAnimationType.WORD)
@@ -160,14 +167,6 @@ fun LyricsBottomSheet(
     val betterLyricsEnabled by rememberPreference(EnableBetterLyricsKey, true)
     val kugouEnabled by rememberPreference(EnableKugouKey, true)
     val simpMusicEnabled by rememberPreference(EnableSimpMusicLyricsKey, true)
-
-    LaunchedEffect(playerConnection) {
-        while (true) {
-            currentPosition = playerConnection?.currentPosition?.coerceAtLeast(0L) ?: 0L
-            currentDuration = playerConnection?.duration?.takeIf { it > 0L } ?: 0L
-            delay(100)
-        }
-    }
 
     LaunchedEffect(
         mediaMetadata?.id,
@@ -196,7 +195,8 @@ fun LyricsBottomSheet(
     val songTitle = mediaMetadata?.title.orEmpty()
     val artistName = mediaMetadata?.artists?.joinToString(", ") { it.name }.orEmpty()
     val artworkUrl = mediaMetadata?.thumbnailUrl
-    val duration = currentDuration.takeIf { it > 0L } ?: mediaMetadata?.duration?.toLong()?.takeIf { it > 0L } ?: 0L
+    val currentPosition = progressState.positionMs
+    val duration = progressState.durationMs.takeIf { it > 0L } ?: metadataDurationMs
     val loadedLines = (uiState as? LyricsUiState.Success)?.lines.orEmpty()
     val donorLyrics = remember(loadedLines) { loadedLines.toDonorLyrics() }
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
