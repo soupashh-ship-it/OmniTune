@@ -12,9 +12,11 @@ import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.downloads
 import dagger.hilt.android.lifecycle.HiltViewModel
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 data class SongStatus(
@@ -173,6 +175,13 @@ class DownloadsViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    private val _operationMessage = MutableStateFlow<String?>(null)
+    val operationMessage: StateFlow<String?> = _operationMessage.asStateFlow()
+
+    fun clearOperationMessage() {
+        _operationMessage.value = null
+    }
+
     val downloadItems: StateFlow<List<DownloadItem>> = combine(
         downloadUtil.downloads,
         downloadUtil.resolvingDownloads,
@@ -239,7 +248,7 @@ class DownloadsViewModel @Inject constructor(
                 downloadUtil.removeDownload(songId)
                 _selectedSongIds.update { it - songId }
             } catch (e: Exception) {
-                // Ignore
+                publishOperationFailure(e, "Failed to delete download")
             }
         }
     }
@@ -273,8 +282,12 @@ class DownloadsViewModel @Inject constructor(
     fun deleteSelected() {
         val toDelete = _selectedSongIds.value.toList()
         viewModelScope.launch(Dispatchers.IO) {
-            toDelete.forEach { downloadUtil.removeDownload(it) }
-            clearSelection()
+            try {
+                toDelete.forEach { downloadUtil.removeDownload(it) }
+                clearSelection()
+            } catch (e: Exception) {
+                publishOperationFailure(e, "Failed to delete selected downloads")
+            }
         }
     }
 
@@ -283,8 +296,12 @@ class DownloadsViewModel @Inject constructor(
             .filterIsInstance<DownloadItem.SongItem>()
             .map { it.song.id }
         viewModelScope.launch(Dispatchers.IO) {
-            all.forEach { downloadUtil.removeDownload(it) }
-            clearSelection()
+            try {
+                all.forEach { downloadUtil.removeDownload(it) }
+                clearSelection()
+            } catch (e: Exception) {
+                publishOperationFailure(e, "Failed to delete downloads")
+            }
         }
     }
 
@@ -294,6 +311,8 @@ class DownloadsViewModel @Inject constructor(
             try {
                 downloadUtil.refreshDownloadIndex()
                 _storageInfo.value = downloadUtil.getStorageInfo()
+            } catch (e: Exception) {
+                publishOperationFailure(e, "Failed to refresh downloads")
             } finally {
                 _isRefreshing.value = false
             }
@@ -307,6 +326,12 @@ class DownloadsViewModel @Inject constructor(
         onResult: (success: Boolean, message: String) -> Unit = { _, _ -> }
     ) {
         downloadUtil.enqueue(videoId, title, resolvedStreamUrl, onResult)
+    }
+
+    private fun publishOperationFailure(error: Exception, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
+        _operationMessage.value = message
     }
 
     private fun Download.toSnapshot(isPlayable: Boolean): DownloadSnapshot {

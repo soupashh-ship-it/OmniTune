@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -54,7 +56,16 @@ fun DownloadsScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val isSelectionMode by viewModel.isSelectionMode.collectAsStateWithLifecycle()
     val selectedIds by viewModel.selectedSongIds.collectAsStateWithLifecycle()
+    val operationMessage by viewModel.operationMessage.collectAsStateWithLifecycle()
     val chromeInsets = LocalRouteChromeInsets.current
+    val context = LocalContext.current
+
+    LaunchedEffect(operationMessage) {
+        operationMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearOperationMessage()
+        }
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val songItems = remember(downloadItems) {

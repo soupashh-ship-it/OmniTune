@@ -23,6 +23,7 @@ import com.omnitune.innertube.models.SongItem as InnerSongItem
 import com.omnitune.innertube.models.YTItem as InnerYTItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.time.ZoneOffset
 import java.util.Locale
 import javax.inject.Inject
@@ -217,7 +219,7 @@ class HomeViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Ignore
+            logFailure(e, "Failed to load local home recommendations")
         }
     }
 
@@ -256,6 +258,7 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             }.onFailure { error ->
+                logFailure(error, "Failed to load home")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -264,6 +267,7 @@ class HomeViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
+            logFailure(e, "Failed to load home")
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -299,6 +303,7 @@ class HomeViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                logFailure(e, "Failed to load more home content")
                 _uiState.update { current ->
                     HomePaginationStateReducer.failure(current, e.message)
                 }
@@ -335,6 +340,7 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                logFailure(e, "Failed to filter home mood content")
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
@@ -348,6 +354,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _events.emit(HomeEvent.ShowAddToPlaylistSheet(song))
         }
+    }
+
+    private fun logFailure(error: Throwable, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
     }
 
     private fun List<HomePage.Section>.toHomeSections(startIndex: Int = 0): List<HomeSection> =

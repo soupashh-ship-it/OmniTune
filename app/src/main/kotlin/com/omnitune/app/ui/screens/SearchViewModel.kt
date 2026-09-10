@@ -11,6 +11,7 @@ import com.omnitune.innertube.models.ArtistItem as InnerArtistItem
 import com.omnitune.innertube.models.PlaylistItem as InnerPlaylistItem
 import com.omnitune.innertube.models.SongItem as InnerSongItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.time.LocalDateTime
 import javax.inject.Inject
 
@@ -161,7 +163,7 @@ class SearchViewModel @Inject constructor(
                 val items = dbHistory.map { RecentSearchItem.QueryItem(it.query, it.id.toString()) }
                 _uiState.update { it.copy(recentSearches = items) }
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to load recent searches")
             }
         }
     }
@@ -190,10 +192,12 @@ class SearchViewModel @Inject constructor(
                             isCategoriesLoading = false
                         )
                     }
-                }.onFailure {
+                }.onFailure { error ->
+                    logFailure(error, "Failed to load browse categories")
                     _uiState.update { it.copy(isCategoriesLoading = false) }
                 }
             } catch (e: Exception) {
+                logFailure(e, "Failed to load browse categories")
                 _uiState.update { it.copy(isCategoriesLoading = false) }
             }
         }
@@ -268,6 +272,7 @@ class SearchViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 if (!suggestionGate.accepts(request)) return@launch
+                logFailure(e, "Failed to fetch search suggestions")
                 _uiState.update { it.copy(isSuggestionsLoading = false) }
             }
         }
@@ -306,7 +311,7 @@ class SearchViewModel @Inject constructor(
                     try {
                         database.insert(SearchHistory(query = normalizedQuery))
                     } catch (e: Exception) {
-                        // Ignore
+                        logFailure(e, "Failed to save search history")
                     }
                 }
                 loadRecentSearches()
@@ -351,6 +356,7 @@ class SearchViewModel @Inject constructor(
                     }
                 }.onFailure { error ->
                     if (!searchGate.accepts(request)) return@onFailure
+                    logFailure(error, "Failed to search")
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -360,6 +366,7 @@ class SearchViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 if (!searchGate.accepts(request)) return@launch
+                logFailure(e, "Failed to search")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -418,8 +425,7 @@ class SearchViewModel @Inject constructor(
                     database.insert(SearchHistory(query = item.query))
                     loadRecentSearches()
                 } catch (e: Exception) {
-
-                    // Ignore
+                    logFailure(e, "Failed to add recent search")
                 }
             }
         }
@@ -436,7 +442,7 @@ class SearchViewModel @Inject constructor(
                 }
                 loadRecentSearches()
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to remove recent search")
             }
         }
     }
@@ -447,7 +453,7 @@ class SearchViewModel @Inject constructor(
                 database.clearSearchHistory()
                 loadRecentSearches()
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to clear recent searches")
             }
         }
     }
@@ -484,5 +490,10 @@ class SearchViewModel @Inject constructor(
         viewModelScope.launch {
             _events.emit(SearchEvent.ShowAddToPlaylistSheet(song))
         }
+    }
+
+    private fun logFailure(error: Throwable, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
     }
 }

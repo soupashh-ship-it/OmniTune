@@ -44,9 +44,11 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.currentState
 import androidx.glance.appwidget.GlanceAppWidgetManager
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 object WidgetState {
     val titleKey = stringPreferencesKey("title")
@@ -158,10 +160,15 @@ private suspend fun withMediaController(context: Context, action: suspend (andro
     val controllerFuture = androidx.media3.session.MediaController.Builder(context, sessionToken).buildAsync()
     try {
         val controller = controllerFuture.await()
-        action(controller)
-        controller.release()
+        try {
+            action(controller)
+        } finally {
+            controller.release()
+        }
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
-        // Ignored
+        Timber.w(e, "Failed to control playback from widget")
     }
 }
 
