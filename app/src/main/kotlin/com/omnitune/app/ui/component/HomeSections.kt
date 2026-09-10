@@ -67,8 +67,8 @@ fun HorizontalCarouselSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     if (section.items.isEmpty()) return
 
@@ -209,8 +209,8 @@ fun VerticalListSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     val songs = remember(section.items) {
         section.items.filterIsInstance<HomeItem.SongItem>().map { it.song }
@@ -371,8 +371,8 @@ fun LargeCardWithListSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     if (section.items.isEmpty()) return
     
@@ -486,8 +486,8 @@ fun GridSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     // Pre-chunk items into columns of 2 for a grid layout.
     // A single-axis LazyRow (not LazyHorizontalGrid) virtualizes the horizontal
@@ -544,8 +544,8 @@ fun GridSection(
 fun QuickPickItem(
     song: Song,
     onClick: () -> Unit,
-    onMoreClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMoreClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val highResThumbnail = remember(song.thumbnailUrl) {
@@ -642,8 +642,8 @@ fun QuickPicksSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     if (section.items.isEmpty()) return
 
@@ -815,10 +815,10 @@ fun CommunityCarouselSection(
     onSongClick: (List<Song>, Int) -> Unit,
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
+    modifier: Modifier = Modifier,
     onStartRadio: () -> Unit = {},
     onSavePlaylist: (PlaylistDisplayItem) -> Unit = {},
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     Column(
         modifier = modifier,
@@ -1210,8 +1210,8 @@ fun NewReleaseCard(
     subtitle: String?,
     imageUrl: String?,
     onClick: () -> Unit,
-    onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onMoreClick: (() -> Unit)? = null,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
     val context = LocalContext.current
@@ -1699,8 +1699,8 @@ fun ChartPodiumSection(
     onPlaylistClick: (PlaylistDisplayItem) -> Unit,
     onAlbumClick: (Album) -> Unit,
     onArtistClick: (String) -> Unit,
-    onSongMoreClick: (Song) -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSongMoreClick: (Song) -> Unit = {}
 ) {
     val items = remember(section.items) { section.items.distinctBy { it.id } }
     val songs = remember(items) {
