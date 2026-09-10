@@ -112,7 +112,7 @@ class PlaylistManagementViewModel @Inject constructor(
         _uiState.update { it.copy(showCreatePlaylistDialog = false) }
     }
 
-    fun createPlaylist(title: String, description: String, isPrivate: Boolean = true, syncWithYt: Boolean = false) {
+    fun createPlaylist(title: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isCreatingPlaylist = true) }
             try {

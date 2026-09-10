@@ -444,10 +444,7 @@ fun HistoryScreen(
             isVisible = true,
             isCreating = playlistState.isCreatingPlaylist,
             onDismiss = { playlistViewModel.hideCreatePlaylistDialog() },
-            onCreate = { title, description, isPrivate, syncWithYt ->
-                playlistViewModel.createPlaylist(title, description, isPrivate, syncWithYt)
-            },
-            isLoggedIn = true,
+            onCreate = playlistViewModel::createPlaylist,
         )
     }
 }

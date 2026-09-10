@@ -398,10 +398,7 @@ fun AlbumScreen(
                         isVisible = playlistMgmtState.showCreatePlaylistDialog,
                         isCreating = playlistMgmtState.isCreatingPlaylist,
                         onDismiss = { playlistViewModel.hideCreatePlaylistDialog() },
-                        onCreate = { title, desc, isPrivate, syncWithYt ->
-                            playlistViewModel.createPlaylist(title, desc, isPrivate, syncWithYt)
-                        },
-                        isLoggedIn = true
+                        onCreate = playlistViewModel::createPlaylist,
                     )
                 }
             }

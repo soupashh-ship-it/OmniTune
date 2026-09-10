@@ -15,7 +15,6 @@ import com.omnitune.app.models.HomeItem
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
 import com.omnitune.innertube.YouTube
-import com.omnitune.innertube.utils.parseCookieString
 import com.omnitune.innertube.pages.HomePage
 import com.omnitune.innertube.models.AlbumItem as InnerAlbumItem
 import com.omnitune.innertube.models.ArtistItem as InnerArtistItem
@@ -76,41 +75,6 @@ data class HomeUiState(
         "quick_picks", "youtube_sections", "personalized", "genres", "charts"
     )
 )
-
-data class HomeAccountState(
-    val isLoggedIn: Boolean,
-    val userName: String?,
-    val userAvatarUrl: String?,
-)
-
-object HomeAccountStateMapper {
-    fun fromStoredAccount(
-        plainCookie: String?,
-        accountName: String?,
-        accountEmail: String?,
-        channelHandle: String?,
-        avatarUrl: String? = null,
-    ): HomeAccountState {
-        val isLoggedIn = plainCookie
-            ?.let { "SAPISID" in parseCookieString(it) }
-            ?: false
-
-        val displayName = if (isLoggedIn) {
-            firstNonBlank(accountName, channelHandle, accountEmail, "YouTube Music")
-        } else {
-            null
-        }
-
-        return HomeAccountState(
-            isLoggedIn = isLoggedIn,
-            userName = displayName,
-            userAvatarUrl = avatarUrl?.takeIf { isLoggedIn && it.isNotBlank() },
-        )
-    }
-
-    private fun firstNonBlank(vararg values: String?): String? =
-        values.firstOrNull { !it.isNullOrBlank() }?.trim()
-}
 
 object HomeLocalRecommendationMapper {
     fun recommendations(
@@ -204,7 +168,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             context.dataStore.data
                 .map { prefs ->
-                    HomeAccountStateMapper.fromStoredAccount(
+                    AccountSessionStateMapper.fromStoredAccount(
                         plainCookie = SecurePreferenceCipher.decryptOrPlain(prefs[InnerTubeCookieKey]),
                         accountName = prefs[AccountNameKey],
                         accountEmail = prefs[AccountEmailKey],

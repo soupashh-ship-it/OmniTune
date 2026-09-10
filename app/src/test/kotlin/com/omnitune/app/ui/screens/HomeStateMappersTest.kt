@@ -2,6 +2,7 @@ package com.omnitune.app.ui.screens
 
 import com.omnitune.app.db.entities.ArtistEntity
 import com.omnitune.app.db.entities.SongEntity
+import com.omnitune.app.models.AccountSessionStateMapper
 import com.omnitune.app.models.HomeItem
 import com.omnitune.app.models.HomeSection
 import com.omnitune.app.models.HomeSectionType
@@ -16,7 +17,7 @@ import com.omnitune.app.db.entities.Song as DbSong
 class HomeStateMappersTest {
     @Test
     fun accountState_defaultsToGuestWithoutSignedInCookie() {
-        val state = HomeAccountStateMapper.fromStoredAccount(
+        val state = AccountSessionStateMapper.fromStoredAccount(
             plainCookie = "VISITOR_INFO1_LIVE=value",
             accountName = "Saved User",
             accountEmail = "saved@example.com",
@@ -29,7 +30,7 @@ class HomeStateMappersTest {
 
     @Test
     fun accountState_usesStoredNameOnlyWhenCookieIsSignedIn() {
-        val state = HomeAccountStateMapper.fromStoredAccount(
+        val state = AccountSessionStateMapper.fromStoredAccount(
             plainCookie = "SID=one; SAPISID=two",
             accountName = "Saved User",
             accountEmail = "saved@example.com",

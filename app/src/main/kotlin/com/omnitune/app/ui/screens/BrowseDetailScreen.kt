@@ -220,9 +220,7 @@ fun BrowseDetailScreen(
             isVisible = playlistMgmtState.showCreatePlaylistDialog,
             isCreating = playlistMgmtState.isCreatingPlaylist,
             onDismiss = playlistViewModel::hideCreatePlaylistDialog,
-            onCreate = { title, description, isPrivate, syncWithYt ->
-                playlistViewModel.createPlaylist(title, description, isPrivate, syncWithYt)
-            },
+            onCreate = playlistViewModel::createPlaylist,
         )
     }
 }

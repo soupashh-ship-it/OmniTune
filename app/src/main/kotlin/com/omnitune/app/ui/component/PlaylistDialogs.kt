@@ -335,14 +335,10 @@ fun CreatePlaylistDialog(
     isVisible: Boolean,
     isCreating: Boolean,
     onDismiss: () -> Unit,
-    onCreate: (title: String, description: String, isPrivate: Boolean, syncWithYt: Boolean) -> Unit,
-    isLoggedIn: Boolean = true
+    onCreate: (title: String) -> Unit,
 ) {
     if (isVisible) {
         var title by remember { mutableStateOf("") }
-        var description by remember { mutableStateOf("") }
-        var syncWithYt by remember { mutableStateOf(false) }
-        var isPrivate by remember { mutableStateOf(true) }
         
         val onSurface = MaterialTheme.colorScheme.onSurface
         val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
@@ -388,7 +384,7 @@ fun CreatePlaylistDialog(
                         TextButton(
                             onClick = { 
                                 if (title.isNotBlank()) {
-                                    onCreate(title, description, isPrivate, syncWithYt)
+                                    onCreate(title)
                                 }
                             },
                             enabled = title.isNotBlank() && !isCreating,
@@ -441,20 +437,7 @@ fun CreatePlaylistDialog(
                             shape = SquircleShape,
                             textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                         )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        androidx.compose.material3.OutlinedTextField(
-                            value = description,
-                            onValueChange = { description = it },
-                            label = { Text("Description (Optional)") },
-                            minLines = 2,
-                            maxLines = 4,
-                            enabled = !isCreating,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = SquircleShape
-                        )
-                        
+
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                 }

@@ -39,7 +39,6 @@ data class LibraryUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val isLoggedIn: Boolean = true,
     val viewMode: LibraryViewMode = LibraryViewMode.GRID,
     val sortOption: LibrarySortOption = LibrarySortOption.DATE_ADDED,
     val librarySearchQuery: String = "",

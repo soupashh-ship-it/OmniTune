@@ -32,7 +32,6 @@ data class PlaylistUiState(
     val isRenaming: Boolean = false,
     val isDeleting: Boolean = false,
     val deleteSuccess: Boolean = false,
-    val isLoggedIn: Boolean = true,
     val isSaved: Boolean = false,
     val selectedSongIds: Set<String> = emptySet(),
     val isSelectionMode: Boolean = false,
