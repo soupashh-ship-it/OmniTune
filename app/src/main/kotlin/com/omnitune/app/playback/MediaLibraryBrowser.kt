@@ -6,14 +6,23 @@
 package com.omnitune.app.playback
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.session.MediaConstants
+import androidx.media3.session.MediaLibraryService.LibraryParams
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.Playlist
 import com.omnitune.app.db.entities.Song
 import com.omnitune.app.extensions.toMediaItem
 import kotlinx.coroutines.flow.first
 import kotlin.math.min
+
+internal data class MediaContentStyleHints(
+    val singleItemStyle: Int = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+    val browsableChildrenStyle: Int = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+    val playableChildrenStyle: Int = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+)
 
 internal class MediaLibraryBrowser(
     private val database: MusicDatabase,
@@ -104,7 +113,26 @@ internal class MediaLibraryBrowser(
         const val PLAYLIST_PREFIX = "omnitune:library:playlist:"
         const val MAX_SEARCH_RESULTS = 50
 
+        internal val RootContentStyleHints = MediaContentStyleHints(
+            singleItemStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_CATEGORY_LIST_ITEM,
+            browsableChildrenStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_CATEGORY_LIST_ITEM,
+            playableChildrenStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+        )
+        internal val CategoryContentStyleHints = MediaContentStyleHints(
+            singleItemStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_CATEGORY_LIST_ITEM,
+            browsableChildrenStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+            playableChildrenStyle = MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM,
+        )
+
         private val categoryIds = setOf(LIKED_ID, SONGS_ID, DOWNLOADS_ID, PLAYLISTS_ID)
+
+        fun rootParams(requested: LibraryParams?): LibraryParams =
+            LibraryParams.Builder()
+                .setRecent(requested?.isRecent == true)
+                .setOffline(requested?.isOffline == true)
+                .setSuggested(requested?.isSuggested == true)
+                .setExtras(rootExtras(requested?.extras))
+                .build()
 
         fun <T> pageItems(items: List<T>, page: Int, pageSize: Int): List<T> {
             if (page < 0 || pageSize <= 0) return emptyList()
@@ -119,21 +147,47 @@ internal class MediaLibraryBrowser(
             mediaId = ROOT_ID,
             title = "OmniTune",
             subtitle = "Music library",
+            contentStyleHints = RootContentStyleHints,
         )
 
         fun categoryItem(mediaId: String): MediaItem = when (mediaId) {
-            LIKED_ID -> browsableItem(mediaId, "Liked Songs", "Songs you liked")
-            SONGS_ID -> browsableItem(mediaId, "Library Songs", "Saved songs")
-            DOWNLOADS_ID -> browsableItem(mediaId, "Downloads", "Available offline")
-            PLAYLISTS_ID -> browsableItem(mediaId, "Playlists", "Saved playlists")
-            else -> browsableItem(mediaId, "OmniTune", "Music library")
+            LIKED_ID -> categoryBrowsableItem(mediaId, "Liked Songs", "Songs you liked")
+            SONGS_ID -> categoryBrowsableItem(mediaId, "Library Songs", "Saved songs")
+            DOWNLOADS_ID -> categoryBrowsableItem(mediaId, "Downloads", "Available offline")
+            PLAYLISTS_ID -> categoryBrowsableItem(mediaId, "Playlists", "Saved playlists")
+            else -> categoryBrowsableItem(mediaId, "OmniTune", "Music library")
         }
+
+        private fun rootExtras(requestedExtras: Bundle?): Bundle =
+            Bundle(requestedExtras ?: Bundle.EMPTY).apply {
+                putInt(
+                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                    RootContentStyleHints.browsableChildrenStyle,
+                )
+                putInt(
+                    MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                    RootContentStyleHints.playableChildrenStyle,
+                )
+            }
+
+        private fun categoryBrowsableItem(
+            mediaId: String,
+            title: String,
+            subtitle: String? = null,
+        ): MediaItem =
+            browsableItem(
+                mediaId = mediaId,
+                title = title,
+                subtitle = subtitle,
+                contentStyleHints = CategoryContentStyleHints,
+            )
 
         private fun browsableItem(
             mediaId: String,
             title: String,
             subtitle: String? = null,
             artworkUri: String? = null,
+            contentStyleHints: MediaContentStyleHints = MediaContentStyleHints(),
         ): MediaItem {
             return MediaItem.Builder()
                 .setMediaId(mediaId)
@@ -144,17 +198,40 @@ internal class MediaLibraryBrowser(
                         .setArtworkUri(artworkUri?.let(Uri::parse))
                         .setIsBrowsable(true)
                         .setIsPlayable(false)
+                        .setExtras(
+                            contentStyleExtras(
+                                hints = contentStyleHints,
+                            )
+                        )
                         .build()
                 )
                 .build()
         }
 
+        private fun contentStyleExtras(hints: MediaContentStyleHints): Bundle =
+            Bundle().apply {
+                putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_SINGLE_ITEM, hints.singleItemStyle)
+                putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE, hints.browsableChildrenStyle)
+                putInt(MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE, hints.playableChildrenStyle)
+            }
+
         private fun Song.toPlayableItem(offline: Boolean = false): MediaItem {
             val item = toMediaItem()
+            val extras = Bundle(item.mediaMetadata.extras ?: Bundle.EMPTY).apply {
+                putLong(
+                    MediaConstants.EXTRAS_KEY_DOWNLOAD_STATUS,
+                    if (offline) {
+                        MediaConstants.EXTRAS_VALUE_STATUS_DOWNLOADED
+                    } else {
+                        MediaConstants.EXTRAS_VALUE_STATUS_NOT_DOWNLOADED
+                    },
+                )
+            }
             val metadataBuilder = item.mediaMetadata
                 .buildUpon()
                 .setIsBrowsable(false)
                 .setIsPlayable(true)
+                .setExtras(extras)
             if (offline) {
                 metadataBuilder.setIsBrowsable(false)
             }

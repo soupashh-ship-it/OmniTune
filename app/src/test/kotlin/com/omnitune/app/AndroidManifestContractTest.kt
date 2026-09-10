@@ -27,9 +27,20 @@ class AndroidManifestContractTest {
 
     @Test
     fun mediaServiceKeepsMedia3LibraryAction() {
-        assertTrue(manifestText.contains("""android:name=".playback.MusicService""""))
-        assertTrue(manifestText.contains("""androidx.media3.session.MediaLibraryService"""))
-        assertFalse(manifestText.contains("""androidx.media3.session.MediaSessionService"""))
+        val mediaServiceBlock = Regex(
+            """<service\s+[^>]*android:name="\.playback\.MusicService"[\s\S]*?</service>""",
+        ).find(manifestText)?.value.orEmpty()
+
+        assertTrue(mediaServiceBlock.contains("""android:exported="true""""))
+        assertTrue(mediaServiceBlock.contains("""androidx.media3.session.MediaLibraryService"""))
+        assertTrue(mediaServiceBlock.contains("""android.media.browse.MediaBrowserService"""))
+        assertFalse(mediaServiceBlock.contains("""androidx.media3.session.MediaSessionService"""))
+    }
+
+    @Test
+    fun manifestDeclaresAndroidAutoMediaSupport() {
+        assertTrue(manifestText.contains("""android:name="com.google.android.gms.car.application""""))
+        assertTrue(manifestText.contains("""android:resource="@xml/automotive_app_desc""""))
     }
 
     @Test

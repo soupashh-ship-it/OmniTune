@@ -39,7 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -65,17 +65,9 @@ fun PoTokenScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val chromeInsets = LocalRouteChromeInsets.current
-    var gvsInput by rememberSaveable { mutableStateOf("") }
-    var playerInput by rememberSaveable { mutableStateOf("") }
-    var initializedInputs by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(state.gvsToken, state.playerToken) {
-        if (!initializedInputs) {
-            gvsInput = state.gvsToken
-            playerInput = state.playerToken
-            initializedInputs = true
-        }
-    }
+    var gvsInput by remember { mutableStateOf("") }
+    var playerInput by remember { mutableStateOf("") }
+    val hasPendingTokenReplacement = gvsInput.isNotBlank() || playerInput.isNotBlank()
 
     LaunchedEffect(state.message, state.errorMessage) {
         val message = state.message ?: state.errorMessage
@@ -130,12 +122,13 @@ fun PoTokenScreen(
                         icon = Icons.Default.Settings,
                         checked = state.webClientPoTokensEnabled,
                         onCheckedChange = viewModel::setWebClientPoTokensEnabled,
+                        enabled = state.hasGvsToken || state.hasPlayerToken,
                         subtitleMaxLines = 2,
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     ListItem(
                         headlineContent = { Text("Visitor Data", fontWeight = FontWeight.Medium) },
-                        supportingContent = { Text(maskPoTokenSecret(state.visitorData), maxLines = 1) },
+                        supportingContent = { Text(secretPreviewText(state.visitorDataPreview), maxLines = 1) },
                         leadingContent = { LeadingIconBox(Icons.Default.Key) },
                         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                     )
@@ -155,12 +148,14 @@ fun PoTokenScreen(
                         PoTokenTextField(
                             value = gvsInput,
                             onValueChange = { gvsInput = it },
-                            label = "GVS token",
+                            label = "New GVS token",
+                            placeholder = secretPreviewText(state.gvsTokenPreview),
                         )
                         PoTokenTextField(
                             value = playerInput,
                             onValueChange = { playerInput = it },
-                            label = "Player token",
+                            label = "New player token",
+                            placeholder = secretPreviewText(state.playerTokenPreview),
                         )
 
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -175,7 +170,12 @@ fun PoTokenScreen(
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             Button(
-                                onClick = { viewModel.saveTokens(gvsInput, playerInput) },
+                                onClick = {
+                                    viewModel.saveTokens(gvsInput, playerInput)
+                                    gvsInput = ""
+                                    playerInput = ""
+                                },
+                                enabled = hasPendingTokenReplacement,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -249,11 +249,13 @@ private fun PoTokenTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
+    placeholder: String,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        placeholder = { Text(placeholder) },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         shape = SquircleShape,
@@ -270,9 +272,5 @@ private fun PoTokenTextField(
     )
 }
 
-private fun maskPoTokenSecret(value: String): String =
-    when {
-        value.isBlank() -> "Not set"
-        value.length <= 12 -> "Saved (${value.length} chars)"
-        else -> "${value.take(6)}...${value.takeLast(4)}"
-    }
+private fun secretPreviewText(preview: String): String =
+    preview.ifBlank { "Not set" }

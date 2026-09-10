@@ -163,7 +163,7 @@ class MusicSessionCallback @Inject constructor() : MediaLibraryService.MediaLibr
         params: LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> {
         return Futures.immediateFuture(
-            LibraryResult.ofItem(MediaLibraryBrowser.rootItem(), params)
+            LibraryResult.ofItem(MediaLibraryBrowser.rootItem(), MediaLibraryBrowser.rootParams(params))
         )
     }
 

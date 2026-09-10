@@ -38,8 +38,10 @@ import com.omnitune.app.ui.component.SettingsCard
 import com.omnitune.app.ui.component.SettingsRowStyle
 import com.omnitune.app.ui.component.SettingsSwitchRow
 import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.utils.SensitivePreferenceCodec
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.rememberPreference
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,7 @@ fun LastFmSettingsScreen(
     var minSongDuration by rememberPreference(ScrobbleMinSongDurationKey, 30)
     var showTokenDialog by remember { mutableStateOf(false) }
     val token = SecurePreferenceCipher.decryptOrPlain(storedToken)
+    val tokenPreview = SensitivePreferenceCodec.maskedPreview(token)
 
     Scaffold(
         topBar = {
@@ -84,7 +87,7 @@ fun LastFmSettingsScreen(
                     if (token.isNotBlank()) {
                         ListItem(
                             headlineContent = { Text("ListenBrainz token configured") },
-                            supportingContent = { Text("Scrobbling is active on this device") },
+                            supportingContent = { Text(secretPreviewText(tokenPreview)) },
                             leadingContent = {
                                 Icon(
                                     imageVector = Icons.Default.Favorite,
@@ -157,7 +160,7 @@ fun LastFmSettingsScreen(
                     ListItem(
                         headlineContent = { Text("ListenBrainz Token") },
                         supportingContent = {
-                            Text(if (token.isBlank()) "Tap to configure your token" else "Token is encrypted locally")
+                            Text(secretPreviewText(tokenPreview))
                         },
                         leadingContent = {
                             Icon(
@@ -244,7 +247,8 @@ fun LastFmSettingsScreen(
     }
 
     if (showTokenDialog) {
-        var tokenInput by remember(showTokenDialog) { mutableStateOf(token) }
+        var tokenInput by remember(showTokenDialog) { mutableStateOf("") }
+        var tokenDialogError by remember(showTokenDialog) { mutableStateOf<String?>(null) }
         var passwordVisible by remember(showTokenDialog) { mutableStateOf(false) }
 
         AlertDialog(
@@ -254,7 +258,10 @@ fun LastFmSettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = tokenInput,
-                        onValueChange = { tokenInput = it },
+                        onValueChange = {
+                            tokenInput = it
+                            tokenDialogError = null
+                        },
                         label = { Text("User token") },
                         singleLine = true,
                         visualTransformation = if (passwordVisible) {
@@ -273,21 +280,36 @@ fun LastFmSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        text = "Generate a user token in ListenBrainz, then paste it here.",
+                        text = tokenDialogError ?: "Generate a user token in ListenBrainz, then paste it here.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (tokenDialogError == null) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        storedToken = tokenInput.trim().takeIf { it.isNotBlank() }
-                            ?.let(SecurePreferenceCipher::encrypt)
-                            .orEmpty()
-                        if (storedToken.isBlank()) enabled = false
-                        showTokenDialog = false
+                        runCatching {
+                            SensitivePreferenceCodec.encodeForStorage(
+                                tokenInput,
+                                SecurePreferenceCipher::encrypt,
+                            )
+                        }.onSuccess { encodedToken ->
+                            if (!encodedToken.isNullOrBlank()) {
+                                storedToken = encodedToken
+                                enabled = true
+                                showTokenDialog = false
+                            }
+                        }.onFailure { error ->
+                            Timber.tag("ListenBrainz").w(error, "Could not save ListenBrainz token")
+                            tokenDialogError = "Could not save token"
+                        }
                     },
+                    enabled = tokenInput.isNotBlank(),
                 ) {
                     Text("Save")
                 }
@@ -298,6 +320,9 @@ fun LastFmSettingsScreen(
         )
     }
 }
+
+private fun secretPreviewText(preview: String): String =
+    preview.ifBlank { "Not set" }
 
 @Composable
 private fun ScrobblingSectionTitle(title: String) {
