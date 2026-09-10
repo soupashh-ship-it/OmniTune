@@ -59,7 +59,7 @@ class LibraryPlaylistPersistenceInstrumentedTest {
             database.update(playlist.copy(name = "Renamed fixture playlist"))
             assertEquals("Renamed fixture playlist", database.getPlaylistById(playlist.id)?.playlist?.name)
 
-            database.delete(playlist.copy(name = "Renamed fixture playlist"))
+            database.deletePlaylistById(playlist.id)
             assertNull(database.getPlaylistById(playlist.id))
             assertTrue(database.playlistSongs(playlist.id).first().isEmpty())
             assertTrue(database.playlistIdsByTags(listOf(tag.id)).first().isEmpty())

@@ -218,8 +218,20 @@ interface PlaylistDao {
     fun delete(playlistSongMap: PlaylistSongMap)
 
 
-    @Query("DELETE FROM playlist WHERE browseId = :browseId")
-    fun deletePlaylistById(browseId: String)
+    @Query("SELECT id FROM playlist WHERE id = :playlistId OR browseId = :playlistId")
+    fun playlistIdsByIdOrBrowseId(playlistId: String): List<String>
+
+
+    @Query("DELETE FROM playlist WHERE id = :playlistId OR browseId = :playlistId")
+    fun deletePlaylistRowsByIdOrBrowseId(playlistId: String)
+
+
+    @Transaction
+    fun deletePlaylistById(playlistId: String) {
+        val deletedPlaylistIds = playlistIdsByIdOrBrowseId(playlistId)
+        deletedPlaylistIds.forEach(::removeAllPlaylistTags)
+        deletePlaylistRowsByIdOrBrowseId(playlistId)
+    }
 
 
 

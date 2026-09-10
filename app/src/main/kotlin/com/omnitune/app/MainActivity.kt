@@ -239,6 +239,7 @@ class MainActivity : ComponentActivity() {
     private var isSongPlaying: Boolean = false
     private var isVolumeSliderEnabled: Boolean = true
     private var isPipEnabled: Boolean = true
+    private var musicServiceBound: Boolean = false
     private val mainViewModel: MainViewModel by viewModels()
 
     private val _volumeKeyEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -253,6 +254,7 @@ class MainActivity : ComponentActivity() {
         override fun onServiceDisconnected(name: ComponentName?) {
             playerConnection?.dispose()
             playerConnection = null
+            musicServiceBound = false
         }
     }
 
@@ -265,7 +267,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun bindToMusicService() {
-        bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
+        try {
+            musicServiceBound = bindService(Intent(this, MusicService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
+        } catch (e: Exception) {
+            musicServiceBound = false
+            reportException(e)
+        }
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -480,7 +487,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        try { unbindService(serviceConnection) } catch (_: Exception) {}
+        if (musicServiceBound) {
+            try {
+                unbindService(serviceConnection)
+            } catch (e: IllegalArgumentException) {
+                reportException(e)
+            } finally {
+                musicServiceBound = false
+            }
+        }
     }
 
     override fun onDestroy() {

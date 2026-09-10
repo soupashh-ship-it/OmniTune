@@ -6,6 +6,7 @@ import android.content.Intent
 import com.omnitune.app.playback.PlaybackActions
 import com.omnitune.app.playback.MusicService
 import dagger.hilt.android.AndroidEntryPoint
+import timber.log.Timber
 
 /**
  * Handles PiP remote action intents (play/pause, next, previous).
@@ -25,7 +26,9 @@ class PipActionReceiver : BroadcastReceiver() {
         }
         try {
             context.startService(serviceIntent)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to dispatch PiP playback action")
+        }
     }
 
 }

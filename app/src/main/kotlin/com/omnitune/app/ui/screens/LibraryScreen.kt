@@ -69,6 +69,13 @@ fun LibraryScreen(
     val playerConnection = LocalPlayerConnection.current
     val chromeInsets = LocalRouteChromeInsets.current
 
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+
     var selectedPlaylist: PlaylistDisplayItem? by remember { mutableStateOf(null) }
     var showPlaylistMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }

@@ -9,6 +9,7 @@ import com.omnitune.app.models.*
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import timber.log.Timber
 import java.time.Instant
 import javax.inject.Inject
 
@@ -84,7 +86,7 @@ class LibraryViewModel @Inject constructor(
                     _uiState.update { it.copy(recentlyPlayed = events) }
                 }
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to observe recent library events")
             }
         }
         viewModelScope.launch {
@@ -105,7 +107,7 @@ class LibraryViewModel @Inject constructor(
                     filterAndPresent()
                 }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to observe library playlists")
             }
         }
     }
@@ -155,7 +157,15 @@ class LibraryViewModel @Inject constructor(
                 }
                 filterAndPresent()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message) }
+                if (e is CancellationException) throw e
+                Timber.w(e, "Failed to load library")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = e.message ?: "Failed to load library"
+                    )
+                }
             }
         }
     }
@@ -212,7 +222,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(likedSongs = liked, likedSongsCount = liked.size) }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to load liked songs")
             }
         }
     }
@@ -223,9 +233,11 @@ class LibraryViewModel @Inject constructor(
                 val p = database.getPlaylistByIdBlocking(playlistId)?.playlist
                 if (p != null) {
                     database.update(p.copy(name = newName))
+                } else {
+                    error("Playlist not found")
                 }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to rename playlist")
             }
         }
     }
@@ -233,9 +245,12 @@ class LibraryViewModel @Inject constructor(
     fun deletePlaylist(playlistId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                if (database.playlistIdsByIdOrBrowseId(playlistId).isEmpty()) {
+                    error("Playlist not found")
+                }
                 database.deletePlaylistById(playlistId)
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to delete playlist")
             }
         }
     }
@@ -329,7 +344,7 @@ class LibraryViewModel @Inject constructor(
                     delete(com.omnitune.app.db.entities.PlaylistTagMap(playlistId = playlistId, tagId = tagId))
                 }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to remove folder from playlist")
             }
         }
     }
@@ -339,7 +354,7 @@ class LibraryViewModel @Inject constructor(
             try {
                 database.insert(com.omnitune.app.db.entities.TagEntity(name = name, color = color))
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to create folder")
             }
         }
     }
@@ -349,7 +364,7 @@ class LibraryViewModel @Inject constructor(
             try {
                 database.update(tag)
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to update folder")
             }
         }
     }
@@ -359,7 +374,7 @@ class LibraryViewModel @Inject constructor(
             try {
                 database.delete(tag)
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to delete folder")
             }
         }
     }
@@ -369,7 +384,7 @@ class LibraryViewModel @Inject constructor(
             try {
                 database.insert(com.omnitune.app.db.entities.PlaylistTagMap(playlistId = playlistId, tagId = tagId))
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to add folder to playlist")
             }
         }
     }
@@ -379,7 +394,7 @@ class LibraryViewModel @Inject constructor(
             try {
                 database.insert(song.toSongEntity())
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to ensure song exists")
             }
         }
     }
@@ -392,6 +407,7 @@ class LibraryViewModel @Inject constructor(
                 }
                 true
             } catch (e: Exception) {
+                logFailure(e, "Failed to add song to playlist")
                 false
             }
         }
@@ -413,6 +429,20 @@ class LibraryViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    private fun publishFailure(error: Exception, message: String) {
+        logFailure(error, message)
+        _uiState.update { it.copy(error = message) }
+    }
+
+    private fun logFailure(error: Exception, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
     }
 }
 

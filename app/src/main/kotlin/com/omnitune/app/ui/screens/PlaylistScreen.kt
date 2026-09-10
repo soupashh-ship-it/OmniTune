@@ -98,6 +98,14 @@ fun PlaylistScreen(
         }
     }
 
+    LaunchedEffect(uiState.successMessage, uiState.errorMessage) {
+        val message = uiState.successMessage ?: uiState.errorMessage
+        if (message != null) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
+
     BackHandler(enabled = uiState.isSelectionMode) {
         viewModel.clearSelection()
     }

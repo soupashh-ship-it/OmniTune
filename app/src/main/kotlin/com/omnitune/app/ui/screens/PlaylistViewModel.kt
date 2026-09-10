@@ -9,6 +9,7 @@ import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.ui.navigation.Destination
 import com.omnitune.innertube.YouTube
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 
 data class PlaylistUiState(
@@ -75,7 +77,7 @@ class PlaylistViewModel @Inject constructor(
                     _uiState.update { it.copy(isSaved = dbPlaylist?.playlist?.bookmarkedAt != null) }
                 }
             } catch (e: Exception) {
-                // Ignore
+                logFailure(e, "Failed to observe playlist library state")
             }
         }
     }
@@ -93,7 +95,7 @@ class PlaylistViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to update playlist library state")
             }
         }
     }
@@ -280,6 +282,8 @@ class PlaylistViewModel @Inject constructor(
                 val existing = database.getPlaylistByIdBlocking(playlistId)?.playlist
                 if (existing != null) {
                     database.update(existing.copy(name = newName))
+                } else {
+                    error("Playlist not found")
                 }
                 _uiState.update {
                     it.copy(
@@ -288,7 +292,7 @@ class PlaylistViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = "Failed to rename playlist") }
+                publishFailure(e, "Failed to rename playlist")
             }
         }
     }
@@ -296,10 +300,13 @@ class PlaylistViewModel @Inject constructor(
     fun deletePlaylist() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                if (database.playlistIdsByIdOrBrowseId(playlistId).isEmpty()) {
+                    error("Playlist not found")
+                }
                 database.deletePlaylistById(playlistId)
                 _uiState.update { it.copy(deleteSuccess = true) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = "Failed to delete playlist") }
+                publishFailure(e, "Failed to delete playlist")
             }
         }
     }
@@ -308,16 +315,36 @@ class PlaylistViewModel @Inject constructor(
     fun removeSong(song: Song) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                if (database.checkInPlaylist(playlistId, song.id) == 0) {
+                    error("Song was not in this playlist")
+                }
+                database.removeSongFromPlaylist(playlistId, song.id)
                 val current = _uiState.value.playlist?.songs.orEmpty()
                 val updated = current.filter { it.id != song.id }
-                _uiState.update { it.copy(playlist = it.playlist?.copy(songs = updated), originalSongs = updated) }
+                _uiState.update {
+                    it.copy(
+                        playlist = it.playlist?.copy(songs = updated),
+                        originalSongs = updated,
+                        successMessage = "Removed ${song.title}"
+                    )
+                }
             } catch (e: Exception) {
-                // Ignore
+                publishFailure(e, "Failed to remove song from playlist")
             }
         }
     }
 
     fun clearMessages() {
         _uiState.update { it.copy(successMessage = null, errorMessage = null) }
+    }
+
+    private fun publishFailure(error: Exception, message: String) {
+        logFailure(error, message)
+        _uiState.update { it.copy(errorMessage = message) }
+    }
+
+    private fun logFailure(error: Exception, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
     }
 }

@@ -115,7 +115,9 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
             Timber.plant(Timber.DebugTree())
             try {
                 Timber.plant(GlobalLogTree())
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Timber.w(e, "Global log tree unavailable")
+            }
         }
 
         if (OfflineDownloadArchive.applyPending(this)) {
@@ -231,7 +233,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     val prefs = getSharedPreferences("crash_prefs", Context.MODE_PRIVATE)
                     writeCrashSnapshot(prefs, throwable)
                 } catch (e: Exception) {
-                    // Ignore
+                    Timber.e(e, "Failed to write crash snapshot")
                 } finally {
                     if (defaultHandler != null) {
                         defaultHandler.uncaughtException(thread, throwable)

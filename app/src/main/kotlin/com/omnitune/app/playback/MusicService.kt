@@ -962,7 +962,9 @@ class MusicService : MediaLibraryService(), Player.Listener {
         try {
             crossfadePlaybackCoordinator?.release()
             crossfadePlaybackCoordinator = null
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Timber.tag("MusicService").w(e, "Failed to release crossfade coordinator")
+        }
         playbackPreferenceObserver?.stop()
         playbackPreferenceObserver = null
         autoDownloadOnLikeCoordinator?.stop()
