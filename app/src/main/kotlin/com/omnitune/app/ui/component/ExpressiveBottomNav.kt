@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -187,13 +189,7 @@ private fun LiquidGlassNavBar(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .height(72.dp)
-            // Consume taps that miss individual items so clicks don't pass through
-            // to controls rendered behind a translucent navigation bar.
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {}
-            )
+            .consumePointerEventsBehind()
     ) {
         // Layer 1: Enhanced shadow
         Box(
@@ -437,13 +433,7 @@ private fun StandardNavBar(
             .fillMaxWidth()
             .background(scrimBrush)
             .navigationBarsPadding()
-            // Consume taps that miss individual items so clicks don't pass through
-            // to controls rendered behind a translucent navigation bar.
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {}
-            )
+            .consumePointerEventsBehind()
     ) {
         Row(
             modifier = Modifier
@@ -525,3 +515,16 @@ private data class BottomNavItem(
     val selectedIcon: ImageVector
 )
 
+private fun Modifier.consumePointerEventsBehind(): Modifier =
+    pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Final)
+                event.changes.forEach { change ->
+                    if (change.pressed) {
+                        change.consume()
+                    }
+                }
+            }
+        }
+    }

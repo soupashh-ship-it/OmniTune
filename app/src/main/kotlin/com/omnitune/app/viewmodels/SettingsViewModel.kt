@@ -21,6 +21,7 @@ import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
+import timber.log.Timber
 
 data class SettingsUiState(
     val isLoggedIn: Boolean = false,
@@ -256,7 +258,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 ctx.cacheDir.deleteRecursively()
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                logCacheClearFailure(e, "Could not clear app cache")
+            }
         }
     }
 
@@ -264,7 +268,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 File(ctx.cacheDir, "image_cache").deleteRecursively()
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                logCacheClearFailure(e, "Could not clear artwork cache")
+            }
         }
+    }
+
+    private fun logCacheClearFailure(error: Exception, message: String) {
+        if (error is CancellationException) throw error
+        Timber.w(error, message)
     }
 }
