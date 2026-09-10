@@ -36,15 +36,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentPaste
@@ -136,7 +136,7 @@ fun ImportPlaylistScreen(
                         },
                     ) {
                         Icon(
-                            imageVector = if (canDismiss) Icons.Default.Close else Icons.Default.ArrowBack,
+                            imageVector = if (canDismiss) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = if (canDismiss) "Close import" else "Cancel import",
                         )
                     }
@@ -275,7 +275,7 @@ private fun InputView(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Default.InsertDriveFile,
+                        imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                         contentDescription = "Files",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(28.dp),
@@ -362,7 +362,7 @@ private fun InputView(
         )
         Spacer(modifier = Modifier.height(12.dp))
         ImportFileButton(
-            icon = Icons.Default.QueueMusic,
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
             title = "Import M3U playlist",
             subtitle = ".m3u or .m3u8 playlist exported from another app",
             onClick = { m3uPicker.launch("*/*") },

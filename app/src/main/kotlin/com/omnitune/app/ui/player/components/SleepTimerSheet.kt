@@ -27,12 +27,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.TimerOff
-import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -302,7 +302,7 @@ fun SleepTimerSheet(
                     ) {
                         TimerChip(
                             label = "Fade 5% / 2m",
-                            icon = Icons.Default.TrendingDown,
+                            icon = Icons.AutoMirrored.Filled.TrendingDown,
                             isSelected = currentOption == SleepTimerOption.FADE_OUT_GENTLE,
                             accentColor = finalAccentColor,
                             contentColorOnBackground = finalContentColor,
@@ -312,7 +312,7 @@ fun SleepTimerSheet(
 
                         TimerChip(
                             label = "Fade 5% / 1m",
-                            icon = Icons.Default.TrendingDown,
+                            icon = Icons.AutoMirrored.Filled.TrendingDown,
                             isSelected = currentOption == SleepTimerOption.FADE_OUT_FAST,
                             accentColor = finalAccentColor,
                             contentColorOnBackground = finalContentColor,

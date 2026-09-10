@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -70,15 +71,16 @@ fun RelatedSheet(
     val contentColor = if (isDarkTheme) Color.White else Color.Black
     val secondaryContentColor = contentColor.copy(alpha = 0.6f)
     val glassArtwork = LocalGlassArtwork.current
+    val glassArtworkUrl = glassArtwork?.artworkUrl
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        if (!glassArtwork?.artworkUrl.isNullOrBlank()) {
+        if (glassArtwork != null && !glassArtworkUrl.isNullOrBlank()) {
             ArtworkBlurBackdrop(
-                artworkUrl = glassArtwork!!.artworkUrl,
+                artworkUrl = glassArtworkUrl,
                 isDarkTheme = isDarkTheme,
                 dominantColors = dominantColors,
                 modifier = Modifier.fillMaxSize(),
@@ -166,7 +168,7 @@ fun RelatedSheet(
                             }
                             IconButton(onClick = onAddSelectedToQueue) {
                                 Icon(
-                                    imageVector = Icons.Default.QueueMusic,
+                                    imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                                     contentDescription = "Add selected to queue",
                                     tint = dominantColors.accent
                                 )

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.FileDownload
@@ -579,7 +580,7 @@ private fun LibraryControlBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextButton(onClick = onSortClick) {
-            Icon(Icons.Default.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(if (sortOption == LibrarySortOption.DATE_ADDED) "Recently Added" else "Alphabetical")
         }

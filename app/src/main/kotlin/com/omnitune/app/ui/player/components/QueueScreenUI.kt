@@ -10,8 +10,6 @@ package com.omnitune.app.ui.player.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -36,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -291,11 +288,6 @@ fun ModernQueueView(
             // Queue List
             val listState = rememberLazyListState()
 
-            // YouTube-Music-style mix filter chips (All / Familiar / Popular / …).
-            if (!isSelectionMode) {
-                QueueFilterChips(dominantColors = dominantColors, contentColor = contentColor)
-            }
-
             // Compose's LazyList requires unique keys. The queue can legitimately
             // contain the same song twice (manual "Add to queue" of a track that
             // is already enqueued, repeat-one transitions, autoplay echoes), so we
@@ -408,17 +400,15 @@ fun ModernQueueView(
                         // Swipe a row towards the start (left in LTR) to remove it from
                         // the queue. Only up-next rows are removable — history and the
                         // current track keep their existing interactions.
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    onRemoveItems(listOf(actualIndex))
-                                    true
-                                } else false
-                            }
-                        )
+                        val dismissState = rememberSwipeToDismissBoxState()
                         SwipeToDismissBox(
                             state = dismissState,
                             enableDismissFromStartToEnd = false,
+                            onDismiss = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    onRemoveItems(listOf(actualIndex))
+                                }
+                            },
                             backgroundContent = {
                                 // Rows are transparent over the dynamic background, so
                                 // only draw the delete affordance mid-swipe.
@@ -483,47 +473,6 @@ fun ModernQueueView(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * YouTube-Music-style mix filter chips shown above the queue. Selection is local
- * and presentational for now — the app's autoplay does not expose mix-tuning
- * categories (Familiar / Popular / Discover / Deep cuts), so these tune nothing yet.
- */
-@Composable
-private fun QueueFilterChips(dominantColors: DominantColors, contentColor: Color) {
-    val filters = remember { listOf("All", "Familiar", "Popular", "Discover", "Deep cuts") }
-    var selected by remember { mutableStateOf("All") }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        filters.forEach { filter ->
-            val isSel = filter == selected
-            val background = if (isSel) contentColor.copy(alpha = 0.95f) else contentColor.copy(alpha = 0.08f)
-            val foreground = if (isSel) {
-                if (contentColor.luminance() > 0.5f) Color.Black else Color.White
-            } else {
-                contentColor.copy(alpha = 0.85f)
-            }
-            Surface(
-                color = background,
-                shape = CircleShape,
-                modifier = Modifier.clickable { selected = filter }
-            ) {
-                Text(
-                    text = filter,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = foreground,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
             }
         }
     }

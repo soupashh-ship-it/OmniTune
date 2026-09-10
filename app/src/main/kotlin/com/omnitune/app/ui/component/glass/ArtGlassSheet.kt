@@ -46,8 +46,9 @@ fun ArtGlassSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val artwork = LocalGlassArtwork.current
+    val artworkUrl = artwork?.artworkUrl
 
-    if (artwork?.artworkUrl.isNullOrBlank()) {
+    if (artwork == null || artworkUrl.isNullOrBlank()) {
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             modifier = modifier,
@@ -73,7 +74,7 @@ fun ArtGlassSheet(
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             ArtworkBlurBackdrop(
-                artworkUrl = artwork!!.artworkUrl,
+                artworkUrl = artworkUrl,
                 isDarkTheme = artwork.isDarkTheme,
                 dominantColors = artwork.colors,
                 modifier = Modifier
