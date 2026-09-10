@@ -102,8 +102,8 @@ class OmniTuneWidget : GlanceAppWidget() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    provider = ImageProvider(R.drawable.ic_launcher_foreground),
-                    contentDescription = "Album Art",
+                    provider = ImageProvider(R.drawable.logo),
+                    contentDescription = "OmniTune logo",
                     modifier = GlanceModifier.size(64.dp)
                 )
 
