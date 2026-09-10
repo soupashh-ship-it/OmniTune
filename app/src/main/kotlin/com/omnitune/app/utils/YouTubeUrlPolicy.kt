@@ -1,6 +1,5 @@
 package com.omnitune.app.utils
 
-import java.net.IDN
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -28,18 +27,12 @@ object YouTubeUrlPolicy {
         normalizedAcceptedYouTubeHost(host) != null
 
     fun normalizedAcceptedYouTubeHost(host: String?): String? {
-        val normalizedHost = host
-            ?.trim()
-            ?.trimEnd('.')
-            ?.takeIf { it.isNotBlank() }
-            ?.let { runCatching { IDN.toASCII(it) }.getOrDefault(it) }
-            ?.lowercase(Locale.US)
+        val normalizedHost = TrustedHostPolicy.normalizeHost(host)
             ?: return null
 
         return normalizedHost.takeIf {
-            it == "youtu.be" ||
-                it == "youtube.com" ||
-                it.endsWith(".youtube.com")
+            TrustedHostPolicy.isExactHost(it, "youtu.be") ||
+                TrustedHostPolicy.isExactHostOrSubdomain(it, "youtube.com")
         }
     }
 

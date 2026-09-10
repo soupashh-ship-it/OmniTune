@@ -14,6 +14,7 @@ import okhttp3.OkHttpClient
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 
 import com.omnitune.app.utils.StreamClientUtils
+import com.omnitune.app.utils.TrustedHostPolicy
 import okhttp3.Interceptor
 
 object PlayerFactory {
@@ -121,7 +122,7 @@ object PlayerFactory {
             val request = chain.request()
             val clientParam = request.url.queryParameter("c")?.trim().orEmpty()
 
-            if (!request.url.host.endsWith("googlevideo.com") || clientParam.isBlank()) {
+            if (!TrustedHostPolicy.isExactHostOrSubdomain(request.url.host, "googlevideo.com") || clientParam.isBlank()) {
                 return@Interceptor chain.proceed(request)
             }
 
