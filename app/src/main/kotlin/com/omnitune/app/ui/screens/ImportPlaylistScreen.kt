@@ -91,6 +91,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.omnitune.app.ui.component.LoadingIndicator
 import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.utils.YouTubeUrlPolicy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -743,10 +744,7 @@ private fun ErrorView(
 }
 
 private fun isValidImportUrl(url: String): Boolean {
-    val cleanUrl = url.trim()
-    return cleanUrl.contains("youtube.com/", ignoreCase = true) ||
-        cleanUrl.contains("music.youtube.com/", ignoreCase = true) ||
-        cleanUrl.contains("youtu.be/", ignoreCase = true)
+    return YouTubeUrlPolicy.extractPlaylistId(url) != null
 }
 
 private fun shareImportStats(context: Context, state: ImportState.Success) {

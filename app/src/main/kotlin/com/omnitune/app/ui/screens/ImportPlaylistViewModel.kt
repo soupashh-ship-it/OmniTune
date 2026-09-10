@@ -14,6 +14,7 @@ import com.omnitune.app.db.entities.PlaylistEntity
 import com.omnitune.app.db.entities.PlaylistSongMap
 import com.omnitune.app.models.MediaMetadata
 import com.omnitune.app.models.toMediaMetadata
+import com.omnitune.app.utils.YouTubeUrlPolicy
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.utils.completed
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -202,7 +203,7 @@ class ImportPlaylistViewModel @Inject constructor(
     }
 
     private suspend fun importFromUrl(url: String): Pair<String, List<ImportTrack>> {
-        val playlistId = extractPlaylistId(url)
+        val playlistId = YouTubeUrlPolicy.extractPlaylistId(url)
             ?: throw IllegalArgumentException("Paste a YouTube or YouTube Music playlist link.")
 
         val page = YouTube.playlist(playlistId).completed().getOrThrow()
@@ -564,37 +565,10 @@ class ImportPlaylistViewModel @Inject constructor(
         return fields
     }
 
-    private fun extractPlaylistId(url: String): String? {
-        val clean = url.trim()
-        val parsed = runCatching { Uri.parse(clean) }.getOrNull()
-        val queryId = parsed?.getQueryParameter("list")
-            ?: Regex("""[?&]list=([^&]+)""").find(clean)?.groupValues?.getOrNull(1)
-        return queryId
-            ?.removePrefix("VL")
-            ?.takeIf { it.isNotBlank() }
-            ?.takeIf { clean.contains("youtube.com", ignoreCase = true) || clean.contains("youtu.be", ignoreCase = true) }
-    }
-
     private fun extractPlayableSource(value: String): String? =
-        extractYouTubeVideoId(value)
+        value.trim().takeIf(YouTubeUrlPolicy::isYouTubeVideoId)
+            ?: YouTubeUrlPolicy.extractVideoId(value)
             ?: value.trim().takeIf { it.isLocalPlayableSource() }
-
-    private fun extractYouTubeVideoId(value: String): String? {
-        val clean = value.trim()
-        val parsed = runCatching { Uri.parse(clean) }.getOrNull()
-        val queryId = parsed?.getQueryParameter("v")?.takeIf { it.isYouTubeVideoId() }
-        if (queryId != null) return queryId
-
-        val pathId = parsed?.lastPathSegment?.takeIf { it.isYouTubeVideoId() }
-        if (pathId != null && (clean.contains("youtu.be") || clean.contains("/shorts/") || clean.contains("/embed/"))) {
-            return pathId
-        }
-
-        return Regex("""(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})""")
-            .find(clean)
-            ?.groupValues
-            ?.getOrNull(1)
-    }
 
     private fun Uri.importDisplayName(fallback: String): String =
         lastPathSegment
@@ -604,10 +578,7 @@ class ImportPlaylistViewModel @Inject constructor(
             ?: fallback
 
     private fun String.youtubeThumbnailUrl(): String? =
-        takeIf { it.isYouTubeVideoId() }?.let { "https://img.youtube.com/vi/$it/maxresdefault.jpg" }
-
-    private fun String.isYouTubeVideoId(): Boolean =
-        matches(Regex("""^[A-Za-z0-9_-]{11}$"""))
+        takeIf(YouTubeUrlPolicy::isYouTubeVideoId)?.let { "https://img.youtube.com/vi/$it/maxresdefault.jpg" }
 
     private fun String.isLocalPlayableSource(): Boolean {
         val clean = trim()

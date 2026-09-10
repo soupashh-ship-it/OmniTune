@@ -6,14 +6,14 @@
 package com.omnitune.app.viewmodels
 
 import android.net.Uri
-import java.net.IDN
+import com.omnitune.app.utils.YouTubeUrlPolicy
 import java.util.Locale
 
 internal object IncomingIntentParser {
     private val supportedVideoId = Regex("^[A-Za-z0-9_-]{6,64}$")
 
     fun isAcceptedYouTubeHost(host: String?): Boolean {
-        return normalizedAcceptedYouTubeHost(host) != null
+        return YouTubeUrlPolicy.isAcceptedYouTubeHost(host)
     }
 
     fun extractYouTubeVideoId(uri: Uri): String? {
@@ -29,7 +29,7 @@ internal object IncomingIntentParser {
         pathSegments: List<String>,
         queryParameter: (String) -> String?
     ): String? {
-        val host = normalizedAcceptedYouTubeHost(host) ?: return null
+        val host = YouTubeUrlPolicy.normalizedAcceptedYouTubeHost(host) ?: return null
         val segments = pathSegments
         val candidate = when {
             host == "youtu.be" -> segments.firstOrNull()
@@ -54,7 +54,7 @@ internal object IncomingIntentParser {
         host: String?,
         queryParameter: (String) -> String?
     ): String? {
-        if (normalizedAcceptedYouTubeHost(host) == null) return null
+        if (!YouTubeUrlPolicy.isAcceptedYouTubeHost(host)) return null
         return queryParameter("list")
             ?.trim()
             ?.takeIf { it.isNotBlank() }
@@ -73,19 +73,4 @@ internal object IncomingIntentParser {
         return mimeType == null || mimeType.lowercase(Locale.US).startsWith("audio/")
     }
 
-    private fun normalizedAcceptedYouTubeHost(host: String?): String? {
-        val normalizedHost = host
-            ?.trim()
-            ?.trimEnd('.')
-            ?.takeIf { it.isNotBlank() }
-            ?.let { runCatching { IDN.toASCII(it) }.getOrDefault(it) }
-            ?.lowercase(Locale.US)
-            ?: return null
-
-        return normalizedHost.takeIf {
-            it == "youtu.be" ||
-                it == "youtube.com" ||
-                it.endsWith(".youtube.com")
-        }
-    }
 }
