@@ -34,6 +34,7 @@ class AndroidManifestContractTest {
         assertTrue(mediaServiceBlock.contains("""android:exported="true""""))
         assertTrue(mediaServiceBlock.contains("""androidx.media3.session.MediaLibraryService"""))
         assertTrue(mediaServiceBlock.contains("""android.media.browse.MediaBrowserService"""))
+        assertTrue(mediaServiceBlock.contains("""android.media.action.MEDIA_PLAY_FROM_SEARCH"""))
         assertFalse(mediaServiceBlock.contains("""androidx.media3.session.MediaSessionService"""))
     }
 
