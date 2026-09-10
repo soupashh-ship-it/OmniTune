@@ -35,6 +35,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.omnitune.app.ui.navigation.Destination
@@ -101,15 +107,22 @@ private fun TvNavRailItem(
                 shape = CircleShape,
                 focusedScale = 1.15f,
                 borderColor = MaterialTheme.colorScheme.primary,
-                borderWidth = 2.dp
+                borderWidth = 2.dp,
+                role = Role.Tab
             )
+            .semantics {
+                contentDescription = item.label
+                role = Role.Tab
+                selected = isSelected
+                stateDescription = if (isSelected) "Selected" else "Not selected"
+            }
             .clip(CircleShape)
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
-            contentDescription = item.label,
+            contentDescription = null,
             modifier = Modifier.size(28.dp),
             tint = contentColor
         )

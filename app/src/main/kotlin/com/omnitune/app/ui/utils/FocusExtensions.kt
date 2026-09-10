@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
 fun Modifier.dpadFocusable(
@@ -33,7 +34,8 @@ fun Modifier.dpadFocusable(
     borderWidth: androidx.compose.ui.unit.Dp = 2.dp,
     borderColor: Color = Color.White,
     focusBackgroundColor: Color = Color.White.copy(alpha = 0.1f),
-    showBorder: Boolean = true
+    showBorder: Boolean = true,
+    role: Role = Role.Button
 ) = composed {
     val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     var isFocused by remember { mutableStateOf(false) }
@@ -55,6 +57,7 @@ fun Modifier.dpadFocusable(
                 Modifier.clickable(
                     interactionSource = interactionSource,
                     indication = androidx.compose.foundation.LocalIndication.current,
+                    role = role,
                     onClick = onClick
                 )
             } else {
