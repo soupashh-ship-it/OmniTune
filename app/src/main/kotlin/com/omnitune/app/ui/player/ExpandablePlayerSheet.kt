@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.omnitune.app.models.MiniPlayerStyle
+import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.Song
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.player.miniplayer.LiquidGlassMiniPlayer
@@ -51,7 +52,6 @@ private val MiniPlayerHeight = 64.dp
 fun ExpandablePlayerSheet(
     currentSong: Song?,
     isPlaying: Boolean,
-    isLoading: Boolean = false,
     progressProvider: () -> Float,
     dominantColors: DominantColors,
     onPlayPause: () -> Unit,
@@ -61,13 +61,14 @@ fun ExpandablePlayerSheet(
     bottomPadding: Float,
     isExpanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
+    expandedContent: @Composable (onCollapse: () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     userAlpha: Float = 0f,
     swipeDownToDismissEnabled: Boolean = true,
-    style: MiniPlayerStyle = MiniPlayerStyle.YT_MUSIC,
+    style: MiniPlayerStyle = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle,
     artworkShape: String = "ROUNDED_SQUARE",
-    glassBlurAmount: Float = 50f,
-    expandedContent: @Composable (onCollapse: () -> Unit) -> Unit
+    glassBlurAmount: Float = 50f
 ) {
     val song = currentSong ?: return
     val coroutineScope = rememberCoroutineScope()
@@ -311,18 +312,18 @@ fun ExpandablePlayerSheet(
 private fun CollapsedMiniPlayer(
     song: Song,
     isPlaying: Boolean,
-    isLoading: Boolean = false,
     dominantColors: DominantColors,
     progressProvider: () -> Float,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onClose: () -> Unit,
     onTap: () -> Unit,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
     userAlpha: Float = 0f,
-    style: MiniPlayerStyle = MiniPlayerStyle.YT_MUSIC,
+    style: MiniPlayerStyle = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle,
     artworkShape: String = "ROUNDED_SQUARE",
-    glassBlurAmount: Float = 50f,
-    modifier: Modifier = Modifier
+    glassBlurAmount: Float = 50f
 ) {
     when (style) {
         MiniPlayerStyle.LIQUID_GLASS -> {

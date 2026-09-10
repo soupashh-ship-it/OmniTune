@@ -70,11 +70,11 @@ data class SettingsUiState(
     val iosLiquidGlassEnabled: Boolean = true,
     val miniPlayerAlpha: Float = 0.0f,
     val miniPlayerBlur: Float = 50.0f,
-    val miniPlayerStyle: MiniPlayerStyle = MiniPlayerStyle.LIQUID_GLASS,
-    val playerStyle: PlayerStyle = PlayerStyle.LIQUID_GLASS,
-    val artworkShape: ArtworkShape = ArtworkShape.ROUNDED_SQUARE,
-    val artworkSize: ArtworkSize = ArtworkSize.FULL,
-    val seekbarStyle: SeekbarStyle = SeekbarStyle.M3E_WAVY
+    val miniPlayerStyle: MiniPlayerStyle = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle,
+    val playerStyle: PlayerStyle = PlayerPresentationPreferenceMapper.DefaultPlayerStyle,
+    val artworkShape: ArtworkShape = PlayerPresentationPreferenceMapper.DefaultArtworkShape,
+    val artworkSize: ArtworkSize = PlayerPresentationPreferenceMapper.DefaultArtworkSize,
+    val seekbarStyle: SeekbarStyle = PlayerPresentationPreferenceMapper.DefaultSeekbarStyle
 )
 
 @HiltViewModel
@@ -103,21 +103,11 @@ class SettingsViewModel @Inject constructor(
                         logoVariant = try {
                             LogoVariant.valueOf(prefs[LogoVariantKey] ?: LogoVariant.DEFAULT.name)
                         } catch (e: Exception) { LogoVariant.DEFAULT },
-                        playerStyle = try {
-                            PlayerStyle.valueOf(prefs[PlayerStyleKey] ?: PlayerStyle.LIQUID_GLASS.name)
-                        } catch (e: Exception) { PlayerStyle.LIQUID_GLASS },
-                        miniPlayerStyle = try {
-                            MiniPlayerStyle.valueOf(prefs[MiniPlayerStyleKey] ?: MiniPlayerStyle.LIQUID_GLASS.name)
-                        } catch (e: Exception) { MiniPlayerStyle.LIQUID_GLASS },
-                        artworkShape = try {
-                            ArtworkShape.valueOf(prefs[ArtworkShapeKey] ?: ArtworkShape.ROUNDED_SQUARE.name)
-                        } catch (e: Exception) { ArtworkShape.ROUNDED_SQUARE },
-                        artworkSize = try {
-                            ArtworkSize.valueOf(prefs[ArtworkSizeKey] ?: ArtworkSize.FULL.name)
-                        } catch (e: Exception) { ArtworkSize.FULL },
-                        seekbarStyle = try {
-                            SeekbarStyle.valueOf(prefs[SeekbarStyleKey] ?: SeekbarStyle.M3E_WAVY.name)
-                        } catch (e: Exception) { SeekbarStyle.M3E_WAVY },
+                        playerStyle = PlayerPresentationPreferenceMapper.resolvePlayerStyle(prefs[PlayerStyleKey]),
+                        miniPlayerStyle = PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(prefs[MiniPlayerStyleKey]),
+                        artworkShape = PlayerPresentationPreferenceMapper.resolveArtworkShape(prefs[ArtworkShapeKey]),
+                        artworkSize = PlayerPresentationPreferenceMapper.resolveArtworkSize(prefs[ArtworkSizeKey]),
+                        seekbarStyle = PlayerPresentationPreferenceMapper.resolveSeekbarStyle(prefs[SeekbarStyleKey]),
                         iosLiquidGlassEnabled = prefs[LiquidGlassEnabledKey] ?: true,
                         forceMaxRefreshRateEnabled = prefs[ForceMaxRefreshRateKey] ?: false,
                         swipeDownToDismissEnabled = prefs[SwipeDownToDismissPlayerKey] ?: true,

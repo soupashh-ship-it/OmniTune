@@ -28,6 +28,7 @@ import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.ArtworkSize
 import com.omnitune.app.models.MiniPlayerStyle
+import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.PlayerStyle
 import com.omnitune.app.models.RepeatMode
 import com.omnitune.app.models.SeekbarStyle
@@ -126,29 +127,44 @@ class PlayerViewModel @Inject constructor(
     private var preferredOutputRouteId: Int? = null
 
     val playerStyle: StateFlow<PlayerStyle> = dataStore.data.map { prefs ->
-        val name = prefs[PlayerStyleKey] ?: PlayerStyle.YT_MUSIC.name
-        try { PlayerStyle.valueOf(name) } catch (e: Exception) { PlayerStyle.YT_MUSIC }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, PlayerStyle.YT_MUSIC)
+        PlayerPresentationPreferenceMapper.resolvePlayerStyle(prefs[PlayerStyleKey])
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        PlayerPresentationPreferenceMapper.DefaultPlayerStyle
+    )
 
     val miniPlayerStyle: StateFlow<MiniPlayerStyle> = dataStore.data.map { prefs ->
-        val name = prefs[MiniPlayerStyleKey] ?: MiniPlayerStyle.YT_MUSIC.name
-        try { MiniPlayerStyle.valueOf(name) } catch (e: Exception) { MiniPlayerStyle.YT_MUSIC }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, MiniPlayerStyle.YT_MUSIC)
+        PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(prefs[MiniPlayerStyleKey])
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle
+    )
 
     val seekbarStyle: StateFlow<SeekbarStyle> = dataStore.data.map { prefs ->
-        val name = prefs[SeekbarStyleKey] ?: SeekbarStyle.M3E_WAVY.name
-        try { SeekbarStyle.valueOf(name) } catch (e: Exception) { SeekbarStyle.M3E_WAVY }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, SeekbarStyle.M3E_WAVY)
+        PlayerPresentationPreferenceMapper.resolveSeekbarStyle(prefs[SeekbarStyleKey])
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        PlayerPresentationPreferenceMapper.DefaultSeekbarStyle
+    )
 
     val artworkShape: StateFlow<ArtworkShape> = dataStore.data.map { prefs ->
-        val name = prefs[ArtworkShapeKey] ?: ArtworkShape.ROUNDED_SQUARE.name
-        try { ArtworkShape.valueOf(name) } catch (e: Exception) { ArtworkShape.ROUNDED_SQUARE }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, ArtworkShape.ROUNDED_SQUARE)
+        PlayerPresentationPreferenceMapper.resolveArtworkShape(prefs[ArtworkShapeKey])
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        PlayerPresentationPreferenceMapper.DefaultArtworkShape
+    )
 
     val artworkSize: StateFlow<ArtworkSize> = dataStore.data.map { prefs ->
-        val name = prefs[ArtworkSizeKey] ?: ArtworkSize.FULL.name
-        try { ArtworkSize.valueOf(name) } catch (e: Exception) { ArtworkSize.FULL }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, ArtworkSize.FULL)
+        PlayerPresentationPreferenceMapper.resolveArtworkSize(prefs[ArtworkSizeKey])
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        PlayerPresentationPreferenceMapper.DefaultArtworkSize
+    )
 
     val swipeDownToDismissEnabled: StateFlow<Boolean> = dataStore.data.map { prefs ->
         prefs[SwipeDownToDismissPlayerKey] ?: true

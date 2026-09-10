@@ -83,6 +83,7 @@ import com.omnitune.app.extensions.ExtraIsMusicVideo
 import com.omnitune.app.models.AppTheme
 import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.MiniPlayerStyle
+import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.SongSource
 import com.omnitune.app.models.ThemeModePreferenceMapper
@@ -528,8 +529,12 @@ private fun OmniTuneAppRoot(
     var showWhatsNew by remember { mutableStateOf(false) }
 
     val miniPlayerStyleName by remember {
-        context.dataStore.data.map { it[MiniPlayerStyleKey] ?: MiniPlayerStyle.YT_MUSIC.name }
-    }.collectAsStateWithLifecycle(initialValue = MiniPlayerStyle.YT_MUSIC.name)
+        context.dataStore.data.map {
+            PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(it[MiniPlayerStyleKey]).name
+        }
+    }.collectAsStateWithLifecycle(
+        initialValue = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle.name
+    )
 
     val miniPlayerAlpha by remember {
         context.dataStore.data.map { it[MiniPlayerAlphaKey] ?: 0f }
@@ -542,10 +547,11 @@ private fun OmniTuneAppRoot(
     val miniPlayerArtworkShape by remember {
         context.dataStore.data.map { prefs ->
             val savedShape = prefs[ArtworkShapeKey] ?: ArtworkShape.ROUNDED_SQUARE.name
-            runCatching { ArtworkShape.valueOf(savedShape).name }
-                .getOrDefault(ArtworkShape.ROUNDED_SQUARE.name)
+            PlayerPresentationPreferenceMapper.resolveArtworkShape(savedShape).name
         }
-    }.collectAsStateWithLifecycle(initialValue = ArtworkShape.ROUNDED_SQUARE.name)
+    }.collectAsStateWithLifecycle(
+        initialValue = PlayerPresentationPreferenceMapper.DefaultArtworkShape.name
+    )
 
     val iosLiquidGlassEnabled by remember {
         context.dataStore.data.map { it[LiquidGlassEnabledKey] ?: true }
@@ -564,7 +570,7 @@ private fun OmniTuneAppRoot(
     }.collectAsStateWithLifecycle(initialValue = true)
 
     val miniPlayerStyle = remember(miniPlayerStyleName) {
-        try { MiniPlayerStyle.valueOf(miniPlayerStyleName) } catch (_: Exception) { MiniPlayerStyle.YT_MUSIC }
+        PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(miniPlayerStyleName)
     }
 
     val keepScreenOnEnabled by remember {

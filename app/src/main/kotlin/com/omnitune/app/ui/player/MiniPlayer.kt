@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import com.omnitune.app.models.MiniPlayerStyle
+import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.toPresentationSong
 import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.ui.component.rememberDominantColors
@@ -41,7 +42,7 @@ fun MiniPlayer(
     onNavigateToArtist: ((String) -> Unit)? = null,
     onShare: ((String, String?) -> Unit)? = null,
     onOpenQueue: (() -> Unit)? = null,
-    style: MiniPlayerStyle = MiniPlayerStyle.YT_MUSIC,
+    style: MiniPlayerStyle = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle,
     artworkShape: String = "ROUNDED_SQUARE",
 ) {
     val mediaMetadata by (playerConnection?.mediaMetadata ?: flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
