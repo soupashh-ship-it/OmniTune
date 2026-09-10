@@ -51,9 +51,15 @@ class PipHelper @Inject constructor(
             .setActions(createRemoteActions(isPlaying))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setAutoEnterEnabled(if (isPipEnabled) isVideoMode else false)
+            if (isPipEnabled && isVideoMode) {
+                builder.setAutoEnterEnabled(true)
+            } else {
+                builder.setAutoEnterEnabled(false)
+            }
             builder.setSeamlessResizeEnabled(true)
-            sourceRectHint?.let(builder::setSourceRectHint)
+            if (sourceRectHint != null) {
+                builder.setSourceRectHint(sourceRectHint)
+            }
         }
 
         return builder.build()
