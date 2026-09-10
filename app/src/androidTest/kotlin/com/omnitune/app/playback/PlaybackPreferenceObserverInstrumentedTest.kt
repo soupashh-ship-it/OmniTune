@@ -9,6 +9,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.omnitune.app.constants.AudioCrossfadeDurationKey
+import com.omnitune.app.constants.NextSongPreloadingKey
 import com.omnitune.app.constants.SkipSilenceKey
 import java.io.File
 import java.util.UUID
@@ -47,7 +48,9 @@ class PlaybackPreferenceObserverInstrumentedTest {
             produceFile = { preferencesFile },
         )
         val crossfadeDurationMs = MutableStateFlow(0)
+        val nextSongPreloadingEnabled = MutableStateFlow(true)
         val skipSilenceApplied = CompletableDeferred<Unit>()
+        val nextSongPreloadingChanged = MutableStateFlow<Boolean?>(null)
         lateinit var player: ExoPlayer
         lateinit var observer: PlaybackPreferenceObserver
 
@@ -68,7 +71,11 @@ class PlaybackPreferenceObserverInstrumentedTest {
                 normalizationFactor = MutableStateFlow(1f),
                 crossfadeDurationMs = crossfadeDurationMs,
                 audioNormalizationEnabled = MutableStateFlow(true),
+                nextSongPreloadingEnabled = nextSongPreloadingEnabled,
                 onAutoSkipNextOnErrorChanged = {},
+                onNextSongPreloadingChanged = { enabled ->
+                    nextSongPreloadingChanged.value = enabled
+                },
             )
             observer.start()
         }
@@ -77,13 +84,17 @@ class PlaybackPreferenceObserverInstrumentedTest {
             preferences.edit {
                 it[SkipSilenceKey] = true
                 it[AudioCrossfadeDurationKey] = 3
+                it[NextSongPreloadingKey] = false
             }
 
             val persisted = preferences.data.first()
             assertTrue(persisted[SkipSilenceKey] == true)
             assertEquals(3, persisted[AudioCrossfadeDurationKey])
+            assertEquals(false, persisted[NextSongPreloadingKey])
             withTimeout(5_000) { skipSilenceApplied.await() }
             assertEquals(3_000, withTimeout(5_000) { crossfadeDurationMs.first { it == 3_000 } })
+            assertEquals(false, withTimeout(5_000) { nextSongPreloadingEnabled.first { !it } })
+            assertEquals(false, withTimeout(5_000) { nextSongPreloadingChanged.first { it == false } })
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 observer.stop()
