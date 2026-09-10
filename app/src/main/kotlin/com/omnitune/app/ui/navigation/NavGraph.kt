@@ -53,6 +53,7 @@ import com.omnitune.app.ui.utils.LocalDeviceFormFactor
 fun NavGraph(
     navController: NavHostController,
     onPlaySong: (List<Song>, Int) -> Unit,
+    modifier: Modifier = Modifier,
     onPlayPause: () -> Unit = {},
     onSeekTo: (Long) -> Unit = {},
     onNext: () -> Unit = {},
@@ -62,7 +63,6 @@ fun NavGraph(
     onSetEqualizerEnabled: (Boolean) -> Unit = {},
     currentSong: Song? = null,
     dominantColors: DominantColors? = null,
-    modifier: Modifier = Modifier,
     startDestination: Any = Destination.Home
 ) {
     NavHost(

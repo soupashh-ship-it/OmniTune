@@ -61,9 +61,9 @@ import com.omnitune.app.ui.utils.dpadFocusable
 fun MusicCard(
     song: Song,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     onMoreClick: () -> Unit = {},
     isPlaying: Boolean = false,
-    modifier: Modifier = Modifier,
     backgroundColor: Color? = null,
     textColor: Color? = null,
     subTextColor: Color? = null
@@ -216,8 +216,8 @@ fun MusicCard(
 fun SquareSongCard(
     song: Song,
     onClick: () -> Unit,
-    onMoreClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onMoreClick: () -> Unit = {},
     size: Dp = 160.dp,
     showMoreButton: Boolean = true
 ) {

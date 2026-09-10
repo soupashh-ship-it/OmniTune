@@ -295,8 +295,8 @@ fun HomeCardSkeleton() {
  */
 @Composable
 fun SearchResultsSkeleton(
-    rows: Int = 8,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    rows: Int = 8
 ) {
     ShimmerContainer {
         Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp)) {

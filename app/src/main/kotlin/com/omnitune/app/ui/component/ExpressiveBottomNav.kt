@@ -81,8 +81,8 @@ import kotlin.random.Random
 fun ExpressiveBottomNav(
     currentDestination: Destination,
     onDestinationChange: (Destination) -> Unit,
-    onReClick: (Destination) -> Unit = {},
     modifier: Modifier = Modifier,
+    onReClick: (Destination) -> Unit = {},
     alpha: Float = 1.0f,
     iosLiquidGlassEnabled: Boolean = false,
     backgroundColor: Color? = null,
