@@ -97,7 +97,8 @@ data class HomePage(
                             thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                             explicit = renderer.subtitleBadges?.any {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                            } == true
+                            } == true,
+                            endpoint = renderer.navigationEndpoint.watchEndpoint,
                         )
                     }
                     renderer.isAlbum -> {

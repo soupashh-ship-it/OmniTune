@@ -8,6 +8,8 @@
 package com.omnitune.app.models
 
 import androidx.compose.runtime.Immutable
+import com.omnitune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
+import com.omnitune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import com.omnitune.innertube.models.SongItem
 import com.omnitune.app.db.entities.Song as DbSong
 import com.omnitune.app.db.entities.SongEntity
@@ -30,6 +32,7 @@ data class MediaMetadata(
     val inLibrary: LocalDateTime? = null,
     val genre: String? = null,
     val mood: String? = null,
+    val isVideo: Boolean = false,
 ) : Serializable {
     companion object {
         private const val serialVersionUID = 1L
@@ -66,6 +69,7 @@ data class MediaMetadata(
             liked = liked,
             likedDate = likedDate,
             inLibrary = inLibrary,
+            isVideo = isVideo,
         )
 }
 
@@ -95,6 +99,7 @@ fun DbSong.toMediaMetadata() =
                 title = song.albumName.orEmpty(),
             )
         },
+        isVideo = song.isVideo,
     )
 
 fun SongItem.toMediaMetadata() =
@@ -119,7 +124,8 @@ fun SongItem.toMediaMetadata() =
             )
         },
         explicit = explicit,
-        setVideoId = setVideoId
+        setVideoId = setVideoId,
+        isVideo = isMusicVideo(),
     )
 
 fun MediaMetadata.toDomainSong(): Song =
@@ -130,7 +136,9 @@ fun MediaMetadata.toDomainSong(): Song =
         album = album?.title.orEmpty(),
         duration = duration.toLong() * 1000L,
         thumbnailUrl = thumbnailUrl,
-        artistId = artists.firstOrNull()?.id
+        setVideoId = setVideoId,
+        artistId = artists.firstOrNull()?.id,
+        isVideo = isVideo,
     )
 
 fun Song.toMediaItem(): androidx.media3.common.MediaItem {
@@ -143,7 +151,15 @@ fun Song.toMediaItem(): androidx.media3.common.MediaItem {
                 .setArtist(artist)
                 .setAlbumTitle(album)
                 .setArtworkUri(thumbnailUrl?.let { android.net.Uri.parse(it) })
+                .setExtras(android.os.Bundle().apply {
+                    putBoolean("com.omnitune.app.extra.IS_MUSIC_VIDEO", isVideo)
+                })
                 .build()
         )
         .build()
+}
+
+private fun SongItem.isMusicVideo(): Boolean {
+    val musicVideoType = endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType
+    return musicVideoType == MUSIC_VIDEO_TYPE_OMV || musicVideoType == MUSIC_VIDEO_TYPE_UGC
 }

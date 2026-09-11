@@ -185,6 +185,7 @@ data class BackupSong(
     val inLibraryEpochMillis: Long? = null,
     val dateDownloadEpochMillis: Long? = null,
     val isLocal: Boolean = false,
+    val isVideo: Boolean = false,
     val downloadState: Int = 0,
 )
 

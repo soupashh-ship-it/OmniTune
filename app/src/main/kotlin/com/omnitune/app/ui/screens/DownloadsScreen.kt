@@ -49,8 +49,6 @@ fun DownloadsScreen(
     viewModel: DownloadsViewModel = hiltViewModel(),
     playlistViewModel: PlaylistManagementViewModel = hiltViewModel()
 ) {
-    val downloadedSongs by viewModel.downloadedSongs.collectAsStateWithLifecycle()
-    val downloadedVideos by viewModel.downloadedVideos.collectAsStateWithLifecycle()
     val downloadItems by viewModel.downloadItems.collectAsStateWithLifecycle()
     val storageInfo by viewModel.storageInfo.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()

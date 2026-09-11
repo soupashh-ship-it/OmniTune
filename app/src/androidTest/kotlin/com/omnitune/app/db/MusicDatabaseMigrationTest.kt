@@ -19,12 +19,12 @@ class MusicDatabaseMigrationTest {
 
     @Test
     fun everySupportedVersionMigratesToCurrentSchema() {
-        for (startVersion in 1 until 7) {
+        for (startVersion in 1 until CURRENT_ROOM_DATABASE_SCHEMA_VERSION) {
             val name = "migration-$startVersion"
             helper.createDatabase(name, startVersion).close()
             helper.runMigrationsAndValidate(
                 name,
-                7,
+                CURRENT_ROOM_DATABASE_SCHEMA_VERSION,
                 true,
                 *InternalDatabase.ALL_MIGRATIONS,
             ).close()
@@ -33,7 +33,7 @@ class MusicDatabaseMigrationTest {
 
     @Test
     fun seededPersistedDataSurvivesEverySupportedMigration() {
-        for (startVersion in 1 until 7) {
+        for (startVersion in 1 until CURRENT_ROOM_DATABASE_SCHEMA_VERSION) {
             val name = "seeded-migration-$startVersion"
             helper.createDatabase(name, startVersion).apply {
                 seedPersistedData(startVersion)
@@ -42,7 +42,7 @@ class MusicDatabaseMigrationTest {
 
             helper.runMigrationsAndValidate(
                 name,
-                7,
+                CURRENT_ROOM_DATABASE_SCHEMA_VERSION,
                 true,
                 *InternalDatabase.ALL_MIGRATIONS,
             ).use { db ->
@@ -63,6 +63,7 @@ class MusicDatabaseMigrationTest {
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM event WHERE songId = 'song_1' AND playTime = 42000"))
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM related_song_map WHERE songId = 'song_1' AND relatedSongId = 'song_2'"))
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM set_video_id WHERE videoId = 'song_1' AND setVideoId = 'set_1'"))
+                assertEquals(0, db.queryLong("SELECT isVideo FROM song WHERE id = 'song_1'"))
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM playCount WHERE song = 'song_1' AND year = 2026 AND month = 7 AND count = 3"))
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM song_skip WHERE songId = 'song_1' AND skipCount = 2"))
                 assertEquals(1, db.queryLong("SELECT COUNT(*) FROM tag WHERE id = 'tag_1' AND name = 'Road trip'"))

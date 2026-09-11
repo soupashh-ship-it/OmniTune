@@ -14,6 +14,7 @@ import androidx.annotation.RequiresApi
 import com.omnitune.app.R
 import com.omnitune.app.playback.PlaybackActions
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -87,8 +88,10 @@ class PipHelper @Inject constructor(
 
         try {
             activity.enterPictureInPictureMode(params)
-        } catch (_: Exception) {
-            // PiP not supported or activity state doesn't allow it
+        } catch (e: IllegalStateException) {
+            Timber.d(e, "Activity state did not allow Picture-in-Picture entry")
+        } catch (e: IllegalArgumentException) {
+            Timber.d(e, "Invalid Picture-in-Picture parameters")
         }
     }
 
@@ -107,8 +110,10 @@ class PipHelper @Inject constructor(
 
         try {
             activity.setPictureInPictureParams(params)
-        } catch (_: Exception) {
-            // Ignore
+        } catch (e: IllegalStateException) {
+            Timber.d(e, "Activity state did not allow Picture-in-Picture parameter update")
+        } catch (e: IllegalArgumentException) {
+            Timber.d(e, "Invalid Picture-in-Picture parameters")
         }
     }
 

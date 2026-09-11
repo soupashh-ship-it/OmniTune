@@ -115,7 +115,8 @@ data class AlbumPage(
                 thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: album?.thumbnail ?: return null,
                 explicit = renderer.badges?.find {
                     it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                } != null
+                } != null,
+                endpoint = renderer.watchEndpoint,
             )
         }
     }

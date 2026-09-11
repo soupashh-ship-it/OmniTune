@@ -89,6 +89,7 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
                     albumId = existing.albumId ?: mediaMetadata.album?.id,
                     albumName = existing.albumName ?: mediaMetadata.album?.title,
                     inLibrary = incomingSong.inLibrary ?: existing.inLibrary,
+                    isVideo = existing.isVideo || incomingSong.isVideo,
                 )
                 if (enriched != existing) update(enriched)
             }
@@ -215,6 +216,7 @@ interface DatabaseDao : QueueDao, LyricsDao, SearchHistoryDao, FormatDao, EventD
                 thumbnailUrl = mediaMetadata.thumbnailUrl,
                 albumId = mediaMetadata.album?.id,
                 albumName = mediaMetadata.album?.title,
+                isVideo = song.song.isVideo || mediaMetadata.isVideo,
             ),
         )
         songArtistMap(song.id).forEach(::delete)

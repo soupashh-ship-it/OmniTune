@@ -4,6 +4,7 @@ import androidx.media3.exoplayer.offline.Download
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.SongSource
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,7 +46,7 @@ class DownloadItemsMapperTest {
     }
 
     @Test
-    fun `video mapping comes from set video ids instead of the base song mapper`() {
+    fun `video mapping comes from explicit media type flag instead of playlist identity`() {
         val items = DownloadItemsMapper.build(
             snapshots = listOf(
                 snapshot(
@@ -61,6 +62,25 @@ class DownloadItemsMapperTest {
         )
 
         assertTrue(items.single().song.isVideo)
+    }
+
+    @Test
+    fun `playlist set video ids do not force audio downloads into videos tab`() {
+        val items = DownloadItemsMapper.build(
+            snapshots = listOf(
+                snapshot(
+                    id = "audio-id",
+                    state = Download.STATE_COMPLETED,
+                    isPlayable = true,
+                ),
+            ),
+            resolving = emptyMap(),
+            songsById = mapOf("audio-id" to song("audio-id", "Audio song").copy(setVideoId = "playlist-entry-id")),
+            videoIds = emptySet(),
+            waitingForNetwork = false,
+        )
+
+        assertFalse(items.single().song.isVideo)
     }
 
     @Test

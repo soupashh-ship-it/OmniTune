@@ -59,5 +59,9 @@ fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
         this
     }
 
-// No-op for local songs: local Song entities do not contain video metadata to filter reliably
-fun List<Song>.filterVideo(enabled: Boolean = true) = this
+fun List<Song>.filterVideo(enabled: Boolean = true) =
+    if (enabled) {
+        filterNot { it.song.isVideo }
+    } else {
+        this
+    }

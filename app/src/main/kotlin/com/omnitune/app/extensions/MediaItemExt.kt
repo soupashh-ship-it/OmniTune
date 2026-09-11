@@ -45,6 +45,7 @@ private fun androidx.media3.common.MediaMetadata.toOmniMetadata(mediaId: String)
         },
         genre = extras?.getString(ExtraGenre),
         mood = extras?.getString(ExtraMood),
+        isVideo = extras?.getBoolean(ExtraIsMusicVideo, false) == true,
     )
 }
 
@@ -97,7 +98,7 @@ fun Song.toMediaItem() =
                 .setArtworkUri(song.thumbnailUrl?.resize(800, 800)?.toUri())
                 .setAlbumTitle(song.albumName)
                 .setMediaType(MEDIA_TYPE_MUSIC)
-                .setExtras(playbackExtras(isMusicVideo = false, genre = null, mood = null))
+                .setExtras(playbackExtras(isMusicVideo = song.isVideo, genre = null, mood = null))
                 .build(),
         ).build()
 
@@ -137,7 +138,7 @@ fun MediaMetadata.toMediaItem() =
                 .setArtworkUri(thumbnailUrl?.resize(800, 800)?.toUri())
                 .setAlbumTitle(album?.title)
                 .setMediaType(MEDIA_TYPE_MUSIC)
-                .setExtras(playbackExtras(isMusicVideo = false, genre = genre, mood = mood))
+                .setExtras(playbackExtras(isMusicVideo = isVideo, genre = genre, mood = mood))
                 .build(),
         ).build()
 

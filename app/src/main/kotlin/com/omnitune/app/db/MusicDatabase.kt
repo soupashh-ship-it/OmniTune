@@ -57,7 +57,7 @@ import kotlin.coroutines.resume
 import timber.log.Timber
 
 private const val TAG = "MusicDatabase"
-const val CURRENT_ROOM_DATABASE_SCHEMA_VERSION = 7
+const val CURRENT_ROOM_DATABASE_SCHEMA_VERSION = 8
 
 internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
     val message = generateSequence(error) { it.cause }
@@ -216,9 +216,16 @@ abstract class InternalDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `song` ADD COLUMN `isVideo` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_isVideo` ON `song` (`isVideo`)")
+            }
+        }
+
         fun newInstance(context: Context): MusicDatabase {
             fun build() = Room.databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 .addCallback(DatabaseCallback())
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                 .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
@@ -248,6 +255,7 @@ abstract class InternalDatabase : RoomDatabase() {
             MIGRATION_4_5,
             MIGRATION_5_6,
             MIGRATION_6_7,
+            MIGRATION_7_8,
         )
     }
 }

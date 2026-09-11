@@ -81,6 +81,7 @@ internal object RelatedSongsMapper {
             artist = artist,
             album = mediaMetadata.albumTitle?.toString().orEmpty(),
             thumbnailUrl = mediaMetadata.artworkUri?.toString(),
+            isVideo = mediaMetadata.extras?.getBoolean(com.omnitune.app.extensions.ExtraIsMusicVideo, false) == true,
         )
     }
 }

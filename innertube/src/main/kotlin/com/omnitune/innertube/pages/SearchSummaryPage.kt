@@ -103,6 +103,7 @@ data class SearchSummaryPage(
                             renderer.subtitleBadges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                             } != null,
+                        endpoint = renderer.onTap.watchEndpoint,
                     )
                 }
 
@@ -251,6 +252,7 @@ data class SearchSummaryPage(
                             renderer.badges?.find {
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                             } != null,
+                        endpoint = renderer.watchEndpoint,
                     )
                 }
 

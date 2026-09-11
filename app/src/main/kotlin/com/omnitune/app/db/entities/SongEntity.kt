@@ -23,6 +23,7 @@ import java.time.LocalDateTime
         ),
         Index(value = ["inLibrary"]),
         Index(value = ["isLocal"]),
+        Index(value = ["isVideo"]),
         Index(value = ["liked"])
     ]
 )
@@ -45,6 +46,8 @@ data class SongEntity(
     val dateDownload: LocalDateTime? = null,
     @ColumnInfo(name = "isLocal", defaultValue = "0")
     val isLocal: Boolean = false,
+    @ColumnInfo(name = "isVideo", defaultValue = "0")
+    val isVideo: Boolean = false,
     @ColumnInfo(name = "download_state", defaultValue = "0")
     val downloadState: Int = 0  // 0=not downloaded, 1=downloading, 2=downloaded, 3=error
 ) {

@@ -5,6 +5,7 @@
 
 package com.omnitune.app.backup
 
+import com.omnitune.app.db.CURRENT_ROOM_DATABASE_SCHEMA_VERSION
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -221,7 +222,7 @@ class OmniBackupPreflightTest {
             OmniRestoreMode.MERGE,
         )
         val newerRoom = OmniBackupPreflight.validate(
-            validSnapshot().copy(roomSchemaVersion = 8),
+            validSnapshot().copy(roomSchemaVersion = CURRENT_ROOM_DATABASE_SCHEMA_VERSION + 1),
             OmniRestoreMode.MERGE,
         )
 

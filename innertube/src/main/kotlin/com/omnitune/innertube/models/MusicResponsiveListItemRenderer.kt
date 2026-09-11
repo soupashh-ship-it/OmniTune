@@ -45,6 +45,14 @@ data class MusicResponsiveListItemRenderer(
     val isArtist: Boolean
         get() = navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType == MUSIC_PAGE_TYPE_ARTIST
                 || navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType == MUSIC_PAGE_TYPE_LIBRARY_ARTIST
+    val watchEndpoint: WatchEndpoint?
+        get() = overlay
+            ?.musicItemThumbnailOverlayRenderer
+            ?.content
+            ?.musicPlayButtonRenderer
+            ?.playNavigationEndpoint
+            ?.watchEndpoint
+            ?: navigationEndpoint?.watchEndpoint
 
     @Serializable
     data class FlexColumn(

@@ -974,7 +974,8 @@ object YouTube {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE" 
                         } == true,
                         chartPosition = thirdColumn?.runs?.firstOrNull()?.text?.toIntOrNull(),
-                        chartChange = thirdColumn?.runs?.getOrNull(1)?.text
+                        chartChange = thirdColumn?.runs?.getOrNull(1)?.text,
+                        endpoint = renderer.watchEndpoint,
                     )
                 }
                 else -> null
@@ -1001,7 +1002,8 @@ object YouTube {
                         thumbnail = renderer.thumbnailRenderer.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                         explicit = renderer.subtitleBadges?.any {
                             it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                        } == true
+                        } == true,
+                        endpoint = renderer.navigationEndpoint.watchEndpoint,
                     )
                 }
                 renderer.isAlbum -> {

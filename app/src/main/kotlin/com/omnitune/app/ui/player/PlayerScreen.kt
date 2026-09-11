@@ -1074,7 +1074,8 @@ private fun MediaItem.toQueueSong(): Song {
         title = fallbackTitle,
         artist = fallbackArtist,
         album = mediaMetadata.albumTitle?.toString().orEmpty(),
-        thumbnailUrl = mediaMetadata.artworkUri?.toString()
+        thumbnailUrl = mediaMetadata.artworkUri?.toString(),
+        isVideo = mediaMetadata.extras?.getBoolean(com.omnitune.app.extensions.ExtraIsMusicVideo, false) == true,
     )
 }
 
@@ -1087,7 +1088,8 @@ private fun MediaMetadata.toPresentationSong(): Song =
         duration = duration.takeIf { it > 0 }?.toLong()?.times(1000L) ?: 0L,
         thumbnailUrl = thumbnailUrl,
         artistId = artists.firstOrNull()?.id,
-        setVideoId = setVideoId
+        setVideoId = setVideoId,
+        isVideo = isVideo,
     )
 
 private fun Song.toPlaybackMediaItem(): MediaItem =

@@ -10,6 +10,8 @@ import com.omnitune.innertube.models.SongItem as InnerSongItem
 import com.omnitune.innertube.models.AlbumItem as InnerAlbumItem
 import com.omnitune.innertube.models.PlaylistItem as InnerPlaylistItem
 import com.omnitune.innertube.models.ArtistItem as InnerArtistItem
+import com.omnitune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
+import com.omnitune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import com.omnitune.app.db.entities.Song as DbSong
 import com.omnitune.app.models.MediaMetadata
 
@@ -237,7 +239,8 @@ fun MediaMetadata.toPresentationSong(): Song = Song(
     album = album?.title ?: "",
     duration = duration * 1000L,
     thumbnailUrl = thumbnailUrl,
-    source = SongSource.YOUTUBE
+    source = SongSource.YOUTUBE,
+    isVideo = isVideo,
 )
 
 fun DbSong.toPresentationSong(): Song = Song(
@@ -247,7 +250,8 @@ fun DbSong.toPresentationSong(): Song = Song(
     album = album?.title ?: "",
     duration = song.duration * 1000L,
     thumbnailUrl = song.thumbnailUrl,
-    source = if (song.isLocal) SongSource.LOCAL else SongSource.YOUTUBE
+    source = if (song.isLocal) SongSource.LOCAL else SongSource.YOUTUBE,
+    isVideo = song.isVideo,
 )
 
 fun InnerSongItem.toPresentationSong(): Song = Song(
@@ -258,6 +262,8 @@ fun InnerSongItem.toPresentationSong(): Song = Song(
     duration = (duration ?: 0) * 1000L,
     thumbnailUrl = thumbnail,
     source = SongSource.YOUTUBE,
+    setVideoId = setVideoId,
+    isVideo = isMusicVideo(),
     isMembersOnly = false
 )
 
@@ -304,8 +310,15 @@ fun Song.toMediaMetadata(): MediaMetadata = MediaMetadata(
     title = title,
     artists = listOf(MediaMetadata.Artist(id = null, name = artist)),
     duration = (duration / 1000L).toInt(),
-    thumbnailUrl = thumbnailUrl
+    thumbnailUrl = thumbnailUrl,
+    setVideoId = setVideoId,
+    isVideo = isVideo,
 )
+
+private fun InnerSongItem.isMusicVideo(): Boolean {
+    val musicVideoType = endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType
+    return musicVideoType == MUSIC_VIDEO_TYPE_OMV || musicVideoType == MUSIC_VIDEO_TYPE_UGC
+}
 
 data class ArtistCreditInfo(
     val name: String,

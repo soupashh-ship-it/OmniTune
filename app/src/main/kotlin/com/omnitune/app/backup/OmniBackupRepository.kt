@@ -895,6 +895,7 @@ private fun SongEntity.toBackupSong() = BackupSong(
     inLibraryEpochMillis = inLibrary.toEpochMillisOrNull(),
     dateDownloadEpochMillis = dateDownload.toEpochMillisOrNull(),
     isLocal = isLocal,
+    isVideo = isVideo,
     downloadState = downloadState,
 )
 
@@ -918,6 +919,7 @@ private fun BackupSong.toSongEntity(
     inLibrary = earliest(existing?.inLibrary, inLibraryEpochMillis.toLocalDateTimeOrNull()),
     dateDownload = existing?.dateDownload ?: dateDownloadEpochMillis.toLocalDateTimeOrNull(),
     isLocal = isLocal || (existing?.isLocal == true),
+    isVideo = isVideo || (existing?.isVideo == true),
     downloadState = existing?.downloadState ?: if (restoreDownloadedAudioState) downloadState else 0,
 )
 
