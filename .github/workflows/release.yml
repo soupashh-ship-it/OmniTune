@@ -73,16 +73,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           NOTES_FILE=".github/release-notes-${GITHUB_REF_NAME}.md"
+          RELEASE_FLAGS=()
+          if [[ "$GITHUB_REF_NAME" == *"-pre"* || "$GITHUB_REF_NAME" == *"-alpha"* || "$GITHUB_REF_NAME" == *"-beta"* || "$GITHUB_REF_NAME" == *"-rc"* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
+          fi
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             if [ -f "$NOTES_FILE" ]; then
-              gh release edit "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
+              gh release edit "$GITHUB_REF_NAME" "${RELEASE_FLAGS[@]}" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
             fi
             exit 0
           fi
           if [ -f "$NOTES_FILE" ]; then
-            gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
+            gh release create "$GITHUB_REF_NAME" "${RELEASE_FLAGS[@]}" --title "OmniTune ${GITHUB_REF_NAME}" --notes-file "$NOTES_FILE"
           else
-            gh release create "$GITHUB_REF_NAME" --title "OmniTune ${GITHUB_REF_NAME}" --notes "Signed OmniTune release build."
+            gh release create "$GITHUB_REF_NAME" "${RELEASE_FLAGS[@]}" --title "OmniTune ${GITHUB_REF_NAME}" --notes "Signed OmniTune release build."
           fi
 
       - name: Upload release assets

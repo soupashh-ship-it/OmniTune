@@ -15,6 +15,7 @@ SuvMusic UI remediation prerelease.
 ## Fixes
 
 - Restored real download state, retry, cancel, delete, storage, and video mapping.
+- Persisted music-video metadata so downloaded video tabs, local filtering, backups, and PiP gating stay consistent.
 - Repaired PiP, deep links, media library browsing, output routing, volume-key behavior, and keep-screen-on handling.
 - Wired customization, launcher icon variants, route-aware mini-player insets, prerelease updates, and the AI equalizer shortcut.
 - Wired SponsorBlock skipping into playback and retired inert Discord/AI provider settings.
