@@ -1,6 +1,7 @@
 package com.omnitune.app.ui.screens
 
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.speech.RecognizerIntent
 import android.widget.Toast
@@ -210,8 +211,9 @@ fun SearchScreen(
                                                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                                                 putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search")
                                             }
-                                            try { voiceSearchLauncher.launch(intent) }
-                                            catch (e: Exception) {
+                                            try {
+                                                voiceSearchLauncher.launch(intent)
+                                            } catch (_: ActivityNotFoundException) {
                                                 Toast.makeText(context, "Voice search not supported", Toast.LENGTH_SHORT).show()
                                             }
                                         }) {
