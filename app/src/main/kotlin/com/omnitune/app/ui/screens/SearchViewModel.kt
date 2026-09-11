@@ -132,6 +132,7 @@ class SearchViewModel @Inject constructor(
     private var suggestionJob: Job? = null
     private val searchGate = SearchRequestGate()
     private val suggestionGate = SearchRequestGate()
+    private val debounceCoordinator = SearchDebounceCoordinator()
 
     init {
         loadRecentSearches()
@@ -150,7 +151,12 @@ class SearchViewModel @Inject constructor(
                 .debounce(650)
                 .distinctUntilChanged()
                 .filter { it.trim().length >= 2 }
-                .collect { query -> searchInternal(query, saveToHistory = false) }
+                .collect { query ->
+                    if (debounceCoordinator.shouldSkipDebouncedSearch(query)) {
+                        return@collect
+                    }
+                    searchInternal(query, saveToHistory = false)
+                }
         }
     }
 
@@ -205,6 +211,7 @@ class SearchViewModel @Inject constructor(
 
     fun onQueryChange(newQuery: String) {
         val trimmedQuery = newQuery.trim()
+        debounceCoordinator.clearImmediateSearch()
         if (trimmedQuery.isBlank()) {
             searchGate.invalidate()
             suggestionGate.invalidate()
@@ -397,25 +404,28 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onTrendingSearchClick(term: String) {
-        _uiState.update {
-            it.copy(
-                query = term,
-                showSuggestions = false,
-                isSearchActive = true
-            )
-        }
-        searchInternal(term, saveToHistory = true)
+        submitImmediateSearch(term)
     }
 
     fun onSuggestionClick(suggestion: String) {
+        submitImmediateSearch(suggestion)
+    }
+
+    private fun submitImmediateSearch(rawQuery: String) {
+        val query = rawQuery.trim()
+        if (query.isBlank()) return
+        debounceCoordinator.markImmediateSearch(query)
+        suggestionGate.invalidate()
+        suggestionJob?.cancel()
+        _searchQuery.value = query
         _uiState.update {
             it.copy(
-                query = suggestion,
+                query = query,
                 showSuggestions = false,
                 isSearchActive = true
             )
         }
-        searchInternal(suggestion, saveToHistory = true)
+        searchInternal(query, saveToHistory = true)
     }
 
     fun addToRecentSearches(item: RecentSearchItem) {
