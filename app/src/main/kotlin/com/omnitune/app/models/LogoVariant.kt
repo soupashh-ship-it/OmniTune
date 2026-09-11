@@ -18,7 +18,7 @@ enum class LogoVariant(
     val styleLabel: String,
     val description: String
 ) {
-    DEFAULT("Default", "pulse", "Pulse", "Hero", "Primary brand logo"),
+    DEFAULT("Current Icon", "omnitune", "OmniTune", "Release Icon", "Current OmniTune app icon"),
     PULSE("Pulse Hero", "pulse", "Pulse", "Hero", "Primary brand mark"),
     PULSE_APP_ICON("Pulse App Icon", "pulse", "Pulse", "App Icon", "App icon gradient style"),
     PULSE_MONO("Pulse Monochrome", "pulse", "Pulse", "Monochrome", "Clean black and white"),
@@ -34,11 +34,12 @@ enum class LogoVariant(
     AETHER_MONO("Aether Monochrome", "aether", "Aether", "Monochrome", "Clean monochrome aether"),
     AETHER_LIGHT("Aether Light", "aether", "Aether", "On Light", "Light surface aether"),
     AETHER_TONE("Aether Single Tone", "aether", "Aether", "Single Tone", "Single tone aether"),
-    CLASSIC("Classic", "classic", "Classic", "Classic", "Original brand mark");
+    CLASSIC("OmniTune Icon", "omnitune", "OmniTune", "Icon", "Current black and white brand mark");
 
     @DrawableRes
     fun drawableRes(): Int = when (this) {
-        DEFAULT, PULSE -> R.drawable.logo_pulse
+        DEFAULT, CLASSIC -> R.drawable.logo
+        PULSE -> R.drawable.logo_pulse
         PULSE_APP_ICON -> R.drawable.logo_pulse_app_icon
         PULSE_MONO -> R.drawable.logo_pulse_mono
         PULSE_LIGHT -> R.drawable.logo_pulse_light
@@ -53,6 +54,5 @@ enum class LogoVariant(
         AETHER_MONO -> R.drawable.logo_aether_mono
         AETHER_LIGHT -> R.drawable.logo_aether_light
         AETHER_TONE -> R.drawable.logo_aether_tone
-        CLASSIC -> R.drawable.logo
     }
 }

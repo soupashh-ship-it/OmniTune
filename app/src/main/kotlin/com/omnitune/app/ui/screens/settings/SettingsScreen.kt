@@ -314,6 +314,12 @@ fun SettingsScreen(
                     )
                     SettingsCard {
                         SettingsNavRow(
+                            title = "App Updates",
+                            subtitle = "Check GitHub releases and install verified APK updates",
+                            icon = Icons.Default.SystemUpdate,
+                            onClick = onUpdaterClick
+                        )
+                        SettingsNavRow(
                             title = "Support the Project",
                             subtitle = "Sponsor OmniTune and help ongoing development",
                             icon = Icons.Default.Favorite,

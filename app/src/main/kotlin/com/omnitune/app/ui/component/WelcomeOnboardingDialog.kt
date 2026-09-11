@@ -86,11 +86,11 @@ private fun WelcomeStep(
         Spacer(modifier = Modifier.height(28.dp))
 
         Text(
-            text = "Millions of tracks.\nAd-free, always.",
+            text = "Welcome to OmniTune.\nTune in your way.",
             style = MaterialTheme.typography.displaySmall.copy(
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = 42.sp,
-                letterSpacing = (-1).sp
+                letterSpacing = 0.sp
             ),
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Start
@@ -99,8 +99,8 @@ private fun WelcomeStep(
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Stream your YouTube Music library in high quality — " +
-                "no interruptions, no clutter. Everything stays on your device.",
+            text = "Stream, save, and organize your music with a clean player " +
+                "built around your library.",
             style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.66f),
             textAlign = TextAlign.Start
@@ -121,7 +121,7 @@ private fun WelcomeStep(
             )
         ) {
             Text(
-                "Log in with YouTube Music",
+                "Connect YouTube Music",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
@@ -135,7 +135,7 @@ private fun WelcomeStep(
                 .height(52.dp)
         ) {
             Text(
-                "Continue as guest",
+                "Explore as guest",
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.SemiBold
                 ),
@@ -171,7 +171,7 @@ private fun LanguageTasteStep(
             style = MaterialTheme.typography.displaySmall.copy(
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = 42.sp,
-                letterSpacing = (-1).sp
+                letterSpacing = 0.sp
             ),
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -179,7 +179,7 @@ private fun LanguageTasteStep(
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = "Pick the languages you enjoy — your Home feed starts personalized from day one. You can change this anytime in Playback settings.",
+            text = "Pick the languages you enjoy. OmniTune will use them to shape your first Home recommendations.",
             style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.66f)
         )

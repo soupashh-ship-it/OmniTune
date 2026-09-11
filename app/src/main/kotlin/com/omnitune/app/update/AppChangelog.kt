@@ -10,10 +10,13 @@ object AppChangelog {
         body = """
 # OmniTune v${BuildConfig.VERSION_NAME}
 
-SuvMusic UI remediation prerelease.
+OmniTune polish prerelease.
 
 ## Fixes
 
+- Restored a visible App Updates entry in Settings and defaulted prerelease builds to the prerelease update channel.
+- Updated the default launcher, splash, in-app, and notification logo assets to the new OmniTune mark.
+- Rebranded the first-run welcome screen so its logo and copy are clearly OmniTune-owned.
 - Restored real download state, retry, cancel, delete, storage, and video mapping.
 - Persisted music-video metadata so downloaded video tabs, local filtering, backups, and PiP gating stay consistent.
 - Repaired PiP, deep links, media library browsing, output routing, volume-key behavior, and keep-screen-on handling.

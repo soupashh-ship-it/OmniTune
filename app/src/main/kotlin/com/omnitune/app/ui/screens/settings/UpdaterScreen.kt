@@ -102,7 +102,7 @@ fun UpdaterScreen(
     val context = LocalContext.current
     val updateState by viewModel.state.collectAsStateWithLifecycle()
     val changelogState by changelogViewModel.state.collectAsStateWithLifecycle()
-    var updateChannel by rememberEnumPreference(UpdateChannelKey, UpdateChannel.STABLE)
+    var updateChannel by rememberEnumPreference(UpdateChannelKey, defaultUpdaterChannel())
     val (lastCheckedAt) = rememberPreference(LastUpdateCheckKey, 0L)
     var installMessage by remember { mutableStateOf<String?>(null) }
 
@@ -690,6 +690,13 @@ private val UpdateChannel.displayName: String
         UpdateChannel.STABLE -> "Stable"
         UpdateChannel.BETA -> "Beta"
         UpdateChannel.NIGHTLY -> "Prerelease"
+    }
+
+private fun defaultUpdaterChannel(): UpdateChannel =
+    if (BuildConfig.VERSION_NAME.contains("-")) {
+        UpdateChannel.NIGHTLY
+    } else {
+        UpdateChannel.STABLE
     }
 
 private fun formatUpdaterBytes(bytes: Long): String {
