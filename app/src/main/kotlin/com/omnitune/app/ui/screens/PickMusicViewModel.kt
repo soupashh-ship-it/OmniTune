@@ -10,6 +10,8 @@ package com.omnitune.app.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.models.Artist
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.toPresentationSong
@@ -27,7 +29,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
-class PickMusicViewModel @Inject constructor() : ViewModel() {
+class PickMusicViewModel @Inject constructor(
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
+) : ViewModel() {
     private val _searchResults = MutableStateFlow<List<Artist>>(emptyList())
     val searchResults: StateFlow<List<Artist>> = _searchResults.asStateFlow()
 
@@ -103,16 +107,25 @@ class PickMusicViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun loadPopularArtists() {
-        searchArtists("Trending Artists")
+        searchArtists("Trending Artists", languageWeighted = true)
     }
 
-    private fun searchArtists(query: String) {
+    private fun searchArtists(
+        query: String,
+        languageWeighted: Boolean = false,
+    ) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _isLoading.value = true
             runCatching {
                 withContext(Dispatchers.IO) {
-                    YouTube.search(query, YouTube.SearchFilter.FILTER_ARTIST)
+                    val language = musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
+                    val requestQuery = if (languageWeighted) {
+                        MusicContentDiscoveryPolicy.languageWeightedQuery(language, query)
+                    } else {
+                        query
+                    }
+                    YouTube.search(requestQuery, YouTube.SearchFilter.FILTER_ARTIST)
                         .getOrThrow()
                         .items
                         .filterIsInstance<ArtistItem>()
@@ -137,11 +150,13 @@ class PickMusicViewModel @Inject constructor() : ViewModel() {
         val targetTotal = 500
         val songsPerArtist = (targetTotal / artists.size).coerceAtLeast(10)
         val mixPlaylist = mutableListOf<Song>()
+        val language = musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
 
         artists.forEach { artist ->
             val collectedForArtist = mutableListOf<Song>()
 
             runCatching {
+                musicContentPreferenceRepository.applyLanguage(language)
                 YouTube.artist(artist.id).getOrThrow()
             }.onSuccess { artistPage ->
                 artistPage.sections
@@ -157,7 +172,11 @@ class PickMusicViewModel @Inject constructor() : ViewModel() {
 
             if (collectedForArtist.size < songsPerArtist) {
                 runCatching {
-                    YouTube.search("${artist.name} songs", YouTube.SearchFilter.FILTER_SONG)
+                    val query = MusicContentDiscoveryPolicy.languageWeightedQuery(
+                        language = language,
+                        rawQuery = "${artist.name} songs",
+                    )
+                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
                         .getOrThrow()
                         .items
                         .filterIsInstance<SongItem>()

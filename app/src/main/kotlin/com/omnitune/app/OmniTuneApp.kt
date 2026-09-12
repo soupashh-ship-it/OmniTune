@@ -20,10 +20,9 @@ import coil3.disk.DiskCache
 import coil3.request.CachePolicy
 import coil3.request.allowHardware
 import coil3.request.crossfade
-import com.omnitune.app.constants.ContentCountryKey
-import com.omnitune.app.constants.ContentLanguageKey
 import com.omnitune.app.constants.CustomThemeColorKey
 import com.omnitune.app.constants.DataSyncIdKey
+import com.omnitune.app.constants.DefaultMusicLanguageKey
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.ListenBrainzTokenKey
 import com.omnitune.app.constants.LogoVariantKey
@@ -35,7 +34,6 @@ import com.omnitune.app.constants.ProxyEnabledKey
 import com.omnitune.app.constants.ProxyTypeKey
 import com.omnitune.app.constants.ProxyUrlKey
 import com.omnitune.app.constants.RandomThemeOnStartupKey
-import com.omnitune.app.constants.SYSTEM_DEFAULT
 import com.omnitune.app.constants.SmartTrimmerKey
 import com.omnitune.app.constants.StreamBypassProxyKey
 import com.omnitune.app.constants.UseLoginForBrowse
@@ -43,6 +41,7 @@ import com.omnitune.app.constants.VisitorDataKey
 import com.omnitune.app.constants.WebClientPoTokenEnabledKey
 import com.omnitune.app.constants.YtmSyncKey
 import com.omnitune.app.backup.OfflineDownloadArchive
+import com.omnitune.app.content.MusicContentLanguage
 import com.omnitune.app.extensions.toInetSocketAddress
 import com.omnitune.app.extensions.toEnum
 import com.omnitune.app.models.LogoVariant
@@ -61,7 +60,6 @@ import com.omnitune.app.utils.LauncherIconSwitcher
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.forgetAccount
 import com.omnitune.innertube.YouTube
-import com.omnitune.innertube.models.YouTubeLocale
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -134,12 +132,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
         val locale = Locale.getDefault()
         val languageTag = locale.toLanguageTag().replace("-Hant", "")
 
-        YouTube.locale = YouTubeLocale(
-            gl = locale.country.takeIf { it in CountryCodeToName } ?: "US",
-            hl = locale.language.takeIf { it in LanguageCodeToName }
-                ?: languageTag.takeIf { it in LanguageCodeToName }
-                ?: "en"
-        )
+        YouTube.locale = MusicContentLanguage.Default.toYouTubeLocale()
         YouTube.youtubeMusicApiKey = BuildConfig.YOUTUBE_MUSIC_API_KEY.takeIf { it.isNotBlank() }
 
         if (languageTag == "zh-TW") {
@@ -160,13 +153,9 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     ?: LogoVariant.DEFAULT
                 LauncherIconSwitcher(this@OmniTuneApp).apply(logoVariant)
 
-                prefs[ContentCountryKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { country ->
-                    YouTube.locale = YouTube.locale.copy(gl = country)
-                }
-
-                prefs[ContentLanguageKey]?.takeIf { it != SYSTEM_DEFAULT }?.let { lang ->
-                    YouTube.locale = YouTube.locale.copy(hl = lang)
-                }
+                YouTube.locale = MusicContentLanguage
+                    .fromPreference(prefs[DefaultMusicLanguageKey])
+                    .toYouTubeLocale()
 
                 if (prefs[ProxyEnabledKey] == true) {
                     try {

@@ -1,5 +1,6 @@
 package com.omnitune.app.data
 
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.pages.SearchResult
 import com.omnitune.innertube.pages.SearchSummaryPage
@@ -14,13 +15,21 @@ interface SearchProvider {
 }
 
 @Singleton
-class YouTubeSearchProvider @Inject constructor() : SearchProvider {
-    override suspend fun search(query: String, filter: YouTube.SearchFilter): Result<SearchResult> =
-        YouTube.search(query, filter)
+class YouTubeSearchProvider @Inject constructor(
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
+) : SearchProvider {
+    override suspend fun search(query: String, filter: YouTube.SearchFilter): Result<SearchResult> {
+        musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
+        return YouTube.search(query, filter)
+    }
 
-    override suspend fun searchSummary(query: String): Result<SearchSummaryPage> =
-        YouTube.searchSummary(query)
+    override suspend fun searchSummary(query: String): Result<SearchSummaryPage> {
+        musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
+        return YouTube.searchSummary(query)
+    }
 
-    override suspend fun searchContinuation(continuation: String): Result<SearchResult> =
-        YouTube.searchContinuation(continuation)
+    override suspend fun searchContinuation(continuation: String): Result<SearchResult> {
+        musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
+        return YouTube.searchContinuation(continuation)
+    }
 }

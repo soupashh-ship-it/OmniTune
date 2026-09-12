@@ -2,6 +2,9 @@ package com.omnitune.app.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentLanguage
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.models.*
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -106,7 +110,7 @@ data class SearchUiState(
     val resultFilter: ResultFilter = ResultFilter.ALL,
     val trendingSearches: List<String> = listOf(
         "Trending Hits",
-        "Top Bollywood",
+        "New Music",
         "Lo-Fi Beats",
         "Workout Energy",
         "Acoustic Chill",
@@ -118,7 +122,8 @@ data class SearchUiState(
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val database: MusicDatabase
+    private val database: MusicDatabase,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -136,7 +141,7 @@ class SearchViewModel @Inject constructor(
 
     init {
         loadRecentSearches()
-        loadBrowseCategories()
+        observeMusicContentLanguage()
 
         viewModelScope.launch {
             _searchQuery
@@ -160,6 +165,20 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    private fun observeMusicContentLanguage() {
+        viewModelScope.launch {
+            musicContentPreferenceRepository.selectedLanguage.collectLatest { language ->
+                searchGate.invalidate()
+                suggestionGate.invalidate()
+                musicContentPreferenceRepository.applyLanguage(language)
+                _uiState.update {
+                    it.copy(trendingSearches = MusicContentDiscoveryPolicy.trendingSearches(language))
+                }
+                loadBrowseCategories(language)
+            }
+        }
+    }
+
     private fun loadRecentSearches() {
         viewModelScope.launch {
             try {
@@ -174,38 +193,37 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    private fun loadBrowseCategories() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isCategoriesLoading = true) }
-            try {
-                val moodResult = withContext(Dispatchers.IO) {
-                    YouTube.moodAndGenres()
-                }
-                moodResult.onSuccess { moodPage ->
-                    val categories = moodPage.flatMap { group ->
-                        group.items.map { item ->
-                            BrowseCategory(
-                                id = item.endpoint.browseId,
-                                title = item.title,
-                                color = item.stripeColor,
-                                params = item.endpoint.params
-                            )
-                        }
-                    }
-                    _uiState.update {
-                        it.copy(
-                            browseCategories = categories,
-                            isCategoriesLoading = false
+    private suspend fun loadBrowseCategories(language: MusicContentLanguage) {
+        _uiState.update { it.copy(isCategoriesLoading = true) }
+        try {
+            val moodResult = withContext(Dispatchers.IO) {
+                musicContentPreferenceRepository.applyLanguage(language)
+                YouTube.moodAndGenres()
+            }
+            moodResult.onSuccess { moodPage ->
+                val categories = moodPage.flatMap { group ->
+                    group.items.map { item ->
+                        BrowseCategory(
+                            id = item.endpoint.browseId,
+                            title = item.title,
+                            color = item.stripeColor,
+                            params = item.endpoint.params
                         )
                     }
-                }.onFailure { error ->
-                    logFailure(error, "Failed to load browse categories")
-                    _uiState.update { it.copy(isCategoriesLoading = false) }
                 }
-            } catch (e: Exception) {
-                logFailure(e, "Failed to load browse categories")
+                _uiState.update {
+                    it.copy(
+                        browseCategories = categories,
+                        isCategoriesLoading = false
+                    )
+                }
+            }.onFailure { error ->
+                logFailure(error, "Failed to load browse categories")
                 _uiState.update { it.copy(isCategoriesLoading = false) }
             }
+        } catch (e: Exception) {
+            logFailure(e, "Failed to load browse categories")
+            _uiState.update { it.copy(isCategoriesLoading = false) }
         }
     }
 
@@ -268,6 +286,7 @@ class SearchViewModel @Inject constructor(
             _uiState.update { it.copy(isSuggestionsLoading = true) }
             try {
                 val suggestions = withContext(Dispatchers.IO) {
+                    musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                     YouTube.searchSuggestions(query).getOrNull()?.queries ?: emptyList()
                 }
                 if (!suggestionGate.accepts(request) || _uiState.value.query != query) return@launch
@@ -326,6 +345,7 @@ class SearchViewModel @Inject constructor(
 
             try {
                 val summaryResult = withContext(Dispatchers.IO) {
+                    musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                     YouTube.searchSummary(normalizedQuery)
                 }
 

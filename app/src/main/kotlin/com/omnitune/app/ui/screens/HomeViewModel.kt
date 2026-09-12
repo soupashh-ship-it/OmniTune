@@ -7,6 +7,12 @@ import com.omnitune.app.constants.AccountChannelHandleKey
 import com.omnitune.app.constants.AccountEmailKey
 import com.omnitune.app.constants.AccountNameKey
 import com.omnitune.app.constants.InnerTubeCookieKey
+import com.omnitune.app.content.HomeContentRequestGate
+import com.omnitune.app.content.LanguageScopedHomeContinuationStore
+import com.omnitune.app.content.LanguageScopedHomeSectionCache
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentLanguage
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.*
 import com.omnitune.app.models.HomeSection
@@ -31,6 +37,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -150,7 +157,8 @@ object HomePaginationStateReducer {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val database: MusicDatabase
+    private val database: MusicDatabase,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -159,11 +167,14 @@ class HomeViewModel @Inject constructor(
     private val _events = MutableSharedFlow<HomeEvent>()
     val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
 
-    private var homeContinuation: String? = null
+    private val homeRequestGate = HomeContentRequestGate()
+    private val homeContinuations = LanguageScopedHomeContinuationStore()
+    private val homeSectionCache = LanguageScopedHomeSectionCache()
+    private var activeMusicLanguage: MusicContentLanguage = MusicContentLanguage.Default
 
     init {
         observeAccountState()
-        loadHomeContent()
+        observeMusicContentLanguage()
     }
 
     private fun observeAccountState() {
@@ -190,19 +201,53 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun loadHomeContent(forceRefresh: Boolean = false) {
+    private fun observeMusicContentLanguage() {
         viewModelScope.launch {
-            loadData(forceRefresh)
-            loadLocalRecommendations()
+            musicContentPreferenceRepository.selectedLanguage.collectLatest { language ->
+                val changed = activeMusicLanguage != language
+                activeMusicLanguage = language
+                if (changed) {
+                    homeRequestGate.invalidate()
+                    homeContinuations.resetAll()
+                    homeSectionCache.resetAll()
+                    resetRemoteHomeState()
+                }
+                loadData(language = language, forceRefresh = changed)
+                loadLocalRecommendations()
+            }
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
+            val language = musicContentPreferenceRepository.currentLanguage()
+            activeMusicLanguage = language
             _uiState.update { it.copy(isRefreshing = true) }
-            loadData(forceRefresh = true)
-            loadLocalRecommendations()
-            _uiState.update { it.copy(isRefreshing = false) }
+            try {
+                loadData(language = language, forceRefresh = true)
+                loadLocalRecommendations()
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    private fun resetRemoteHomeState() {
+        _uiState.update {
+            it.copy(
+                homeSections = emptyList(),
+                filteredSections = emptyList(),
+                personalizedSections = emptyList(),
+                genreSections = emptyList(),
+                contextSections = emptyList(),
+                moreSections = emptyList(),
+                selectedMood = null,
+                isLoading = true,
+                error = null,
+                paginationError = null,
+                loadMorePage = 0,
+                hasReachedEnd = false,
+            )
         }
     }
 
@@ -223,51 +268,50 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    suspend fun loadData(forceRefresh: Boolean = false) {
+    private suspend fun loadData(
+        language: MusicContentLanguage,
+        forceRefresh: Boolean = false,
+    ) {
+        val cachedSections = if (forceRefresh) emptyList() else homeSectionCache.sectionsFor(language)
+        if (cachedSections.isNotEmpty()) {
+            applyHomeSections(
+                sections = cachedSections,
+                continuation = homeContinuations.continuationFor(language),
+            )
+            return
+        }
+
+        val request = homeRequestGate.begin(language)
         if (_uiState.value.homeSections.isEmpty() || forceRefresh) {
             _uiState.update { it.copy(isLoading = true, error = null) }
         }
 
         try {
-            val homeResult = withContext(Dispatchers.IO) {
-                YouTube.home()
+            val homePayload = withContext(Dispatchers.IO) {
+                musicContentPreferenceRepository.applyLanguage(language)
+                val seededSections = loadLanguageSeedSections(language)
+                val homePage = YouTube.home().getOrThrow()
+                seededSections to homePage
             }
 
-            homeResult.onSuccess { homePage ->
-                homeContinuation = homePage.continuation
-                val parsedSections = homePage.sections.toHomeSections()
+            if (!homeRequestGate.accepts(request)) return
 
-                val quickPicks = parsedSections.firstOrNull { it.type == HomeSectionType.QuickPicks }
-                    ?.items?.mapNotNull { (it as? HomeItem.SongItem)?.song }
-                    ?: emptyList()
+            val (seededSections, homePage) = homePayload
+            homeContinuations.setContinuation(language, homePage.continuation)
+            val parsedSections = MusicContentDiscoveryPolicy.mergeHomeSections(
+                language = language,
+                providerSections = homePage.sections.toHomeSections(startIndex = seededSections.size),
+                seededSections = seededSections,
+            )
+            homeSectionCache.put(language, parsedSections)
 
-                val personalized = parsedSections.filter { it.type == HomeSectionType.PersonalizedMix }
-                val genres = parsedSections.filter { it.type == HomeSectionType.GenreCarousel }
-
-                _uiState.update {
-                    it.copy(
-                        homeSections = parsedSections,
-                        filteredSections = parsedSections,
-                        recommendations = if (quickPicks.isNotEmpty()) quickPicks else it.recommendations,
-                        personalizedSections = personalized,
-                        genreSections = genres,
-                        isLoading = false,
-                        hasReachedEnd = homePage.continuation == null,
-                        loadMorePage = 0,
-                        error = null
-                    )
-                }
-            }.onFailure { error ->
-                logFailure(error, "Failed to load home")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = if (it.homeSections.isEmpty()) error.message ?: "Network error" else null
-                    )
-                }
-            }
+            applyHomeSections(
+                sections = parsedSections,
+                continuation = homePage.continuation,
+            )
         } catch (e: Exception) {
             logFailure(e, "Failed to load home")
+            if (!homeRequestGate.accepts(request)) return
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -277,38 +321,151 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun applyHomeSections(
+        sections: List<HomeSection>,
+        continuation: String?,
+    ) {
+        val quickPicks = sections.firstOrNull { it.type == HomeSectionType.QuickPicks }
+            ?.items?.mapNotNull { (it as? HomeItem.SongItem)?.song }
+            ?: emptyList()
+
+        val personalized = sections.filter { it.type == HomeSectionType.PersonalizedMix }
+        val genres = sections.filter { it.type == HomeSectionType.GenreCarousel }
+
+        _uiState.update {
+            it.copy(
+                homeSections = sections,
+                filteredSections = sections,
+                recommendations = if (quickPicks.isNotEmpty()) quickPicks else it.recommendations,
+                personalizedSections = personalized,
+                genreSections = genres,
+                isLoading = false,
+                hasReachedEnd = continuation == null,
+                loadMorePage = 0,
+                error = null,
+                paginationError = null,
+            )
+        }
+    }
+
+    private suspend fun loadLanguageSeedSections(language: MusicContentLanguage): List<HomeSection> {
+        if (language == MusicContentLanguage.AUTOMATIC) return emptyList()
+
+        val songItems = searchHomeItems(
+            queries = MusicContentDiscoveryPolicy.songDiscoveryQueries(language),
+            filter = YouTube.SearchFilter.FILTER_SONG,
+        )
+            .filterIsInstance<InnerSongItem>()
+            .map { item -> HomeItem.SongItem(item.toPresentationSong()) }
+
+        val playlistItems = searchHomeItems(
+            queries = MusicContentDiscoveryPolicy.playlistDiscoveryQueries(language),
+            filter = YouTube.SearchFilter.FILTER_COMMUNITY_PLAYLIST,
+        )
+            .filterIsInstance<InnerPlaylistItem>()
+            .map { item -> HomeItem.PlaylistItem(item.toPresentationPlaylistDisplayItem()) }
+
+        val artistItems = searchHomeItems(
+            queries = MusicContentDiscoveryPolicy.artistDiscoveryQueries(language),
+            filter = YouTube.SearchFilter.FILTER_ARTIST,
+        )
+            .filterIsInstance<InnerArtistItem>()
+            .map { item -> HomeItem.ArtistItem(item.toPresentationArtist()) }
+
+        return buildList {
+            if (songItems.isNotEmpty()) {
+                add(
+                    HomeSection(
+                        title = MusicContentDiscoveryPolicy.songSectionTitle(language),
+                        items = songItems,
+                        type = HomeSectionType.QuickPicks,
+                        id = "music_language_${language.name.lowercase(Locale.ROOT)}_songs",
+                    )
+                )
+            }
+            if (playlistItems.isNotEmpty()) {
+                add(
+                    HomeSection(
+                        title = MusicContentDiscoveryPolicy.playlistSectionTitle(language),
+                        items = playlistItems,
+                        type = HomeSectionType.CommunityCarousel,
+                        id = "music_language_${language.name.lowercase(Locale.ROOT)}_playlists",
+                    )
+                )
+            }
+            if (artistItems.isNotEmpty()) {
+                add(
+                    HomeSection(
+                        title = MusicContentDiscoveryPolicy.artistSectionTitle(language),
+                        items = artistItems,
+                        type = HomeSectionType.GenreCarousel,
+                        id = "music_language_${language.name.lowercase(Locale.ROOT)}_artists",
+                    )
+                )
+            }
+        }
+    }
+
+    private suspend fun searchHomeItems(
+        queries: List<String>,
+        filter: YouTube.SearchFilter,
+    ): List<InnerYTItem> {
+        val items = mutableListOf<InnerYTItem>()
+        queries.take(2).forEach { query ->
+            val result = YouTube.search(query, filter)
+            result.onSuccess { page ->
+                items += page.items
+            }.onFailure { error ->
+                logFailure(error, "Failed to load language seed content")
+            }
+        }
+        return items
+            .distinctBy { item -> item.id }
+            .take(12)
+    }
+
     fun loadMore() {
-        val continuation = homeContinuation ?: return
+        val language = activeMusicLanguage
+        val continuation = homeContinuations.continuationFor(language) ?: return
         if (_uiState.value.isLoadingMore || _uiState.value.hasReachedEnd) return
 
+        val request = homeRequestGate.begin(language)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true, paginationError = null) }
             try {
                 val homeResult = withContext(Dispatchers.IO) {
+                    musicContentPreferenceRepository.applyLanguage(language)
                     YouTube.home(continuation = continuation)
                 }
+                if (!homeRequestGate.accepts(request)) return@launch
                 homeResult.onSuccess { page ->
-                    homeContinuation = page.continuation
+                    homeContinuations.setContinuation(language, page.continuation)
                     _uiState.update { current ->
                         val nextSections = page.sections.toHomeSections(startIndex = current.homeSections.size)
-                        HomePaginationStateReducer.success(
+                        val nextState = HomePaginationStateReducer.success(
                             current = current,
                             nextSections = nextSections,
                             nextContinuation = page.continuation,
                         )
+                        homeSectionCache.put(language, nextState.homeSections)
+                        nextState
                     }
                 }.onFailure { error ->
+                    if (!homeRequestGate.accepts(request)) return@onFailure
                     _uiState.update { current ->
                         HomePaginationStateReducer.failure(current, error.message)
                     }
                 }
             } catch (e: Exception) {
                 logFailure(e, "Failed to load more home content")
+                if (!homeRequestGate.accepts(request)) return@launch
                 _uiState.update { current ->
                     HomePaginationStateReducer.failure(current, e.message)
                 }
             } finally {
-                _uiState.update { it.copy(isLoadingMore = false) }
+                if (homeRequestGate.accepts(request)) {
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                }
             }
         }
     }

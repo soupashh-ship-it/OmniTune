@@ -7,6 +7,7 @@ package com.omnitune.app.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.reportException
 import com.omnitune.innertube.YouTube
@@ -29,7 +30,9 @@ data class MoodAndGenresUiState(
 }
 
 @HiltViewModel
-class MoodAndGenresViewModel @Inject constructor() : ViewModel() {
+class MoodAndGenresViewModel @Inject constructor(
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(MoodAndGenresUiState())
     val uiState: StateFlow<MoodAndGenresUiState> = _uiState.asStateFlow()
 
@@ -48,6 +51,7 @@ class MoodAndGenresViewModel @Inject constructor() : ViewModel() {
             _uiState.update { it.copy(isLoading = true, error = null) }
             runCatching {
                 withTimeout(8_000L) {
+                    musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                     YouTube.moodAndGenres().getOrThrow()
                 }
             }

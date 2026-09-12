@@ -24,6 +24,7 @@ import com.omnitune.app.constants.PlayerStyleKey
 import com.omnitune.app.constants.RotatingVinylAnimationEnabledKey
 import com.omnitune.app.constants.SeekbarStyleKey
 import com.omnitune.app.constants.SwipeDownToDismissPlayerKey
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.ArtworkSize
@@ -92,7 +93,8 @@ internal object RelatedSongsMapper {
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     val database: MusicDatabase,
-    private val dataStore: DataStore<Preferences>
+    private val dataStore: DataStore<Preferences>,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
 
     private val _activeOverlay = MutableStateFlow<PlayerOverlay>(PlayerOverlay.None)
@@ -308,7 +310,7 @@ class PlayerViewModel @Inject constructor(
                     return@launch
                 }
 
-                val provider = OmniAutoplayRecommendationProvider(database)
+                val provider = OmniAutoplayRecommendationProvider(database, musicContentPreferenceRepository)
                 val seedMetadata = seed.toMediaMetadata()
                 val mediaItems = provider.songsRelatedToTrack(seedMetadata)
                     .ifEmpty { provider.songsForTitleSearch(seedMetadata) }

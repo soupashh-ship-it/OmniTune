@@ -9,6 +9,8 @@ package com.omnitune.app.ui.screens
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.Album
 import com.omnitune.app.models.Artist
@@ -51,7 +53,8 @@ data class ArtistUiState(
 @HiltViewModel
 class ArtistViewModel @Inject constructor(
     private val database: MusicDatabase,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
 
     private val artistId: String = savedStateHandle.get<String>(Destination.Artist.ARG_ARTIST_ID)
@@ -89,6 +92,7 @@ class ArtistViewModel @Inject constructor(
                 val updatedCredits = names.map { name ->
                     try {
                         val searchResult = withContext(Dispatchers.IO) {
+                            musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                             YouTube.search(name, YouTube.SearchFilter.FILTER_ARTIST)
                         }
                         val match = searchResult.getOrNull()?.items?.filterIsInstance<com.omnitune.innertube.models.ArtistItem>()?.firstOrNull()
@@ -107,6 +111,7 @@ class ArtistViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val ytResult = withContext(Dispatchers.IO) {
+                    musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                     YouTube.artist(artistId)
                 }
 
@@ -217,7 +222,12 @@ class ArtistViewModel @Inject constructor(
                 radioSongs.addAll(currentArtist.songs)
 
                 val searchResult = withContext(Dispatchers.IO) {
-                    YouTube.search("${currentArtist.name} radio", YouTube.SearchFilter.FILTER_SONG)
+                    val language = musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
+                    val query = MusicContentDiscoveryPolicy.languageWeightedQuery(
+                        language = language,
+                        rawQuery = "${currentArtist.name} radio",
+                    )
+                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
                 }
                 searchResult.onSuccess { result ->
                     val songs = result.items.filterIsInstance<com.omnitune.innertube.models.SongItem>().map { it.toPresentationSong() }

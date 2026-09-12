@@ -6,6 +6,8 @@
 package com.omnitune.app.discovery
 
 import com.omnitune.app.BuildConfig
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.SongItem
 import java.util.Locale
@@ -15,10 +17,18 @@ interface MoodGenreSearchProvider {
     suspend fun searchSongs(query: String): Result<List<SongItem>>
 }
 
-class YouTubeMoodGenreSearchProvider : MoodGenreSearchProvider {
-    override suspend fun searchSongs(query: String): Result<List<SongItem>> =
-        YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
+class YouTubeMoodGenreSearchProvider(
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository? = null,
+) : MoodGenreSearchProvider {
+    override suspend fun searchSongs(query: String): Result<List<SongItem>> {
+        val language = musicContentPreferenceRepository?.applyCurrentPreferenceToYouTube()
+        val requestQuery = language
+            ?.let { MusicContentDiscoveryPolicy.languageWeightedQuery(it, query) }
+            ?: query
+
+        return YouTube.search(requestQuery, YouTube.SearchFilter.FILTER_SONG)
             .map { result -> result.items.filterIsInstance<SongItem>() }
+    }
 }
 
 data class MoodGenreResult(

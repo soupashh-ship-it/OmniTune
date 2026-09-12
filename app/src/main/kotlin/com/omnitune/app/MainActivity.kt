@@ -66,6 +66,8 @@ import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.constants.DynamicThemeKey
 import com.omnitune.app.constants.PureBlackKey
 import com.omnitune.app.constants.ThemeModeKey
+import com.omnitune.app.content.MusicContentLanguage
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.ExtraIsMusicVideo
 import com.omnitune.app.models.AppTheme
@@ -225,6 +227,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var downloadUtil: DownloadUtil
     @Inject lateinit var networkMonitor: NetworkMonitor
     @Inject lateinit var pipHelper: PipHelper
+    @Inject lateinit var musicContentPreferenceRepository: MusicContentPreferenceRepository
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private lateinit var audioManager: AudioManager
@@ -415,7 +418,8 @@ class MainActivity : ComponentActivity() {
                         volumeKeyEvents = _volumeKeyEvents,
                         runtimeSettings = runtimeSettings,
                         dominantColors = albumArtColors,
-                        formFactor = formFactor
+                        formFactor = formFactor,
+                        musicContentPreferenceRepository = musicContentPreferenceRepository,
                     )
                 }
             }
@@ -507,7 +511,8 @@ private fun OmniTuneAppRoot(
     volumeKeyEvents: SharedFlow<Unit>,
     runtimeSettings: ActivityRuntimeSettings,
     dominantColors: DominantColors,
-    formFactor: DeviceFormFactor
+    formFactor: DeviceFormFactor,
+    musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -645,9 +650,12 @@ private fun OmniTuneAppRoot(
                 showWelcomeDialog = false
                 navController.navigate(Destination.YouTubeLogin)
             },
-            onContinueAsGuest = {
+            onContinueAsGuest = { selectedLanguages ->
                 showWelcomeDialog = false
                 scope.launch {
+                    MusicContentLanguage.fromTasteSelections(selectedLanguages)?.let { language ->
+                        musicContentPreferenceRepository.setLanguage(language)
+                    }
                     context.dataStore.edit { it[OnboardingCompletedKey] = true }
                 }
             }

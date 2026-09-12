@@ -6,6 +6,9 @@
 package com.omnitune.app.playback.continuation
 
 import androidx.media3.common.MediaItem
+import com.omnitune.app.content.MusicContentDiscoveryPolicy
+import com.omnitune.app.content.MusicContentLanguage
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.toMediaItem
 import com.omnitune.app.models.MediaMetadata
@@ -25,17 +28,25 @@ interface AutoplayRecommendationProvider {
 
 class OmniAutoplayRecommendationProvider(
     private val database: MusicDatabase,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository? = null,
 ) : AutoplayRecommendationProvider {
-    override suspend fun songsForVerifiedGenre(genre: String): List<MediaItem> =
-        searchSongs("$genre music")
+    override suspend fun songsForVerifiedGenre(genre: String): List<MediaItem> {
+        val language = applyCurrentLanguage()
+        return searchSongs(language.weightQuery("$genre music"))
+    }
 
-    override suspend fun songsForVerifiedMoodOrTag(tag: String): List<MediaItem> =
-        searchSongs("$tag music")
+    override suspend fun songsForVerifiedMoodOrTag(tag: String): List<MediaItem> {
+        val language = applyCurrentLanguage()
+        return searchSongs(language.weightQuery("$tag music"))
+    }
 
-    override suspend fun songsForArtist(artist: String): List<MediaItem> =
-        searchSongs("$artist top songs")
+    override suspend fun songsForArtist(artist: String): List<MediaItem> {
+        val language = applyCurrentLanguage()
+        return searchSongs(language.weightQuery("$artist top songs"))
+    }
 
     override suspend fun songsRelatedToTrack(track: MediaMetadata): List<MediaItem> {
+        applyCurrentLanguage()
         val related = runCatching {
             val next = YouTube.next(WatchEndpoint(videoId = track.id)).getOrThrow()
             val relatedEndpoint = next.relatedEndpoint
@@ -54,7 +65,8 @@ class OmniAutoplayRecommendationProvider(
         val query = listOf(track.title, artist)
             .filter { it.isNotBlank() }
             .joinToString(" ")
-        return searchSongs(query)
+        val language = applyCurrentLanguage()
+        return searchSongs(language.weightQuery(query))
     }
 
     override suspend fun quickPicks(seed: MediaMetadata): List<MediaItem> {
@@ -63,8 +75,15 @@ class OmniAutoplayRecommendationProvider(
 
         val artist = seed.artists.firstOrNull()?.name.orEmpty()
         val query = artist.takeIf { it.isNotBlank() }?.let { "$it songs" } ?: "music discovery"
-        return searchSongs(query)
+        val language = applyCurrentLanguage()
+        return searchSongs(language.weightQuery(query))
     }
+
+    private suspend fun applyCurrentLanguage(): MusicContentLanguage? =
+        musicContentPreferenceRepository?.applyCurrentPreferenceToYouTube()
+
+    private fun MusicContentLanguage?.weightQuery(query: String): String =
+        this?.let { language -> MusicContentDiscoveryPolicy.languageWeightedQuery(language, query) } ?: query
 
     private suspend fun searchSongs(query: String): List<MediaItem> =
         runCatching {

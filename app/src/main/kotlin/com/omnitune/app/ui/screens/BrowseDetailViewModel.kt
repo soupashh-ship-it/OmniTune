@@ -3,6 +3,7 @@ package com.omnitune.app.ui.screens
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.models.Album
 import com.omnitune.app.models.Artist
 import com.omnitune.app.models.Playlist
@@ -74,6 +75,7 @@ data class BrowseDetailUiState(
 @HiltViewModel
 class BrowseDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
     private val browseId: String = savedStateHandle[Destination.Explore.ARG_BROWSE_ID] ?: ""
     private val params: String? = savedStateHandle[Destination.Explore.ARG_PARAMS]
@@ -106,6 +108,7 @@ class BrowseDetailViewModel @Inject constructor(
             runCatching {
                 withContext(Dispatchers.IO) {
                     withTimeout(10_000L) {
+                        musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
                         YouTube.browse(browseId, params).getOrThrow()
                     }
                 }

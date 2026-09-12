@@ -14,6 +14,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.constants.*
+import com.omnitune.app.content.MusicContentLanguage
+import com.omnitune.app.content.MusicContentPreferenceRepository
+import com.omnitune.app.content.defaultMusicLanguage
 import com.omnitune.app.models.*
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.LauncherIconSwitcher
@@ -76,13 +79,15 @@ data class SettingsUiState(
     val playerStyle: PlayerStyle = PlayerPresentationPreferenceMapper.DefaultPlayerStyle,
     val artworkShape: ArtworkShape = PlayerPresentationPreferenceMapper.DefaultArtworkShape,
     val artworkSize: ArtworkSize = PlayerPresentationPreferenceMapper.DefaultArtworkSize,
-    val seekbarStyle: SeekbarStyle = PlayerPresentationPreferenceMapper.DefaultSeekbarStyle
+    val seekbarStyle: SeekbarStyle = PlayerPresentationPreferenceMapper.DefaultSeekbarStyle,
+    val defaultMusicLanguage: MusicContentLanguage = MusicContentLanguage.Default,
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val database: com.omnitune.app.db.MusicDatabase
+    private val database: com.omnitune.app.db.MusicDatabase,
+    private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -154,7 +159,8 @@ class SettingsViewModel @Inject constructor(
                             ?: prefs[AudioCrossfadeDurationKey]?.times(1_000)
                             ?: 0,
                         nextSongPreloadingEnabled = prefs[NextSongPreloadingKey] ?: true,
-                        playerCacheLimit = prefs[PlayerCacheLimitKey] ?: -1L
+                        playerCacheLimit = prefs[PlayerCacheLimitKey] ?: -1L,
+                        defaultMusicLanguage = prefs.defaultMusicLanguage(),
                     )
                 }
             }
@@ -235,6 +241,11 @@ class SettingsViewModel @Inject constructor(
         setPreference(RotatingVinylAnimationEnabledKey, enabled)
     }
 
+    suspend fun setDefaultMusicLanguage(language: MusicContentLanguage) {
+        withContext(Dispatchers.IO) {
+            musicContentPreferenceRepository.setLanguage(language)
+        }
+    }
 
     fun <T> updatePreference(ctx: Context, key: Preferences.Key<T>, value: T) {
         viewModelScope.launch(Dispatchers.IO) {

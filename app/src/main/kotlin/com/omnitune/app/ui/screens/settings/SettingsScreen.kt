@@ -8,6 +8,7 @@
 
 package com.omnitune.app.ui.screens.settings
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -15,8 +16,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -35,10 +38,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.omnitune.app.content.MusicContentLanguage
 import com.omnitune.app.ui.component.BetaBadge
 import com.omnitune.app.ui.component.LeadingIconBox
 import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.utils.restartOmniTune
 import com.omnitune.app.viewmodels.SettingsViewModel
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 
@@ -73,9 +79,21 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var settingsQuery by remember { mutableStateOf("") }
+    var showMusicLanguagePicker by remember { mutableStateOf(false) }
+    var pendingMusicLanguage by remember { mutableStateOf<MusicContentLanguage?>(null) }
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val scope = rememberCoroutineScope()
 
     val searchIndex = remember {
         listOf(
+            SettingsSearchEntry(
+                "Default Music Language",
+                "Prioritize songs, playlists, artists and recommendations",
+                "music language content locale discovery recommendations songs playlists artists home",
+                Icons.Default.Language,
+                onClick = { showMusicLanguagePicker = true },
+            ),
             SettingsSearchEntry("Appearance", "Theme, dark mode, colors, liquid glass", "theme dark mode light colors dynamic material amoled gradient glass", Icons.Default.DarkMode, onAppearanceClick),
             SettingsSearchEntry("Playback", "Audio quality, equalizer, crossfade", "audio quality bitrate equalizer eq crossfade normalization loudness preloading offload", Icons.Default.GraphicEq, onPlaybackClick),
             SettingsSearchEntry("Customization", "Player UI, artwork shape/size, seekbar style", "player ui artwork shape size seekbar style mini player vinyl glass", Icons.Default.Tune, onCustomizationClick),
@@ -222,6 +240,26 @@ fun SettingsScreen(
                     }
                 }
 
+                // Discovery Group
+                item {
+                    Text(
+                        text = "DISCOVERY",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    SettingsCard {
+                        SettingsNavRow(
+                            title = "Default Music Language",
+                            subtitle = "Choose which language OmniTune should prioritize for songs, playlists, artists and recommendations.",
+                            icon = Icons.Default.Language,
+                            trailingText = uiState.defaultMusicLanguage.displayName,
+                            onClick = { showMusicLanguagePicker = true }
+                        )
+                    }
+                }
+
                 // Audio & Playback Group
                 item {
                     Text(
@@ -348,4 +386,112 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showMusicLanguagePicker) {
+        MusicLanguagePickerDialog(
+            selectedLanguage = uiState.defaultMusicLanguage,
+            onSelect = { language ->
+                showMusicLanguagePicker = false
+                if (language != uiState.defaultMusicLanguage) {
+                    pendingMusicLanguage = language
+                }
+            },
+            onDismiss = { showMusicLanguagePicker = false }
+        )
+    }
+
+    pendingMusicLanguage?.let { language ->
+        AlertDialog(
+            onDismissRequest = { pendingMusicLanguage = null },
+            icon = { Icon(Icons.Default.RestartAlt, contentDescription = null) },
+            title = { Text("Restart OmniTune?") },
+            text = {
+                Text(
+                    "OmniTune will restart to apply ${language.displayName} to Home, discovery, search suggestions and related music. App text and your library stay unchanged."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            viewModel.setDefaultMusicLanguage(language)
+                            pendingMusicLanguage = null
+                            activity?.restartOmniTune()
+                        }
+                    }
+                ) {
+                    Text("Apply & restart")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingMusicLanguage = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun MusicLanguagePickerDialog(
+    selectedLanguage: MusicContentLanguage,
+    onSelect: (MusicContentLanguage) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Language, contentDescription = null) },
+        title = { Text("Default Music Language") },
+        text = {
+            Column {
+                Text(
+                    "Prioritizes this language for music and recommendations. Some results may still appear in other languages.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    MusicContentLanguage.settingsOptions.forEach { language ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onSelect(language) }
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = language == selectedLanguage,
+                                onClick = { onSelect(language) },
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = language.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                if (language == MusicContentLanguage.AUTOMATIC) {
+                                    Text(
+                                        text = "Use normal provider and device-region behavior",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+    )
 }
