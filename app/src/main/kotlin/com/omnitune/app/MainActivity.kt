@@ -125,6 +125,11 @@ import com.omnitune.app.constants.AppThemeKey
 private val OnboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
 private val WhatsNewSeenVersionKey = intPreferencesKey("whats_new_seen_version")
 
+private data class PendingSongPlaybackRequest(
+    val songs: List<Song>,
+    val startIndex: Int,
+)
+
 private fun NavDestination?.topLevelDestination(): Destination = when {
     this?.hasRoute<Destination.Search>() == true -> Destination.Search
     this?.hasRoute<Destination.Library>() == true -> Destination.Library
@@ -534,6 +539,7 @@ private fun OmniTuneAppRoot(
     var isPlayerExpanded by remember { mutableStateOf(false) }
     var isMiniPlayerDismissed by remember { mutableStateOf(false) }
     var pendingPlaybackEvent by remember { mutableStateOf<MainEvent?>(null) }
+    var pendingSongPlaybackRequest by remember { mutableStateOf<PendingSongPlaybackRequest?>(null) }
     val latestPlayerConnection by rememberUpdatedState(playerConnection)
 
     val onboardingCompleted by remember {
@@ -621,6 +627,22 @@ private fun OmniTuneAppRoot(
         return true
     }
 
+    fun playSongRequest(songs: List<Song>, index: Int): Boolean {
+        if (songs.getOrNull(index) == null) {
+            return true
+        }
+        val connection = latestPlayerConnection ?: return false
+        connection.playQueue(
+            ListQueue(
+                title = songs.getOrNull(index)?.title ?: "Playing",
+                items = songs.map { it.toMediaItem() },
+                startIndex = index,
+            ),
+        )
+        isMiniPlayerDismissed = false
+        return true
+    }
+
     LaunchedEffect(mainViewModel) {
         mainViewModel.events.collect { event ->
             when (event) {
@@ -659,6 +681,13 @@ private fun OmniTuneAppRoot(
         val pending = pendingPlaybackEvent ?: return@LaunchedEffect
         if (playIncomingEvent(pending)) {
             pendingPlaybackEvent = null
+        }
+    }
+
+    LaunchedEffect(playerConnection, pendingSongPlaybackRequest) {
+        val pending = pendingSongPlaybackRequest ?: return@LaunchedEffect
+        if (playSongRequest(pending.songs, pending.startIndex)) {
+            pendingSongPlaybackRequest = null
         }
     }
 
@@ -815,30 +844,23 @@ private fun OmniTuneAppRoot(
                         NavGraph(
                             navController = navController,
                             onPlaySong = { songs: List<Song>, index: Int ->
-                                playerConnection?.let { conn ->
-                                    val mediaItems = songs.map { it.toMediaItem() }
-                                    conn.playQueue(
-                                        ListQueue(
-                                            title = songs.getOrNull(index)?.title ?: "Playing",
-                                            items = mediaItems,
-                                            startIndex = index
-                                        )
-                                    )
+                                if (!playSongRequest(songs, index)) {
+                                    pendingSongPlaybackRequest = PendingSongPlaybackRequest(songs, index)
                                 }
                             },
                             onPlayPause = {
                                 playerConnection?.let { conn ->
-                                    if (isPlaying) conn.player.pause() else conn.player.play()
+                                    if (isPlaying) conn.pause() else conn.playOrResolveCurrent()
                                 }
                             },
                             onSeekTo = { pos: Long ->
                                 playerConnection?.player?.seekTo(pos)
                             },
                             onNext = {
-                                playerConnection?.player?.seekToNextMediaItem()
+                                playerConnection?.seekToNext()
                             },
                             onPrevious = {
-                                playerConnection?.player?.seekToPreviousMediaItem()
+                                playerConnection?.seekToPrevious()
                             },
                             onStartRadio = {
                                 playerConnection?.startRadioSeamlessly()
@@ -996,11 +1018,11 @@ private fun MiniPlayerSheetOverlay(
         dominantColors = dominantColors,
         onPlayPause = {
             playerConnection?.let { conn ->
-                if (isPlaying) conn.player.pause() else conn.player.play()
+                if (isPlaying) conn.pause() else conn.playOrResolveCurrent()
             }
         },
-        onNext = { playerConnection?.player?.seekToNextMediaItem() },
-        onPrevious = { playerConnection?.player?.seekToPreviousMediaItem() },
+        onNext = { playerConnection?.seekToNext() },
+        onPrevious = { playerConnection?.seekToPrevious() },
         onClose = onClose,
         bottomPadding = bottomPadding,
         isExpanded = isExpanded,

@@ -4,8 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.db.entities.PlaylistEntity
+import com.omnitune.app.db.entities.PlaylistSongMap
 import com.omnitune.app.models.*
 import com.omnitune.app.playback.DownloadUtil
+import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.ui.navigation.Destination
 import com.omnitune.innertube.YouTube
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,11 +17,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 data class PlaylistUiState(
@@ -73,7 +78,10 @@ class PlaylistViewModel @Inject constructor(
     private fun checkLibraryStatus() {
         viewModelScope.launch {
             try {
-                database.playlist(playlistId).collect { dbPlaylist: com.omnitune.app.db.entities.Playlist? ->
+                combine(
+                    database.playlist(playlistId),
+                    database.playlistByBrowseId(playlistId),
+                ) { byId, byBrowseId -> byId ?: byBrowseId }.collect { dbPlaylist: com.omnitune.app.db.entities.Playlist? ->
                     _uiState.update { it.copy(isSaved = dbPlaylist?.playlist?.bookmarkedAt != null) }
                 }
             } catch (e: Exception) {
@@ -86,13 +94,62 @@ class PlaylistViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val playlist = _uiState.value.playlist ?: return@launch
             try {
-                val existing = database.getPlaylistByIdBlocking(playlist.id)?.playlist
-                if (existing != null) {
-                    if (_uiState.value.isSaved) {
-                        database.update(existing.copy(bookmarkedAt = null))
+                val existingPlaylist = database.getPlaylistByIdBlocking(playlist.id)
+                    ?: database.playlistByBrowseId(playlist.id).first()
+                val existing = existingPlaylist?.playlist
+                val now = LocalDateTime.now()
+                val shouldSave = existing?.bookmarkedAt == null
+                val targetPlaylistId = existing?.id ?: playlist.id
+
+                database.withTransaction {
+                    if (existing != null) {
+                        database.update(
+                            existing.copy(
+                                name = playlist.title.ifBlank { existing.name },
+                                browseId = existing.browseId ?: playlist.id,
+                                bookmarkedAt = if (shouldSave) now else null,
+                                lastUpdateTime = now,
+                                thumbnailUrl = existing.thumbnailUrl ?: playlist.thumbnailUrl,
+                                remoteSongCount = playlist.totalSongCount ?: playlist.songs.size,
+                            ),
+                        )
                     } else {
-                        database.update(existing.copy(bookmarkedAt = java.time.LocalDateTime.now()))
+                        database.insert(
+                            PlaylistEntity(
+                                id = targetPlaylistId,
+                                name = playlist.title,
+                                browseId = playlist.id,
+                                createdAt = now,
+                                lastUpdateTime = now,
+                                isEditable = false,
+                                bookmarkedAt = now,
+                                remoteSongCount = playlist.totalSongCount ?: playlist.songs.size,
+                                thumbnailUrl = playlist.thumbnailUrl,
+                                isLocal = false,
+                            ),
+                        )
                     }
+
+                    if (shouldSave) {
+                        cachePlaylistSongs(
+                            playlistId = targetPlaylistId,
+                            playlist = playlist,
+                            replaceExistingMappings = existing?.isEditable != true,
+                        )
+                    }
+                }
+                _uiState.update {
+                    it.copy(
+                        isSaved = shouldSave,
+                        successMessage = if (shouldSave) {
+                            "Saved ${playlist.title.ifBlank { "playlist" }} to Library"
+                        } else {
+                            "Removed ${playlist.title.ifBlank { "playlist" }} from Library"
+                        },
+                    )
+                }
+                database.getPlaylistByIdBlocking(targetPlaylistId)?.playlist?.let { updatedPlaylist ->
+                    YouTubeLibrarySync.syncPlaylistBookmark(updatedPlaylist, bookmarked = shouldSave)
                 }
             } catch (e: Exception) {
                 publishFailure(e, "Failed to update playlist library state")
@@ -165,15 +222,16 @@ class PlaylistViewModel @Inject constructor(
                         // Check local Room DB first
                         val localDbPlaylist = withContext(Dispatchers.IO) {
                             database.playlist(playlistId).first()
+                                ?: database.playlistByBrowseId(playlistId).first()
                         }
                         val localSongs = withContext(Dispatchers.IO) {
-                            database.playlistSongs(playlistId).first()
+                            localDbPlaylist?.let { database.playlistSongs(it.id).first() }.orEmpty()
                         }
 
                         if (localDbPlaylist != null) {
                             val presentationSongs = localSongs.map { it.song.toPresentationSong() }
                             val playlist = Playlist(
-                                id = localDbPlaylist.id,
+                                id = localDbPlaylist.playlist.browseId ?: localDbPlaylist.id,
                                 title = localDbPlaylist.playlist.name,
                                 author = "You",
                                 thumbnailUrl = localDbPlaylist.thumbnails.firstOrNull() ?: presentationSongs.firstOrNull()?.thumbnailUrl,
@@ -185,7 +243,7 @@ class PlaylistViewModel @Inject constructor(
                                     playlist = playlist,
                                     originalSongs = presentationSongs,
                                     isLoading = false,
-                                    isEditable = true
+                                    isEditable = localDbPlaylist.playlist.isEditable
                                 )
                             }
                         } else {
@@ -234,7 +292,45 @@ class PlaylistViewModel @Inject constructor(
 
     fun downloadPlaylist(playlist: Playlist) {
         viewModelScope.launch {
-            playlist.songs.forEach { downloadUtil.enqueue(it.id, it.title) }
+            if (playlist.songs.isEmpty()) {
+                _uiState.update { it.copy(errorMessage = "No songs available to download") }
+                return@launch
+            }
+            _uiState.update {
+                it.copy(
+                    successMessage = "Download started",
+                )
+            }
+            playlist.songs.forEach { song ->
+                downloadUtil.enqueue(song.id, song.title) { success, message ->
+                    if (!success) {
+                        _uiState.update { it.copy(errorMessage = "${song.title}: $message") }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun cachePlaylistSongs(
+        playlistId: String,
+        playlist: Playlist,
+        replaceExistingMappings: Boolean,
+    ) {
+        if (replaceExistingMappings) {
+            database.clearPlaylist(playlistId)
+        }
+        playlist.songs.forEachIndexed { index, song ->
+            database.insert(song.toMediaMetadata())
+            if (replaceExistingMappings || database.checkInPlaylist(playlistId, song.id) == 0) {
+                database.insert(
+                    PlaylistSongMap(
+                        playlistId = playlistId,
+                        songId = song.id,
+                        position = index,
+                        setVideoId = song.setVideoId,
+                    ),
+                )
+            }
         }
     }
 

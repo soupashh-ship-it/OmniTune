@@ -141,10 +141,21 @@ fun MediaMetadata.toDomainSong(): Song =
         isVideo = isVideo,
     )
 
+internal fun Song.playbackUriString(): String = when {
+    !localUri.isNullOrBlank() -> localUri
+    !streamUrl.isNullOrBlank() -> streamUrl
+    else -> id
+}
+
 fun Song.toMediaItem(): androidx.media3.common.MediaItem {
+    val metadata = toMediaMetadata()
+    val playbackUri = android.net.Uri.parse(playbackUriString())
+
     return androidx.media3.common.MediaItem.Builder()
         .setMediaId(id)
-        .setUri(localUri?.let { android.net.Uri.parse(it) } ?: android.net.Uri.parse("https://youtube.com/watch?v=$id"))
+        .setUri(playbackUri)
+        .setCustomCacheKey(id)
+        .setTag(metadata)
         .setMediaMetadata(
             androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(title)

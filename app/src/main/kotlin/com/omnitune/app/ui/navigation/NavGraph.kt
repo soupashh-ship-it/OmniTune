@@ -400,7 +400,13 @@ fun NavGraph(
         composable<Destination.Playlist> {
             PlaylistScreen(
                 onBackClick = { navController.popBackStack() },
-                onSongClick = { songs: List<Song>, index: Int -> onPlaySong(songs, index) }
+                onSongClick = { songs: List<Song>, index: Int -> onPlaySong(songs, index) },
+                onPlayAll = { songs: List<Song> ->
+                    if (songs.isNotEmpty()) onPlaySong(songs, 0)
+                },
+                onShufflePlay = { songs: List<Song> ->
+                    if (songs.isNotEmpty()) onPlaySong(songs.shuffled(), 0)
+                }
             )
         }
 
