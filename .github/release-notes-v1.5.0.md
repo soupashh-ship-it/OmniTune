@@ -2,7 +2,7 @@ OmniTune 1.5.0 is a stable release that rolls up the full prerelease cycle since
 
 ## Highlights
 
-- Refreshed OmniTune branding, launcher icon, onboarding text, and in-app presentation for a cleaner stable identity.
+- Refreshed OmniTune branding, default launcher icon, notification icon, onboarding text, and in-app presentation for a cleaner stable identity.
 - Restored the in-app updater entry in Settings for future stable and prerelease upgrade paths.
 - Added Default Music Language under Settings > Discovery, with English as the default plus English, Hindi, Punjabi, Telugu, Tamil, Malayalam, Kannada, Bengali, Marathi, Gujarati, and Automatic options.
 - Improved Home, discovery, search suggestions, browse pages, artist radio, autoplay, and smart queue recommendations with real YouTube Music language and region context.
@@ -25,9 +25,9 @@ OmniTune 1.5.0 is a stable release that rolls up the full prerelease cycle since
 - Local release workflow mirror passed: `.\gradlew.bat testDebugUnitTest compileDebugAndroidTestKotlin lintRelease`
 - GitHub Actions Android Release verifies tests, Android-test compilation, release lint, signs the release APK, verifies it with apksigner, and uploads the APK plus SHA-256 file.
 
-Package: com.omnitune.app  
-Version: 1.5.0  
-Version code: 150  
+Package: com.omnitune.app
+Version: 1.5.0
+Version code: 151
 Status: Stable release
 
 -- OmniTune
