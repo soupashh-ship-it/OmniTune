@@ -1,8 +1,12 @@
 package com.omnitune.app.playback
 
+import androidx.datastore.preferences.core.preferencesOf
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import com.omnitune.app.constants.PersistentQueueKey
 import com.omnitune.app.db.MusicDatabase
+import com.omnitune.app.playback.continuation.PlaybackContext
+import com.omnitune.app.playback.continuation.PlaybackSourceType
 import com.omnitune.app.playback.queues.Queue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -56,7 +61,7 @@ class QueuePersistenceManagerTest {
             player = player,
             database = database,
             scope = CoroutineScope(testDispatcher),
-            preferences = kotlinx.coroutines.flow.MutableStateFlow(androidx.datastore.preferences.core.preferencesOf()),
+            preferences = kotlinx.coroutines.flow.MutableStateFlow(preferencesOf()),
             ioDispatcher = testDispatcher,
         )
     }
@@ -104,6 +109,36 @@ class QueuePersistenceManagerTest {
     }
 
     @Test
+    fun `restoreQueueMetadataOnly preserves duplicate media ids and selected duplicate index`() = runTest(testDispatcher) {
+        val queue = mock(Queue::class.java)
+        val restoredItems = mutableListOf<MediaItem>()
+        doAnswer { invocation ->
+            restoredItems += invocation.getArgument<List<MediaItem>>(0)
+            null
+        }.`when`(player).setMediaItems(anyList(), anyInt(), anyLong())
+        val initialStatus = Queue.Status(
+            title = "Duplicate queue",
+            items = listOf(
+                MediaItem.Builder().setMediaId("duplicate").build(),
+                MediaItem.Builder().setMediaId("middle").build(),
+                MediaItem.Builder().setMediaId("duplicate").build(),
+            ),
+            mediaItemIndex = 2,
+            position = -50L,
+        )
+        `when`(queue.getInitialStatus()).thenReturn(initialStatus)
+
+        manager.restoreQueueMetadataOnly(
+            queue,
+            onMetadataRestored = {},
+            onQueueTitleRestored = {},
+        )
+
+        verify(player).setMediaItems(anyList(), eq(2), eq(0L))
+        assertEquals(listOf("duplicate", "middle", "duplicate"), restoredItems.map(MediaItem::mediaId))
+    }
+
+    @Test
     fun `saveQueueState persists exact queue ordering index and position`() = runTest(testDispatcher) {
         val first = MediaItem.Builder().setMediaId("first").build()
         val second = MediaItem.Builder().setMediaId("second").build()
@@ -137,6 +172,42 @@ class QueuePersistenceManagerTest {
     }
 
     @Test
+    fun `saveQueueState persists duplicate queue and selected duplicate index`() = runTest(testDispatcher) {
+        val first = MediaItem.Builder().setMediaId("duplicate").build()
+        val second = MediaItem.Builder().setMediaId("middle").build()
+        val third = MediaItem.Builder().setMediaId("duplicate").build()
+        `when`(player.mediaItemCount).thenReturn(3)
+        `when`(player.currentMediaItemIndex).thenReturn(2)
+        `when`(player.currentPosition).thenReturn(7_000L)
+        `when`(player.getMediaItemAt(0)).thenReturn(first)
+        `when`(player.getMediaItemAt(1)).thenReturn(second)
+        `when`(player.getMediaItemAt(2)).thenReturn(third)
+
+        manager.saveQueueState(
+            "Duplicates",
+            PlaybackContext(
+                sourceType = PlaybackSourceType.PLAYLIST,
+                sourceId = "playlist-with-dupes",
+                sourceTitle = "Duplicates",
+                shuffledCollection = true,
+                allowAutoplay = false,
+            ),
+            debounceMillis = 0L,
+        )
+        advanceUntilIdle()
+
+        val entity = requireNotNull(savedEntity)
+        assertEquals("duplicate,middle,duplicate", entity.mediaIdList)
+        assertEquals(2, entity.startIndex)
+        assertEquals(7_000L, entity.position)
+        assertEquals("PLAYLIST", entity.playbackSourceType)
+        assertEquals("playlist-with-dupes", entity.playbackSourceId)
+        assertEquals("Duplicates", entity.playbackSourceTitle)
+        assertTrue(entity.playbackShuffledCollection)
+        assertFalse(entity.playbackAllowAutoplay)
+    }
+
+    @Test
     fun `saveQueueState with zero debounce flushes immediately`() = runTest(testDispatcher) {
         val only = MediaItem.Builder().setMediaId("only").build()
         `when`(player.mediaItemCount).thenReturn(1)
@@ -150,6 +221,29 @@ class QueuePersistenceManagerTest {
         val entity = requireNotNull(savedEntity)
         assertEquals("only", entity.mediaIdList)
         assertEquals(500L, entity.position)
+    }
+
+    @Test
+    fun `saveQueueState skips database writes when persistent queue is disabled`() = runTest(testDispatcher) {
+        var cleared = false
+        doAnswer { cleared = true; null }.`when`(database).clearQueue()
+        `when`(player.mediaItemCount).thenReturn(1)
+        `when`(player.currentMediaItemIndex).thenReturn(0)
+        `when`(player.currentPosition).thenReturn(500L)
+        `when`(player.getMediaItemAt(0)).thenReturn(MediaItem.Builder().setMediaId("only").build())
+        val localManager = QueuePersistenceManager(
+            player = player,
+            database = database,
+            scope = CoroutineScope(testDispatcher),
+            preferences = kotlinx.coroutines.flow.MutableStateFlow(preferencesOf(PersistentQueueKey to false)),
+            ioDispatcher = testDispatcher,
+        )
+
+        localManager.saveQueueState("Disabled", PlaybackContext.Unknown, debounceMillis = 0L)
+        advanceUntilIdle()
+
+        assertEquals(null, savedEntity)
+        assertFalse(cleared)
     }
 
     @Test

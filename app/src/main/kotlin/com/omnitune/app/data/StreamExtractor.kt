@@ -16,6 +16,7 @@ import com.omnitune.app.utils.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -184,7 +185,7 @@ class StreamExtractor @Inject constructor(
 
     private fun classifyFailure(throwable: Throwable): PlaybackResolveError {
         val message = throwable.message.orEmpty()
-        val lower = message.lowercase()
+        val lower = message.lowercase(Locale.ROOT)
         return when {
             "login" in lower || "sign in" in lower -> PlaybackResolveError.LoginRequired
             "region" in lower || "country" in lower || "not available" in lower -> PlaybackResolveError.RegionBlocked

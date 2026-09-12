@@ -457,7 +457,7 @@ object YTPlayerUtils {
                 ?.filter { it.isAudio && it.bitrate > 0 }
                 ?.filter { it.url != null || it.signatureCipher != null || it.cipher != null }
                 ?.filter { format ->
-                    val codec = extractCodec(format.mimeType)?.lowercase()
+                    val codec = extractCodec(format.mimeType)?.lowercase(Locale.ROOT)
                     codec == null || codec !in avoidCodecs
                 }
                 ?.toList()

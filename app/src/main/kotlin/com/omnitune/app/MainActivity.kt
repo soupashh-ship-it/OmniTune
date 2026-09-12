@@ -64,26 +64,12 @@ import androidx.window.layout.WindowInfoTracker
 import com.omnitune.app.constants.DarkModeKey
 import com.omnitune.app.constants.DynamicSongColorsKey
 import com.omnitune.app.constants.DynamicThemeKey
-import com.omnitune.app.constants.ArtworkShapeKey
-import com.omnitune.app.constants.ForceMaxRefreshRateKey
-import com.omnitune.app.constants.KeepScreenOnKey
-import com.omnitune.app.constants.LiquidGlassEnabledKey
-import com.omnitune.app.constants.MiniPlayerAlphaKey
-import com.omnitune.app.constants.MiniPlayerBlurKey
-import com.omnitune.app.constants.MiniPlayerStyleKey
-import com.omnitune.app.constants.NavBarAlphaKey
-import com.omnitune.app.constants.NavBarBlurKey
-import com.omnitune.app.constants.PictureInPictureEnabledKey
 import com.omnitune.app.constants.PureBlackKey
-import com.omnitune.app.constants.SwipeDownToDismissPlayerKey
 import com.omnitune.app.constants.ThemeModeKey
-import com.omnitune.app.constants.VolumeSliderEnabledKey
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.extensions.ExtraIsMusicVideo
 import com.omnitune.app.models.AppTheme
-import com.omnitune.app.models.ArtworkShape
 import com.omnitune.app.models.MiniPlayerStyle
-import com.omnitune.app.models.PlayerPresentationPreferenceMapper
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.SongSource
 import com.omnitune.app.models.ThemeModePreferenceMapper
@@ -96,6 +82,8 @@ import com.omnitune.app.playback.PlayerConnection
 import com.omnitune.app.playback.PlayerProgressState
 import com.omnitune.app.playback.VolumeKeyRoutingPolicy
 import com.omnitune.app.playback.queues.ListQueue
+import com.omnitune.app.runtime.ActivityRuntimeSettings
+import com.omnitune.app.runtime.toActivityRuntimeSettings
 import com.omnitune.app.ui.component.*
 import com.omnitune.app.ui.navigation.Destination
 import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
@@ -354,20 +342,12 @@ class MainActivity : ComponentActivity() {
                 playerConnection?.isPlaying ?: flowOf(false)
             }.collectAsStateWithLifecycle(initialValue = false)
 
-            val pipEnabled by remember {
-                context.dataStore.data.map { it[PictureInPictureEnabledKey] ?: true }
-            }.collectAsStateWithLifecycle(initialValue = true)
+            val runtimeSettings by remember {
+                context.dataStore.data.map { it.toActivityRuntimeSettings() }.distinctUntilChanged()
+            }.collectAsStateWithLifecycle(initialValue = ActivityRuntimeSettings())
 
-            val volumeSliderEnabled by remember {
-                context.dataStore.data.map { it[VolumeSliderEnabledKey] ?: true }
-            }.collectAsStateWithLifecycle(initialValue = true)
-
-            val forceMaxRefreshRate by remember {
-                context.dataStore.data.map { it[ForceMaxRefreshRateKey] ?: false }
-            }.collectAsStateWithLifecycle(initialValue = false)
-
-            LaunchedEffect(forceMaxRefreshRate) {
-                applyRefreshRatePreference(forceMaxRefreshRate)
+            LaunchedEffect(runtimeSettings.forceMaxRefreshRate) {
+                applyRefreshRatePreference(runtimeSettings.forceMaxRefreshRate)
             }
 
             DisposableEffect(Unit) {
@@ -379,15 +359,21 @@ class MainActivity : ComponentActivity() {
                 currentMetadata?.toDomainSong()
             }
 
-            LaunchedEffect(playerConnection, currentMetadata?.id, isPlayingState, pipEnabled, volumeSliderEnabled) {
+            LaunchedEffect(
+                playerConnection,
+                currentMetadata?.id,
+                isPlayingState,
+                runtimeSettings.pictureInPictureEnabled,
+                runtimeSettings.volumeSliderEnabled,
+            ) {
                 isSongPlaying = isPlayingState
-                isPipEnabled = pipEnabled
-                isVolumeSliderEnabled = volumeSliderEnabled
+                isPipEnabled = runtimeSettings.pictureInPictureEnabled
+                isVolumeSliderEnabled = runtimeSettings.volumeSliderEnabled
                 pipHelper.updatePipParams(
                     activity = this@MainActivity,
                     isPlaying = isPlayingState,
                     isVideoMode = currentMediaItemIsVideo(),
-                    isPipEnabled = pipEnabled,
+                    isPipEnabled = runtimeSettings.pictureInPictureEnabled,
                 )
             }
 
@@ -427,7 +413,7 @@ class MainActivity : ComponentActivity() {
                         initialIntent = this@MainActivity.intent,
                         isPlaying = isPlayingState,
                         volumeKeyEvents = _volumeKeyEvents,
-                        volumeSliderEnabled = volumeSliderEnabled,
+                        runtimeSettings = runtimeSettings,
                         dominantColors = albumArtColors,
                         formFactor = formFactor
                     )
@@ -519,7 +505,7 @@ private fun OmniTuneAppRoot(
     initialIntent: Intent?,
     isPlaying: Boolean,
     volumeKeyEvents: SharedFlow<Unit>,
-    volumeSliderEnabled: Boolean,
+    runtimeSettings: ActivityRuntimeSettings,
     dominantColors: DominantColors,
     formFactor: DeviceFormFactor
 ) {
@@ -542,61 +528,10 @@ private fun OmniTuneAppRoot(
     var pendingSongPlaybackRequest by remember { mutableStateOf<PendingSongPlaybackRequest?>(null) }
     val latestPlayerConnection by rememberUpdatedState(playerConnection)
 
-    val onboardingCompleted by remember {
-        context.dataStore.data.map { it[OnboardingCompletedKey] ?: false }
-    }.collectAsStateWithLifecycle(initialValue = true)
-
     var showWelcomeDialog by remember { mutableStateOf(false) }
     var showWhatsNew by remember { mutableStateOf(false) }
 
-    val miniPlayerStyleName by remember {
-        context.dataStore.data.map {
-            PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(it[MiniPlayerStyleKey]).name
-        }
-    }.collectAsStateWithLifecycle(
-        initialValue = PlayerPresentationPreferenceMapper.DefaultMiniPlayerStyle.name
-    )
-
-    val miniPlayerAlpha by remember {
-        context.dataStore.data.map { it[MiniPlayerAlphaKey] ?: 0f }
-    }.collectAsStateWithLifecycle(initialValue = 0f)
-
-    val miniPlayerBlur by remember {
-        context.dataStore.data.map { it[MiniPlayerBlurKey] ?: 50f }
-    }.collectAsStateWithLifecycle(initialValue = 50f)
-
-    val miniPlayerArtworkShape by remember {
-        context.dataStore.data.map { prefs ->
-            val savedShape = prefs[ArtworkShapeKey] ?: ArtworkShape.ROUNDED_SQUARE.name
-            PlayerPresentationPreferenceMapper.resolveArtworkShape(savedShape).name
-        }
-    }.collectAsStateWithLifecycle(
-        initialValue = PlayerPresentationPreferenceMapper.DefaultArtworkShape.name
-    )
-
-    val iosLiquidGlassEnabled by remember {
-        context.dataStore.data.map { it[LiquidGlassEnabledKey] ?: true }
-    }.collectAsStateWithLifecycle(initialValue = true)
-
-    val navBarAlpha by remember {
-        context.dataStore.data.map { it[NavBarAlphaKey] ?: 1f }
-    }.collectAsStateWithLifecycle(initialValue = 1f)
-
-    val navBarBlur by remember {
-        context.dataStore.data.map { it[NavBarBlurKey] ?: 60f }
-    }.collectAsStateWithLifecycle(initialValue = 60f)
-
-    val swipeDownToDismissPlayer by remember {
-        context.dataStore.data.map { it[SwipeDownToDismissPlayerKey] ?: true }
-    }.collectAsStateWithLifecycle(initialValue = true)
-
-    val miniPlayerStyle = remember(miniPlayerStyleName) {
-        PlayerPresentationPreferenceMapper.resolveMiniPlayerStyle(miniPlayerStyleName)
-    }
-
-    val keepScreenOnEnabled by remember {
-        context.dataStore.data.map { it[KeepScreenOnKey] ?: false }
-    }.collectAsStateWithLifecycle(initialValue = false)
+    val miniPlayerStyle = runtimeSettings.miniPlayerStyle
 
     fun playIncomingEvent(event: MainEvent): Boolean {
         val connection = latestPlayerConnection ?: return false
@@ -735,7 +670,7 @@ private fun OmniTuneAppRoot(
         isMiniPlayerDismissed = false
     }
 
-    KeepScreenOnEffect(keepScreenOnEnabled && isPlayerExpanded && currentSong != null)
+    KeepScreenOnEffect(runtimeSettings.keepScreenOn && isPlayerExpanded && currentSong != null)
 
     val density = LocalDensity.current
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -785,10 +720,10 @@ private fun OmniTuneAppRoot(
                                 restoreState = true
                             }
                         },
-                        alpha = navBarAlpha,
-                        iosLiquidGlassEnabled = iosLiquidGlassEnabled,
+                        alpha = runtimeSettings.navBarAlpha,
+                        iosLiquidGlassEnabled = runtimeSettings.iosLiquidGlassEnabled,
                         backgroundColor = navBarColor,
-                        iosNavBarBlur = navBarBlur
+                        iosNavBarBlur = runtimeSettings.navBarBlur
                     )
                 }
             }
@@ -924,7 +859,7 @@ private fun OmniTuneAppRoot(
                 isPlaying = isPlaying,
                 playerConnection = playerConnection,
                 volumeKeyEvents = volumeKeyEvents,
-                volumeSliderEnabled = volumeSliderEnabled,
+                volumeSliderEnabled = runtimeSettings.volumeSliderEnabled,
                 dominantColors = dominantColors,
                 bottomPadding = bottomPaddingPx,
                 isExpanded = isPlayerExpanded,
@@ -934,10 +869,10 @@ private fun OmniTuneAppRoot(
                     isMiniPlayerDismissed = true
                 },
                 style = miniPlayerStyle,
-                userAlpha = miniPlayerAlpha,
-                artworkShape = miniPlayerArtworkShape,
-                glassBlurAmount = miniPlayerBlur,
-                swipeDownToDismissEnabled = swipeDownToDismissPlayer,
+                userAlpha = runtimeSettings.miniPlayerAlpha,
+                artworkShape = runtimeSettings.miniPlayerArtworkShape,
+                glassBlurAmount = runtimeSettings.miniPlayerBlur,
+                swipeDownToDismissEnabled = runtimeSettings.swipeDownToDismissPlayer,
                 onOpenAIEqualizer = {
                     isPlayerExpanded = false
                     navController.navigate(Destination.AIEqualizer) {

@@ -35,6 +35,7 @@ import kotlinx.serialization.json.Json
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.time.LocalDateTime
+import java.util.Locale
 import javax.inject.Inject
 
 sealed interface ImportState {
@@ -451,7 +452,7 @@ class ImportPlaylistViewModel @Inject constructor(
             thumbnailUrl = thumbnailUrl,
             album = album.takeIf { it.isNotBlank() }?.let {
                 MediaMetadata.Album(
-                    id = "import_album_${it.lowercase().hashCode()}",
+                    id = "import_album_${it.lowercase(Locale.ROOT).hashCode()}",
                     title = it,
                 )
             },
@@ -472,7 +473,7 @@ class ImportPlaylistViewModel @Inject constructor(
         fun normalized(value: String): String = value
             .removePrefix("\uFEFF")
             .trim()
-            .lowercase()
+            .lowercase(Locale.ROOT)
             .replace(Regex("[^a-z0-9]"), "")
 
         fun find(vararg names: String): Int? {

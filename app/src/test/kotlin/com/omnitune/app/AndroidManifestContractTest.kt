@@ -11,6 +11,12 @@ class AndroidManifestContractTest {
     private val manifestText: String
         get() = File("src/main/AndroidManifest.xml").readText()
 
+    private val backupRulesText: String
+        get() = File("src/main/res/xml/backup_rules.xml").readText()
+
+    private val dataExtractionRulesText: String
+        get() = File("src/main/res/xml/data_extraction_rules.xml").readText()
+
     @Test
     fun mainActivityDeclaresPictureInPictureSupport() {
         assertTrue(manifestText.contains("""android:name=".MainActivity""""))
@@ -103,5 +109,17 @@ class AndroidManifestContractTest {
         assertTrue(manifestText.contains("""android:icon="@mipmap/ic_launcher_pulse""""))
         assertTrue(manifestText.contains("""android:icon="@mipmap/ic_launcher_resonance""""))
         assertTrue(manifestText.contains("""android:icon="@mipmap/ic_launcher_aether""""))
+    }
+
+    @Test
+    fun backupRulesDefensivelyExcludeSecretStores() {
+        listOf(backupRulesText, dataExtractionRulesText).forEach { rules ->
+            assertTrue(rules.contains("""domain="database""""))
+            assertTrue(rules.contains("""domain="file""""))
+            assertTrue(rules.contains("""path="datastore/""""))
+            assertTrue(rules.contains("""domain="sharedpref""""))
+            assertTrue(rules.contains("""domain="root""""))
+            assertTrue(rules.contains("""path="app_webview/""""))
+        }
     }
 }

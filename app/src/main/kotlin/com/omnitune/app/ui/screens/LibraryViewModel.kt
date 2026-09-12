@@ -23,6 +23,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.time.Instant
+import java.util.Locale
 import javax.inject.Inject
 
 data class LibraryUiState(
@@ -203,7 +204,7 @@ class LibraryViewModel @Inject constructor(
         }
 
         list = when (sort) {
-            LibrarySortOption.NAME -> list.sortedBy { it.name.lowercase() }
+            LibrarySortOption.NAME -> list.sortedBy { it.name.lowercase(Locale.getDefault()) }
             LibrarySortOption.DATE_ADDED -> list
         }
 

@@ -32,6 +32,7 @@ import com.omnitune.app.constants.EqualizerEnabledKey
 import com.omnitune.app.constants.EqualizerSelectedProfileIdKey
 import com.omnitune.app.ui.theme.OmniColors
 import com.omnitune.app.utils.rememberPreference
+import java.util.Locale
 
 @Composable
 fun EqualizerScreen(
@@ -138,7 +139,7 @@ fun EqualizerScreen(
                     )
                 )
                 Text(
-                    text = "${if (band.gainDb >= 0) "+" else ""}${"%.1f".format(band.gainDb)}dB",
+                    text = "${if (band.gainDb >= 0) "+" else ""}${String.format(Locale.getDefault(), "%.1f", band.gainDb)}dB",
                     fontSize = 12.sp,
                     color = OmniColors.TextPrimary.copy(alpha = 0.7f),
                     modifier = Modifier.width(48.dp)

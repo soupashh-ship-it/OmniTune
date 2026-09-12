@@ -38,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.models.*
 import com.omnitune.app.ui.component.LogoPickerSection
 import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.ui.utils.displayLabel
 import com.omnitune.app.viewmodels.SettingsViewModel
 
 import kotlinx.coroutines.launch
@@ -92,13 +93,13 @@ fun AppearanceSettingsScreen(
                 SettingsCard {
                     SettingsNavRow(
                         title = "Theme Mode",
-                        subtitle = uiState.themeMode.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.themeMode.displayLabel(),
                         icon = Icons.Default.DarkMode,
                         onClick = { showThemeModeSheet = true }
                     )
                     SettingsNavRow(
                         title = "Color Scheme",
-                        subtitle = uiState.appTheme.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.appTheme.displayLabel(),
                         icon = Icons.Default.Palette,
                         onClick = { showAppThemeSheet = true }
                     )
@@ -202,13 +203,13 @@ fun AppearanceSettingsScreen(
                 SettingsCard {
                     SettingsNavRow(
                         title = "Text Alignment",
-                        subtitle = uiState.lyricsTextPosition.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.lyricsTextPosition.displayLabel(),
                         icon = Icons.AutoMirrored.Filled.FormatAlignLeft,
                         onClick = { showLyricsPositionSheet = true }
                     )
                     SettingsNavRow(
                         title = "Animation Type",
-                        subtitle = uiState.lyricsAnimationType.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.lyricsAnimationType.displayLabel(),
                         icon = Icons.Default.Animation,
                         onClick = { showLyricsAnimationSheet = true }
                     )
@@ -264,7 +265,7 @@ fun AppearanceSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.themeMode == mode, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(mode.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(mode.displayLabel())
                     }
                 }
             }
@@ -289,7 +290,7 @@ fun AppearanceSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.appTheme == theme, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(theme.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(theme.displayLabel())
                     }
                 }
             }
@@ -345,7 +346,7 @@ fun AppearanceSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.lyricsTextPosition == pos, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(pos.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(pos.displayLabel())
                     }
                 }
             }
@@ -370,7 +371,7 @@ fun AppearanceSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.lyricsAnimationType == anim, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(anim.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(anim.displayLabel())
                     }
                 }
             }

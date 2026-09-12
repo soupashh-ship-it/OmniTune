@@ -26,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,6 +60,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.mutableStateOf
 
 private val QueueRowShape = RoundedCornerShape(12.dp)
 private val QueueRowHorizontalInset = 8.dp
@@ -565,7 +565,7 @@ private fun LazyItemScope.ModernQueueListItem(
             )
             if (isCurrent && isPlaying) {
                 Box(modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) {
-                    /* NowPlayingAnimation(color = dominantColors.accent, isPlaying = true) */
+                    NowPlayingAnimation(color = dominantColors.accent, isPlaying = true)
                 }
             }
         }

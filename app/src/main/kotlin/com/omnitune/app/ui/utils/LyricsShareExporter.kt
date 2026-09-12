@@ -24,6 +24,7 @@ import coil3.toBitmap
 import com.omnitune.app.models.LyricsLine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 object LyricsShareExporter {
 
@@ -410,6 +411,6 @@ object LyricsShareExporter {
         val minutes = totalCentiseconds / 6000
         val seconds = (totalCentiseconds % 6000) / 100
         val centiseconds = totalCentiseconds % 100
-        return "[%02d:%02d.%02d]".format(minutes, seconds, centiseconds)
+        return String.format(Locale.US, "[%02d:%02d.%02d]", minutes, seconds, centiseconds)
     }
 }

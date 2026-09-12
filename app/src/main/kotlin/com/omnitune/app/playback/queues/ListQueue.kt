@@ -22,5 +22,5 @@ class ListQueue(
 
     override fun hasNextPage(): Boolean = false
 
-    override suspend fun nextPage() = throw UnsupportedOperationException()
+    override suspend fun nextPage(): List<MediaItem> = emptyList()
 }

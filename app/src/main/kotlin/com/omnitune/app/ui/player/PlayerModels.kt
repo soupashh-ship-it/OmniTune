@@ -12,6 +12,7 @@ import com.omnitune.app.models.RepeatMode
 import com.omnitune.app.models.SleepTimerOption
 import com.omnitune.app.models.Song
 import com.omnitune.app.models.VideoQuality
+import java.util.Locale
 
 data class OutputDevice(
     val id: String,
@@ -89,7 +90,7 @@ data class PlayerState(
 
     val audioFormatDisplay: String
         get() {
-            val codec = audioCodec?.uppercase() ?: return "Unknown"
+            val codec = audioCodec?.uppercase(Locale.ROOT) ?: return "Unknown"
             val bitrate = audioBitrate?.let { "${it}kbps" } ?: ""
             return if (bitrate.isNotEmpty()) "$codec • $bitrate" else codec
         }

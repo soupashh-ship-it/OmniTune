@@ -8,6 +8,8 @@
 
 package com.omnitune.app.ui.utils
 
+import java.util.Locale
+
 sealed class LyricsStyle {
     object Standard : LyricsStyle()
     object Energetic : LyricsStyle()
@@ -20,8 +22,8 @@ sealed class LyricsStyle {
 object MoodDetector {
     
     fun detectStyle(title: String, artist: String, lyricsText: String): LyricsStyle {
-        val lowerLyrics = lyricsText.lowercase()
-        val lowerTitle = title.lowercase()
+        val lowerLyrics = lyricsText.lowercase(Locale.ROOT)
+        val lowerTitle = title.lowercase(Locale.ROOT)
         
         // 1. Check for Energetic keywords
         if (containsAny(lowerLyrics, "dance", "party", "jump", "scream", "loud", "beat", "rhythm", "rock", "crazy")) {

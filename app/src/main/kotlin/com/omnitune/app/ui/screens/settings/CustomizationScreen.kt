@@ -27,6 +27,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.models.MiniPlayerStyle
 import com.omnitune.app.models.PlayerStyle
+import com.omnitune.app.ui.utils.displayLabel
 import com.omnitune.app.viewmodels.SettingsViewModel
 
 
@@ -78,7 +79,7 @@ fun CustomizationScreen(
                 SettingsCard {
                     SettingsNavRow(
                         title = "Artwork Shape",
-                        subtitle = uiState.artworkShape.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.artworkShape.displayLabel(),
                         icon = Icons.Rounded.RoundedCorner,
                         onClick = onArtworkShapeClick
                     )
@@ -90,7 +91,7 @@ fun CustomizationScreen(
                     )
                     SettingsNavRow(
                         title = "Seekbar Style",
-                        subtitle = uiState.seekbarStyle.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.seekbarStyle.displayLabel(),
                         icon = Icons.Default.LinearScale,
                         onClick = onSeekbarStyleClick
                     )

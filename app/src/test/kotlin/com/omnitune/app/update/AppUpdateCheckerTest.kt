@@ -81,6 +81,67 @@ class AppUpdateCheckerTest {
         assertEquals("checksums-sha256.txt", selected?.name)
     }
 
+    @Test
+    fun releaseApkNameUsedByPreReleaseWorkflowIsCompatible() {
+        val selected = checker.selectApkAsset(
+            assets = listOf(
+                asset("OmniTune-v1.2.0-pre12-release.apk"),
+                asset("OmniTune-v1.2.0-pre12-release.apk.sha256"),
+            ),
+            tagName = "v1.2.0-pre12",
+        )
+
+        assertEquals("OmniTune-v1.2.0-pre12-release.apk", selected?.name)
+    }
+
+    @Test
+    fun noCompatibleApkAssetProducesNoUpdateCandidate() {
+        val update = checker.findBestUpdate(
+            releases = listOf(
+                release(
+                    tag = "v1.3.0",
+                    prerelease = false,
+                    assets = listOf(asset("OmniTune-v1.3.0-release.apk.sha256")),
+                ),
+            ),
+            channel = UpdateChannel.STABLE,
+            currentVersionName = "1.2.0",
+            currentVersionCode = 120,
+        )
+
+        assertNull(update)
+    }
+
+    @Test
+    fun olderAndEqualVersionsAreIgnored() {
+        val update = checker.findBestUpdate(
+            releases = listOf(
+                release(tag = "v1.2.0", prerelease = false),
+                release(tag = "v1.1.9", prerelease = false),
+            ),
+            channel = UpdateChannel.STABLE,
+            currentVersionName = "1.2.0",
+            currentVersionCode = 120,
+        )
+
+        assertNull(update)
+    }
+
+    @Test
+    fun newerStableReleaseIsSelectedOnStableChannel() {
+        val update = checker.findBestUpdate(
+            releases = listOf(
+                release(tag = "v1.2.1", prerelease = false),
+                release(tag = "v1.2.0-pre9", prerelease = true),
+            ),
+            channel = UpdateChannel.STABLE,
+            currentVersionName = "1.2.0",
+            currentVersionCode = 120,
+        )
+
+        assertEquals("1.2.1", update?.versionName)
+    }
+
     private fun release(
         tag: String,
         prerelease: Boolean,

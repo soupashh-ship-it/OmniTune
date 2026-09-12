@@ -8,8 +8,13 @@
 package com.omnitune.app.ui.utils
 
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import kotlin.math.absoluteValue
 import kotlin.math.floor
+
+private fun decimalFormat(pattern: String, locale: Locale = Locale.getDefault()): DecimalFormat =
+    DecimalFormat(pattern, DecimalFormatSymbols.getInstance(locale))
 
 fun formatFileSize(sizeBytes: Long): String {
     val prefix = if (sizeBytes < 0) "-" else ""
@@ -19,25 +24,25 @@ fun formatFileSize(sizeBytes: Long): String {
         absBytes < 1024 -> "$prefix${absBytes.toLong()} B"
         absBytes < 1024 * 1024 -> {
             val kb = absBytes / 1024
-            "$prefix${DecimalFormat("#.#").format(kb)} KB"
+            "$prefix${decimalFormat("#.#").format(kb)} KB"
         }
         absBytes < 1024 * 1024 * 1024 -> {
             val mb = absBytes / (1024 * 1024)
-            "$prefix${DecimalFormat("#.#").format(mb)} MB"
+            "$prefix${decimalFormat("#.#").format(mb)} MB"
         }
         absBytes < 1024L * 1024 * 1024 * 1024 -> {
             val gb = absBytes / (1024 * 1024 * 1024)
-            "$prefix${DecimalFormat("#.##").format(gb)} GB"
+            "$prefix${decimalFormat("#.##").format(gb)} GB"
         }
         else -> {
             val tb = absBytes / (1024L * 1024 * 1024 * 1024)
-            "$prefix${DecimalFormat("#.##").format(tb)} TB"
+            "$prefix${decimalFormat("#.##").format(tb)} TB"
         }
     }
 }
 
 fun numberFormatter(n: Int) =
-    DecimalFormat("#,###")
+    decimalFormat("#,###", Locale.US)
         .format(n)
         .replace(",", ".")
 
@@ -47,7 +52,7 @@ fun formatCompactCount(count: Long): String {
 
     fun compactOneDecimal(divisor: Long): String {
         val value = floor(abs.toDouble() / (divisor / 10.0)) / 10.0
-        val text = DecimalFormat("#.#").format(value).replace(",", ".")
+        val text = decimalFormat("#.#", Locale.US).format(value)
         return if (text.endsWith(".0")) text.dropLast(2) else text
     }
 

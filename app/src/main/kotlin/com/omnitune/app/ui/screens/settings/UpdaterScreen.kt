@@ -702,7 +702,7 @@ private fun defaultUpdaterChannel(): UpdateChannel =
 private fun formatUpdaterBytes(bytes: Long): String {
     if (bytes <= 0L) return "Unknown size"
     val mb = bytes / (1024.0 * 1024.0)
-    return "%.1f MB".format(Locale.US, mb)
+    return String.format(Locale.US, "%.1f MB", mb)
 }
 
 private fun updaterInstallLaunchError(error: Throwable): String =

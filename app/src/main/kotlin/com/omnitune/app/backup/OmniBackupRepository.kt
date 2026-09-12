@@ -42,6 +42,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.security.MessageDigest
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -876,7 +877,9 @@ private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-25
     .digest(bytes)
     .toHex()
 
-private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+private fun ByteArray.toHex(): String = joinToString("") { byte ->
+    String.format(Locale.US, "%02x", byte.toInt() and 0xff)
+}
 
 private fun SongEntity.toBackupSong() = BackupSong(
     id = id,

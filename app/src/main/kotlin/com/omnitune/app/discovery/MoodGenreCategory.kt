@@ -5,6 +5,8 @@
 
 package com.omnitune.app.discovery
 
+import java.util.Locale
+
 import com.omnitune.app.ui.screens.HomeCollectionMetadata
 import com.omnitune.app.ui.screens.HomeCollectionType
 
@@ -299,11 +301,11 @@ private fun String.isMeaningfulCategoryQuery(): Boolean {
 }
 
 private fun String.splitTerms(): List<String> =
-    lowercase()
+    lowercase(Locale.ROOT)
         .replace(Regex("[^a-z0-9]+"), " ")
         .trim()
         .split(Regex("\\s+"))
         .filter { it.isNotBlank() }
 
 private fun String.normalizedKey(): String =
-    lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
+    lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]+"), "_").trim('_')

@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Locale
 import javax.inject.Inject
 
 data class SongStatus(
@@ -108,7 +109,7 @@ internal object DownloadItemsMapper {
             .filterNot { it.status == DownloadUiStatus.REMOVING }
             .sortedWith(
                 compareBy<DownloadItem.SongItem> { it.status.sortWeight }
-                    .thenBy { it.song.title.lowercase() }
+                    .thenBy { it.song.title.lowercase(Locale.getDefault()) }
             )
     }
 

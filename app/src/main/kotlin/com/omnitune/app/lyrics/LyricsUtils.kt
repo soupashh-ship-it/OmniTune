@@ -10,6 +10,7 @@ import com.atilika.kuromoji.ipadic.Tokenizer
 import com.omnitune.betterlyrics.TTMLParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @Suppress("RegExpRedundantEscape")
 object LyricsUtils {
@@ -221,7 +222,7 @@ object LyricsUtils {
                 i += 1
             }
         }
-        return romajiBuilder.toString().lowercase()
+        return romajiBuilder.toString().lowercase(Locale.ROOT)
     }
 
     suspend fun romanizeJapanese(text: String): String = withContext(Dispatchers.Default) {
@@ -263,7 +264,7 @@ object LyricsUtils {
                 if (nextCharToDouble != null) {
                     val nextCharRomaji = KANA_ROMAJI_MAP[nextCharToDouble.toString()]?.getOrNull(0)?.toString()
                         ?: nextCharToDouble.toString()
-                    romajiBuilder.append(nextCharRomaji.lowercase().trim())
+                    romajiBuilder.append(nextCharRomaji.lowercase(Locale.ROOT).trim())
                 }
                 i += 1
                 consumed = true
@@ -279,7 +280,7 @@ object LyricsUtils {
                 i += 1
             }
         }
-        return romajiBuilder.toString().lowercase()
+        return romajiBuilder.toString().lowercase(Locale.ROOT)
     }
 
     suspend fun romanizeKorean(text: String): String = withContext(Dispatchers.Default) {

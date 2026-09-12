@@ -73,6 +73,7 @@ import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.ui.utils.ImageUtils
 import com.omnitune.app.ui.utils.dpadFocusable
 import com.omnitune.app.utils.TimeUtil
+import java.util.Locale
 import kotlin.math.min
 
 @Composable
@@ -1088,7 +1089,7 @@ fun AboutArtistCard(
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
                     Text(
-                        text = "${artist.views ?: "Millions"} Monthly Listeners".uppercase(),
+                        text = "${artist.views ?: "Millions"} Monthly Listeners".uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Black,
                         color = if (dominantColors.accent.luminance() > 0.5f) Color.Black else Color.White,

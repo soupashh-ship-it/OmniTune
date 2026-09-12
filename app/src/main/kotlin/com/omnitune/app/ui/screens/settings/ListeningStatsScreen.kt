@@ -56,7 +56,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -87,8 +86,10 @@ import coil3.request.crossfade
 import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.component.LoadingIndicator
 import com.omnitune.app.ui.component.MeshGradientBackground
+import com.omnitune.app.ui.utils.displayLabel
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import androidx.compose.runtime.mutableStateOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -391,7 +392,7 @@ private fun MusicInsightsShareCard(
                 lineHeight = 32.sp
             )
             Text(
-                uiState.musicPersonality.title.uppercase(),
+                uiState.musicPersonality.title.uppercase(Locale.getDefault()),
                 style = MaterialTheme.typography.displayMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
@@ -441,7 +442,7 @@ private fun MusicInsightsShareCard(
 private fun StatValue(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text(
-            text = label.uppercase(),
+            text = label.uppercase(Locale.getDefault()),
             style = MaterialTheme.typography.labelSmall,
             color = Color.White.copy(alpha = 0.7f),
             fontWeight = FontWeight.Bold,
@@ -687,7 +688,7 @@ private fun MonthlyHighlightSection(artist: ArtistStats) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    artist.artist.take(1).uppercase(),
+                    artist.artist.take(1).uppercase(Locale.getDefault()),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -860,7 +861,7 @@ private fun TopArtistCard(artist: ArtistStats) {
             ) {
                 if (artist.thumbnailUrl.isNullOrBlank()) {
                     Text(
-                        text = artist.artist.take(1).uppercase(),
+                        text = artist.artist.take(1).uppercase(Locale.getDefault()),
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -925,7 +926,7 @@ private fun TimeOfDaySection(stats: Map<TimeOfDay, Int>) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = time.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = time.displayLabel(),
                         modifier = Modifier.width(88.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )

@@ -47,6 +47,8 @@ import com.omnitune.app.ui.component.DominantColors
 import com.omnitune.app.ui.player.OutputDevice
 import com.omnitune.app.ui.player.PlayerOverlay
 import com.omnitune.app.ui.player.PlayerState
+import com.omnitune.app.ui.player.VideoModeSession
+import com.omnitune.app.ui.player.VideoModeStateReducer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -122,6 +124,7 @@ class PlayerViewModel @Inject constructor(
 
     private val _isVideoMode = MutableStateFlow(false)
     val isVideoMode: StateFlow<Boolean> = _isVideoMode.asStateFlow()
+    private var videoModeSession = VideoModeSession()
 
     private val _availableDevices = MutableStateFlow<List<OutputDevice>>(emptyList())
     val availableDevices: StateFlow<List<OutputDevice>> = _availableDevices.asStateFlow()
@@ -225,15 +228,24 @@ class PlayerViewModel @Inject constructor(
         _isFullScreen.value = fullScreen && _isVideoMode.value
     }
 
-    fun setVideoMode(enabled: Boolean) {
-        _isVideoMode.value = enabled
-        if (!enabled) {
+    fun setVideoMode(enabled: Boolean, mediaId: String? = null) {
+        applyVideoModeSession(VideoModeStateReducer.setEnabled(videoModeSession, enabled, mediaId))
+    }
+
+    fun onMediaItemChanged(mediaId: String?) {
+        applyVideoModeSession(VideoModeStateReducer.onMediaItemChanged(videoModeSession, mediaId))
+    }
+
+    private fun applyVideoModeSession(session: VideoModeSession) {
+        videoModeSession = session
+        _isVideoMode.value = session.enabled
+        if (!session.enabled) {
             _isFullScreen.value = false
         }
     }
 
-    fun toggleVideoMode() {
-        setVideoMode(!_isVideoMode.value)
+    fun toggleVideoMode(mediaId: String? = null) {
+        setVideoMode(!_isVideoMode.value, mediaId)
     }
 
     fun toggleRelatedSelection(index: Int) {

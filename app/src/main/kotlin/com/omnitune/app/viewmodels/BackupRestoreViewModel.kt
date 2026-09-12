@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 data class BackupRestoreProgress(
@@ -265,7 +266,7 @@ class BackupRestoreViewModel @Inject constructor(
     private fun formatFileSize(bytes: Long): String = when {
         bytes < 1024 -> "$bytes B"
         bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-        bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes.toDouble() / (1024 * 1024))} MB"
-        else -> "${"%.2f".format(bytes.toDouble() / (1024 * 1024 * 1024))} GB"
+        bytes < 1024 * 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", bytes.toDouble() / (1024 * 1024))
+        else -> String.format(Locale.getDefault(), "%.2f GB", bytes.toDouble() / (1024 * 1024 * 1024))
     }
 }

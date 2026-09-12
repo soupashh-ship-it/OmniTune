@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.omnitune.app.constants.AudioQuality
+import com.omnitune.app.ui.utils.displayLabel
 import com.omnitune.app.viewmodels.SettingsViewModel
 
 
@@ -76,19 +77,19 @@ fun PlaybackSettingsScreen(
                 SettingsCard {
                     SettingsNavRow(
                         title = "Wi-Fi Audio Quality",
-                        subtitle = uiState.wifiAudioQuality.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.wifiAudioQuality.displayLabel(),
                         icon = Icons.Default.Wifi,
                         onClick = { showWifiQualitySheet = true }
                     )
                     SettingsNavRow(
                         title = "Mobile Data Quality",
-                        subtitle = uiState.mobileAudioQuality.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.mobileAudioQuality.displayLabel(),
                         icon = Icons.Default.SignalCellularAlt,
                         onClick = { showMobileQualitySheet = true }
                     )
                     SettingsNavRow(
                         title = "Download Quality",
-                        subtitle = uiState.downloadQuality.name.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = uiState.downloadQuality.displayLabel(),
                         icon = Icons.Default.Download,
                         onClick = { showDownloadQualitySheet = true }
                     )
@@ -215,7 +216,7 @@ fun PlaybackSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.wifiAudioQuality == quality, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(quality.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(quality.displayLabel())
                     }
                 }
             }
@@ -240,7 +241,7 @@ fun PlaybackSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.mobileAudioQuality == quality, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(quality.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(quality.displayLabel())
                     }
                 }
             }
@@ -265,7 +266,7 @@ fun PlaybackSettingsScreen(
                     ) {
                         RadioButton(selected = uiState.downloadQuality == quality, onClick = null)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(quality.name.lowercase().replaceFirstChar { it.uppercase() })
+                        Text(quality.displayLabel())
                     }
                 }
             }

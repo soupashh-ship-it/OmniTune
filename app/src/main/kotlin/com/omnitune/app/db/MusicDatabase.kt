@@ -52,6 +52,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import timber.log.Timber
@@ -61,7 +62,7 @@ const val CURRENT_ROOM_DATABASE_SCHEMA_VERSION = 8
 
 internal fun isRecoverableDatabaseSchemaFailure(error: Throwable): Boolean {
     val message = generateSequence(error) { it.cause }
-        .mapNotNull { it.message?.lowercase() }
+        .mapNotNull { it.message?.lowercase(Locale.ROOT) }
         .joinToString(" ")
     return listOf(
         "migration didn't properly handle",
@@ -664,7 +665,7 @@ internal object SchemaTools {
         db.execSQL("DROP TABLE `$oldTable`")
         expectedIndices.filter { it.tblName == table.name }.forEach { db.execSQL(it.sql!!) }
 
-        if (table.sql.orEmpty().uppercase().contains("AUTOINCREMENT")) {
+        if (table.sql.orEmpty().uppercase(Locale.ROOT).contains("AUTOINCREMENT")) {
             val idColumn = expectedColumns.values.firstOrNull { it.name.equals("id", ignoreCase = true) }?.name ?: "id"
             runCatching {
                 db.execSQL("DELETE FROM sqlite_sequence WHERE name = ?", arrayOf(table.name))
@@ -718,7 +719,7 @@ internal object SchemaTools {
     }
 
     private fun normalizeType(type: String?): String =
-        (type ?: "").trim().uppercase().substringBefore(' ')
+        (type ?: "").trim().uppercase(Locale.ROOT).substringBefore(' ')
 
     private fun tableExists(db: SupportSQLiteDatabase, name: String): Boolean =
         db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(name)).use { it.moveToFirst() }

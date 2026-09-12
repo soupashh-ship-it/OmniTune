@@ -2,6 +2,7 @@ package com.omnitune.app.update
 
 import com.omnitune.app.BuildConfig
 import com.omnitune.app.constants.UpdateChannel
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -122,8 +123,8 @@ class AppUpdateChecker @Inject constructor(
     }
 
     private fun apkAssetPriority(name: String, version: String): Int {
-        val lower = name.lowercase()
-        val versionLower = version.lowercase()
+        val lower = name.lowercase(Locale.ROOT)
+        val versionLower = version.lowercase(Locale.ROOT)
         var score = 0
         if ("omnitune" in lower) score += 16
         if ("universal" in lower) score += 8
@@ -139,7 +140,7 @@ class AppUpdateChecker @Inject constructor(
         val suffix = normalized
             .substring(match.value.length)
             .trimStart('-', '.', '_', '+')
-        val label = Regex("""[A-Za-z]+""").find(suffix)?.value?.lowercase()
+        val label = Regex("""[A-Za-z]+""").find(suffix)?.value?.lowercase(Locale.ROOT)
         val prereleaseNumber = Regex("""\d+""").find(suffix)?.value?.toIntOrNull()
         return ParsedVersion(
             numbers = numbers,

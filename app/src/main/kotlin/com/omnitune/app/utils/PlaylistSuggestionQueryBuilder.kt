@@ -8,6 +8,7 @@ package com.omnitune.app.utils
 import com.omnitune.app.db.entities.PlaylistSong
 import com.omnitune.app.models.PlaylistSuggestionQuery
 import java.time.Year
+import java.util.Locale
 
 object PlaylistSuggestionQueryBuilder {
     private val genreKeywords = listOf(
@@ -60,7 +61,7 @@ object PlaylistSuggestionQueryBuilder {
         }
 
         return queries
-            .distinctBy { it.query.lowercase() }
+            .distinctBy { it.query.lowercase(Locale.ROOT) }
             .sortedBy { it.priority }
     }
 
@@ -68,7 +69,7 @@ object PlaylistSuggestionQueryBuilder {
         System.currentTimeMillis() - lastTimestamp > cacheExpiryHours * 60 * 60 * 1000
 
     private fun extractMatches(text: String, candidates: List<String>): List<String> {
-        val lower = text.lowercase()
+        val lower = text.lowercase(Locale.ROOT)
         return candidates.filter { lower.contains(it) }
     }
 

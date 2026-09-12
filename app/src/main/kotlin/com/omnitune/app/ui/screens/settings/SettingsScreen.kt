@@ -39,6 +39,7 @@ import com.omnitune.app.ui.component.BetaBadge
 import com.omnitune.app.ui.component.LeadingIconBox
 import com.omnitune.app.ui.theme.SquircleShape
 import com.omnitune.app.viewmodels.SettingsViewModel
+import java.util.Locale
 
 
 private data class SettingsSearchEntry(
@@ -93,8 +94,13 @@ fun SettingsScreen(
     val filteredEntries = remember(settingsQuery) {
         if (settingsQuery.isBlank()) emptyList()
         else {
-            val q = settingsQuery.lowercase().trim()
-            searchIndex.filter { it.title.lowercase().contains(q) || it.subtitle.lowercase().contains(q) || it.keywords.contains(q) }
+            val q = settingsQuery.lowercase(Locale.getDefault()).trim()
+            val stableQuery = settingsQuery.lowercase(Locale.ROOT).trim()
+            searchIndex.filter {
+                it.title.lowercase(Locale.getDefault()).contains(q) ||
+                    it.subtitle.lowercase(Locale.getDefault()).contains(q) ||
+                    it.keywords.lowercase(Locale.ROOT).contains(stableQuery)
+            }
         }
     }
 

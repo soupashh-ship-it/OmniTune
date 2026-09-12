@@ -41,7 +41,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -124,6 +123,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
 
 /**
  * Top-level PlayerScreen bound to PlayerConnection and PlayerViewModel.
@@ -242,6 +242,10 @@ fun PlayerScreen(
         viewModel.pruneQueueSelection(queueSongs.size)
     }
 
+    LaunchedEffect(song?.id) {
+        viewModel.onMediaItemChanged(song?.id)
+    }
+
     val actions = PlayerScreenActions(
         onBack = onDismiss,
         onPlayPause = {
@@ -294,7 +298,7 @@ fun PlayerScreen(
                     viewModel.setVideoMode(false)
                 }
                 p == null -> Toast.makeText(context, "Player is not ready yet", Toast.LENGTH_SHORT).show()
-                hasVideoTrack -> viewModel.toggleVideoMode()
+                hasVideoTrack -> viewModel.toggleVideoMode(song.id)
                 else -> {
                     showVideoErrorDialog = true
                     viewModel.setVideoMode(false)

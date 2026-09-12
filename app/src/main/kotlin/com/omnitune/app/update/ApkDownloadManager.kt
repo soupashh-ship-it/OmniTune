@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.security.MessageDigest
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -82,14 +83,10 @@ class ApkDownloadManager @Inject constructor(
     }
 
     private fun verifySha256(updateInfo: AppUpdateInfo, apkFile: File) {
-        val digest = updateInfo.apkAsset.digest.orEmpty()
-        val expected = if (digest.startsWith("sha256:", ignoreCase = true)) {
-            digest.substringAfter("sha256:").lowercase()
-        } else {
-            updateInfo.sha256Asset?.let { asset ->
+        val expected = UpdateVerificationPolicy.sha256FromDigest(updateInfo.apkAsset.digest)
+            ?: updateInfo.sha256Asset?.let { asset ->
                 downloadSha256(asset.browserDownloadUrl)
             }
-        }
 
         // Fail closed: never hand an unverifiable APK to the package installer.
         if (expected.isNullOrBlank()) {
@@ -98,7 +95,7 @@ class ApkDownloadManager @Inject constructor(
                 "This update cannot be verified because no SHA-256 checksum was published with the release."
             )
         }
-        if (!expected.matches(Regex("^[a-f0-9]{64}$"))) {
+        if (!UpdateVerificationPolicy.isValidSha256(expected)) {
             apkFile.delete()
             throw IllegalStateException("Update checksum format is invalid.")
         }
@@ -120,9 +117,7 @@ class ApkDownloadManager @Inject constructor(
                 throw IllegalStateException("Could not verify update checksum.")
             }
             val body = response.body.string().trim()
-            return body.split(Regex("\\s+")).firstOrNull()
-                ?.lowercase()
-                ?.takeIf { it.matches(Regex("^[a-f0-9]{64}$")) }
+            return UpdateVerificationPolicy.sha256FromChecksumFile(body)
                 ?: throw IllegalStateException("Update checksum file is invalid.")
         }
     }
@@ -150,13 +145,13 @@ class ApkDownloadManager @Inject constructor(
         }
 
         val downloadedPackageName = packageInfo.packageName
-        if (downloadedPackageName != context.packageName) {
+        if (!UpdateVerificationPolicy.isExpectedPackage(downloadedPackageName, context.packageName)) {
             apkFile.delete()
             throw IllegalStateException("This update package does not match OmniTune.")
         }
 
         val downloadedVersionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
-        if (downloadedVersionCode <= BuildConfig.VERSION_CODE.toLong()) {
+        if (!UpdateVerificationPolicy.isNewerVersion(downloadedVersionCode, BuildConfig.VERSION_CODE.toLong())) {
             apkFile.delete()
             throw IllegalStateException("This update is not newer than your installed version.")
         }
@@ -208,7 +203,9 @@ class ApkDownloadManager @Inject constructor(
             signatures.orEmpty().map { it.toByteArray() }
         }
         return certificates.map { bytes ->
-            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
+                String.format(Locale.US, "%02x", byte.toInt() and 0xff)
+            }
         }.toSet()
     }
 
@@ -222,7 +219,9 @@ class ApkDownloadManager @Inject constructor(
                 digest.update(buffer, 0, read)
             }
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        return digest.digest().joinToString("") { byte ->
+            String.format(Locale.US, "%02x", byte.toInt() and 0xff)
+        }
     }
 
     private companion object {

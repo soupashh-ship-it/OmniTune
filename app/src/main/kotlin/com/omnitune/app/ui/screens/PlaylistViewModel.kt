@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.time.LocalDateTime
+import java.util.Locale
 import javax.inject.Inject
 
 data class PlaylistUiState(
@@ -360,9 +361,9 @@ class PlaylistViewModel @Inject constructor(
         val order = _uiState.value.sortOrder
 
         val sorted = when (type) {
-            SortType.TITLE -> orig.sortedBy { it.title.lowercase() }
-            SortType.ARTIST -> orig.sortedBy { it.artist.lowercase() }
-            SortType.ALBUM -> orig.sortedBy { it.album.lowercase() }
+            SortType.TITLE -> orig.sortedBy { it.title.lowercase(Locale.getDefault()) }
+            SortType.ARTIST -> orig.sortedBy { it.artist.lowercase(Locale.getDefault()) }
+            SortType.ALBUM -> orig.sortedBy { it.album.lowercase(Locale.getDefault()) }
             SortType.DATE_ADDED, SortType.CUSTOM -> orig
         }
 

@@ -7,6 +7,7 @@
 package com.omnitune.app.ui.component
 
 import android.view.WindowManager
+import java.util.Locale
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
@@ -35,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -103,6 +103,7 @@ import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
 import kotlin.math.abs
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
 
 
 // ──────────────────────────────────────────────────────────────────────
@@ -474,12 +475,12 @@ fun LyricsV2(
 
                 // ── Agent-based positioning ──
                 // v1 or null -> Start, v2 -> End, others -> Center
-                val textAlign = when (item.agent?.lowercase()) {
+                val textAlign = when (item.agent?.lowercase(Locale.ROOT)) {
                     "v1", null -> TextAlign.Start
                     "v2" -> TextAlign.End
                     else -> TextAlign.Center
                 }
-                val horizontalAlignment = when (item.agent?.lowercase()) {
+                val horizontalAlignment = when (item.agent?.lowercase(Locale.ROOT)) {
                     "v1", null -> Alignment.Start
                     "v2" -> Alignment.End
                     else -> Alignment.CenterHorizontally

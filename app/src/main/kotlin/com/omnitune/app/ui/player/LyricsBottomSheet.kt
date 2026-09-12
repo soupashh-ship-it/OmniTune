@@ -130,9 +130,11 @@ import com.omnitune.app.ui.component.DynamicLyricsBackground
 import com.omnitune.app.ui.component.LoadingIndicator
 import com.omnitune.app.ui.utils.LyricsShareExporter
 import com.omnitune.app.ui.utils.MoodDetector
+import com.omnitune.app.ui.utils.displayLabel
 import com.omnitune.app.utils.TimeUtil
 import com.omnitune.app.utils.rememberEnumPreference
 import com.omnitune.app.utils.rememberPreference
+import java.util.Locale
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -1013,7 +1015,7 @@ private fun LyricsAlignmentPicker(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = position.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = position.displayLabel(),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = if (isSelected) Color.White else Color.White.copy(alpha = 0.4f),
                     )
@@ -1265,7 +1267,7 @@ private fun SettingsSectionHeader(
         Icon(icon, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = title.uppercase(),
+            text = title.uppercase(Locale.getDefault()),
             style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp,
@@ -1294,7 +1296,7 @@ private fun SettingsSlider(
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = if (value % 1f == 0f) value.toInt().toString() else "%.1f".format(value),
+                text = if (value % 1f == 0f) value.toInt().toString() else String.format(Locale.getDefault(), "%.1f", value),
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Black),
                 color = Color.White.copy(alpha = 0.5f),
             )

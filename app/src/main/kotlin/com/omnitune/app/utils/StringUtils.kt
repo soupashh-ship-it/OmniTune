@@ -33,10 +33,10 @@ fun makeTimeString(duration: Long?): String {
 
     // More human-friendly duration strings:
     return when {
-        day > 0 -> "%dd %dh %dm %ds".format(day, hour, minute, sec)
-        hour > 0 -> "%dh %dm %ds".format(hour, minute, sec)
-        minute > 0 -> "%d:%02d".format(minute, sec)
-        else -> "%d:%02d".format(0, sec)
+        day > 0 -> String.format(Locale.US, "%dd %dh %dm %ds", day, hour, minute, sec)
+        hour > 0 -> String.format(Locale.US, "%dh %dm %ds", hour, minute, sec)
+        minute > 0 -> String.format(Locale.US, "%d:%02d", minute, sec)
+        else -> String.format(Locale.US, "%d:%02d", 0, sec)
     }
 }
 
@@ -54,10 +54,10 @@ fun joinByBullet(vararg str: String?) =
 fun formatDurationMs(durationMs: Long): String {
     if (durationMs <= 0L) return "0:00"
     val totalSeconds = durationMs / 1000
-    return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+    return String.format(Locale.US, "%d:%02d", totalSeconds / 60, totalSeconds % 60)
 }
 
 fun formatDurationSeconds(seconds: Long): String {
     if (seconds <= 0L) return "0:00"
-    return "%d:%02d".format(seconds / 60, seconds % 60)
+    return String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60)
 }

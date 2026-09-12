@@ -35,6 +35,7 @@ import com.omnitune.app.ui.component.glass.ArtGlassSheet
 import com.omnitune.app.ui.player.DeviceType
 import com.omnitune.app.ui.player.OutputDevice
 import com.omnitune.app.ui.theme.SquircleShape
+import com.omnitune.app.ui.utils.displayLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -295,7 +296,7 @@ private fun DeviceListItem(
                 color = contentColor
             )
             Text(
-                text = device.subtitle ?: device.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                text = device.subtitle ?: device.type.displayLabel(),
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor.copy(alpha = 0.4f)
             )

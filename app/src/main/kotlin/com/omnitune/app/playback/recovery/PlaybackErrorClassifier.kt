@@ -2,6 +2,7 @@ package com.omnitune.app.playback.recovery
 
 import androidx.media3.common.PlaybackException
 import androidx.media3.datasource.HttpDataSource
+import java.util.Locale
 
 enum class PlaybackErrorType {
     Forbidden403,
@@ -17,7 +18,7 @@ enum class PlaybackErrorType {
 object PlaybackErrorClassifier {
     fun classify(error: PlaybackException): PlaybackErrorType {
         val cause = error.cause
-        val message = "${error.message.orEmpty()} ${cause?.message.orEmpty()}".lowercase()
+        val message = "${error.message.orEmpty()} ${cause?.message.orEmpty()}".lowercase(Locale.ROOT)
 
         if (message.contains("buffering timeout") || message.contains("playback timed out")) {
             return PlaybackErrorType.Timeout

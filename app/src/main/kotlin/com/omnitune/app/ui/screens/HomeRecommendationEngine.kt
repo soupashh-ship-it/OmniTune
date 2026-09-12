@@ -9,6 +9,7 @@ import com.omnitune.app.db.entities.EventWithSong
 import com.omnitune.app.db.entities.Song
 import java.time.Duration
 import java.time.LocalDateTime
+import java.util.Locale
 
 object HomeRecommendationEngine {
     private const val MIN_HISTORY_EVENTS = 1
@@ -226,7 +227,7 @@ private fun HomeArtistSeed.toRecommendedArtistItem(): PlaylistShelfItem =
         subtitle = "Artist mix from your listening",
         query = query,
         thumbnailUrl = thumbnailUrl,
-        artworkKey = "artist_${name.lowercase().replace(' ', '_')}",
+        artworkKey = "artist_${name.lowercase(Locale.ROOT).replace(' ', '_')}",
         collectionType = HomeCollectionType.ArtistMix,
         source = HomeCatalogSource.Recommended,
         actionType = HomeActionType.OPEN_COLLECTION,

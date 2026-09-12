@@ -8,6 +8,7 @@ package com.omnitune.app.discovery
 import com.omnitune.app.BuildConfig
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.models.SongItem
+import java.util.Locale
 import timber.log.Timber
 
 interface MoodGenreSearchProvider {
@@ -112,7 +113,7 @@ class MoodGenreResolver(
         return bestByKey.values
             .sortedWith(
                 compareByDescending<ScoredSong> { it.score }
-                    .thenBy { it.song.title.lowercase() },
+                    .thenBy { it.song.title.lowercase(Locale.ROOT) },
             )
     }
 
@@ -120,25 +121,26 @@ class MoodGenreResolver(
         val song = candidate.song
         val category = candidate.category
         val text = song.searchText()
-        val queryText = candidate.query.lowercase()
+        val queryText = candidate.query.lowercase(Locale.ROOT)
         var score = when (candidate.source) {
             CandidateQuerySource.PRIMARY -> 2
             CandidateQuerySource.FALLBACK -> 1
         }
 
-        if (text.contains(category.title.lowercase())) score += 4
+        if (text.contains(category.title.lowercase(Locale.ROOT))) score += 4
 
         category.preferredTerms.forEach { term ->
-            if (text.contains(term.lowercase())) score += 3
-            if (queryText.contains(term.lowercase())) score += 1
+            val normalizedTerm = term.lowercase(Locale.ROOT)
+            if (text.contains(normalizedTerm)) score += 3
+            if (queryText.contains(normalizedTerm)) score += 1
         }
 
         category.includeKeywords.forEach { keyword ->
-            if (text.contains(keyword.lowercase())) score += 2
+            if (text.contains(keyword.lowercase(Locale.ROOT))) score += 2
         }
 
         category.excludeKeywords.forEach { keyword ->
-            if (text.contains(keyword.lowercase())) score -= 5
+            if (text.contains(keyword.lowercase(Locale.ROOT))) score -= 5
         }
 
         if (looksUnrelated(text)) score -= 5
@@ -188,7 +190,7 @@ internal data class ScoredSong(
 private fun SongItem.stableKey(): String =
     id.ifBlank {
         val artist = artists.firstOrNull()?.name.orEmpty()
-        "${title.lowercase()}::$artist::${duration ?: -1}"
+        "${title.lowercase(Locale.ROOT)}::$artist::${duration ?: -1}"
     }
 
 private fun SongItem.searchText(): String =
@@ -198,4 +200,4 @@ private fun SongItem.searchText(): String =
         append(artists.joinToString(" ") { it.name })
         append(' ')
         append(album?.name.orEmpty())
-    }.lowercase()
+    }.lowercase(Locale.ROOT)

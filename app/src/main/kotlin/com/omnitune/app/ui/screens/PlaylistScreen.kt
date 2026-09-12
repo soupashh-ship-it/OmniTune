@@ -48,6 +48,7 @@ import com.omnitune.app.models.toMediaItem
 import com.omnitune.app.ui.component.*
 import com.omnitune.app.ui.navigation.LocalRouteChromeInsets
 import com.omnitune.app.ui.theme.SquircleShape
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,12 +83,14 @@ fun PlaylistScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredSongs = remember(playlist?.songs, searchQuery) {
-        val q = searchQuery.trim().lowercase()
+        val q = searchQuery.trim().lowercase(Locale.getDefault())
         if (q.isBlank()) {
             playlist?.songs.orEmpty()
         } else {
             playlist?.songs.orEmpty().filter {
-                it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q)
+                it.title.lowercase(Locale.getDefault()).contains(q) ||
+                    it.artist.lowercase(Locale.getDefault()).contains(q) ||
+                    it.album.lowercase(Locale.getDefault()).contains(q)
             }
         }
     }

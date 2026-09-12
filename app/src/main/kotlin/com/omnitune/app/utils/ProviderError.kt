@@ -12,6 +12,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.Locale
 
 /**
  * Classifies provider errors (InnerTube/YouTube API calls) into typed, user-visible messages.
@@ -51,7 +52,7 @@ private fun statusCodeFromThrowable(throwable: Throwable): Int? {
             cursor is ServerResponseException -> return cursor.response.status.value
         }
         // Check message for status codes (Ktor sometimes wraps exceptions or sends text in message)
-        val msg = cursor.message?.lowercase().orEmpty()
+        val msg = cursor.message?.lowercase(Locale.ROOT).orEmpty()
         val statusMatch = Regex("""\b(40[0-9]|429|50[0-9])\b""").find(msg)
         if (statusMatch != null) return statusMatch.value.toInt()
         cursor = cursor.cause
@@ -97,7 +98,7 @@ fun classifyProviderError(throwable: Throwable): ProviderError {
             message = "Request timed out. Your connection may be slow. Please try again.",
         )
         is IOException -> {
-            val msg = throwable.message?.lowercase().orEmpty()
+            val msg = throwable.message?.lowercase(Locale.ROOT).orEmpty()
             when {
                 "timeout" in msg -> ProviderError(
                     type = ProviderErrorType.Timeout,
@@ -119,8 +120,8 @@ fun classifyProviderError(throwable: Throwable): ProviderError {
             canRetry = true,
         )
         else -> {
-            val msg = throwable.message?.lowercase().orEmpty()
-            val className = throwable::class.java.simpleName.lowercase()
+            val msg = throwable.message?.lowercase(Locale.ROOT).orEmpty()
+            val className = throwable::class.java.simpleName.lowercase(Locale.ROOT)
             when {
                 "json" in msg || "parse" in msg || "serializer" in msg || "unexpected" in msg ||
                     "json" in className || "serialization" in className -> ProviderError(

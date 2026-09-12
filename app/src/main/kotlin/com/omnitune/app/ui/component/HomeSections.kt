@@ -1,5 +1,6 @@
 package com.omnitune.app.ui.component
 
+import java.util.Locale
 import com.omnitune.app.ui.utils.dpadFocusable
 import com.omnitune.app.ui.utils.SharedTransitionKeys
 import com.omnitune.app.ui.utils.isLandscape
@@ -1646,7 +1647,7 @@ fun PersonalizedMixCard(
 // -----------------------------------------------------------------------------
 
 private fun isChartSection(title: String): Boolean {
-    val t = title.lowercase().trim()
+    val t = title.lowercase(Locale.ROOT).trim()
     return t.contains("chart") ||
         t.contains("billboard") ||
         t.contains("hot 100") ||
@@ -1661,7 +1662,7 @@ private fun isChartSection(title: String): Boolean {
 }
 
 private fun isRecentSection(title: String): Boolean {
-    val t = title.lowercase()
+    val t = title.lowercase(Locale.ROOT)
     return t.contains("recent") ||
         t.contains("listen again") ||
         t.contains("history") ||
@@ -1672,7 +1673,7 @@ private fun isRecentSection(title: String): Boolean {
 }
 
 private fun isTrendingSection(title: String): Boolean {
-    val t = title.lowercase()
+    val t = title.lowercase(Locale.ROOT)
     return t.contains("trending") ||
         t.contains("rising") ||
         t.contains("hot now") ||

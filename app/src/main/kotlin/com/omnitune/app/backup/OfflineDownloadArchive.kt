@@ -9,6 +9,7 @@ import android.content.Context
 import android.os.Environment
 import java.io.File
 import java.security.MessageDigest
+import java.util.Locale
 
 /**
  * File operations for restore are staged first and only promoted after the
@@ -267,7 +268,9 @@ object OfflineDownloadArchive {
                     digest.update(buffer, 0, read)
                 }
             }
-            digest.digest().joinToString("") { "%02x".format(it) }
+            digest.digest().joinToString("") { byte ->
+                String.format(Locale.US, "%02x", byte.toInt() and 0xff)
+            }
         }
 }
 
