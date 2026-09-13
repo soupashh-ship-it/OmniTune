@@ -16,10 +16,7 @@ data class PlaybackAuthState(
     val webClientPoTokenEnabled: Boolean = false,
 ) {
     val hasLoginCookie: Boolean
-        get() {
-            val currentCookie = cookie ?: return false
-            return "SAPISID" in parseCookieString(currentCookie)
-        }
+        get() = sapisidCookieValue(cookie) != null
 
     val hasPlaybackLoginContext: Boolean
         get() = hasLoginCookie && !dataSyncId.isNullOrBlank()
@@ -69,6 +66,20 @@ data class PlaybackAuthState(
 
     companion object {
         val EMPTY = PlaybackAuthState()
+
+        private val sapisidCookieNames = listOf(
+            "SAPISID",
+            "__Secure-3PAPISID",
+            "__Secure-1PAPISID",
+        )
+
+        fun sapisidCookieValue(cookie: String?): String? {
+            val currentCookie = cookie.normalizeAuthValue() ?: return null
+            val cookieMap = parseCookieString(currentCookie)
+            return sapisidCookieNames.firstNotNullOfOrNull { cookieName ->
+                cookieMap[cookieName]?.takeIf { it.isNotBlank() }
+            }
+        }
 
         internal fun needsServiceIntegrity(client: YouTubeClient): Boolean {
             val name = client.clientName.uppercase(Locale.US)

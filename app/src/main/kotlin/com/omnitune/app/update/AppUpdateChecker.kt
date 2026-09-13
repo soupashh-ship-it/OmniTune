@@ -82,7 +82,7 @@ class AppUpdateChecker @Inject constructor(
         !draft && when (channel) {
             UpdateChannel.STABLE -> !prerelease
             UpdateChannel.BETA,
-            UpdateChannel.NIGHTLY -> prerelease
+            UpdateChannel.NIGHTLY -> true
         }
 
     internal fun selectApkAsset(

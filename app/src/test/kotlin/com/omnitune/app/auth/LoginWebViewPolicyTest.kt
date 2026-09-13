@@ -32,4 +32,20 @@ class LoginWebViewPolicyTest {
         assertFalse(LoginWebViewPolicy.shouldCompleteLogin("https://music.youtube.com.evil.test/", cookies))
         assertFalse(LoginWebViewPolicy.shouldCompleteLogin("https://music.youtube.com/", "PREF=z"))
     }
+
+    @Test
+    fun `login completion accepts secure YouTube session cookie variants`() {
+        assertTrue(
+            LoginWebViewPolicy.shouldCompleteLogin(
+                "https://music.youtube.com/",
+                "SID=x; __Secure-3PAPISID=y",
+            ),
+        )
+        assertTrue(
+            LoginWebViewPolicy.shouldCompleteLogin(
+                "https://music.youtube.com/",
+                "SID=x; __Secure-1PAPISID=y",
+            ),
+        )
+    }
 }

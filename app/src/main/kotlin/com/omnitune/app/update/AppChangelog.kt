@@ -10,26 +10,26 @@ object AppChangelog {
         body = """
 # OmniTune v${BuildConfig.VERSION_NAME}
 
-OmniTune polish prerelease.
+OmniTune 1.5.1 focuses on account sign-in, playlist import, update checks, and final app identity polish after the 1.5.0 stable release.
 
 ## Fixes
 
-- Restored a visible App Updates entry in Settings and defaulted prerelease builds to the prerelease update channel.
-- Updated the default launcher, splash, in-app, and notification logo assets to the new OmniTune mark.
-- Rebranded the first-run welcome screen so its logo and copy are clearly OmniTune-owned.
-- Restored real download state, retry, cancel, delete, storage, and video mapping.
-- Persisted music-video metadata so downloaded video tabs, local filtering, backups, and PiP gating stay consistent.
-- Repaired PiP, deep links, media library browsing, output routing, volume-key behavior, and keep-screen-on handling.
-- Wired customization, launcher icon variants, route-aware mini-player insets, prerelease updates, and the AI equalizer shortcut.
-- Wired SponsorBlock skipping into playback and retired inert Discord/AI provider settings.
-- Cleaned stale Last.fm settings state and incomplete localization resources.
-- Reduced lint issues from blocking errors to non-blocking warnings.
+- Fixed YouTube Music sign-in persistence by saving session cookies, visitor data, data-sync ID, and account metadata before leaving the login screen.
+- Added support for secure YouTube SAPISID cookie variants used by newer sign-in flows.
+- Improved private or account-owned YouTube Music playlist import after sign-in, with clearer errors for unavailable playlists.
+- Allowed playlist import from pasted playlist IDs as well as full YouTube and YouTube Music links.
+- Added a visible Stable / Prerelease selector to the in-app updater.
+- Fixed prerelease update checks so they can also offer newer stable releases.
+- Reset older launcher aliases to the new default OmniTune app icon on first launch after this update.
+- Updated the playback notification resources to use the new transparent OmniTune notification mark.
 
 ## Verification
 
-- `assembleDebug`: passed
+- `innertube:test`: passed
 - `testDebugUnitTest`: passed
-- `lintDebug`: passed
+- `compileDebugKotlin`: passed
+- `compileDebugAndroidTestKotlin`: passed
+- `lintRelease`: passed
 - `assembleRelease`: passed
 
 ## Build

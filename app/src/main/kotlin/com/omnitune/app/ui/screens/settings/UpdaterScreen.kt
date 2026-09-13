@@ -20,6 +20,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -51,11 +53,15 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +97,7 @@ import java.util.Date
 import java.util.Locale
 
 private val UpdaterSquircleShape = RoundedCornerShape(28.dp)
+private val UserFacingUpdateChannels = listOf(UpdateChannel.STABLE, UpdateChannel.NIGHTLY)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,8 +110,15 @@ fun UpdaterScreen(
     val updateState by viewModel.state.collectAsStateWithLifecycle()
     val changelogState by changelogViewModel.state.collectAsStateWithLifecycle()
     var updateChannel by rememberEnumPreference(UpdateChannelKey, defaultUpdaterChannel())
+    val selectedUpdateChannel = updateChannel.userFacingChannel()
     val (lastCheckedAt) = rememberPreference(LastUpdateCheckKey, 0L)
     var installMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(updateChannel) {
+        if (updateChannel == UpdateChannel.BETA) {
+            updateChannel = UpdateChannel.NIGHTLY
+        }
+    }
 
     val installPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -128,7 +142,7 @@ fun UpdaterScreen(
 
     fun checkForUpdates() {
         installMessage = null
-        viewModel.checkForUpdates(updateChannel)
+        viewModel.checkForUpdates(selectedUpdateChannel)
         changelogViewModel.refreshLatestRelease()
     }
 
@@ -181,10 +195,21 @@ fun UpdaterScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
+                UpdaterChannelSelector(
+                    selectedChannel = selectedUpdateChannel,
+                    onChannelSelected = { channel ->
+                        installMessage = null
+                        viewModel.reset()
+                        updateChannel = channel
+                    },
+                )
+            }
+
+            item {
                 UpdaterStatusCard(
                     currentVersionName = BuildConfig.VERSION_NAME,
                     currentVersionCode = BuildConfig.VERSION_CODE,
-                    updateChannel = updateChannel,
+                    updateChannel = selectedUpdateChannel,
                     updateState = updateState,
                     lastUpdated = lastCheckedAt.takeIf { it > 0L },
                     installMessage = installMessage,
@@ -262,6 +287,56 @@ fun UpdaterScreen(
             }
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun UpdaterChannelSelector(
+    selectedChannel: UpdateChannel,
+    onChannelSelected: (UpdateChannel) -> Unit,
+) {
+    Surface(
+        shape = UpdaterSquircleShape,
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+        ),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "Update Channel",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Stable checks official releases. Prerelease checks early builds and newer stable releases.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+            )
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+            ) {
+                UserFacingUpdateChannels.forEachIndexed { index, channel ->
+                    SegmentedButton(
+                        selected = selectedChannel == channel,
+                        onClick = { onChannelSelected(channel) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = UserFacingUpdateChannels.size,
+                        ),
+                        icon = {},
+                    ) {
+                        Text(channel.displayName, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
     }
 }
@@ -692,12 +767,10 @@ private val UpdateChannel.displayName: String
         UpdateChannel.NIGHTLY -> "Prerelease"
     }
 
-private fun defaultUpdaterChannel(): UpdateChannel =
-    if (BuildConfig.VERSION_NAME.contains("-")) {
-        UpdateChannel.NIGHTLY
-    } else {
-        UpdateChannel.STABLE
-    }
+private fun UpdateChannel.userFacingChannel(): UpdateChannel =
+    if (this == UpdateChannel.BETA) UpdateChannel.NIGHTLY else this
+
+private fun defaultUpdaterChannel(): UpdateChannel = UpdateChannel.STABLE
 
 private fun formatUpdaterBytes(bytes: Long): String {
     if (bytes <= 0L) return "Unknown size"

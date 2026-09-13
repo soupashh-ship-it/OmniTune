@@ -15,7 +15,6 @@ import com.omnitune.innertube.models.YouTubeClient
 import com.omnitune.innertube.models.YouTubeLocale
 import com.omnitune.innertube.models.body.*
 import com.omnitune.innertube.models.response.NextResponse
-import com.omnitune.innertube.utils.parseCookieString
 import com.omnitune.innertube.utils.sha1
 import io.ktor.client.*
 import io.ktor.client.call.body
@@ -114,8 +113,7 @@ class InnerTube {
                 append("cookie", cookieStr)
 
                 if (client.loginSupported) {
-                    val sapisidMap = parseCookieString(cookieStr)
-                    val sapisid = sapisidMap["SAPISID"]
+                    val sapisid = PlaybackAuthState.sapisidCookieValue(cookieStr)
                     if (sapisid != null) {
                         val currentTime = System.currentTimeMillis() / 1000
                         val sapisidHash = sha1("$currentTime $sapisid ${YouTubeClient.ORIGIN_YOUTUBE_MUSIC}")
@@ -352,7 +350,13 @@ class InnerTube {
         }
     }
 
-    suspend fun getSwJsData() = withRetry { httpClient.get("https://music.youtube.com/sw.js_data") }
+    suspend fun getSwJsData() = withRetry {
+        httpClient.get("https://music.youtube.com/sw.js_data") {
+            authState.cookie?.takeIf { authState.hasLoginCookie }?.let { cookie ->
+                header(HttpHeaders.Cookie, cookie)
+            }
+        }
+    }
 
 
     suspend fun accountMenu(client: YouTubeClient) = withRetry {

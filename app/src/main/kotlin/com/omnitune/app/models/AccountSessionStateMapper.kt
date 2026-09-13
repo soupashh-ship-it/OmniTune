@@ -1,6 +1,6 @@
 package com.omnitune.app.models
 
-import com.omnitune.innertube.utils.parseCookieString
+import com.omnitune.innertube.PlaybackAuthState
 
 data class AccountSessionState(
     val isLoggedIn: Boolean,
@@ -31,7 +31,7 @@ object AccountSessionStateMapper {
     }
 
     fun hasSignedInCookie(plainCookie: String?): Boolean =
-        plainCookie?.let { "SAPISID" in parseCookieString(it) } ?: false
+        PlaybackAuthState(cookie = plainCookie).hasLoginCookie
 
     private fun firstNonBlank(vararg values: String?): String? =
         values.firstOrNull { !it.isNullOrBlank() }?.trim()

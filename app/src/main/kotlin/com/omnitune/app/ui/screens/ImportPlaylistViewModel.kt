@@ -205,9 +205,11 @@ class ImportPlaylistViewModel @Inject constructor(
 
     private suspend fun importFromUrl(url: String): Pair<String, List<ImportTrack>> {
         val playlistId = YouTubeUrlPolicy.extractPlaylistId(url)
-            ?: throw IllegalArgumentException("Paste a YouTube or YouTube Music playlist link.")
+            ?: throw IllegalArgumentException("Paste a YouTube or YouTube Music playlist link or playlist ID.")
 
-        val page = YouTube.playlist(playlistId).completed().getOrThrow()
+        val page = YouTube.playlist(playlistId).completed().getOrElse { error ->
+            throw error.asPlaylistImportError()
+        }
         return page.playlist.title to page.songs.map { song ->
             val metadata = song.toMediaMetadata()
             ImportTrack(
@@ -221,6 +223,13 @@ class ImportPlaylistViewModel @Inject constructor(
             )
         }
     }
+
+    private fun Throwable.asPlaylistImportError(): Throwable =
+        if (message == "PLAYLIST_PRIVATE") {
+            IllegalStateException("This playlist is private or unavailable. Sign in to YouTube Music, then try again.")
+        } else {
+            this
+        }
 
     private suspend fun parseM3U(uri: Uri): Pair<String, List<ImportTrack>> = withContext(Dispatchers.IO) {
         val tracks = mutableListOf<ImportTrack>()

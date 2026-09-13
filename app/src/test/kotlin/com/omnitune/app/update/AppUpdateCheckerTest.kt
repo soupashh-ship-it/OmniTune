@@ -30,7 +30,6 @@ class AppUpdateCheckerTest {
             releases = listOf(
                 release(tag = "v1.2.0-pre3", prerelease = true),
                 release(tag = "v1.2.0-pre5", prerelease = true),
-                release(tag = "v1.2.0", prerelease = false),
             ),
             channel = UpdateChannel.NIGHTLY,
             currentVersionName = "1.2.0-pre4",
@@ -38,6 +37,36 @@ class AppUpdateCheckerTest {
         )
 
         assertEquals("1.2.0-pre5", update?.versionName)
+    }
+
+    @Test
+    fun prereleaseChannelOffersNewerStableRelease() {
+        val update = checker.findBestUpdate(
+            releases = listOf(
+                release(tag = "v1.5.0", prerelease = false),
+                release(tag = "v1.2.0-pre14", prerelease = true),
+            ),
+            channel = UpdateChannel.NIGHTLY,
+            currentVersionName = "1.2.0-pre14",
+            currentVersionCode = 124,
+        )
+
+        assertEquals("1.5.0", update?.versionName)
+    }
+
+    @Test
+    fun prereleaseChannelPrefersStableOverPrereleaseWithSameBaseVersion() {
+        val update = checker.findBestUpdate(
+            releases = listOf(
+                release(tag = "v1.2.0-pre5", prerelease = true),
+                release(tag = "v1.2.0", prerelease = false),
+            ),
+            channel = UpdateChannel.NIGHTLY,
+            currentVersionName = "1.2.0-pre4",
+            currentVersionCode = 122,
+        )
+
+        assertEquals("1.2.0", update?.versionName)
     }
 
     @Test

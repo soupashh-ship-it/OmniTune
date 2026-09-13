@@ -15,6 +15,7 @@ data class ParsedYouTubeUrl(
 
 object YouTubeUrlPolicy {
     private val youtubeVideoId = Regex("^[A-Za-z0-9_-]{11}$")
+    private val youtubePlaylistId = Regex("^(?:VL)?(?:PL|OLAK5uy_|RDCLAK5uy_|RD|UU|WL)[A-Za-z0-9_-]*$")
     private val noSchemeHosts = listOf(
         "youtube.com",
         "www.youtube.com",
@@ -59,12 +60,16 @@ object YouTubeUrlPolicy {
         )
     }
 
-    fun extractPlaylistId(value: String): String? =
-        parseYouTubeUrl(value)
+    fun extractPlaylistId(value: String): String? {
+        val raw = value.trim()
+        if (isYouTubePlaylistId(raw)) return raw.removePrefix("VL")
+
+        return parseYouTubeUrl(value)
             ?.queryParameter("list")
             ?.removePrefix("VL")
             ?.trim()
             ?.takeIf { it.isNotBlank() }
+    }
 
     fun extractVideoId(value: String): String? {
         val parsed = parseYouTubeUrl(value) ?: return null
@@ -82,6 +87,9 @@ object YouTubeUrlPolicy {
 
     fun isYouTubeVideoId(value: String): Boolean =
         youtubeVideoId.matches(value.trim())
+
+    fun isYouTubePlaylistId(value: String): Boolean =
+        youtubePlaylistId.matches(value.trim())
 
     private fun String.needsHttpsSchemePrefix(): Boolean {
         val lower = lowercase(Locale.US)

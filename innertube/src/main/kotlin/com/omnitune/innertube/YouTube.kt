@@ -72,6 +72,9 @@ import io.ktor.client.statement.bodyAsText
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -1231,7 +1234,7 @@ object YouTube {
     }
 
     suspend fun visitorData(): Result<String> = runCatching {
-        Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().substring(5))
+        Json.parseToJsonElement(innerTube.getSwJsData().bodyAsText().stripSwJsDataPrefix())
             .jsonArray[0]
             .jsonArray[2]
             .jsonArray.first {
@@ -1241,6 +1244,16 @@ object YouTube {
             }
             .jsonPrimitive.content
     }
+
+    suspend fun fetchDataSyncId(): Result<String> = runCatching {
+        extractDataSyncIdFromSwJsData(innerTube.getSwJsData().bodyAsText())
+            ?: throw IllegalStateException("Missing YouTube data-sync ID")
+    }
+
+    internal fun extractDataSyncIdFromSwJsData(body: String): String? =
+        runCatching {
+            Json.parseToJsonElement(body.stripSwJsDataPrefix())
+        }.getOrNull()?.findDataSyncId()
 
     suspend fun accountInfo(): Result<AccountInfo> = runCatching {
         val response = innerTube.accountMenu(WEB_REMIX).body<AccountMenuResponse>()
@@ -1280,6 +1293,31 @@ object YouTube {
     const val MAX_GET_QUEUE_SIZE = 1000
 
     private val VISITOR_DATA_REGEX = Regex("^Cg[t|s]")
+    private val DATA_SYNC_ID_REGEX = Regex("^[A-Za-z0-9_-]{4,256}$")
+
+    private fun String.stripSwJsDataPrefix(): String =
+        if (startsWith(")]}'")) {
+            substringAfter('\n', drop(4)).trimStart()
+        } else {
+            this
+        }
+
+    private fun JsonElement.findDataSyncId(): String? = when (this) {
+        is JsonPrimitive -> contentOrNull?.toDataSyncIdCandidate()
+        is JsonArray -> firstNotNullOfOrNull { it.findDataSyncId() }
+        is JsonObject -> values.firstNotNullOfOrNull { it.findDataSyncId() }
+    }
+
+    private fun String.toDataSyncIdCandidate(): String? {
+        val raw = trim()
+        if ("||" !in raw) return null
+        val candidate = if (raw.endsWith("||")) {
+            raw.substringBefore("||")
+        } else {
+            raw.substringAfter("||")
+        }.trim()
+        return candidate.takeIf { DATA_SYNC_ID_REGEX.matches(it) }
+    }
 }
 
 fun String.toHighResThumbnail(): String {

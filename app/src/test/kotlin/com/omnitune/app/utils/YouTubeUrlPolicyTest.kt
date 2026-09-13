@@ -34,6 +34,15 @@ class YouTubeUrlPolicyTest {
     }
 
     @Test
+    fun playlistExtractionAcceptsBarePlaylistIds() {
+        assertEquals("PL123abc_DEF", YouTubeUrlPolicy.extractPlaylistId("PL123abc_DEF"))
+        assertEquals("OLAK5uy_abc123", YouTubeUrlPolicy.extractPlaylistId("VLOLAK5uy_abc123"))
+
+        assertTrue(YouTubeUrlPolicy.isYouTubePlaylistId("RDCLAK5uy_musicmix123"))
+        assertFalse(YouTubeUrlPolicy.isYouTubePlaylistId("bad playlist id!"))
+    }
+
+    @Test
     fun videoExtractionSupportsYouTubeFormsOnly() {
         assertEquals(
             "dQw4w9WgXcQ",

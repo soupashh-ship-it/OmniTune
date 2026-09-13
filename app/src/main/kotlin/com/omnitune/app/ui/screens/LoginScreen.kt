@@ -1,13 +1,13 @@
 package com.omnitune.app.ui.screens
 
 import android.annotation.SuppressLint
-import android.os.Handler
-import android.os.Looper
+import android.content.Context
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.datastore.preferences.core.edit
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -33,14 +34,16 @@ import com.omnitune.app.auth.LoginWebViewPolicy
 import com.omnitune.app.constants.AccountChannelHandleKey
 import com.omnitune.app.constants.AccountEmailKey
 import com.omnitune.app.constants.AccountNameKey
+import com.omnitune.app.constants.DataSyncIdKey
 import com.omnitune.app.constants.InnerTubeCookieKey
+import com.omnitune.app.constants.VisitorDataKey
 import com.omnitune.app.ui.theme.OmniColors
-import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.dataStore
-import kotlinx.coroutines.CoroutineScope
+import com.omnitune.innertube.YouTube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -52,6 +55,7 @@ private const val YTM_LOGIN_URL =
 @Composable
 fun LoginScreen(navController: NavController) {
     val context = LocalContext.current
+    val loginScope = rememberCoroutineScope()
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val screenActive = remember { AtomicBoolean(true) }
     val completionStarted = remember { AtomicBoolean(false) }
@@ -118,6 +122,12 @@ fun LoginScreen(navController: NavController) {
                     settings.displayZoomControls = false
                     settings.userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
 
+                    val loginWebView = this
+                    CookieManager.getInstance().apply {
+                        setAcceptCookie(true)
+                        setAcceptThirdPartyCookies(loginWebView, true)
+                    }
+
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                             val targetUrl = request?.url?.toString()
@@ -135,28 +145,23 @@ fun LoginScreen(navController: NavController) {
                             if (!screenActive.get() || completionStarted.get()) return
 
                             val cookieManager = CookieManager.getInstance()
+                            cookieManager.flush()
                             val cookies = cookieManager.collectYouTubeCookies()
                             if (LoginWebViewPolicy.shouldCompleteLogin(currentUrl, cookies) &&
                                 completionStarted.compareAndSet(false, true)
                             ) {
                                 Timber.d("LoginScreen: YouTube Music login successful, cookies captured")
 
-                                Handler(Looper.getMainLooper()).post {
-                                    if (!screenActive.get()) return@post
-                                    PreferenceStore.launchEdit(context.dataStore) {
-                                        this[InnerTubeCookieKey] = SecurePreferenceCipher.encrypt(cookies)
+                                loginScope.launch {
+                                    if (!screenActive.get()) return@launch
+                                    runCatching {
+                                        persistSuccessfulLogin(context, cookies)
+                                    }.onFailure { error ->
+                                        Timber.w(error, "LoginScreen: failed to persist complete YouTube Music login")
                                     }
-                                    com.omnitune.innertube.YouTube.cookie = cookies
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        com.omnitune.innertube.YouTube.accountInfo().getOrNull()?.let { account ->
-                                            PreferenceStore.launchEdit(context.dataStore) {
-                                                this[AccountNameKey] = account.name
-                                                this[AccountEmailKey] = account.email.orEmpty()
-                                                this[AccountChannelHandleKey] = account.channelHandle.orEmpty()
-                                            }
-                                        }
+                                    if (screenActive.get()) {
+                                        closeLogin()
                                     }
-                                    closeLogin()
                                 }
                             }
                         }
@@ -172,10 +177,60 @@ fun LoginScreen(navController: NavController) {
     }
 }
 
+private suspend fun persistSuccessfulLogin(context: Context, cookies: String) {
+    YouTube.cookie = cookies
+
+    val visitorData = withContext(Dispatchers.IO) {
+        YouTube.visitorData().getOrNull()
+    }
+    if (!visitorData.isNullOrBlank()) {
+        YouTube.visitorData = visitorData
+    }
+
+    val dataSyncId = withContext(Dispatchers.IO) {
+        YouTube.fetchDataSyncId().getOrNull()
+    }
+    if (!dataSyncId.isNullOrBlank()) {
+        YouTube.dataSyncId = dataSyncId
+    }
+
+    val account = withContext(Dispatchers.IO) {
+        YouTube.accountInfo().getOrNull()
+    }
+
+    context.dataStore.edit { settings ->
+        settings[InnerTubeCookieKey] = SecurePreferenceCipher.encrypt(cookies)
+        visitorData?.takeIf { it.isNotBlank() }?.let {
+            settings[VisitorDataKey] = it
+        }
+        dataSyncId?.takeIf { it.isNotBlank() }?.let {
+            settings[DataSyncIdKey] = it
+        }
+        account?.let {
+            settings[AccountNameKey] = it.name
+            settings[AccountEmailKey] = it.email.orEmpty()
+            settings[AccountChannelHandleKey] = it.channelHandle.orEmpty()
+        }
+    }
+}
+
 private fun CookieManager.collectYouTubeCookies(): String =
     listOf(
+        "https://accounts.google.com",
+        "https://www.google.com",
+        "https://google.com",
         "https://music.youtube.com",
         "https://www.youtube.com",
         "https://youtube.com",
-    ).mapNotNull { url -> getCookie(url)?.takeIf { it.isNotBlank() } }
-        .joinToString("; ")
+    ).flatMap { url ->
+        getCookie(url)
+            ?.split(';')
+            ?.mapNotNull { cookie -> cookie.trim().takeIf { it.isNotBlank() } }
+            .orEmpty()
+    }.fold(linkedMapOf<String, String>()) { cookiesByName, cookie ->
+        val cookieName = cookie.substringBefore('=').trim()
+        if (cookieName.isNotBlank()) {
+            cookiesByName[cookieName] = cookie
+        }
+        cookiesByName
+    }.values.joinToString("; ")

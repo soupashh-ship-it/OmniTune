@@ -11,6 +11,7 @@ import java.util.Locale
 object LoginWebViewPolicy {
     private val allowedAuthDomains = setOf(
         "google.com",
+        "googleapis.com",
         "youtube.com",
         "gstatic.com",
         "googleusercontent.com",
@@ -57,7 +58,11 @@ object LoginWebViewPolicy {
                 cookie.substringBefore('=').trim().takeIf { it.isNotEmpty() }
             }
             .toSet()
-        return cookieNames.any { it == "SAPISID" || it == "__Secure-3PAPISID" }
+        return cookieNames.any { cookieName ->
+            cookieName == "SAPISID" ||
+                cookieName == "__Secure-3PAPISID" ||
+                cookieName == "__Secure-1PAPISID"
+        }
     }
 
     private fun String?.toUriOrNull(): URI? =

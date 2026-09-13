@@ -25,6 +25,7 @@ import com.omnitune.app.constants.DataSyncIdKey
 import com.omnitune.app.constants.DefaultMusicLanguageKey
 import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.constants.ListenBrainzTokenKey
+import com.omnitune.app.constants.LogoAssetVersionKey
 import com.omnitune.app.constants.LogoVariantKey
 import com.omnitune.app.constants.MaxImageCacheSizeKey
 import com.omnitune.app.constants.PoTokenGvsKey
@@ -74,6 +75,8 @@ import java.net.Proxy
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
+
+private const val CURRENT_LOGO_ASSET_VERSION = 152
 
 @HiltAndroidApp
 class OmniTuneApp : Application(), SingletonImageLoader.Factory {
@@ -148,10 +151,22 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     Timber.i("Removed preferences owned by retired features")
                 }
                 val prefs = dataStore.data.first()
-                val logoVariant = prefs[LogoVariantKey]
+                val storedLogoVariant = prefs[LogoVariantKey]
                     ?.let { runCatching { LogoVariant.valueOf(it) }.getOrNull() }
                     ?: LogoVariant.DEFAULT
+                val logoAssetVersion = prefs[LogoAssetVersionKey] ?: 0
+                val logoVariant = if (logoAssetVersion < CURRENT_LOGO_ASSET_VERSION) {
+                    LogoVariant.DEFAULT
+                } else {
+                    storedLogoVariant
+                }
                 LauncherIconSwitcher(this@OmniTuneApp).apply(logoVariant)
+                if (logoAssetVersion < CURRENT_LOGO_ASSET_VERSION) {
+                    dataStore.edit { settings ->
+                        settings[LogoVariantKey] = LogoVariant.DEFAULT.name
+                        settings[LogoAssetVersionKey] = CURRENT_LOGO_ASSET_VERSION
+                    }
+                }
 
                 YouTube.locale = MusicContentLanguage
                     .fromPreference(prefs[DefaultMusicLanguageKey])

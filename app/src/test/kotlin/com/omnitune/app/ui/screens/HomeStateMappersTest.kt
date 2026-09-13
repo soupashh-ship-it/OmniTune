@@ -42,6 +42,19 @@ class HomeStateMappersTest {
     }
 
     @Test
+    fun accountState_acceptsSecureYoutubeSessionCookie() {
+        val state = AccountSessionStateMapper.fromStoredAccount(
+            plainCookie = "SID=one; __Secure-3PAPISID=two",
+            accountName = "Saved User",
+            accountEmail = "saved@example.com",
+            channelHandle = "@saved",
+        )
+
+        assertTrue(state.isLoggedIn)
+        assertEquals("Saved User", state.userName)
+    }
+
+    @Test
     fun paginationFailureClearsLoadingButPreservesFeed() {
         val existingSection = HomeSection(
             title = "Quick Picks",
