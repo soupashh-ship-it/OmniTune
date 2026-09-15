@@ -20,6 +20,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import com.omnitune.app.data.PlaybackResolveError
+import com.omnitune.app.data.StreamResolveResult
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.lyrics.LyricsHelper
 import com.omnitune.app.extensions.metadata
@@ -31,6 +33,7 @@ import com.omnitune.app.playback.queues.ListQueue
 import com.omnitune.app.playback.queues.Queue
 import com.omnitune.app.sync.YouTubeLibrarySync
 import com.omnitune.app.utils.isInternetAvailable
+import com.omnitune.app.utils.classifyProviderError
 import com.omnitune.app.utils.reportException
 import com.omnitune.app.utils.dataStore
 import com.omnitune.app.utils.PreferenceStore
@@ -631,20 +634,29 @@ class MusicService : MediaLibraryService(), Player.Listener {
             // try it as a local source, which results in an immediate pause/error.
             player.playWhenReady = false
             player.setMediaItems(queueItems, requestedIndex, initialStatus.position)
-            val resolvedCurrent = withContext(Dispatchers.IO) {
+            val currentResolution = withContext(Dispatchers.IO) {
                 if (StreamUrlResolver.isYouTubeVideoId(currentItem.localConfiguration?.uri)) {
-                    StreamUrlResolver.resolveMediaItem(currentItem, streamExtractor, downloadUtil, getPlaybackQualityMode())
+                    StreamUrlResolver.resolveMediaItemWithDiagnostics(
+                        mediaItem = currentItem,
+                        streamExtractor = streamExtractor,
+                        downloadUtil = downloadUtil,
+                        qualityMode = getPlaybackQualityMode(),
+                    )
                 } else {
-                    currentItem
+                    StreamUrlResolver.MediaItemResolution(mediaItem = currentItem)
                 }
             }
+            val resolvedCurrent = currentResolution.mediaItem
             if (resolvedCurrent == null) {
                 Timber.e("Current stream resolution failed for ${currentItem.mediaId}")
                 val message = if (!isInternetAvailable(this@MusicService) && !isDownloadCompleted(currentItem.mediaId)) {
                     _waitingForNetworkConnection.value = true
                     "This song is not downloaded and cannot play offline."
                 } else {
-                    "Could not resolve stream for ${currentItem.mediaMetadata.title ?: "track"}"
+                    streamResolutionFailureMessage(
+                        title = currentItem.mediaMetadata.title?.toString() ?: "track",
+                        failure = currentResolution.failure,
+                    )
                 }
                 Toast.makeText(this@MusicService, message, Toast.LENGTH_LONG).show()
                 return@launch
@@ -755,6 +767,28 @@ class MusicService : MediaLibraryService(), Player.Listener {
             player.prepare()
         }
         return true
+    }
+
+    private fun streamResolutionFailureMessage(
+        title: String,
+        failure: StreamResolveResult.Failure?,
+    ): String = when (failure?.reason) {
+        PlaybackResolveError.NoNetwork ->
+            "Can't reach YouTube. Check your DNS, VPN, proxy, firewall, or network."
+        PlaybackResolveError.ClientBlocked ->
+            "YouTube blocked playback on this network. Try another DNS, VPN profile, proxy, or network."
+        PlaybackResolveError.RegionBlocked ->
+            "$title is unavailable in your region."
+        PlaybackResolveError.LoginRequired ->
+            "$title needs a working YouTube Music sign-in. Sign in, then try again."
+        PlaybackResolveError.UrlExpired ->
+            "The stream for $title expired before playback. Try again."
+        PlaybackResolveError.NoPlayableFormat ->
+            "No compatible audio stream was found for $title."
+        is PlaybackResolveError.Unknown ->
+            failure.cause?.let { classifyProviderError(it).message }
+                ?: "Could not resolve stream for $title."
+        null -> "Could not resolve stream for $title."
     }
 
     fun playOrResolveCurrent() {

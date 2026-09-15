@@ -12,6 +12,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.DataSource
 import okhttp3.OkHttpClient
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import java.util.concurrent.TimeUnit
 
 import com.omnitune.app.utils.StreamClientUtils
 import com.omnitune.app.utils.TrustedHostPolicy
@@ -21,6 +22,8 @@ object PlayerFactory {
 
     private const val DEFAULT_PLAYBACK_USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OmniTune"
+    private const val INITIAL_STREAM_CONNECT_TIMEOUT_SECONDS = 10L
+    private const val STREAM_READ_TIMEOUT_SECONDS = 20L
 
     fun createPlayer(
         context: Context,
@@ -73,6 +76,11 @@ object PlayerFactory {
         downloadUtil: DownloadUtil
     ): DataSource.Factory {
         val playbackHttpClient = okHttpClient.newBuilder()
+            // A blocked DNS/VPN/proxy route must surface an error and trigger recovery instead of
+            // leaving the first song in buffering behind the global 30 second API timeout.
+            .connectTimeout(INITIAL_STREAM_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(STREAM_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .addInterceptor(youtubeStreamHeaderInterceptor())
             .build()
         val networkDataSourceFactory = DefaultDataSource.Factory(

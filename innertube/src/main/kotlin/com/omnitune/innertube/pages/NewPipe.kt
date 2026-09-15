@@ -85,17 +85,36 @@ private class NewPipeDownloaderImpl(proxy: Proxy?) : Downloader() {
 }
 
 object NewPipeUtils {
+    private val initializationLock = Any()
 
-    init {
-        NewPipe.init(NewPipeDownloaderImpl(YouTube.proxy))
+    @Volatile
+    private var initialized = false
+
+    @Volatile
+    private var configuredProxy: Proxy? = null
+
+    /** Keeps NewPipe's player-JS downloader aligned with the current app proxy. */
+    fun configureProxy(proxy: Proxy?) {
+        if (initialized && configuredProxy == proxy) return
+        synchronized(initializationLock) {
+            if (!initialized || configuredProxy != proxy) {
+                NewPipe.init(NewPipeDownloaderImpl(proxy))
+                configuredProxy = proxy
+                initialized = true
+            }
+        }
     }
 
+    private fun ensureConfigured() = configureProxy(YouTube.proxy)
+
     fun getSignatureTimestamp(videoId: String): Result<Int> = runCatching {
+        ensureConfigured()
         YoutubeJavaScriptPlayerManager.getSignatureTimestamp(videoId)
     }
 
     fun getStreamUrl(format: PlayerResponse.StreamingData.Format, videoId: String, client: YouTubeClient? = null): Result<String> =
         runCatching {
+            ensureConfigured()
             val url = format.url ?: run {
                 val cipherString = format.signatureCipher ?: format.cipher
                 if (cipherString == null) throw ParsingException("Could not find format url")

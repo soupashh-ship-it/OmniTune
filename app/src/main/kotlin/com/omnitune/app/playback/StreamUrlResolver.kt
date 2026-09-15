@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.LruCache
 import androidx.media3.common.MediaItem
 import com.omnitune.app.data.StreamExtractor
+import com.omnitune.app.data.StreamResolveResult
 import com.omnitune.app.models.PlaybackQualityMode
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.models.StreamQuality
@@ -35,6 +36,11 @@ object StreamUrlResolver {
 
 
     data class CachedStream(val streamResult: StreamResult, val fetchedAtMs: Long)
+
+    data class MediaItemResolution(
+        val mediaItem: MediaItem?,
+        val failure: StreamResolveResult.Failure? = null,
+    )
 
     /** In-memory cache for resolved stream results (videoId -> CachedStream). */
     private val streamCache = LruCache<String, CachedStream>(200)
@@ -74,6 +80,34 @@ object StreamUrlResolver {
         downloadUtil = downloadUtil,
         qualityMode = qualityMode,
     )
+
+    /**
+     * Resolves the stream and retains the typed failure for a useful playback message. The normal
+     * resolver remains available to callers that only need a playable MediaItem.
+     */
+    suspend fun resolveMediaItemWithDiagnostics(
+        mediaItem: MediaItem,
+        streamExtractor: StreamExtractor,
+        downloadUtil: DownloadUtil? = null,
+        qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
+    ): MediaItemResolution {
+        var failure: StreamResolveResult.Failure? = null
+        val resolved = resolveMediaItem(
+            mediaItem = mediaItem,
+            streamLookup = { videoId, quality ->
+                when (val result = streamExtractor.resolveWithFallback(videoId, quality)) {
+                    is StreamResolveResult.Success -> result.stream
+                    is StreamResolveResult.Failure -> {
+                        failure = result
+                        null
+                    }
+                }
+            },
+            downloadUtil = downloadUtil,
+            qualityMode = qualityMode,
+        )
+        return MediaItemResolution(mediaItem = resolved, failure = failure)
+    }
 
     /**
      * The lookup seam makes the Media3 item/cache wiring deterministic in Android tests while

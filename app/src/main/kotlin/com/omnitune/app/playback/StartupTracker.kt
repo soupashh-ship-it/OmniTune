@@ -21,13 +21,13 @@ object StartupTracker {
     fun logResolverStart() {
         resolverStartTime = System.currentTimeMillis()
         val elapsed = resolverStartTime - tapTimeMs
-        Timber.tag("OmniTuneStartup").i("tap_to_resolver_start=ms cache= network=")
+        Timber.tag("OmniTuneStartup").i("tap_to_resolver_start=${elapsed}ms cache=$cacheHit network=$networkType")
     }
 
     fun logResolverDone() {
         resolverDoneTime = System.currentTimeMillis()
         val elapsed = resolverDoneTime - tapTimeMs
-        Timber.tag("OmniTuneStartup").i("resolver_done=ms")
+        Timber.tag("OmniTuneStartup").i("resolver_done=${elapsed}ms")
     }
 
     fun logPlayerPrepare() {
@@ -38,11 +38,11 @@ object StartupTracker {
         val now = System.currentTimeMillis()
         if (state == androidx.media3.common.Player.STATE_BUFFERING) {
             val elapsed = now - tapTimeMs
-            Timber.tag("OmniTuneStartup").i("first_buffering=ms")
+            Timber.tag("OmniTuneStartup").i("first_buffering=${elapsed}ms")
         } else if (state == androidx.media3.common.Player.STATE_READY) {
             val elapsed = now - tapTimeMs
-            Timber.tag("OmniTuneStartup").i("player_ready=ms")
-            Timber.tag("OmniTuneStartup").i("total_tap_to_ready=ms")
+            Timber.tag("OmniTuneStartup").i("player_ready=${elapsed}ms")
+            Timber.tag("OmniTuneStartup").i("total_tap_to_ready=${elapsed}ms")
         }
     }
 }

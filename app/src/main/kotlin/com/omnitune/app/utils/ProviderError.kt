@@ -12,6 +12,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import java.util.Locale
 
 /**
@@ -60,6 +61,18 @@ private fun statusCodeFromThrowable(throwable: Throwable): Int? {
     return null
 }
 
+private fun Throwable.causeSequence(): Sequence<Throwable> =
+    generateSequence(this) { it.cause }
+
+private fun Throwable.findNetworkCause(): Throwable? =
+    causeSequence().firstOrNull {
+        it is UnknownHostException ||
+            it is ConnectException ||
+            it is SocketTimeoutException ||
+            it is HttpRequestTimeoutException ||
+            it is SSLException
+    }
+
 fun classifyProviderError(throwable: Throwable): ProviderError {
     val statusCode = statusCodeFromThrowable(throwable)
     if (statusCode != null && statusCode != -1) {
@@ -88,14 +101,19 @@ fun classifyProviderError(throwable: Throwable): ProviderError {
         }
     }
 
-    return when (throwable) {
+    val networkCause = throwable.findNetworkCause()
+    return when (networkCause ?: throwable) {
         is UnknownHostException, is ConnectException -> ProviderError(
             type = ProviderErrorType.NetworkUnavailable,
-            message = "No internet connection. Check your network and try again.",
+            message = "Can't reach YouTube. Check your DNS, VPN, proxy, firewall, or network and try again.",
         )
         is SocketTimeoutException, is HttpRequestTimeoutException -> ProviderError(
             type = ProviderErrorType.Timeout,
-            message = "Request timed out. Your connection may be slow. Please try again.",
+            message = "YouTube did not respond. Check your DNS, VPN, proxy, or connection and try again.",
+        )
+        is SSLException -> ProviderError(
+            type = ProviderErrorType.NetworkUnavailable,
+            message = "A secure YouTube connection was blocked. Check any VPN, proxy, DNS filter, or firewall.",
         )
         is IOException -> {
             val msg = throwable.message?.lowercase(Locale.ROOT).orEmpty()

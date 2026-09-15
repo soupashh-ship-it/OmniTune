@@ -128,6 +128,24 @@ object YTPlayerUtils {
     fun markPreferredClientFailed(videoId: String, client: PlayerStreamClient, httpStatusCode: Int?) {
         markStreamClientFailed(videoId, client.name, httpStatusCode)
     }
+
+    /**
+     * Android VR responses do not need player JavaScript. Fetching its signature timestamp before
+     * every first play made the initial tap wait for an unrelated network request.
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun requiresSignatureTimestamp(client: YouTubeClient): Boolean =
+        client.useSignatureTimestamp
+
+    /**
+     * Let Media3 open direct native-client streams itself. This removes a serial range request
+     * from the common first-play path while retaining preflight validation for web and ciphered
+     * streams, where the request headers/signature are more fragile.
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun requiresStreamPreflight(clientName: String, hasDirectUrl: Boolean): Boolean =
+        !hasDirectUrl || StreamClientUtils.isWebClient(clientName)
+
     private fun normalizeStreamClientKey(clientKey: String?): String {
         return clientKey?.trim()?.takeIf { it.isNotBlank() }?.uppercase(Locale.US).orEmpty()
     }
@@ -196,8 +214,6 @@ object YTPlayerUtils {
         avoidCodecs: Set<String>,
     ): PlaybackData {
         Timber.tag(logTag).i("Fetching player response for videoId: $videoId, playlistId: $playlistId")
-        val signatureTimestamp = getSignatureTimestampOrNull(videoId)
-        Timber.tag(logTag).v("Signature timestamp: $signatureTimestamp")
 
         // A cookie by itself is not enough to make authenticated player calls.
         // Treating a partial restored session as logged in pushes the resolver
@@ -238,9 +254,27 @@ object YTPlayerUtils {
         val metadataClient =
             preferredYouTubeClient.takeIf { preferredStreamClient == PlayerStreamClient.ANDROID_VR } ?: MAIN_CLIENT
 
+        var signatureTimestamp: Int? = null
+        var signatureTimestampResolved = false
+        fun signatureTimestampFor(client: YouTubeClient): Int? {
+            if (!requiresSignatureTimestamp(client)) return null
+            if (!signatureTimestampResolved) {
+                signatureTimestamp = getSignatureTimestampOrNull(videoId)
+                signatureTimestampResolved = true
+                Timber.tag(logTag).v("Signature timestamp: $signatureTimestamp")
+            }
+            return signatureTimestamp
+        }
+
         Timber.tag(logTag).i("Fetching metadata response using client: ${metadataClient.clientName}")
         val metadataPlayerResponse = runCatching {
-            YouTube.player(videoId, playlistId, metadataClient, signatureTimestamp).getOrThrow()}.getOrNull()
+            YouTube.player(
+                videoId,
+                playlistId,
+                metadataClient,
+                signatureTimestampFor(metadataClient),
+            ).getOrThrow()
+        }.getOrNull()
         val audioConfig = metadataPlayerResponse?.playerConfig?.audioConfig
         val videoDetails = metadataPlayerResponse?.videoDetails
         val playbackTracking = metadataPlayerResponse?.playbackTracking
@@ -281,7 +315,12 @@ object YTPlayerUtils {
                     metadataPlayerResponse
                 } else {
                     Timber.tag(logTag).i("Fetching player response for fallback client: ${client.clientName}")
-                    YouTube.player(videoId, playlistId, client, signatureTimestamp).getOrNull()
+                    YouTube.player(
+                        videoId,
+                        playlistId,
+                        client,
+                        signatureTimestampFor(client),
+                    ).getOrNull()
                 }
 
             if (streamPlayerResponse == null) continue
@@ -344,7 +383,10 @@ object YTPlayerUtils {
             Timber.tag(logTag).i("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
             Timber.tag(logTag).v("Stream expires in: $streamExpiresInSeconds seconds")
 
-            val valid = validateStatus(streamUrl, client.userAgent)
+            val valid = !requiresStreamPreflight(
+                clientName = client.clientName,
+                hasDirectUrl = format.url != null,
+            ) || validateStatus(streamUrl, client.userAgent)
             if (valid) {
                 Timber.tag(logTag).i("Stream validated successfully with client: ${client.clientName}")
                 break

@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Process
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -61,6 +62,7 @@ import com.omnitune.app.utils.LauncherIconSwitcher
 import com.omnitune.app.utils.SecurePreferenceCipher
 import com.omnitune.app.utils.forgetAccount
 import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.pages.NewPipeUtils
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,10 +78,17 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
-private const val CURRENT_LOGO_ASSET_VERSION = 152
+private const val CURRENT_LOGO_ASSET_VERSION = 153
 
 @HiltAndroidApp
 class OmniTuneApp : Application(), SingletonImageLoader.Factory {
+
+    private data class ProxyConfiguration(
+        val enabled: Boolean,
+        val url: String?,
+        val type: String?,
+        val bypassStreams: Boolean,
+    )
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -144,6 +153,36 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
 
     }
 
+    private fun proxyConfiguration(preferences: Preferences): ProxyConfiguration =
+        ProxyConfiguration(
+            enabled = preferences[ProxyEnabledKey] == true,
+            url = preferences[ProxyUrlKey]?.trim()?.takeIf(String::isNotBlank),
+            type = preferences[ProxyTypeKey],
+            bypassStreams = preferences[StreamBypassProxyKey] == true,
+        )
+
+    private fun applyProxyConfiguration(configuration: ProxyConfiguration) {
+        val proxy = if (configuration.enabled && configuration.url != null) {
+            runCatching {
+                Proxy(
+                    configuration.type.toEnum(defaultValue = Proxy.Type.HTTP),
+                    configuration.url.toInetSocketAddress(),
+                )
+            }.onFailure { error ->
+                Timber.w(error, "Ignoring invalid playback proxy configuration")
+                reportException(error)
+            }.getOrNull()
+        } else {
+            null
+        }
+
+        if (YouTube.proxy != proxy) {
+            YouTube.proxy = proxy
+        }
+        YouTube.streamBypassProxy = proxy != null && configuration.bypassStreams
+        NewPipeUtils.configureProxy(proxy)
+    }
+
     private fun initializeDeferredAsync() {
         applicationScope.launch(Dispatchers.IO) {
             try {
@@ -172,18 +211,7 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                     .fromPreference(prefs[DefaultMusicLanguageKey])
                     .toYouTubeLocale()
 
-                if (prefs[ProxyEnabledKey] == true) {
-                    try {
-                        val proxyUrl = prefs[ProxyUrlKey] ?: return@launch
-                        YouTube.proxy = Proxy(
-                            prefs[ProxyTypeKey].toEnum(defaultValue = Proxy.Type.HTTP),
-                            proxyUrl.toInetSocketAddress()
-                        )
-                    } catch (e: Exception) {
-                        reportException(e)
-                    }
-                    YouTube.streamBypassProxy = prefs[StreamBypassProxyKey] == true
-                }
+                applyProxyConfiguration(proxyConfiguration(prefs))
 
                 if (prefs[UseLoginForBrowse] != false) {
                     YouTube.useLoginForBrowse = true
@@ -227,6 +255,15 @@ class OmniTuneApp : Application(), SingletonImageLoader.Factory {
                             }
                         }
                 }
+        }
+
+        // Keep both InnerTube and NewPipe's player-JS resolver on the same route when the
+        // user changes proxy settings. Previously NewPipe kept the first proxy forever.
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map(::proxyConfiguration)
+                .distinctUntilChanged()
+                .collect(::applyProxyConfiguration)
         }
 
         // Global crash handler
