@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,7 +76,9 @@ fun SettingsScreen(
     onSponsorBlockClick: () -> Unit = {},
     onCreditsClick: () -> Unit = {},
     onLastFmClick: () -> Unit = {},
-    onUpdaterClick: () -> Unit = {}
+    onUpdaterClick: () -> Unit = {},
+    onBackupRestoreClick: () -> Unit = {},
+    onYouTubePlaylistImportClick: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var settingsQuery by remember { mutableStateOf("") }
@@ -101,6 +104,8 @@ fun SettingsScreen(
             SettingsSearchEntry("Scrobbling", "ListenBrainz & track history", "listenbrainz scrobble scrobbling history", Icons.Default.MusicNote, onLastFmClick),
             SettingsSearchEntry("Advanced", "Diagnostics, experimental & lyrics order", "advanced misc diagnostics experimental logs lyrics", Icons.Default.Settings, onMiscClick),
             SettingsSearchEntry("Storage Manager", "Manage downloads & cache", "storage downloads cache clear space data", Icons.Default.Storage, onStorageClick),
+            SettingsSearchEntry("Backup & Restore", "Save or restore your OmniTune library", "backup restore library playlists likes history stats downloads reinstall", Icons.Default.Backup, onBackupRestoreClick),
+            SettingsSearchEntry("YouTube Music playlists", "Import playlists from your signed-in account", "youtube music playlists import account library sync", Icons.AutoMirrored.Filled.PlaylistAdd, onYouTubePlaylistImportClick),
             SettingsSearchEntry("Listening Insights", "Your listening stats & habits", "stats statistics listening history wrapped activity", Icons.Default.Info, onStatsClick),
             SettingsSearchEntry("Support the project", "Donate & sponsor development", "support donate sponsor project", Icons.Default.Favorite, onSupportClick),
             SettingsSearchEntry("Credits", "Developers & open-source libraries", "credits developers libraries licenses", Icons.Default.Person, onCreditsClick),
@@ -188,7 +193,7 @@ fun SettingsScreen(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable(onClick = onLoginClick),
+                            .clickable(onClick = if (uiState.isLoggedIn) onYouTubePlaylistImportClick else onLoginClick),
                         shape = SquircleShape,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
@@ -225,7 +230,7 @@ fun SettingsScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (uiState.isLoggedIn) "Sync playlists & library" else "Access your saved playlists & recommendations",
+                                    text = if (uiState.isLoggedIn) "Import playlists from your YouTube Music library" else "Access your saved playlists & recommendations",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -337,6 +342,12 @@ fun SettingsScreen(
                             subtitle = "Manage audio cache and offline downloads",
                             icon = Icons.Default.Storage,
                             onClick = onStorageClick
+                        )
+                        SettingsNavRow(
+                            title = "Backup & Restore",
+                            subtitle = "Save your library, playlists, history and downloads",
+                            icon = Icons.Default.Backup,
+                            onClick = onBackupRestoreClick
                         )
                         SettingsNavRow(
                             title = "Listening Insights",

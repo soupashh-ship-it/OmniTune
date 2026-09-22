@@ -187,6 +187,8 @@ class MusicService : MediaLibraryService(), Player.Listener {
     private lateinit var queuePersistenceManager: QueuePersistenceManager
     private var queuePositionCheckpointJob: Job? = null
     private var playQueueJob: Job? = null
+    private var restoredCurrentResolutionJob: Job? = null
+    private var restoredPlaybackRequestJob: Job? = null
     private lateinit var bluetoothAudioHandler: BluetoothAudioHandler
     private var pausedByDeviceMute = false
 
@@ -474,10 +476,51 @@ class MusicService : MediaLibraryService(), Player.Listener {
             initialStatus.position.coerceAtLeast(0L)
         )
         _currentMediaMetadata.value = player.currentMediaItem?.metadata
+        preResolveRestoredCurrentTrack()
         updateNotification()
         Timber.tag("OmniTunePlaybackTrace").i(
             "Restored queue metadata only: items=${initialStatus.items.size}, index=$restoredIndex, current=${player.currentMediaItem?.mediaId}"
         )
+    }
+
+    private fun preResolveRestoredCurrentTrack() {
+        restoredCurrentResolutionJob?.cancel()
+        val restoredIndex = player.currentMediaItemIndex
+        val restoredItem = player.currentMediaItem ?: return
+        if (!restoredItem.needsFreshResolution()) return
+
+        val resolutionJob = scope.launch {
+            val resolvedItem = try {
+                withContext(Dispatchers.IO) {
+                    StreamUrlResolver.resolveMediaItem(
+                        mediaItem = restoredItem.withOriginalVideoIdUri(),
+                        streamExtractor = streamExtractor,
+                        downloadUtil = downloadUtil,
+                        qualityMode = getPlaybackQualityMode(),
+                    )
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.tag("OmniTunePlaybackTrace").w(error, "Could not pre-resolve restored track")
+                null
+            } ?: return@launch
+
+            if (restoredIndex !in 0 until player.mediaItemCount) return@launch
+            val currentItem = player.getMediaItemAt(restoredIndex)
+            if (currentItem.mediaId != restoredItem.mediaId || !currentItem.needsFreshResolution()) return@launch
+
+            player.replaceMediaItem(restoredIndex, resolvedItem)
+            player.seekTo(restoredIndex, player.currentPosition.coerceAtLeast(0L))
+            player.prepare()
+            Timber.tag("OmniTunePlaybackTrace").i("Pre-resolved restored track ${restoredItem.mediaId}")
+        }
+        restoredCurrentResolutionJob = resolutionJob
+        resolutionJob.invokeOnCompletion {
+            if (restoredCurrentResolutionJob === resolutionJob) {
+                restoredCurrentResolutionJob = null
+            }
+        }
     }
 
     private fun initializePlayer() {
@@ -571,6 +614,10 @@ class MusicService : MediaLibraryService(), Player.Listener {
 
         playQueueJob?.cancel()
         preResolveJob?.cancel()
+        restoredCurrentResolutionJob?.cancel()
+        restoredCurrentResolutionJob = null
+        restoredPlaybackRequestJob?.cancel()
+        restoredPlaybackRequestJob = null
         StartupTracker.reset()
         Timber.tag("OmniTunePlaybackTrace").i("playQueue requested: playWhenReady=$playWhenReady")
 
@@ -805,6 +852,19 @@ class MusicService : MediaLibraryService(), Player.Listener {
         }
 
         if (currentItem.needsFreshResolution() || player.playbackState == Player.STATE_IDLE) {
+            restoredCurrentResolutionJob?.takeIf { it.isActive }?.let { resolutionJob ->
+                restoredPlaybackRequestJob?.cancel()
+                restoredPlaybackRequestJob = scope.launch {
+                    resolutionJob.join()
+                    val resolvedCurrent = player.currentMediaItem
+                    if (resolvedCurrent != null && !resolvedCurrent.needsFreshResolution()) {
+                        player.play()
+                    } else {
+                        playOrResolveCurrent()
+                    }
+                }
+                return
+            }
             val items = (0 until player.mediaItemCount).map { index ->
                 player.getMediaItemAt(index).withOriginalVideoIdUri()
             }
@@ -839,10 +899,13 @@ class MusicService : MediaLibraryService(), Player.Listener {
         userNavigationJob = scope.launch {
             if (!::player.isInitialized || player.mediaItemCount == 0) return@launch
 
-            val nextIndex = player.nextMediaItemIndex
+            val nextIndex = player.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET }
+                ?: player.currentMediaItemIndex
+                    .takeIf { !player.shuffleModeEnabled && it + 1 < player.mediaItemCount }
+                    ?.plus(1)
+                ?: C.INDEX_UNSET
             if (nextIndex == C.INDEX_UNSET) {
-                player.seekToNext()
-                player.playWhenReady = true
+                continueWithAutoplayIfAllowed()
                 return@launch
             }
 

@@ -26,6 +26,8 @@ sealed class Destination {
     @Serializable
     data object Settings : Destination()
     @Serializable
+    data object BackupRestore : Destination()
+    @Serializable
     data object PlaybackSettings : Destination()
     @Serializable
     data object Equalizer : Destination()
@@ -43,6 +45,8 @@ sealed class Destination {
     data object Recents : Destination()
     @Serializable
     data object YouTubeLogin : Destination()
+    @Serializable
+    data object YouTubePlaylistImport : Destination()
     @Serializable
     data object LastFmLogin : Destination()
     @Serializable

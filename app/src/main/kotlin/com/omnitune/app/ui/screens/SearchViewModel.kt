@@ -359,13 +359,21 @@ class SearchViewModel @Inject constructor(
                     val albums = mutableListOf<Album>()
                     val playlists = mutableListOf<Playlist>()
 
-                    summaryPage.summaries.forEach { summary ->
-                        summary.items.forEach { item ->
-                            when (item) {
-                                is InnerSongItem -> songs.add(item.toPresentationSong())
-                                is InnerAlbumItem -> albums.add(item.toPresentationAlbum())
-                                is InnerArtistItem -> artists.add(item.toPresentationArtist())
-                                is InnerPlaylistItem -> playlists.add(item.toPresentationPlaylist())
+                    var parsedItemCount = 0
+                    summaryPage.summaries.forEach summaryLoop@{ summary ->
+                        summary.items.forEach itemLoop@{ item ->
+                            if (parsedItemCount >= MAX_SEARCH_ITEMS) return@summaryLoop
+                            parsedItemCount += 1
+
+                            runCatching {
+                                when (item) {
+                                    is InnerSongItem -> songs.add(item.toPresentationSong())
+                                    is InnerAlbumItem -> albums.add(item.toPresentationAlbum())
+                                    is InnerArtistItem -> artists.add(item.toPresentationArtist())
+                                    is InnerPlaylistItem -> playlists.add(item.toPresentationPlaylist())
+                                }
+                            }.onFailure { error ->
+                                logFailure(error, "Skipped malformed search result")
                             }
                         }
                     }
@@ -402,6 +410,10 @@ class SearchViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val MAX_SEARCH_ITEMS = 120
     }
 
     fun onTabChange(tab: SearchTab) {

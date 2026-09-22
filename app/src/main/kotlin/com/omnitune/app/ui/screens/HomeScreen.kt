@@ -134,6 +134,14 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(playlistMgmtState.successMessage, playlistMgmtState.errorMessage) {
+        val message = playlistMgmtState.successMessage ?: playlistMgmtState.errorMessage
+        if (!message.isNullOrBlank()) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            playlistViewModel.clearMessages()
+        }
+    }
+
     val dominantColors = rememberDominantColors(
         imageUrl = currentSong?.thumbnailUrl ?: uiState.recommendations.firstOrNull()?.thumbnailUrl
     )

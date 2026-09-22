@@ -339,110 +339,52 @@ fun CreatePlaylistDialog(
 ) {
     if (isVisible) {
         var title by remember { mutableStateOf("") }
-        
-        val onSurface = MaterialTheme.colorScheme.onSurface
-        val secondaryText = MaterialTheme.colorScheme.onSurfaceVariant
-        
-        Dialog(
-            onDismissRequest = { if (!isCreating) onDismiss() },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false,
-                decorFitsSystemWindows = false
-            )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        androidx.compose.material3.IconButton(
-                            onClick = { if (!isCreating) onDismiss() }
-                        ) {
-                            Icon(Icons.Default.Close, "Close", tint = onSurface)
-                        }
-                        
-                        Text(
-                            text = "New Playlist",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = onSurface,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
-                        
-                        TextButton(
-                            onClick = { 
-                                if (title.isNotBlank()) {
-                                    onCreate(title)
-                                }
-                            },
-                            enabled = title.isNotBlank() && !isCreating,
-                            shape = SquircleShape
-                        ) {
-                            if (isCreating) {
-                                LoadingIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                Text("Create", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
-                            }
-                        }
-                    }
-                    
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                            .padding(horizontal = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        Surface(
-                            shape = SquircleShape,
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            modifier = Modifier.size(160.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = secondaryText.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(64.dp)
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(32.dp))
-                        
-                        androidx.compose.material3.OutlinedTextField(
-                            value = title,
-                            onValueChange = { title = it },
-                            label = { Text("Playlist Name") },
-                            singleLine = true,
-                            enabled = !isCreating,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = SquircleShape,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                        )
 
-                        Spacer(modifier = Modifier.height(32.dp))
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { if (!isCreating) onDismiss() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("New Playlist", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Playlist name") },
+                    singleLine = true,
+                    enabled = !isCreating,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = SquircleShape,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onCreate(title.trim()) },
+                    enabled = title.isNotBlank() && !isCreating,
+                ) {
+                    if (isCreating) {
+                        LoadingIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    } else {
+                        Text("Create")
                     }
                 }
-            }
-        }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isCreating,
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

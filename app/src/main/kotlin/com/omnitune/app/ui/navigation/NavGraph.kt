@@ -43,6 +43,7 @@ import com.omnitune.app.ui.screens.PlaylistScreen
 import com.omnitune.app.ui.screens.SearchScreen
 import com.omnitune.app.ui.screens.TabletHomeScreen
 import com.omnitune.app.ui.screens.TvHomeScreen
+import com.omnitune.app.ui.screens.YouTubePlaylistImportScreen
 import com.omnitune.app.ui.screens.settings.*
 import com.omnitune.app.ui.screens.wrapped.WrappedScreen
 import com.omnitune.app.ui.theme.SquircleShape
@@ -274,8 +275,14 @@ fun NavGraph(
                 onCreditsClick = { navController.navigate(Destination.Credits) },
                 onUpdaterClick = { navController.navigate(Destination.Updater) },
                 onLastFmClick = { navController.navigate(Destination.LastFmLogin) },
-                onLoginClick = { navController.navigate(Destination.YouTubeLogin) }
+                onLoginClick = { navController.navigate(Destination.YouTubeLogin) },
+                onBackupRestoreClick = { navController.navigate(Destination.BackupRestore) },
+                onYouTubePlaylistImportClick = { navController.navigate(Destination.YouTubePlaylistImport) },
             )
+        }
+
+        composable<Destination.BackupRestore> {
+            BackupRestoreScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable<Destination.AppearanceSettings> {
@@ -481,6 +488,10 @@ fun NavGraph(
 
         composable<Destination.YouTubeLogin> {
             LoginScreen(navController = navController)
+        }
+
+        composable<Destination.YouTubePlaylistImport> {
+            YouTubePlaylistImportScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable<Destination.PickMusic> {

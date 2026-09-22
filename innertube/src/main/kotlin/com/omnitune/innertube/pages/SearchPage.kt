@@ -32,44 +32,32 @@ data class SearchResult(
 object SearchPage {
     fun parseSearchResult(response: SearchResponse): SearchResult? {
         val contents = response.contents ?: return null
-        
-        // V1: tabbedSearchResultsRenderer
-        contents.tabbedSearchResultsRenderer?.tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer?.let { sectionList ->
-            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
-            if (shelf != null) {
-                return SearchResult(
-                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
-                    continuation = shelf.continuations?.getContinuation()
-                )
-            }
-        }
 
-        // V2: twoColumnSearchResultsRenderer
-        contents.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.let { sectionList ->
-            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
-            if (shelf != null) {
-                return SearchResult(
-                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
-                    continuation = shelf.continuations?.getContinuation()
-                )
-            }
-        }
+        val sectionLists = listOfNotNull(
+            contents.tabbedSearchResultsRenderer?.tabs?.firstOrNull()?.tabRenderer?.content?.sectionListRenderer,
+            contents.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer,
+            contents.sectionListRenderer,
+        )
 
-        // Legacy/Direct: sectionListRenderer
-        contents.sectionListRenderer?.let { sectionList ->
-            val shelf = sectionList.contents?.lastOrNull()?.musicShelfRenderer
-            if (shelf != null) {
-                return SearchResult(
-                    items = shelf.contents?.getItems()?.mapNotNull { toYTItem(it) }.orEmpty(),
-                    continuation = shelf.continuations?.getContinuation()
-                )
-            }
+        sectionLists.forEach { sectionList ->
+            val shelves = sectionList.contents.orEmpty().mapNotNull { it.musicShelfRenderer }
+            val shelf = shelves.lastOrNull { it.contents?.getItems()?.isNotEmpty() == true }
+                ?: shelves.lastOrNull()
+                ?: return@forEach
+
+            return SearchResult(
+                items = shelf.contents?.getItems().orEmpty().mapNotNull { renderer ->
+                    runCatching { toYTItem(renderer) }.getOrNull()
+                },
+                continuation = shelf.continuations?.getContinuation(),
+            )
         }
 
         return null
     }
 
     fun toYTItem(renderer: MusicResponsiveListItemRenderer): YTItem? {
+        val menuItems = renderer.menu?.menuRenderer?.items.orEmpty()
         val secondaryLine =
             renderer.flexColumns
                 .getOrNull(1)
@@ -133,15 +121,13 @@ object SearchPage {
                             ?: return null,
                     thumbnail = renderer.thumbnail?.musicThumbnailRenderer?.getThumbnailUrl() ?: return null,
                     shuffleEndpoint =
-                        renderer.menu
-                            ?.menuRenderer
-                            ?.items
-                            ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
+                        menuItems
+                            .find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
                             ?.watchPlaylistEndpoint ?: return null,
                     radioEndpoint =
-                        renderer.menu.menuRenderer.items
+                        menuItems
                             .find { it.menuNavigationItemRenderer?.icon?.iconType == "MIX" }
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
@@ -227,15 +213,13 @@ object SearchPage {
                             ?.playNavigationEndpoint
                             ?.watchPlaylistEndpoint ?: return null,
                     shuffleEndpoint =
-                        renderer.menu
-                            ?.menuRenderer
-                            ?.items
-                            ?.find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
+                        menuItems
+                            .find { it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE" }
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
                             ?.watchPlaylistEndpoint ?: return null,
                     radioEndpoint =
-                        renderer.menu.menuRenderer.items
+                        menuItems
                             .find { it.menuNavigationItemRenderer?.icon?.iconType == "MIX" }
                             ?.menuNavigationItemRenderer
                             ?.navigationEndpoint
