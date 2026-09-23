@@ -9,10 +9,13 @@ import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.db.entities.SearchHistory
 import com.omnitune.app.models.*
 import com.omnitune.innertube.YouTube
+import com.omnitune.innertube.SearchQueryPolicy
 import com.omnitune.innertube.models.AlbumItem as InnerAlbumItem
 import com.omnitune.innertube.models.ArtistItem as InnerArtistItem
 import com.omnitune.innertube.models.PlaylistItem as InnerPlaylistItem
 import com.omnitune.innertube.models.SongItem as InnerSongItem
+import com.omnitune.innertube.pages.SearchSummary
+import com.omnitune.innertube.pages.SearchSummaryPage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -155,7 +158,7 @@ class SearchViewModel @Inject constructor(
             _searchQuery
                 .debounce(650)
                 .distinctUntilChanged()
-                .filter { it.trim().length >= 2 }
+                .filter { SearchQueryPolicy.normalize(it).isNotEmpty() }
                 .collect { query ->
                     if (debounceCoordinator.shouldSkipDebouncedSearch(query)) {
                         return@collect
@@ -228,9 +231,10 @@ class SearchViewModel @Inject constructor(
     }
 
     fun onQueryChange(newQuery: String) {
-        val trimmedQuery = newQuery.trim()
+        val safeQuery = SearchQueryPolicy.limitInput(newQuery)
+        val normalizedQuery = SearchQueryPolicy.normalize(safeQuery)
         debounceCoordinator.clearImmediateSearch()
-        if (trimmedQuery.isBlank()) {
+        if (normalizedQuery.isEmpty()) {
             searchGate.invalidate()
             suggestionGate.invalidate()
             searchJob?.cancel()
@@ -256,27 +260,14 @@ class SearchViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
-                query = newQuery,
+                query = safeQuery,
                 showSuggestions = true,
+                error = null,
                 selectedTab = SearchSourcePolicy.normalize(it.selectedTab),
                 resultFilter = SearchSourcePolicy.normalizeFilter(it.selectedTab, it.resultFilter)
             )
         }
-        if (trimmedQuery.length < 2) {
-            searchGate.invalidate()
-            searchJob?.cancel()
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    results = emptyList(),
-                    artistResults = emptyList(),
-                    albumResults = emptyList(),
-                    playlistResults = emptyList(),
-                    error = null
-                )
-            }
-        }
-        _searchQuery.value = newQuery
+        _searchQuery.value = safeQuery
     }
 
     private fun fetchSuggestions(query: String) {
@@ -292,7 +283,7 @@ class SearchViewModel @Inject constructor(
                 if (!suggestionGate.accepts(request) || _uiState.value.query != query) return@launch
                 _uiState.update {
                     it.copy(
-                        suggestions = suggestions,
+                        suggestions = SearchResultPolicy.uniqueSuggestions(suggestions),
                         isSuggestionsLoading = false
                     )
                 }
@@ -306,13 +297,14 @@ class SearchViewModel @Inject constructor(
 
     fun search(saveToHistory: Boolean = true) {
         val query = _uiState.value.query
-        if (query.isBlank()) return
+        if (SearchQueryPolicy.normalize(query).isEmpty()) return
+        debounceCoordinator.markImmediateSearch(query)
         searchInternal(query, saveToHistory)
     }
 
     private fun searchInternal(query: String, saveToHistory: Boolean) {
-        val normalizedQuery = query.trim()
-        if (normalizedQuery.length < 2) return
+        val normalizedQuery = SearchQueryPolicy.normalize(query)
+        if (normalizedQuery.isEmpty()) return
 
         val normalizedTab = SearchSourcePolicy.normalize(_uiState.value.selectedTab)
         val normalizedFilter = SearchSourcePolicy.normalizeFilter(normalizedTab, _uiState.value.resultFilter)
@@ -327,6 +319,7 @@ class SearchViewModel @Inject constructor(
                     isLoading = true,
                     showSuggestions = false,
                     isSearchActive = true,
+                    error = null,
                     selectedTab = normalizedTab,
                     resultFilter = normalizedFilter
                 )
@@ -346,10 +339,26 @@ class SearchViewModel @Inject constructor(
             try {
                 val summaryResult = withContext(Dispatchers.IO) {
                     musicContentPreferenceRepository.applyCurrentPreferenceToYouTube()
-                    YouTube.searchSummary(normalizedQuery)
+                    if (normalizedFilter == ResultFilter.VIDEOS) {
+                        searchVideoSummary(normalizedQuery)
+                    } else {
+                        val summary = YouTube.searchSummary(normalizedQuery)
+                        val hasSongs = summary.getOrNull()?.summaries
+                            ?.any { section -> section.items.any { it is InnerSongItem } } == true
+                        val shouldIncludeVideoFallback = !hasSongs || normalizedQuery.contains("asmr", ignoreCase = true)
+                        if (normalizedFilter == ResultFilter.ALL && shouldIncludeVideoFallback) {
+                            val videos = YouTube.searchYouTubeVideos(normalizedQuery).getOrDefault(emptyList())
+                            if (videos.isEmpty()) summary
+                            else summary.map { page ->
+                                page.copy(summaries = page.summaries + SearchSummary("Videos", videos))
+                            }
+                        } else {
+                            summary
+                        }
+                    }
                 }
 
-                if (!searchGate.accepts(request) || _uiState.value.query.trim() != normalizedQuery) {
+                if (!searchGate.accepts(request) || SearchQueryPolicy.normalize(_uiState.value.query) != normalizedQuery) {
                     return@launch
                 }
 
@@ -367,7 +376,12 @@ class SearchViewModel @Inject constructor(
 
                             runCatching {
                                 when (item) {
-                                    is InnerSongItem -> songs.add(item.toPresentationSong())
+                                    is InnerSongItem -> songs.add(
+                                        item.toPresentationSong().copy(
+                                            isVideo = normalizedFilter == ResultFilter.VIDEOS ||
+                                                summary.title.equals("Videos", ignoreCase = true),
+                                        ),
+                                    )
                                     is InnerAlbumItem -> albums.add(item.toPresentationAlbum())
                                     is InnerArtistItem -> artists.add(item.toPresentationArtist())
                                     is InnerPlaylistItem -> playlists.add(item.toPresentationPlaylist())
@@ -381,10 +395,10 @@ class SearchViewModel @Inject constructor(
 
                     _uiState.update {
                         it.copy(
-                            results = songs,
-                            artistResults = artists,
-                            albumResults = albums,
-                            playlistResults = playlists,
+                            results = SearchResultPolicy.uniqueById(songs) { it.id },
+                            artistResults = SearchResultPolicy.uniqueById(artists) { it.id },
+                            albumResults = SearchResultPolicy.uniqueById(albums) { it.id },
+                            playlistResults = SearchResultPolicy.uniqueById(playlists) { it.id },
                             isLoading = false,
                             error = null
                         )
@@ -430,9 +444,30 @@ class SearchViewModel @Inject constructor(
     }
 
     fun setResultFilter(filter: ResultFilter) {
+        val state = _uiState.value
+        val normalizedFilter = SearchSourcePolicy.normalizeFilter(state.selectedTab, filter)
+        if (state.resultFilter == normalizedFilter) return
         _uiState.update {
-            it.copy(resultFilter = SearchSourcePolicy.normalizeFilter(it.selectedTab, filter))
+            it.copy(resultFilter = normalizedFilter)
         }
+        if (state.query.isNotBlank()) searchInternal(state.query, saveToHistory = false)
+    }
+
+    private suspend fun searchVideoSummary(query: String): Result<SearchSummaryPage> {
+        val webVideos = YouTube.searchYouTubeVideos(query).getOrDefault(emptyList())
+        val musicVideos = YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO)
+            .getOrNull()
+            ?.items
+            ?.filterIsInstance<InnerSongItem>()
+            .orEmpty()
+        val videos = (webVideos + musicVideos)
+            .distinctBy(InnerSongItem::id)
+            .take(MAX_SEARCH_ITEMS)
+        return Result.success(
+            SearchSummaryPage(
+                summaries = if (videos.isEmpty()) emptyList() else listOf(SearchSummary("Videos", videos)),
+            ),
+        )
     }
 
     fun onTrendingSearchClick(term: String) {
@@ -444,8 +479,8 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun submitImmediateSearch(rawQuery: String) {
-        val query = rawQuery.trim()
-        if (query.isBlank()) return
+        val query = SearchQueryPolicy.normalize(rawQuery)
+        if (query.isEmpty()) return
         debounceCoordinator.markImmediateSearch(query)
         suggestionGate.invalidate()
         suggestionJob?.cancel()

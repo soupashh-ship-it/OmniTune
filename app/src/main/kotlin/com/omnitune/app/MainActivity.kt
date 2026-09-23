@@ -648,7 +648,7 @@ private fun OmniTuneAppRoot(
         WelcomeOnboardingDialog(
             onLoginClick = {
                 showWelcomeDialog = false
-                navController.navigate(Destination.YouTubeLogin)
+                navController.navigate(Destination.YouTubeLogin())
             },
             onContinueAsGuest = { selectedLanguages ->
                 showWelcomeDialog = false

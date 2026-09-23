@@ -3,10 +3,6 @@ package com.omnitune.app.ui.screens
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.omnitune.app.constants.AccountChannelHandleKey
-import com.omnitune.app.constants.AccountEmailKey
-import com.omnitune.app.constants.AccountNameKey
-import com.omnitune.app.constants.InnerTubeCookieKey
 import com.omnitune.app.content.HomeContentRequestGate
 import com.omnitune.app.content.LanguageScopedHomeContinuationStore
 import com.omnitune.app.content.LanguageScopedHomeSectionCache
@@ -15,11 +11,10 @@ import com.omnitune.app.content.MusicContentLanguage
 import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.*
+import com.omnitune.app.models.AccountSessionRepository
 import com.omnitune.app.models.HomeSection
 import com.omnitune.app.models.HomeSectionType
 import com.omnitune.app.models.HomeItem
-import com.omnitune.app.utils.SecurePreferenceCipher
-import com.omnitune.app.utils.dataStore
 import com.omnitune.innertube.YouTube
 import com.omnitune.innertube.pages.HomePage
 import com.omnitune.innertube.models.AlbumItem as InnerAlbumItem
@@ -159,6 +154,7 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MusicDatabase,
     private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
+    private val accountSessionRepository: AccountSessionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -179,17 +175,7 @@ class HomeViewModel @Inject constructor(
 
     private fun observeAccountState() {
         viewModelScope.launch {
-            context.dataStore.data
-                .map { prefs ->
-                    AccountSessionStateMapper.fromStoredAccount(
-                        plainCookie = SecurePreferenceCipher.decryptOrPlain(prefs[InnerTubeCookieKey]),
-                        accountName = prefs[AccountNameKey],
-                        accountEmail = prefs[AccountEmailKey],
-                        channelHandle = prefs[AccountChannelHandleKey],
-                    )
-                }
-                .distinctUntilChanged()
-                .collect { account ->
+            accountSessionRepository.accountState.collect { account ->
                     _uiState.update {
                         it.copy(
                             isLoggedIn = account.isLoggedIn,
@@ -197,7 +183,7 @@ class HomeViewModel @Inject constructor(
                             userAvatarUrl = account.userAvatarUrl,
                         )
                     }
-                }
+            }
         }
     }
 

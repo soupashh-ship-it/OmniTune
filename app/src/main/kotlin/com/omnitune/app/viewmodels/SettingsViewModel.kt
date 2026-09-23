@@ -18,6 +18,7 @@ import com.omnitune.app.content.MusicContentLanguage
 import com.omnitune.app.content.MusicContentPreferenceRepository
 import com.omnitune.app.content.defaultMusicLanguage
 import com.omnitune.app.models.*
+import com.omnitune.app.models.AccountSessionRepository
 import com.omnitune.app.utils.PreferenceStore
 import com.omnitune.app.utils.LauncherIconSwitcher
 import com.omnitune.app.utils.dataStore
@@ -88,12 +89,24 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: com.omnitune.app.db.MusicDatabase,
     private val musicContentPreferenceRepository: MusicContentPreferenceRepository,
+    private val accountSessionRepository: AccountSessionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            accountSessionRepository.accountState.collect { account ->
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = account.isLoggedIn,
+                        userName = account.userName,
+                        userAvatarUrl = account.userAvatarUrl,
+                    )
+                }
+            }
+        }
         viewModelScope.launch {
             context.dataStore.data.collect { prefs ->
                 _uiState.update { current ->

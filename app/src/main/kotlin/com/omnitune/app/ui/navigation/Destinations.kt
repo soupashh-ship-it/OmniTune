@@ -44,7 +44,7 @@ sealed class Destination {
     @Serializable
     data object Recents : Destination()
     @Serializable
-    data object YouTubeLogin : Destination()
+    data class YouTubeLogin(val openPlaylistImportAfterSignIn: Boolean = false) : Destination()
     @Serializable
     data object YouTubePlaylistImport : Destination()
     @Serializable

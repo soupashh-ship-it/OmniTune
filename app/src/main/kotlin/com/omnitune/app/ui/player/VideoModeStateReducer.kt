@@ -20,8 +20,10 @@ internal object VideoModeStateReducer {
     fun onMediaItemChanged(
         current: VideoModeSession,
         mediaId: String?,
+        isVideo: Boolean = false,
     ): VideoModeSession =
         when {
+            isVideo && !mediaId.isNullOrBlank() -> VideoModeSession(enabled = true, mediaId = mediaId)
             !current.enabled -> current
             current.mediaId == null -> current.copy(mediaId = mediaId)
             current.mediaId != mediaId -> VideoModeSession()

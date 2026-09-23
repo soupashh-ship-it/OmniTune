@@ -69,6 +69,7 @@ import com.omnitune.innertube.pages.SearchSummaryPage
 import com.omnitune.innertube.utils.PoTokenGenerator
 import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.CancellationException
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -83,6 +84,14 @@ import java.net.Proxy
 import java.util.Locale
 import kotlin.random.Random
 
+private suspend fun <T> runSearchRequest(block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Result.failure(error)
+    }
 
 object YouTube {
     private val innerTube = InnerTube()
@@ -154,9 +163,16 @@ object YouTube {
         return "$url${separator}pot=$token"
     }
 
-    suspend fun searchSuggestions(query: String): Result<SearchSuggestions> = runCatching {
+    suspend fun searchSuggestions(query: String): Result<SearchSuggestions> {
+        val normalizedQuery = SearchQueryPolicy.normalize(query)
+        if (normalizedQuery.isEmpty()) return Result.success(SearchSuggestions(emptyList(), emptyList()))
+
+        return runSearchRequest { loadSearchSuggestions(normalizedQuery) }
+    }
+
+    private suspend fun loadSearchSuggestions(query: String): SearchSuggestions {
         val response = innerTube.getSearchSuggestions(WEB_REMIX, query).body<GetSearchSuggestionsResponse>()
-        SearchSuggestions(
+        return SearchSuggestions(
             queries = response.contents?.getOrNull(0)?.searchSuggestionsSectionRenderer?.contents?.mapNotNull { content ->
                 content.searchSuggestionRenderer?.suggestion?.runs?.joinToString(separator = "") { it.text }
             }.orEmpty(),
@@ -168,7 +184,14 @@ object YouTube {
         )
     }
 
-    suspend fun searchSummary(query: String): Result<SearchSummaryPage> = runCatching {
+    suspend fun searchSummary(query: String): Result<SearchSummaryPage> {
+        val normalizedQuery = SearchQueryPolicy.normalize(query)
+        if (normalizedQuery.isEmpty()) return Result.success(SearchSummaryPage(emptyList()))
+
+        return runSearchRequest { loadSearchSummary(normalizedQuery) }
+    }
+
+    private suspend fun loadSearchSummary(query: String): SearchSummaryPage {
         val response = innerTube.search(WEB_REMIX, query).body<SearchResponse>()
 
         var parsedSummaries = response.contents?.tabbedSearchResultsRenderer?.tabs?.firstOrNull()
@@ -231,32 +254,43 @@ object YouTube {
 
         if (parsedSummaries.size <= 1) {
 
-            val songsFallback = runCatching {
-                search(query, SearchFilter.FILTER_SONG).getOrNull()?.items ?: emptyList()
-            }.getOrDefault(emptyList())
+            val songsFallback = search(query, SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
 
             if (songsFallback.isNotEmpty()) {
                 parsedSummaries = parsedSummaries + SearchSummary(title = "Songs", items = songsFallback.take(12))
             }
 
-            val albumsFallback = runCatching {
-                search(query, SearchFilter.FILTER_ALBUM).getOrNull()?.items ?: emptyList()
-            }.getOrDefault(emptyList())
+            val albumsFallback = search(query, SearchFilter.FILTER_ALBUM).getOrNull()?.items.orEmpty()
 
             if (albumsFallback.isNotEmpty()) {
                 parsedSummaries = parsedSummaries + SearchSummary(title = "Albums", items = albumsFallback.take(12))
             }
         }
 
-        SearchSummaryPage(summaries = parsedSummaries)
+        return SearchSummaryPage(summaries = parsedSummaries)
     }
 
 
 
 
-    suspend fun search(query: String, filter: SearchFilter): Result<SearchResult> = runCatching {
-        val response = innerTube.search(WEB_REMIX, query, filter.value).body<SearchResponse>()
-        SearchPage.parseSearchResult(response) ?: SearchResult(emptyList())
+    suspend fun search(query: String, filter: SearchFilter): Result<SearchResult> {
+        val normalizedQuery = SearchQueryPolicy.normalize(query)
+        if (normalizedQuery.isEmpty()) return Result.success(SearchResult(emptyList()))
+
+        return runSearchRequest {
+            val response = innerTube.search(WEB_REMIX, normalizedQuery, filter.value).body<SearchResponse>()
+            SearchPage.parseSearchResult(response) ?: SearchResult(emptyList())
+        }
+    }
+
+    suspend fun searchYouTubeVideos(query: String): Result<List<SongItem>> {
+        val normalizedQuery = SearchQueryPolicy.normalize(query)
+        if (normalizedQuery.isEmpty()) return Result.success(emptyList())
+
+        return runSearchRequest {
+            val response = innerTube.search(WEB, normalizedQuery, useYouTubeWebOrigin = true).bodyAsText()
+            SearchPage.parseVideoSearchResults(Json.parseToJsonElement(response))
+        }
     }
 
     suspend fun searchContinuation(continuation: String): Result<SearchResult> = runCatching {

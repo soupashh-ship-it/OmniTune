@@ -53,7 +53,14 @@ class StreamExtractor @Inject constructor(
     private val database: MusicDatabase,
 ) {
 
-    suspend fun resolveWithFallback(songId: String, quality: StreamQuality): StreamResolveResult {
+    suspend fun resolveWithFallback(songId: String, quality: StreamQuality): StreamResolveResult =
+        resolveWithFallback(songId, quality, isVideo = false)
+
+    suspend fun resolveWithFallback(
+        songId: String,
+        quality: StreamQuality,
+        isVideo: Boolean,
+    ): StreamResolveResult {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             ?: return StreamResolveResult.Failure(songId, PlaybackResolveError.NoNetwork, emptyList())
         if (!hasNetwork(cm)) {
@@ -96,11 +103,12 @@ class StreamExtractor @Inject constructor(
                 connectivityManager = cm,
                 preferredStreamClient = client,
                 networkMetered = networkMetered,
+                isVideo = isVideo,
             )
             
             val streamResult = result.fold(
                 onSuccess = { data ->
-                    persistFormatEntity(songId, data)
+                    if (!isVideo) persistFormatEntity(songId, data)
                     StreamResult(
                         url = data.streamUrl,
                         contentType = data.format.mimeType,
@@ -129,16 +137,21 @@ class StreamExtractor @Inject constructor(
         return StreamResolveResult.Failure(songId, lastReason, attemptedClients, lastFailure)
     }
 
-    suspend fun extractWithFallback(songId: String, quality: StreamQuality): StreamResult? {
-        return when (val result = resolveWithFallback(songId, quality)) {
+    suspend fun extractWithFallback(songId: String, quality: StreamQuality): StreamResult? =
+        extractWithFallback(songId, quality, isVideo = false)
+
+    suspend fun extractWithFallback(songId: String, quality: StreamQuality, isVideo: Boolean): StreamResult? {
+        return when (val result = resolveWithFallback(songId, quality, isVideo)) {
             is StreamResolveResult.Success -> result.stream
             is StreamResolveResult.Failure -> null
         }
     }
 
-    suspend fun extract(songId: String, quality: StreamQuality): StreamResult? {
-        return extractWithFallback(songId, quality)
-    }
+    suspend fun extract(songId: String, quality: StreamQuality): StreamResult? =
+        extractWithFallback(songId, quality)
+
+    suspend fun extract(songId: String, quality: StreamQuality, isVideo: Boolean): StreamResult? =
+        extractWithFallback(songId, quality, isVideo)
 
     fun invalidate(songId: String) {
         YTPlayerUtils.invalidateCachedStreamUrls(songId)

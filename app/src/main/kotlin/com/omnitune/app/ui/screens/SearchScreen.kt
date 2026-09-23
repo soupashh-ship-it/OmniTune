@@ -407,6 +407,27 @@ fun SearchScreen(
                     }
                 }
 
+                if (uiState.error != null && !uiState.isLoading && uiState.query.isNotBlank()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "Search failed. Check your connection and try again.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { viewModel.search(saveToHistory = false) }) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+
                 if (effectiveSelectedTab == SearchTab.YOUTUBE_MUSIC) {
                     if (uiState.resultFilter != ResultFilter.ALL && !uiState.isLoading) {
                         when (uiState.resultFilter) {

@@ -176,6 +176,7 @@ object YTPlayerUtils {
         // if provided, this preference overrides ConnectivityManager.isActiveNetworkMetered
         networkMetered: Boolean? = null,
         avoidCodecs: Set<String> = emptySet(),
+        isVideo: Boolean = false,
     ): Result<PlaybackData> = runCatching {
         val attempts =
             when (audioQuality) {
@@ -196,6 +197,7 @@ object YTPlayerUtils {
                         preferredStreamClient = preferredStreamClient,
                         networkMetered = networkMetered,
                         avoidCodecs = avoidCodecs,
+                        isVideo = isVideo,
                     )
                 }
             if (attemptResult.isSuccess) return@runCatching attemptResult.getOrThrow()
@@ -212,6 +214,7 @@ object YTPlayerUtils {
         preferredStreamClient: PlayerStreamClient,
         networkMetered: Boolean?,
         avoidCodecs: Set<String>,
+        isVideo: Boolean,
     ): PlaybackData {
         Timber.tag(logTag).i("Fetching player response for videoId: $videoId, playlistId: $playlistId")
 
@@ -341,13 +344,16 @@ object YTPlayerUtils {
             }
 
             val isMetered = networkMetered ?: connectivityManager.isActiveNetworkMetered
-            val candidates =
+            val candidates = if (isVideo) {
+                selectProgressiveVideoFormatCandidates(streamPlayerResponse, audioQuality, isMetered)
+            } else {
                 selectAudioFormatCandidates(
                     streamPlayerResponse,
                     audioQuality,
                     isMetered,
                     avoidCodecs = avoidCodecs,
                 )
+            }
 
             if (candidates.isEmpty()) continue
 
@@ -355,7 +361,7 @@ object YTPlayerUtils {
             var selectedUrl: String? = null
 
             for (candidate in candidates.asSequence().take(6)) {
-                if (isLoggedIn && expectedDurationMs != null && isLikelyPreview(candidate, expectedDurationMs)) continue
+                if (!isVideo && isLoggedIn && expectedDurationMs != null && isLikelyPreview(candidate, expectedDurationMs)) continue
                 val cacheKey = buildCacheKey(videoId, candidate.itag)
                 val cached = streamUrlCache[cacheKey]
                 val candidateUrl =
@@ -428,8 +434,13 @@ object YTPlayerUtils {
         }
 
         if (format == null) {
-            Timber.tag(logTag).e("Could not find suitable format for quality: $audioQuality. Available formats from last client: ${streamPlayerResponse.streamingData?.adaptiveFormats?.filter { it.isAudio }?.map { "${it.mimeType} @ ${it.bitrate}bps (itag: ${it.itag})" }}")
-            throw Exception("Could not find format for quality: $audioQuality")
+            val availableFormats = if (isVideo) {
+                streamPlayerResponse.streamingData?.formats.orEmpty().filter { it.width != null }
+            } else {
+                streamPlayerResponse.streamingData?.adaptiveFormats.orEmpty().filter { it.isAudio }
+            }
+            Timber.tag(logTag).e("Could not find suitable ${if (isVideo) "video" else "audio"} format for quality: $audioQuality. Available formats: ${availableFormats.map { "${it.mimeType} @ ${it.bitrate}bps (itag: ${it.itag})" }}")
+            throw Exception("Could not find ${if (isVideo) "video" else "audio"} format for quality: $audioQuality")
         }
 
         if (streamUrl == null) {
@@ -560,6 +571,32 @@ object YTPlayerUtils {
             )
 
         return candidates
+    }
+
+    private fun selectProgressiveVideoFormatCandidates(
+        playerResponse: PlayerResponse,
+        audioQuality: AudioQuality,
+        networkMetered: Boolean,
+    ): List<PlayerResponse.StreamingData.Format> {
+        val targetHeight = when {
+            networkMetered || audioQuality == AudioQuality.LOW -> 360
+            audioQuality == AudioQuality.MEDIUM -> 480
+            audioQuality == AudioQuality.HIGHEST -> 1080
+            else -> 720
+        }
+        val formats = playerResponse.streamingData?.formats.orEmpty()
+            .filter { format ->
+                format.mimeType.startsWith("video/") &&
+                    format.width != null && format.height != null &&
+                    format.bitrate > 0 &&
+                    (format.url != null || format.signatureCipher != null || format.cipher != null)
+            }
+
+        return formats.sortedWith(
+            compareByDescending<PlayerResponse.StreamingData.Format> { it.url != null }
+                .thenBy { kotlin.math.abs((it.height ?: 0) - targetHeight) }
+                .thenByDescending { it.bitrate },
+        )
     }
 
     private fun extractCodec(mimeType: String): String? {

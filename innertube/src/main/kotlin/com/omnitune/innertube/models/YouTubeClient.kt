@@ -57,6 +57,7 @@ data class YouTubeClient(
 
         const val ORIGIN_YOUTUBE = "https://www.youtube.com"
         const val REFERER_YOUTUBE_TV = "$ORIGIN_YOUTUBE/tv"
+        const val API_URL_YOUTUBE = "$ORIGIN_YOUTUBE/youtubei/v1/"
 
         val WEB = YouTubeClient(
             clientName = "WEB",

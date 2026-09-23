@@ -59,7 +59,10 @@ private const val YTM_LOGIN_URL =
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(
+    navController: NavController,
+    onLoginSuccess: () -> Unit = { navController.popBackStack() },
+) {
     val context = LocalContext.current
     val loginScope = rememberCoroutineScope()
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
@@ -68,11 +71,14 @@ fun LoginScreen(navController: NavController) {
     val isVerifying = remember { mutableStateOf(false) }
     val loginError = remember { mutableStateOf<String?>(null) }
 
-    fun closeLogin() {
+    fun finishLogin(onFinished: () -> Unit) {
         screenActive.set(false)
         webViewRef.value?.stopLoading()
-        navController.popBackStack()
+        onFinished()
     }
+
+    fun closeLogin() = finishLogin { navController.popBackStack() }
+    fun completeLogin() = finishLogin(onLoginSuccess)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -168,7 +174,7 @@ fun LoginScreen(navController: NavController) {
                                         persistSuccessfulLogin(context, cookies)
                                     }.onSuccess {
                                         if (screenActive.get()) {
-                                            closeLogin()
+                                            completeLogin()
                                         }
                                     }.onFailure { error ->
                                         Timber.w(error, "LoginScreen: failed to persist complete YouTube Music login")

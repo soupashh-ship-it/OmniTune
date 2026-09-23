@@ -242,8 +242,8 @@ fun PlayerScreen(
         viewModel.pruneQueueSelection(queueSongs.size)
     }
 
-    LaunchedEffect(song?.id) {
-        viewModel.onMediaItemChanged(song?.id)
+    LaunchedEffect(song?.id, song?.isVideo) {
+        viewModel.onMediaItemChanged(song?.id, song?.isVideo == true)
     }
 
     val actions = PlayerScreenActions(

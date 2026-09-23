@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnitune.app.db.MusicDatabase
 import com.omnitune.app.models.*
+import com.omnitune.app.models.AccountSessionRepository
 import com.omnitune.app.playback.DownloadUtil
 import com.omnitune.app.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,8 @@ data class LibraryUiState(
     val librarySearchQuery: String = "",
     val selectedFilter: LibraryFilter = LibraryFilter.PLAYLISTS,
     val recentlyPlayed: List<com.omnitune.app.db.entities.EventWithSong> = emptyList(),
+    val isYouTubeLoggedIn: Boolean = false,
+    val youtubeAccountName: String? = null,
 )
 
 enum class PlaylistExportFormat {
@@ -57,7 +60,8 @@ enum class PlaylistExportFormat {
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val database: MusicDatabase,
-    private val downloadUtil: DownloadUtil
+    private val downloadUtil: DownloadUtil,
+    private val accountSessionRepository: AccountSessionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LibraryUiState())
@@ -78,6 +82,20 @@ class LibraryViewModel @Inject constructor(
     init {
         loadData()
         observeDatabase()
+        observeAccountState()
+    }
+
+    private fun observeAccountState() {
+        viewModelScope.launch {
+            accountSessionRepository.accountState.collect { account ->
+                _uiState.update {
+                    it.copy(
+                        isYouTubeLoggedIn = account.isLoggedIn,
+                        youtubeAccountName = account.userName,
+                    )
+                }
+            }
+        }
     }
 
     private fun observeDatabase() {

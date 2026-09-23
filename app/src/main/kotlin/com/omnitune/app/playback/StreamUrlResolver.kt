@@ -5,6 +5,8 @@ import android.util.LruCache
 import androidx.media3.common.MediaItem
 import com.omnitune.app.data.StreamExtractor
 import com.omnitune.app.data.StreamResolveResult
+import com.omnitune.app.extensions.ExtraIsMusicVideo
+import com.omnitune.app.extensions.metadata
 import com.omnitune.app.models.PlaybackQualityMode
 import com.omnitune.app.models.StreamResult
 import com.omnitune.app.models.StreamQuality
@@ -47,6 +49,7 @@ object StreamUrlResolver {
 
     fun invalidate(videoId: String) {
         streamCache.remove(videoId)
+        streamCache.remove(videoCacheKey(videoId))
         Timber.d("StreamUrlResolver: invalidated cache for $videoId")
     }
 
@@ -77,6 +80,9 @@ object StreamUrlResolver {
     ): MediaItem? = resolveMediaItem(
         mediaItem = mediaItem,
         streamLookup = streamExtractor::extract,
+        videoStreamLookup = { videoId, quality ->
+            streamExtractor.extract(videoId, quality, isVideo = true)
+        },
         downloadUtil = downloadUtil,
         qualityMode = qualityMode,
     )
@@ -103,6 +109,15 @@ object StreamUrlResolver {
                     }
                 }
             },
+            videoStreamLookup = { videoId, quality ->
+                when (val result = streamExtractor.resolveWithFallback(videoId, quality, isVideo = true)) {
+                    is StreamResolveResult.Success -> result.stream
+                    is StreamResolveResult.Failure -> {
+                        failure = result
+                        null
+                    }
+                }
+            },
             downloadUtil = downloadUtil,
             qualityMode = qualityMode,
         )
@@ -120,13 +135,17 @@ object StreamUrlResolver {
         downloadUtil: DownloadUtil? = null,
         qualityMode: PlaybackQualityMode = PlaybackQualityMode.AUTO,
         lookupTimeoutMillis: Long = StreamLookupTimeoutMillis,
+        videoStreamLookup: suspend (videoId: String, quality: StreamQuality) -> StreamResult? = streamLookup,
     ): MediaItem? {
         require(lookupTimeoutMillis >= 0L) { "lookupTimeoutMillis must not be negative" }
         val videoId = mediaItem.localConfiguration?.uri?.toString()?.trim() ?: return null
         if (!isYouTubeVideoId(mediaItem.localConfiguration?.uri)) return null
+        val isVideo = mediaItem.metadata?.isVideo == true ||
+            mediaItem.mediaMetadata.extras?.getBoolean(ExtraIsMusicVideo, false) == true
+        val cacheKey = if (isVideo) videoCacheKey(videoId) else videoId
 
         // Check if the item is fully downloaded
-        if (downloadUtil != null) {
+        if (!isVideo && downloadUtil != null) {
             try {
                 val download = downloadUtil.findPlayableDownload(videoId)
                 if (download != null) {
@@ -147,7 +166,7 @@ object StreamUrlResolver {
             }
         }
 
-        val cached = streamCache.get(videoId)
+        val cached = streamCache.get(cacheKey)
         if (cached != null) {
             val isExpired = (System.currentTimeMillis() - cached.fetchedAtMs) > 90 * 60 * 1000L
             if (!isExpired) {
@@ -156,10 +175,10 @@ object StreamUrlResolver {
                 return mediaItem.buildUpon()
                     .setUri(Uri.parse(cached.streamResult.url))
                     .setMimeType(cached.streamResult.contentType)
-                    .setCustomCacheKey(videoId)
+                    .setCustomCacheKey(cacheKey)
                     .build()
             } else {
-                streamCache.remove(videoId)
+                streamCache.remove(cacheKey)
             }
         }
 
@@ -167,7 +186,7 @@ object StreamUrlResolver {
         StartupTracker.logResolverStart()
         val streamQuality = mapQuality(qualityMode)
         val streamResult = kotlinx.coroutines.withTimeoutOrNull(lookupTimeoutMillis) {
-            streamLookup(videoId, streamQuality)
+            (if (isVideo) videoStreamLookup else streamLookup)(videoId, streamQuality)
         }
         StartupTracker.logResolverDone()
         
@@ -176,13 +195,13 @@ object StreamUrlResolver {
             return null
         }
 
-        streamCache.put(videoId, CachedStream(streamResult, System.currentTimeMillis()))
+        streamCache.put(cacheKey, CachedStream(streamResult, System.currentTimeMillis()))
         Timber.d("StreamUrlResolver: resolved $videoId (${streamResult.contentType})")
 
         return mediaItem.buildUpon()
             .setUri(Uri.parse(streamResult.url))
             .setMimeType(streamResult.contentType)
-            .setCustomCacheKey(videoId)
+            .setCustomCacheKey(cacheKey)
             .build()
     }
 
@@ -211,7 +230,7 @@ object StreamUrlResolver {
         items.forEachIndexed { index, item ->
             if (resolved[index] == null && isYouTubeVideoId(item.localConfiguration?.uri)) {
                 val videoId = item.localConfiguration?.uri?.toString()?.trim()
-                if (videoId != null && isFastResolvable(videoId, downloadUtil)) {
+                if (videoId != null && isFastResolvable(item, downloadUtil)) {
                     resolved[index] = resolveMediaItem(item, streamExtractor, downloadUtil, qualityMode) ?: item
                 }
             }
@@ -222,9 +241,13 @@ object StreamUrlResolver {
         }
     }
 
-    private fun isFastResolvable(videoId: String, downloadUtil: DownloadUtil?): Boolean {
-        if (streamCache.get(videoId) != null) return true
-        if (downloadUtil != null) {
+    private fun isFastResolvable(mediaItem: MediaItem, downloadUtil: DownloadUtil?): Boolean {
+        val videoId = mediaItem.localConfiguration?.uri?.toString()?.trim() ?: return false
+        val isVideo = mediaItem.metadata?.isVideo == true ||
+            mediaItem.mediaMetadata.extras?.getBoolean(ExtraIsMusicVideo, false) == true
+        val cacheKey = if (isVideo) videoCacheKey(videoId) else videoId
+        if (streamCache.get(cacheKey) != null) return true
+        if (!isVideo && downloadUtil != null) {
             try {
                 return downloadUtil.findPlayableDownload(videoId) != null
             } catch (_: Exception) {
@@ -233,4 +256,6 @@ object StreamUrlResolver {
         }
         return false
     }
+
+    private fun videoCacheKey(videoId: String) = "$videoId:video"
 }

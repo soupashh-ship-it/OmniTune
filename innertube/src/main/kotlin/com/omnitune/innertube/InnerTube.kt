@@ -97,14 +97,19 @@ class InnerTube {
         }
     }
 
-    private fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false) {
+    private fun HttpRequestBuilder.ytClient(
+        client: YouTubeClient,
+        setLogin: Boolean = false,
+        originOverride: String? = null,
+    ) {
+        val origin = originOverride ?: YouTubeClient.ORIGIN_YOUTUBE_MUSIC
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
             append("X-YouTube-Client-Name", client.clientId)
             append("X-YouTube-Client-Version", client.clientVersion)
-            append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
-            append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
+            append("X-Origin", origin)
+            append("Referer", "$origin/")
 
             authState.visitorData?.let { append("X-Goog-Visitor-Id", it) }
 
@@ -116,7 +121,7 @@ class InnerTube {
                     val sapisid = PlaybackAuthState.sapisidCookieValue(cookieStr)
                     if (sapisid != null) {
                         val currentTime = System.currentTimeMillis() / 1000
-                        val sapisidHash = sha1("$currentTime $sapisid ${YouTubeClient.ORIGIN_YOUTUBE_MUSIC}")
+                        val sapisidHash = sha1("$currentTime $sapisid $origin")
                         append("Authorization", "SAPISIDHASH ${currentTime}_${sapisidHash}")
                     }
                 }
@@ -157,9 +162,19 @@ class InnerTube {
         query: String? = null,
         params: String? = null,
         continuation: String? = null,
+        useYouTubeWebOrigin: Boolean = false,
     ) = withRetry {
-        httpClient.post("search") {
-        ytClient(client, setLogin = useLoginForBrowse)
+        val requestUrl = if (useYouTubeWebOrigin) {
+            "${YouTubeClient.API_URL_YOUTUBE}search"
+        } else {
+            "search"
+        }
+        httpClient.post(requestUrl) {
+        ytClient(
+            client,
+            setLogin = useLoginForBrowse,
+            originOverride = YouTubeClient.ORIGIN_YOUTUBE.takeIf { useYouTubeWebOrigin },
+        )
         setBody(
             SearchBody(
                 context = client.toContext(

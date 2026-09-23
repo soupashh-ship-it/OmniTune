@@ -23,6 +23,12 @@ import com.omnitune.innertube.utils.parseTime
 import com.omnitune.innertube.models.response.SearchResponse
 import com.omnitune.innertube.models.getContinuation
 import com.omnitune.innertube.models.getItems
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import java.util.ArrayDeque
 
 data class SearchResult(
     val items: List<YTItem>,
@@ -30,6 +36,81 @@ data class SearchResult(
 )
 
 object SearchPage {
+    fun parseVideoSearchResults(response: JsonElement): List<SongItem> {
+        val pending = ArrayDeque<JsonElement>()
+        val videos = LinkedHashMap<String, SongItem>()
+        pending.addLast(response)
+
+        var visitedNodes = 0
+        fun enqueue(element: JsonElement) {
+            if (pending.size + visitedNodes < MAX_VIDEO_SEARCH_NODES) pending.addLast(element)
+        }
+
+        while (pending.isNotEmpty() && visitedNodes < MAX_VIDEO_SEARCH_NODES && videos.size < MAX_VIDEO_SEARCH_RESULTS) {
+            val element = pending.removeFirst()
+            visitedNodes++
+
+            when (element) {
+                is JsonObject -> {
+                    runCatching { (element["videoRenderer"] as? JsonObject)?.toVideoSearchItem() }
+                        .getOrNull()
+                        ?.let { videos.putIfAbsent(it.id, it) }
+                    element.forEach { (key, value) ->
+                        if (key != "videoRenderer") enqueue(value)
+                    }
+                }
+                is JsonArray -> element.forEach(::enqueue)
+                else -> Unit
+            }
+        }
+
+        return videos.values.toList()
+    }
+
+    private const val MAX_VIDEO_SEARCH_NODES = 20_000
+    private const val MAX_VIDEO_SEARCH_RESULTS = 120
+
+    private fun JsonObject.toVideoSearchItem(): SongItem? {
+        val id = (this["videoId"] as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) ?: return null
+        val title = text("title")?.takeIf(String::isNotBlank) ?: return null
+        val thumbnail = ((this["thumbnail"] as? JsonObject)?.get("thumbnails") as? JsonArray)
+            ?.mapNotNull { item ->
+                ((item as? JsonObject)?.get("url") as? JsonPrimitive)?.contentOrNull
+            }
+            ?.lastOrNull()
+            ?.takeIf(String::isNotBlank)
+            ?: return null
+        val owner = text("ownerText") ?: text("shortBylineText")
+        val channelId = (((this["ownerText"] as? JsonObject)?.get("runs") as? JsonArray)
+            ?.firstOrNull() as? JsonObject)
+            ?.get("navigationEndpoint")
+            ?.let { it as? JsonObject }
+            ?.get("browseEndpoint")
+            ?.let { it as? JsonObject }
+            ?.get("browseId")
+            .let { it as? JsonPrimitive }
+            ?.contentOrNull
+
+        return SongItem(
+            id = id,
+            title = title,
+            artists = owner?.let { listOf(Artist(name = it, id = channelId)) }.orEmpty(),
+            duration = text("lengthText")?.parseTime(),
+            thumbnail = thumbnail,
+        )
+    }
+
+    private fun JsonObject.text(key: String): String? {
+        val value = this[key] as? JsonObject ?: return null
+        (value["simpleText"] as? JsonPrimitive)?.contentOrNull?.let { return it }
+        return (value["runs"] as? JsonArray)
+            ?.mapNotNull { run ->
+                ((run as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNull
+            }
+            ?.joinToString(separator = "")
+            ?.takeIf(String::isNotBlank)
+    }
+
     fun parseSearchResult(response: SearchResponse): SearchResult? {
         val contents = response.contents ?: return null
 

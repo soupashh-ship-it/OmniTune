@@ -61,6 +61,7 @@ fun LibraryScreen(
     onAlbumClick: (Album) -> Unit = {},
     onDownloadsClick: () -> Unit = {},
     onImportPlaylist: () -> Unit = {},
+    onYouTubePlaylistImport: (Boolean) -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
     playlistViewModel: PlaylistManagementViewModel = hiltViewModel()
 ) {
@@ -177,6 +178,15 @@ fun LibraryScreen(
                         searchQuery = uiState.librarySearchQuery,
                         onSearchQueryChange = { viewModel.setLibrarySearchQuery(it) }
                     )
+
+                    if (uiState.selectedFilter == LibraryFilter.PLAYLISTS) {
+                        YouTubePlaylistLibraryEntry(
+                            isLoggedIn = uiState.isYouTubeLoggedIn,
+                            accountName = uiState.youtubeAccountName,
+                            onClick = { onYouTubePlaylistImport(uiState.isYouTubeLoggedIn) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                    }
 
                     // Content based on filter
                     when (uiState.selectedFilter) {

@@ -234,8 +234,8 @@ class PlayerViewModel @Inject constructor(
         applyVideoModeSession(VideoModeStateReducer.setEnabled(videoModeSession, enabled, mediaId))
     }
 
-    fun onMediaItemChanged(mediaId: String?) {
-        applyVideoModeSession(VideoModeStateReducer.onMediaItemChanged(videoModeSession, mediaId))
+    fun onMediaItemChanged(mediaId: String?, isVideo: Boolean = false) {
+        applyVideoModeSession(VideoModeStateReducer.onMediaItemChanged(videoModeSession, mediaId, isVideo))
     }
 
     private fun applyVideoModeSession(session: VideoModeSession) {

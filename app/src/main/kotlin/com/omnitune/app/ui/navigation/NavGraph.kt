@@ -257,6 +257,13 @@ fun NavGraph(
                 },
                 onImportPlaylist = {
                     navController.navigate(Destination.ImportPlaylist)
+                },
+                onYouTubePlaylistImport = { isLoggedIn ->
+                    if (isLoggedIn) {
+                        navController.navigate(Destination.YouTubePlaylistImport)
+                    } else {
+                        navController.navigate(Destination.YouTubeLogin(openPlaylistImportAfterSignIn = true))
+                    }
                 }
             )
         }
@@ -275,7 +282,7 @@ fun NavGraph(
                 onCreditsClick = { navController.navigate(Destination.Credits) },
                 onUpdaterClick = { navController.navigate(Destination.Updater) },
                 onLastFmClick = { navController.navigate(Destination.LastFmLogin) },
-                onLoginClick = { navController.navigate(Destination.YouTubeLogin) },
+                onLoginClick = { navController.navigate(Destination.YouTubeLogin()) },
                 onBackupRestoreClick = { navController.navigate(Destination.BackupRestore) },
                 onYouTubePlaylistImportClick = { navController.navigate(Destination.YouTubePlaylistImport) },
             )
@@ -486,8 +493,21 @@ fun NavGraph(
             )
         }
 
-        composable<Destination.YouTubeLogin> {
-            LoginScreen(navController = navController)
+        composable<Destination.YouTubeLogin> { backStackEntry ->
+            val destination = backStackEntry.toRoute<Destination.YouTubeLogin>()
+            LoginScreen(
+                navController = navController,
+                onLoginSuccess = {
+                    if (destination.openPlaylistImportAfterSignIn) {
+                        navController.navigate(Destination.YouTubePlaylistImport) {
+                            popUpTo<Destination.YouTubeLogin> { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
+                },
+            )
         }
 
         composable<Destination.YouTubePlaylistImport> {
