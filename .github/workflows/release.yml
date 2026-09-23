@@ -95,15 +95,27 @@ jobs:
         run: |
           APK_NAME="OmniTune-${GITHUB_REF_NAME}-release.apk"
           SHA_NAME="$APK_NAME.sha256"
-          gh release upload "$GITHUB_REF_NAME" \
-            "${{ steps.assets.outputs.apk_path }}" \
-            "${{ steps.assets.outputs.sha_path }}" \
-            --clobber \
-            --repo "$GITHUB_REPOSITORY"
+          RELEASE_ID="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" --jq '.id')"
+          ASSET_ENDPOINT="repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100"
+          ASSET_NAMES="$(gh api "$ASSET_ENDPOINT" --jq '.[].name')"
 
-          ASSET_NAMES="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
-          grep -Fxq "$APK_NAME" <<<"$ASSET_NAMES"
-          grep -Fxq "$SHA_NAME" <<<"$ASSET_NAMES"
+          if ! grep -Fxq "$APK_NAME" <<<"$ASSET_NAMES"; then
+            gh release upload "$GITHUB_REF_NAME" "${{ steps.assets.outputs.apk_path }}" --repo "$GITHUB_REPOSITORY" || true
+          fi
+          if ! grep -Fxq "$SHA_NAME" <<<"$ASSET_NAMES"; then
+            gh release upload "$GITHUB_REF_NAME" "${{ steps.assets.outputs.sha_path }}" --repo "$GITHUB_REPOSITORY" || true
+          fi
+
+          for attempt in 1 2 3 4 5; do
+            ASSET_NAMES="$(gh api "$ASSET_ENDPOINT" --jq '.[].name')"
+            if grep -Fxq "$APK_NAME" <<<"$ASSET_NAMES" && grep -Fxq "$SHA_NAME" <<<"$ASSET_NAMES"; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          printf 'Release assets were not confirmed: %s and %s\n' "$APK_NAME" "$SHA_NAME" >&2
+          exit 1
 
       - name: Delete temporary keystore
         if: always()
