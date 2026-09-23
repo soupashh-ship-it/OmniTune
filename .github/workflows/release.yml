@@ -93,10 +93,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          APK_NAME="OmniTune-${GITHUB_REF_NAME}-release.apk"
+          SHA_NAME="$APK_NAME.sha256"
           gh release upload "$GITHUB_REF_NAME" \
             "${{ steps.assets.outputs.apk_path }}" \
             "${{ steps.assets.outputs.sha_path }}" \
-            --clobber
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"
+
+          ASSET_NAMES="$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')"
+          grep -Fxq "$APK_NAME" <<<"$ASSET_NAMES"
+          grep -Fxq "$SHA_NAME" <<<"$ASSET_NAMES"
 
       - name: Delete temporary keystore
         if: always()
